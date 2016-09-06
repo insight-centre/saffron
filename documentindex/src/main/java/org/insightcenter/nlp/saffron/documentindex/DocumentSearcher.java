@@ -1,10 +1,11 @@
-package ie.deri.unlp.javaservices.documentindex;
+package org.insightcenter.nlp.saffron.documentindex;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.lucene.index.CorruptIndexException;
 
 public interface DocumentSearcher extends Closeable {
 

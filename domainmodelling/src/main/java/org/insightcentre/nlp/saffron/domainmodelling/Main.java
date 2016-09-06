@@ -3,8 +3,6 @@
  */
 package org.insightcentre.nlp.saffron.domainmodelling;
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
-import ie.deri.unlp.javaservices.documentindex.SearchException;
 import static org.insightcentre.nlp.saffron.domainmodelling.termextraction.Config.*;
 
 import java.io.File;
@@ -30,6 +28,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcenter.nlp.saffron.documentindex.SearchException;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.ExtractionResultsWrapper;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.POSExtractor;
 import org.insightcentre.nlp.saffron.domainmodelling.termextraction.Document;
@@ -67,7 +67,7 @@ public class Main {
         config = new PropertiesConfiguration(Main.class.getResource("/config.properties"));
         KeyphraseExtractor ke = new KeyphraseExtractor(posExtractor);
 
-//        commonsDirectory directory;
+//        Directory directory;
 //        
 //        if (indexDocs || computeAll) {
 //        	directory = DocumentIndexFactory.luceneFileDirectory(new File(TaxonUtils.INDEX_PATH), true);

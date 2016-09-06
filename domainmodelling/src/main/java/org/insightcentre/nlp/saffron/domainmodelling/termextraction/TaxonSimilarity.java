@@ -4,7 +4,6 @@
 package org.insightcentre.nlp.saffron.domainmodelling.termextraction;
 
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
 import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -13,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 
 
 /**

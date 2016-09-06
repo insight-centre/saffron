@@ -3,8 +3,6 @@
  */
 package org.insightcentre.nlp.saffron.domainmodelling.termextraction;
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
-import ie.deri.unlp.javaservices.documentindex.SearchException;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -20,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcenter.nlp.saffron.documentindex.SearchException;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.DocUtils;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.DocumentProcessor;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.ExtractionResultsWrapper;

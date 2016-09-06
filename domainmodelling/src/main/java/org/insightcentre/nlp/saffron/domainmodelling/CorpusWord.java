@@ -1,7 +1,5 @@
 package org.insightcentre.nlp.saffron.domainmodelling;
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
-import ie.deri.unlp.javaservices.documentindex.SearchException;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -13,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.xml.bind.annotation.XmlRootElement;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcenter.nlp.saffron.documentindex.SearchException;
 
 @XmlRootElement
 public class CorpusWord {

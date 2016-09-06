@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.domainmodelling;
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -8,6 +7,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.POSExtractor;
 
 /**
@@ -87,13 +87,39 @@ public class Configuration {
 
     public NLPConfiguration nlp;
     public String stopwordsFile;
-
+    public boolean indexDocs;
+    public String indexPath;
+    
     public NLPConfiguration getNlp() {
         return nlp;
     }
 
     public void setNlp(NLPConfiguration nlp) {
         this.nlp = nlp;
+    }
+
+    public String getStopwordsFile() {
+        return stopwordsFile;
+    }
+
+    public void setStopwordsFile(String stopwordsFile) {
+        this.stopwordsFile = stopwordsFile;
+    }
+
+    public boolean isIndexDocs() {
+        return indexDocs;
+    }
+
+    public void setIndexDocs(boolean indexDocs) {
+        this.indexDocs = indexDocs;
+    }
+
+    public String getIndexPath() {
+        return indexPath;
+    }
+
+    public void setIndexPath(String indexPath) {
+        this.indexPath = indexPath;
     }
 
     /**

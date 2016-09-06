@@ -1,8 +1,6 @@
 package org.insightcentre.nlp.saffron.domainmodelling;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
-import ie.deri.unlp.javaservices.documentindex.SearchException;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +9,8 @@ import java.util.List;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcenter.nlp.saffron.documentindex.SearchException;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.ExtractionResultsWrapper;
 import org.insightcentre.nlp.saffron.domainmodelling.termextraction.KPInfoProcessor;
 import org.insightcentre.nlp.saffron.domainmodelling.termextraction.KeyphraseExtractor;
@@ -39,9 +39,21 @@ public class NewMain {
      */
     public void run() throws Exception {
         KeyphraseExtractor ke = new KeyphraseExtractor(config.loadPosExtractor());
-        DocumentSearcher searcher = config.loadSearcher();
-        KPInfoProcessor kpip = new KPInfoProcessor(searcher);
         Set<String> stopWords = config.loadStopWords();
+        
+//        Directory directory;
+//        
+//        if (config.isIndexDocs()) {
+//        	directory = DocumentIndexFactory.luceneFileDirectory(new File(config.getIndexPath()), true);
+//            indexDocs(directory);
+//        } else {
+//        	directory = DocumentIndexFactory.luceneFileDirectory(new File(config.getIndexPath()), false);
+//        }
+//        
+//        DocumentSearcher searcher = DocumentIndexFactory.luceneSearcher(directory, DocumentIndexFactory.LuceneAnalyzer.LOWERCASE_STEMMER);
+        DocumentSearcher searcher = null;
+        
+        KPInfoProcessor kpip = new KPInfoProcessor(searcher);
         
         if(config.nlp != null) {
             processNLP(ke, searcher, stopWords);

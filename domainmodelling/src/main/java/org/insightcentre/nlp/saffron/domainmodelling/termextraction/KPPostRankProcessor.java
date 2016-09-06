@@ -4,8 +4,6 @@
 package org.insightcentre.nlp.saffron.domainmodelling.termextraction;
 
 
-import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
-import ie.deri.unlp.javaservices.documentindex.SearchException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
@@ -26,6 +24,8 @@ import java.util.TreeSet;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.FileUtils;
+import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcenter.nlp.saffron.documentindex.SearchException;
 
 import org.insightcentre.nlp.saffron.domainmodelling.TaxonUtils;
 import static org.insightcentre.nlp.saffron.domainmodelling.termextraction.Config.ALPHA;

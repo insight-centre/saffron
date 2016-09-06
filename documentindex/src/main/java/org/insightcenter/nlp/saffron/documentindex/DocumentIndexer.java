@@ -1,4 +1,4 @@
-package ie.deri.unlp.javaservices.documentindex;
+package org.insightcenter.nlp.saffron.documentindex;
 
 import java.io.Closeable;
 
