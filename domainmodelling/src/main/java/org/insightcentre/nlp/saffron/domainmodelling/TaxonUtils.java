@@ -13,7 +13,7 @@ import java.util.List;
  * @author Georgeta Bordea
  * 
  */
-public class TaxonUtils {
+@Deprecated public class TaxonUtils {
 
   public static final String INDEX_PATH = "output/lucene/index";
   
