@@ -7,7 +7,7 @@ import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
 import ie.deri.unlp.javaservices.documentindex.IndexingException;
 import org.insightcentre.nlp.saffron.taxonomy.db.DAO;
 import org.insightcentre.nlp.saffron.taxonomy.db.saffron2.Saffron2DAO;
-import org.insightcentre.nlp.saffron.taxonomy.db.saffron2.Saffron2Paper;
+import org.insightcentre.nlp.saffron.taxonomy.db.Saffron2Paper;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -45,30 +45,29 @@ public class Saffron2TaxonomyRunner {
 
         int minCommonDocs = Integer.parseInt(args[8]);
 
-        DAO dao = new Saffron2DAO(jdbcUrl, dbUser, dbPass);
+        DAO db = new Saffron2DAO(jdbcUrl, dbUser, dbPass);
 
-        App.db = dao;
 
         logger.info("Initialising Lucene index...");
 
         outputPath.mkdirs();
 
-        DocumentSearcher ds = indexLucenePapers(outputPath, !usePreviousCalc);
+        DocumentSearcher ds = indexLucenePapers(db, outputPath, !usePreviousCalc);
 
         logger.info("Getting topics from database...");
 
-        List<String> topics = App.db.topRankingTopicStrings(numTopics);
+        List<String> topics = db.topRankingTopicStrings(numTopics);
 
         logger.info("Computing taxonomy...");
 
-        TaxonomyConstructor.optimisedSimilarityGraph(ds, outputPath,
+        TaxonomyConstructor.optimisedSimilarityGraph(db, ds, 
             simThreshold, spanSize, topics, minCommonDocs, usePreviousCalc);
 
         logger.info("Creating GraphML file...");
 
-        String dotFile = new File(outputPath, TaxonomyConstructor.prunedGraphOutput).getAbsolutePath();
+        //String dotFile = new File(outputPath, TaxonomyConstructor.prunedGraphOutput).getAbsolutePath();
 
-        String graphMLFile = new File(outputPath, "graph.graphml").getAbsolutePath();
+        //String graphMLFile = new File(outputPath, "graph.graphml").getAbsolutePath();
 
         throw new RuntimeException("TODO");
 //        GephiProcess.dotToGraphML(dotFile, graphMLFile);
@@ -101,7 +100,7 @@ public class Saffron2TaxonomyRunner {
 
     }
 
-    public static DocumentSearcher indexLucenePapers(File outputPath, boolean overwriteIndex)
+    public static DocumentSearcher indexLucenePapers(DAO db, File outputPath, boolean overwriteIndex)
         throws IOException, IndexingException, SQLException {
 
         File indexPath = new File(FilenameUtils.concat(outputPath.getAbsolutePath(), "index"));
@@ -114,7 +113,7 @@ public class Saffron2TaxonomyRunner {
 
         if (!indexExists || overwriteIndex) {
 
-            indexDocs(directory, analyzer);
+            indexDocs(db, directory, analyzer);
 
         }
 
@@ -122,14 +121,14 @@ public class Saffron2TaxonomyRunner {
 
     }
 
-    private static void indexDocs(Directory directory, LuceneAnalyzer analyzer)
+    private static void indexDocs(DAO db, Directory directory, LuceneAnalyzer analyzer)
         throws IndexingException, SQLException, IOException {
 
         DocumentIndexer indexer = DocumentIndexFactory.luceneIndexer(directory, analyzer);
 
         int indexed = 0;
 
-        Iterator<Saffron2Paper> papers = App.db.getPapers();
+        Iterator<Saffron2Paper> papers = db.getPapers();
 
         while (papers.hasNext()) {
 

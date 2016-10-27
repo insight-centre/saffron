@@ -1,15 +1,18 @@
 package org.insightcentre.nlp.saffron.taxonomy.db;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class TopicSimilarity {
 
-	public TopicSimilarity(Double similarityScore) {
-		super();
+    @JsonCreator
+	public TopicSimilarity(@JsonProperty(value="similarityScore", required = true) double similarityScore) {
 		this.similarityScore = similarityScore;
 	}
 
-	public Double similarityScore;
+	public double similarityScore;
 
-	public Double getSimilarityScore() {
+	public double getSimilarityScore() {
 		return similarityScore;
 	}
 

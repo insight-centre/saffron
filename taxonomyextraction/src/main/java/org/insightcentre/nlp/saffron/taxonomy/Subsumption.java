@@ -16,6 +16,7 @@ import java.util.Set;
 
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.insightcentre.nlp.saffron.taxonomy.db.DAO;
 
 /**
  * @author Georgeta Bordea
@@ -61,10 +62,10 @@ public class Subsumption {
     return cooc;
   }
 
-  public static Boolean subsumes(DocumentSearcher sd, String t1, String t2, Integer docsCount)
+  public static Boolean subsumes(DAO db, DocumentSearcher sd, String t1, String t2, Integer docsCount)
       throws SearchException, SQLException {
-    Topic topic1 = App.db.getTopic(t1);
-    Topic topic2 = App.db.getTopic(t2);
+    Topic topic1 = db.getTopic(t1);
+    Topic topic2 = db.getTopic(t2);
 
       Map<String, Integer> occMap1 =
           sd.searchOccurrence(topic1.getRootSequence(), docsCount);
@@ -88,19 +89,19 @@ public class Subsumption {
       }
   }
   
-  public static Map<String, Double> computePMIValues(DocumentSearcher sd,
+  public static Map<String, Double> computePMIValues(DAO db, DocumentSearcher sd,
       String topic, Map<String, Long> topics, Integer docsCount,
       Integer totalTokensNo, Integer spanSize,
       Map<String, Map<String, Double>> pmiMaps) throws SearchException, SQLException {
 
     Map<String, Double> pmiMap = new HashMap<String, Double>();
 
-      Topic t = App.db.getTopic(topic);
+      Topic t = db.getTopic(topic);
 
       Set<String> topisKeys = topics.keySet();
 
       for (String kp : topisKeys) {
-        Topic tKP = App.db.getTopic(kp);
+        Topic tKP = db.getTopic(kp);
         Long spanFreq = new Long(0);
 
         // only compute pmi once for a pair of terms
@@ -139,18 +140,18 @@ public class Subsumption {
     return contextWordsRank;
   }
 
-  public static Double sumPMI(DocumentSearcher sd, String topic,
+  public static Double sumPMI(DAO db, DocumentSearcher sd, String topic,
       Map<String, Long> topics, Integer docsCount, Integer totalTokensNo) throws SearchException, SQLException {
 
     Double contextWordsRank = 0.0;
-      Topic t = App.db.getTopic(topic);
+      Topic t = db.getTopic(topic);
 
       Set<String> topisKeys = topics.keySet();
 
       for (String kp : topisKeys) {
         // check first at least 1 document mention them together
-        if (App.db.selectCountJointTopics(topic, kp) >= 3) {
-          Topic tKP = App.db.getTopic(kp);
+        if (db.selectCountJointTopics(topic, kp) >= 3) {
+          Topic tKP = db.getTopic(kp);
 
           Long spanFreq = new Long(0);
           if (tKP != null) {
@@ -182,7 +183,7 @@ public class Subsumption {
 
     for (String topic : topics) {
 
-      Main.logger.log(Level.INFO, "Computing sum PMI for topic " + topic);
+      System.err.println("Computing sum PMI for topic " + topic);
       Double sumPMI = sumPMI(pmiMaps.get(topic));
 
       sumPMIMap.put(topic, sumPMI);
@@ -192,18 +193,18 @@ public class Subsumption {
     return sumPMIMap;
   }
 
-  public static Map<String, Map<String, Double>> computePMIMaps(DocumentSearcher sd,
+  public static Map<String, Map<String, Double>> computePMIMaps(DAO db, DocumentSearcher sd,
       List<String> topics, Integer spanSize) throws SearchException, SQLException {
 
     Map<String, Map<String, Double>> pmiMaps =
         new HashMap<String, Map<String, Double>>();
 
-      Integer docsCount = App.db.numDocuments();
+      Integer docsCount = db.numDocuments();
 
       Map<String, Long> topicsMap = new HashMap<String, Long>();
 
       for (String topic : topics) {
-        Topic t = App.db.getTopic(topic);
+        Topic t = db.getTopic(topic);
         topicsMap.put(topic, new Long(t.getOverallOccurrence()));
       }
 
@@ -212,15 +213,15 @@ public class Subsumption {
         logger
             .log(Level.INFO, "Computing PMI values for topic " + topic + "..");
         Map<String, Double> pmiMap =
-            computePMIValues(sd, topic, topicsMap, docsCount,
-                App.db.calculateTotalTokensNo(), spanSize, pmiMaps);
+            computePMIValues(db, sd, topic, topicsMap, docsCount,
+                db.calculateTotalTokensNo(), spanSize, pmiMaps);
         pmiMaps.put(topic, pmiMap);
       }
 
     return pmiMaps;
   }
 
-  public static Map<String, Double> computeSumPMI(DocumentSearcher sd, List<String> topics,
+  public static Map<String, Double> computeSumPMI(DAO db, DocumentSearcher sd, List<String> topics,
       Boolean topKP, String outputFile) throws IOException, SearchException, SQLException {
 
     Map<String, Long> topicsMap = new HashMap<String, Long>();
@@ -233,12 +234,12 @@ public class Subsumption {
       FileWriter fstream = new FileWriter(outputFile, false);
       out = new BufferedWriter(fstream);
 
-      Integer docsCount = App.db.numDocuments();
+      Integer docsCount = db.numDocuments();
 
       if (topKP) {
         // use all top topics
         for (String topic : topics) {
-          Topic t = App.db.getTopic(topic);
+          Topic t = db.getTopic(topic);
           topicsMap.put(topic, new Long(t.getOverallOccurrence()));
         }
       } else {
@@ -251,10 +252,10 @@ public class Subsumption {
 
       for (String topic : topics) {
 
-        Main.logger.log(Level.INFO, "Computing sum PMI for topic " + topic);
+        System.err.println("Computing sum PMI for topic " + topic);
         Double pmi =
-            sumPMI(sd, topic, topicsMap, docsCount,
-                App.db.calculateTotalTokensNo());
+            sumPMI(db, sd, topic, topicsMap, docsCount,
+                db.calculateTotalTokensNo());
 
         pmiMap.put(topic, pmi);
         out.write(topic + "," + pmi + "\n");

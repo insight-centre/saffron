@@ -1,8 +1,8 @@
-package org.insightcentre.nlp.saffron.taxonomy;
+package org.insightcentre.nlp.saffron.taxonomy.graph;
 
-import org.insightcentre.nlp.saffron.taxonomy.graph.Edge;
-import org.insightcentre.nlp.saffron.taxonomy.graph.Node;
-
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -10,9 +10,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@JsonIgnoreProperties({"allEdges","adjacent","reversedList","sourceNodeSet"})
 public class AdjacencyList {
 
   private Map<Node, List<Edge>> adjacencies = new HashMap<Node, List<Edge>>();
+
+    public AdjacencyList() {
+    }
+
+    @JsonCreator
+    public AdjacencyList(@JsonProperty("edges") Edge... edges) {
+        for(Edge edge : edges) {
+            addEdge(edge.getFrom(), edge.getTo(), edge.getWeight());
+        }
+        
+    }
 
   public void addEdge(Node source, Node target, double weight) {
     List<Edge> list;
@@ -52,6 +64,7 @@ public class AdjacencyList {
     return adjacencies.keySet();
   }
 
+  @JsonProperty("edges")
   public Collection<Edge> getAllEdges() {
     List<Edge> edges = new ArrayList<Edge>();
     for (List<Edge> e : adjacencies.values()) {

@@ -1,6 +1,9 @@
 package org.insightcentre.nlp.saffron.taxonomy.graph;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+
+@JsonIgnoreProperties({"from", "to"})
 public class Edge implements Comparable<Edge> {
 
   private final Node from, to;
@@ -24,6 +27,15 @@ public class Edge implements Comparable<Edge> {
     return weight;
   }
 
+  public int getSrc() {
+      return from.getName();
+  }
+
+  public int getTrg() {
+      return to.getName();
+  }
+
+  @Override
   public int compareTo(final Edge argEdge) {
     if (weight == argEdge.weight) {
       return 0;

@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.taxonomy.graph;
 
-import org.insightcentre.nlp.saffron.taxonomy.AdjacencyList;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,11 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.jgrapht.DirectedGraph;
-import org.jgrapht.alg.ConnectivityInspector;
-import org.jgrapht.graph.DefaultDirectedWeightedGraph;
-import org.jgrapht.graph.DefaultWeightedEdge;
 
 public class GraphPruning {
 
@@ -26,14 +20,12 @@ public class GraphPruning {
   public static AdjacencyList pruneGraph(List<Node> nodes, AdjacencyList edges,
       Map<String, Double> pmiMap) {
 
-    DirectedGraph<String, DefaultWeightedEdge> graph =
-        JGraphTRepresentation.convertToJGraphT(nodes, edges);
+      DirectedGraph graph = new DirectedGraph(nodes, edges);
 
-    ConnectivityInspector<String, DefaultWeightedEdge> inspector =
-        new ConnectivityInspector<String, DefaultWeightedEdge>(graph);
+      ConnectivityInspector inspector = new ConnectivityInspector(graph);
 
     int i = 0;
-    for (Set<String> strong : inspector.connectedSets()) {
+    for (Set<Node> strong : inspector.connectedSets()) {
 
       i++;
      // logger.log(Level.INFO, "Pruning component " + i + "..");
@@ -63,10 +55,8 @@ public class GraphPruning {
         cleanedList = disconnectFalseRoots(cleanedList, componentNodes, root);
         // connectFalseRootsToRoot(cleanedList, componentNodes, root);
 
-        DirectedGraph<String, DefaultWeightedEdge> tmpGraph =
-            JGraphTRepresentation.convertToJGraphT(componentNodes, cleanedList);
-        ConnectivityInspector<String, DefaultWeightedEdge> tmpInspector =
-            new ConnectivityInspector<String, DefaultWeightedEdge>(tmpGraph);
+        DirectedGraph tmpGraph = new DirectedGraph(componentNodes, cleanedList);
+        ConnectivityInspector tmpInspector = new ConnectivityInspector(tmpGraph);
 
         if (tmpInspector.connectedSets().size() == 1) {
 
@@ -77,7 +67,7 @@ public class GraphPruning {
           aggregatedList = aggregateLists(aggregatedList, resultList);
         } else {
 
-          for (Set<String> component : tmpInspector.connectedSets()) {
+          for (Set<Node> component : tmpInspector.connectedSets()) {
             i++;
             //logger.log(Level.INFO, "Pruning component " + i + "..");
             List<Node> cNodes = filterNodes(componentNodes, component);
@@ -97,12 +87,12 @@ public class GraphPruning {
   }
 
   private static List<Node> filterNodes(List<Node> allNodes,
-      Set<String> nodeStrings) {
+      Set<Node> nodeStrings) {
 
     List<Node> filteredNodes = new ArrayList<Node>();
 
     for (Node node : allNodes) {
-      if (nodeStrings.contains(node.getTopicString())) {
+      if (nodeStrings.contains(node)) {
         filteredNodes.add(node);
       }
     }
@@ -110,14 +100,14 @@ public class GraphPruning {
   }
 
   private static AdjacencyList filterEdges(AdjacencyList edges,
-      Set<String> nodeStrings) {
+      Set<Node> nodeStrings) {
 
     AdjacencyList filteredEdges = new AdjacencyList();
     Collection<Edge> allEdges = edges.getAllEdges();
 
     for (Edge edge : allEdges) {
-      if (nodeStrings.contains(edge.getFrom().getTopicString())
-          && nodeStrings.contains(edge.getTo().getTopicString())) {
+      if (nodeStrings.contains(edge.getFrom())
+          && nodeStrings.contains(edge.getTo())) {
         filteredEdges.addEdge(edge.getFrom(), edge.getTo(), edge.getWeight());
       }
     }
@@ -150,7 +140,7 @@ public class GraphPruning {
     return root;
   }
 
-  public static AdjacencyList disconnectFalseRoots(AdjacencyList list,
+  private static AdjacencyList disconnectFalseRoots(AdjacencyList list,
       List<Node> nodes, Node root) {
     Collection<Edge> edges = list.getAllEdges();
     Map<Integer, Integer> incomingLinks = new HashMap<Integer, Integer>();
@@ -189,7 +179,7 @@ public class GraphPruning {
     return cleanedList;
   }
 
-  public static Node findRootName(Map<String, Double> pmiMap, List<Node> nodes) {
+  private static Node findRootName(Map<String, Double> pmiMap, List<Node> nodes) {
 
     Double maxSumPMI = 0.0;
     Node root = null;

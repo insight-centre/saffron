@@ -1,11 +1,11 @@
 package org.insightcentre.nlp.saffron.taxonomy;
 
+import org.insightcentre.nlp.saffron.taxonomy.graph.AdjacencyList;
 import ie.deri.unlp.javaservices.documentindex.DocumentSearcher;
 import ie.deri.unlp.javaservices.documentindex.SearchException;
 import org.insightcentre.nlp.saffron.taxonomy.db.MorphologicalVariation;
 import org.insightcentre.nlp.saffron.taxonomy.db.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.graph.GraphPruning;
-import org.insightcentre.nlp.saffron.taxonomy.graph.JGraphTRepresentation;
 import org.insightcentre.nlp.saffron.taxonomy.graph.Node;
 import org.insightcentre.nlp.saffron.taxonomy.graph.TmpEdge;
 
@@ -23,17 +23,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
-import org.jgrapht.graph.DefaultDirectedWeightedGraph;
-import org.jgrapht.graph.DefaultWeightedEdge;
+import org.insightcentre.nlp.saffron.taxonomy.db.DAO;
+import org.insightcentre.nlp.saffron.taxonomy.graph.DirectedGraph;
 
 public class TaxonomyConstructor {
-
-	static Logger logger = Logger.getLogger(TaxonomyConstructor.class);
-
-	public static String pmiOutput = "pmi.txt";
-	public static String simGraphOutput = "similarityGraph.dot";
-	public static String prunedGraphOutput = "prunedGraph.dot";
 
 	/**
 	 * Build first the graph and then compute node strength with SumPMI
@@ -43,47 +36,43 @@ public class TaxonomyConstructor {
 	 * @throws IOException 
 	 */
 
-	public static void optimisedSimilarityGraph(DocumentSearcher sd, File outputDir,
+	public static DirectedGraph optimisedSimilarityGraph(DAO db, DocumentSearcher sd, 
 			Double simThreshold, Integer spanSize, List<String> topics, Integer minCommonDocs,
 			Boolean useCachedPMI) throws SearchException, SQLException, IOException {
 		TaxonomyConstructor tc = new TaxonomyConstructor();
 
-		File pmiFile = new File(outputDir, pmiOutput);
-		File simGraphFile = new File(outputDir, simGraphOutput);
-		File prunedGraphFile = new File(outputDir, prunedGraphOutput);
-
-		logger.log(Level.INFO, "Construct the nodes list");
+		System.err.println("Construct the nodes list");
 
 		List<Node> nodes = tc.convertTopicsToNodes(topics);
-		logger.log(Level.DEBUG, "Found " + nodes.size() + " nodes");
-		logger.log(Level.INFO, "Construct edges based on similarity");
+		System.err.println("Found " + nodes.size() + " nodes");
+		System.err.println( "Construct edges based on similarity");
 
-		List<TmpEdge> tmpEdges = tc.constructEdgesWithoutDirections(sd, nodes, simThreshold,
+		List<TmpEdge> tmpEdges = tc.constructEdgesWithoutDirections(db, sd, nodes, simThreshold,
 				minCommonDocs);
 
 		if (tmpEdges.size() > 0) {
 			// Map of topic string -> (undirected) edges
 			Map<String, List<TmpEdge>> organisedEdges = tc.organiseEdges(tmpEdges);
 
-			logger.log(Level.INFO, "Compute SumPMI for all the topics based on existing edges");
+			System.err.println( "Compute SumPMI for all the topics based on existing edges");
 			Map<String, Double> sumPMIMap = new HashMap<String, Double>();
 
-			if (useCachedPMI && pmiFile.exists()) {
-				sumPMIMap = readSumPMIMap(pmiFile);
-			} else {
-				sumPMIMap = tc.computeSumPMI(sd, topics, organisedEdges, pmiFile, spanSize);
-			}
+			//if (useCachedPMI && pmiFile.exists()) {
+			//	sumPMIMap = readSumPMIMap(pmiFile);
+			//} else {
+				sumPMIMap = tc.computeSumPMI(db, sd, topics, organisedEdges, spanSize);
+			//}
 
-			logger.log(Level.INFO, "Construct directed edges based on SumPMI");
+			System.err.println( "Construct directed edges based on SumPMI");
 			AdjacencyList edges = tc.constructDirectedEdges(simThreshold, tmpEdges, sumPMIMap);
 
 			EMReportManager emrm = new EMReportManager();
 			edges = emrm.normaliseEdgeWeights(edges);
 
-			logger.log(Level.INFO, "Exporting graph to DOT format");
-			DefaultDirectedWeightedGraph<String, DefaultWeightedEdge> jGraphTGraph = JGraphTRepresentation
-					.convertToJGraphT(nodes, edges);
-			JGraphTRepresentation.exportToDot(jGraphTGraph, simGraphFile.getAbsolutePath(), sumPMIMap);
+			System.err.println( "Exporting graph to DOT format");
+			//DefaultDirectedWeightedGraph<String, DefaultWeightedEdge> jGraphTGraph = JGraphTRepresentation
+			//		.convertToJGraphT(nodes, edges);
+			//JGraphTRepresentation.exportToDot(db, jGraphTGraph, simGraphFile.getAbsolutePath(), sumPMIMap);
 
 			/*
 			 * // Use this when SumPMI and the similarity graph is available
@@ -101,7 +90,7 @@ public class TaxonomyConstructor {
 			 * SaffronDotImporter.importEdges("similarityGraph.dot", nodes);
 			 */
 
-			logger.log(Level.INFO, "Prune the graph");
+			System.err.println("Prune the graph");
 			AdjacencyList prunedEdges = GraphPruning.pruneGraph(nodes, edges, sumPMIMap);
 
 			// Remove edges for nodes that have more than one parent,
@@ -109,20 +98,20 @@ public class TaxonomyConstructor {
 			// edges and self referring edges
 			prunedEdges = GraphPruning.pruneMultipleParents(nodes, prunedEdges);
 
-			DefaultDirectedWeightedGraph<String, DefaultWeightedEdge> jgrapht = JGraphTRepresentation
-					.convertToJGraphT(nodes, prunedEdges);
+            return new DirectedGraph(nodes, prunedEdges);
+			//DefaultDirectedWeightedGraph<String, DefaultWeightedEdge> jgrapht = JGraphTRepresentation
+			//		.convertToJGraphT(nodes, prunedEdges);
 
-			logger.log(Level.INFO, "Export graph to DOT");
-			JGraphTRepresentation.exportToDot(jgrapht, prunedGraphFile.getAbsolutePath(), sumPMIMap);
+			//System.err.println("Export graph to DOT");
+			//JGraphTRepresentation.exportToDot(db, jgrapht, prunedGraphFile.getAbsolutePath(), sumPMIMap);
 
-			logger.log(Level.INFO, "Printing taxonomy tree");
-			System.out.println(JGraphTRepresentation.taxonomyTreeText(jgrapht, sumPMIMap));
+			//System.err.println("Printing taxonomy tree");
+			//System.out.println(JGraphTRepresentation.taxonomyTreeText(jgrapht, sumPMIMap));
 
 		} else {
-			logger.log(Level.INFO, "No edges found, try relaxing the thresholds for similarity.");
+			System.err.println("No edges found, try relaxing the thresholds for similarity.");
+            return new DirectedGraph();
 		}
-
-		logger.log(Level.INFO, "Done.");
 	}
 
 	private AdjacencyList constructDirectedEdges(Double simThreshold, List<TmpEdge> tmpEdges,
@@ -182,17 +171,17 @@ public class TaxonomyConstructor {
 		return organisedEdges;
 	}
 
-	public List<TmpEdge> constructEdgesWithoutDirections(DocumentSearcher sd, List<Node> nodes,
+	public List<TmpEdge> constructEdgesWithoutDirections(DAO db, DocumentSearcher sd, List<Node> nodes,
 			Double simThreshold, Integer minCommonDocs) throws SQLException, SearchException {
 		// BARRY: First get occurrence map (doc -> occ) for all topics.
 		List<TmpEdge> edgeList = new ArrayList<TmpEdge>();
 
-		Integer docsCount = App.db.numDocuments();
+		int docsCount = db.numDocuments();
 
 		Map<String, Map<String, Integer>> occMaps = new HashMap<String, Map<String, Integer>>();
 
 		for (Node nodei : nodes) {
-			Topic t = App.db.getTopic(nodei.getTopicString());
+			Topic t = db.getTopic(nodei.getTopicString());
 				Map<String, Integer> occMap = new HashMap<String, Integer>();
 
 				List<MorphologicalVariation> mvList = t.getMvList();
@@ -290,54 +279,45 @@ public class TaxonomyConstructor {
 		return nodes;
 	}
 
-	private Map<String, Double> computeSumPMI(DocumentSearcher sd, List<String> topics,
-			Map<String, List<TmpEdge>> organisedEdges, File pmiOutputFile, Integer spanSlop)
+	private Map<String, Double> computeSumPMI(DAO db, DocumentSearcher sd, List<String> topics,
+			Map<String, List<TmpEdge>> organisedEdges, Integer spanSlop)
 			throws IOException, SearchException, SQLException {
 
 		Map<String, Long> topicsMap = new HashMap<String, Long>();
-		BufferedWriter out = null;
 
 		Map<String, Double> pmiMap = new HashMap<String, Double>();
 
 		try {
-			// Create file
-			FileWriter fstream = new FileWriter(pmiOutputFile, false);
-			out = new BufferedWriter(fstream);
 
-			Integer docsCount = App.db.numDocuments();
+			Integer docsCount = db.numDocuments();
 
 			// use all top topics
 			for (String topic : topics) {
-				Topic t = App.db.getTopic(topic);
+				Topic t = db.getTopic(topic);
 				topicsMap.put(topic, new Long(t.getOverallOccurrence()));
 			}
 
 			for (String topic : topics) {
 
-				Main.logger.log(Level.INFO, "Computing sum PMI for topic " + topic);
-				Double pmi = sumPMI(sd, topic, topicsMap, organisedEdges, docsCount,
-						App.db.calculateTotalTokensNo(), spanSlop);
+				System.err.println("Computing sum PMI for topic " + topic);
+				Double pmi = sumPMI(db, sd, topic, topicsMap, organisedEdges, docsCount,
+						db.calculateTotalTokensNo(), spanSlop);
 
 				pmiMap.put(topic, pmi);
-				out.write(topic + "," + pmi + "\n");
 			}
 		} finally {
-			// Close the output stream
-			if (out != null) {
-				out.close();
-			}
 		}
 
 		// return MapUtils.sortByDoubleValue(pmiMap);
 		return pmiMap;
 	}
 
-	public Double sumPMI(DocumentSearcher sd, String topic, Map<String, Long> topics,
+	public Double sumPMI(DAO db, DocumentSearcher sd, String topic, Map<String, Long> topics,
 			Map<String, List<TmpEdge>> organisedEdges, Integer docsCount, Integer totalTokensNo,
 			Integer spanSlop) throws SearchException, SQLException {
 
 		Double contextWordsRank = 0.0;
-		Topic t = App.db.getTopic(topic);
+		Topic t = db.getTopic(topic);
 
 		List<TmpEdge> edges = organisedEdges.get(topic);
 
@@ -351,7 +331,7 @@ public class TaxonomyConstructor {
 					otherTopic = edge.getNode1().getTopicString();
 				}
 
-				Topic tKP = App.db.getTopic(otherTopic);
+				Topic tKP = db.getTopic(otherTopic);
 
 				Long spanFreq = new Long(0);
 				// TODO use all MV strings not just the preferred string
@@ -405,11 +385,11 @@ public class TaxonomyConstructor {
 				// if (ti.getOverallOccurrence() >
 				// tj.getOverallOccurrence()) {
 
-				logger.log(Level.INFO,
+				System.err.println(
 						"Adding edge " + nodei.getTopicString() + "->" + nodej.getTopicString());
 				edges.addEdge(nodei, nodej, weight);
 			} else {
-				logger.log(Level.INFO,
+				System.err.println(
 						"Adding edge " + nodej.getTopicString() + "->" + nodei.getTopicString());
 				edges.addEdge(nodej, nodei, weight);
 			}

@@ -1,10 +1,14 @@
 package org.insightcentre.nlp.saffron.taxonomy.db;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public class MorphologicalVariation {
 	
-	private String string;
+	private final String string;
 	
-	public MorphologicalVariation(String string) {
+    @JsonCreator
+	public MorphologicalVariation(@JsonProperty(value="string") String string) {
 		super();
 		this.string = string;
 	}

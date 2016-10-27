@@ -6,7 +6,6 @@ package org.insightcentre.nlp.saffron.taxonomy.graph;
  * 
  * @author Georgeta Bordea
  */
-import org.insightcentre.nlp.saffron.taxonomy.AdjacencyList;
 
 import java.util.ArrayList;
 import java.util.Iterator;

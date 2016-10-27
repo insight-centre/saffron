@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.db.saffron2;
 
+import org.insightcentre.nlp.saffron.taxonomy.db.Saffron2Paper;
 import org.insightcentre.nlp.saffron.taxonomy.db.DAO;
 import org.insightcentre.nlp.saffron.taxonomy.db.MorphologicalVariation;
 import org.insightcentre.nlp.saffron.taxonomy.db.Topic;
@@ -17,28 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 public class Saffron2DAO implements DAO {
-	public static void main(String[] args) throws SQLException {
-		// Quick'n'dirty test.
-		DAO dao = new Saffron2DAO("jdbc:mysql://localhost:3306/saffron_2acl_eacl", "root", "root");
-
-		System.out.println("dao.numDocuments()");
-		System.out.println(dao.numDocuments());
-		System.out.println("\ndao.topRankingTopicStrings(5)");
-		System.out.println(dao.topRankingTopicStrings(5));
-		System.out.println("\ndao.calculateTotalTokensNo()");
-		System.out.println(dao.calculateTotalTokensNo());
-		System.out.println("\ndao.selectCountJointTopics()");
-		System.out.println(dao.selectCountJointTopics("machine_learning",
-				"natural_language_processing"));
-		System.out.println("\ndao.topScoringTopicsForResearcher()");
-		System.out.println(dao.topScoringTopicsForResearcher("6901", 3));
-		System.out.println("\ndao.getTopicSimilarity()");
-		System.out.println(dao
-				.getTopicSimilarity("Machine learning", "Natural Language Processing"));
-		System.out.println("\ndao.getTopic()");
-		System.out.println(dao.getTopic("Machine learning"));
-	}
-
 	private Connection conn;
 
 	public Saffron2DAO(String jdbcUrl, String user, String password) throws SQLException {
@@ -133,37 +112,37 @@ public class Saffron2DAO implements DAO {
 		return getInteger(q);
 	}
 
-	@Override
-	public Map<String, Double> topScoringTopicsForResearcher(String researcherId, int limit)
-			throws SQLException {
-		String q = "SELECT Topic.topic_string, ResearcherTopic.score FROM ResearcherTopic "
-				+ " JOIN Topic ON topic_id=Topic.id " + "WHERE researcher_id=" + researcherId
-				+ " ORDER BY score DESC LIMIT " + limit;
-		PreparedStatement ps = conn.prepareStatement(q);
-		ResultSet rs = ps.executeQuery();
-
-		try {
-			Map<String, Double> topicString2Score = new HashMap<String, Double>();
-			while (rs.next()) {
-				topicString2Score.put(rs.getString(1), rs.getDouble(2));
-			}
-			return topicString2Score;
-		} finally {
-			ps.close();
-			rs.close();
-		}
-	}
-
-	@Override
-	public TopicSimilarity getTopicSimilarity(String topicString, String topicString2)
-			throws SQLException {
-		int topicId1 = getInteger("SELECT id FROM Topic WHERE topic_string=\"" + topicString + "\"");
-		int topicId2 = getInteger("SELECT id FROM Topic WHERE topic_string=\"" + topicString2
-				+ "\"");
-		Double sim = getDouble("SELECT similarity FROM TopicSimilarity WHERE topic1_id=" + topicId1
-				+ " AND topic2_id=" + topicId2);
-		return sim == null ? null : new TopicSimilarity(sim);
-	}
+//	@Override
+//	public Map<String, Double> topScoringTopicsForResearcher(String researcherId, int limit)
+//			throws SQLException {
+//		String q = "SELECT Topic.topic_string, ResearcherTopic.score FROM ResearcherTopic "
+//				+ " JOIN Topic ON topic_id=Topic.id " + "WHERE researcher_id=" + researcherId
+//				+ " ORDER BY score DESC LIMIT " + limit;
+//		PreparedStatement ps = conn.prepareStatement(q);
+//		ResultSet rs = ps.executeQuery();
+//
+//		try {
+//			Map<String, Double> topicString2Score = new HashMap<String, Double>();
+//			while (rs.next()) {
+//				topicString2Score.put(rs.getString(1), rs.getDouble(2));
+//			}
+//			return topicString2Score;
+//		} finally {
+//			ps.close();
+//			rs.close();
+//		}
+//	}
+//
+//	@Override
+//	public TopicSimilarity getTopicSimilarity(String topicString, String topicString2)
+//			throws SQLException {
+//		int topicId1 = getInteger("SELECT id FROM Topic WHERE topic_string=\"" + topicString + "\"");
+//		int topicId2 = getInteger("SELECT id FROM Topic WHERE topic_string=\"" + topicString2
+//				+ "\"");
+//		Double sim = getDouble("SELECT similarity FROM TopicSimilarity WHERE topic1_id=" + topicId1
+//				+ " AND topic2_id=" + topicId2);
+//		return sim == null ? null : new TopicSimilarity(sim);
+//	}
 
 	@Override
 	public Topic getTopic(String preferredString) throws SQLException {
@@ -226,11 +205,11 @@ public class Saffron2DAO implements DAO {
 			}
 		};
 	}
-
-	@Override
-	public String getTopicStringFromRootSequence(String rootSequence) throws SQLException {
-		String q = "SELECT topic_string FROM Topic " + "WHERE slug=\""
-				+ rootSequence+ "\"";
-		return getString(q);
-	}
+//
+//	@Override
+//	public String getTopicStringFromRootSequence(String rootSequence) throws SQLException {
+//		String q = "SELECT topic_string FROM Topic " + "WHERE slug=\""
+//				+ rootSequence+ "\"";
+//		return getString(q);
+//	}
 }
