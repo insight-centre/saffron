@@ -74,6 +74,7 @@ public class KPInfoFilesManager {
    * @param outputFile
    * @throws IOException
    */
+  @Deprecated
   public static void printKeyphraseMaptoFile(Map<String, Keyphrase> kpMap,
       String outputFile) throws IOException {
     BufferedWriter out = null;

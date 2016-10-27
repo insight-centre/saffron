@@ -24,10 +24,6 @@ public interface POSBearer {
   
   public List<String> getAdjectiveList();
   
-  public void setContextNounList(List<String> nounList);
-  
-  public List<String> getContextNounList();
-  
   public void setNounphraseMap(Map<String, Integer> nounphraseMap);
   
   public Map<String, Integer> getNounphraseMap();

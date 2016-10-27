@@ -3,6 +3,7 @@
  */
 package org.insightcentre.nlp.saffron.domainmodelling.termextraction;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -218,54 +219,25 @@ public class KeyphraseExtractor implements StatProcessor {
      * @param docMap
      * @throws IOException
      */
-    public void outputDocKeyphrases(Map<String, Document> docMap,
-                                    String outputFile, Boolean cutTopKP, Boolean stem, Integer upto)
-            throws IOException, SearchException {
+    public void outputDocKeyphrases(ObjectMapper mapper, Map<String, Document> docMap,
+        File outputFile, boolean stem, int upto) throws SearchException, IOException {
 
-        BufferedWriter out = null;
+        Map<String, List<String>> data = new HashMap<>();
+        
+        for(Map.Entry<String, Document> entry : docMap.entrySet()) {
+            String docId = entry.getKey();
+            Document doc = entry.getValue();
+            Map<String, Double> keyphraseMap = doc.getKeyphraseRankMap();
 
-        // Create file
-        File f = new File(outputFile);
-        FileWriter fstream;
-        try {
-            fstream = new FileWriter(f);
+            List<String> kpList = KPInfoProcessor.cutTopKpUniqueRoot(keyphraseMap, upto);
 
-            out = new BufferedWriter(fstream);
-
-            // List<String> docList =
-            // PerformanceEvaluator.loadDocIdsFromFile(KPUtils.TEST_RESULTS_FILE);
-
-            Set<String> docList = docMap.keySet();
-            List<String> docs = new ArrayList<String>(docList);
-            Collections.sort(docs);
-
-            for (String docId : docs) {
-                if (!docId.endsWith(".txt")) {
-                    docId += ".txt";
-                }
-                out.write(docId + " : ");// .substring(0, docId.length() - 4) + " : ");
-
-                Document doc = docMap.get(docId);
-                if (doc != null) {
-
-                    Map<String, Double> keyphraseMap = doc.getKeyphraseRankMap();
-
-                    // System.out.println(docId + "\t" + keyphraseMap.size());
-
-                    // List<String> kpList = KPInfoProcessor.cutTopKp(keyphraseMap, upto);
-                    List<String> kpList =
-                            KPInfoProcessor.cutTopKpUniqueRoot(keyphraseMap, upto);
-
-                    if (stem) {
-                        kpList = stemList(kpList);
-                    }
-
-                    out.write(StringUtils.join(kpList, ',') + "\n");
-                }
+            if (stem) {
+                kpList = stemList(kpList);
             }
-        } finally {
-            out.close();
+
+            data.put(docId, kpList);
         }
+        mapper.writeValue(outputFile, data);
     }
 
     /**

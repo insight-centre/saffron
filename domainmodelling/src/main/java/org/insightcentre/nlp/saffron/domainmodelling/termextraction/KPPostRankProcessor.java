@@ -746,6 +746,22 @@ public class KPPostRankProcessor {
      *
      * @throws IOException
      */
+    public static Map<String, Double> getRankMap(Map<String, Keyphrase> kpMap, Set<String> stopWords) {
+        TreeSet<String> keySet = new TreeSet<String>(kpMap.keySet());
+
+        Map<String, Double> rankMap = new HashMap<String, Double>();
+
+        for (String key : keySet) {
+            Keyphrase keyphraseObj = kpMap.get(key);
+            if (FilterUtils.isProperTopic(key, stopWords)) {
+                rankMap.put(key, keyphraseObj.getRank());
+            }
+        }
+
+        return rankMap;
+    }
+  
+    @Deprecated
     public static String printRanksMap(Map<String, Keyphrase> kpMap, Set<String> stopWords) throws IOException {
         TreeSet<String> keySet = new TreeSet<String>(kpMap.keySet());
 

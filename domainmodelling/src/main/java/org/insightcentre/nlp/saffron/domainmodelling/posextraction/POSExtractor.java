@@ -37,8 +37,6 @@ public interface POSExtractor {
    *         (hopefully!) by significance
    * @throws MalformedURLException
    *           in case the specified URL is not valid
-   * @throws GateProcessorNotAvailableException
-   *           in case all GateProcessors are busy/occupied
    * @throws UnsupportedFileTypeException
    *           in case the URL references a file type that is not supported
    */
@@ -54,8 +52,6 @@ public interface POSExtractor {
    * @return a Map<String,Double>, where the keys represent keywords/keyphrases
    *         and the values represent significance (between [0;1]), ordered by
    *         significance
-   * @throws GateProcessorNotAvailableException
-   *           in case all GateProcessors are busy/occupied
    */
   public POSBearer getPOSFromText(String documentText)
       throws RuntimeException;
