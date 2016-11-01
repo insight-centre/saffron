@@ -26,7 +26,7 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Map<String, Integer> searchOccurrence(String topic, Integer maxDocumentResults) throws SearchException;
+	public Map<String, Integer> searchOccurrence(String topic, int maxDocumentResults) throws SearchException;
 
 	/**
 	 * Compute the occurrence of two terms that have spanSlop or less words
@@ -47,8 +47,8 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Map<String, Integer> searchSpanOccurrence(String term1, String term2, Integer maxDocumentResults,
-			Integer spanSlop) throws SearchException;
+	public Map<String, Integer> searchSpanOccurrence(String term1, String term2, int maxDocumentResults,
+			int spanSlop) throws SearchException;
 
 	/**
 	 * Compute tfidf using lucene for a given topic using all morphological
@@ -64,7 +64,7 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Map<String, Float> searchTFIDF(List<String> topicList, Integer maxDocumentResults) throws SearchException;
+	public Map<String, Float> searchTFIDF(List<String> topicList, int maxDocumentResults) throws SearchException;
 
 	/**
 	 * Compute the number of times a term occurs in the index. (Note: Case insensitive).
@@ -75,7 +75,7 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Long numberOfOccurrences(String term, Integer maxDocumentResults) throws SearchException;
+	public Long numberOfOccurrences(String term, int maxDocumentResults) throws SearchException;
 
 	/**
 	 * Search tfidf for a given termextraction in all indexed documents
@@ -87,9 +87,9 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws IOException
 	 * @throws ParseException
 	 */
-	public Map<String, Float> tfidf(String keyphrase, Integer maxDocumentResults) throws SearchException;
+	public Map<String, Float> tfidf(String keyphrase, int maxDocumentResults) throws SearchException;
 
-	public Long spanOccurrence(String term1, String term2, Integer spanSlop, Integer maxDocumentResults)
+	public Long spanOccurrence(String term1, String term2, int spanSlop, int maxDocumentResults)
 			throws SearchException;
 
 }

@@ -12,13 +12,9 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Unmarshaller;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.apache.commons.collections.MapUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 import org.insightcenter.nlp.saffron.documentindex.SearchException;
@@ -89,7 +85,7 @@ public class NewMain {
      * @param ke The keyphrase extractor
      * @param stopWords The stop word list
      */
-    private void processNLP(KeyphraseExtractor ke, DocumentSearcher searcher, Set<String> stopWords) throws IOException, SearchException {
+    void processNLP(KeyphraseExtractor ke, DocumentSearcher searcher, Set<String> stopWords) throws IOException, SearchException {
         Collection<File> corpus = config.loadCorpus();
         ExtractionResultsWrapper erw = ke.extractPOS(corpus, config.nlp.lengthThreshold);
 
@@ -98,7 +94,6 @@ public class NewMain {
             config.docsCount(),
             config.nlp.corpusFrequencyThreshold,
             (long)config.nlp.lengthThreshold, stopWords);
-
 
         mapper.writeValue(new File(config.infoFileName), keyPhrases);
 
@@ -119,7 +114,7 @@ public class NewMain {
         mapper.writeValue(new File(config.nlp.adjsFileName), adjs);
     }
 
-    private void assignKpDoc(KPInfoProcessor kpip, KeyphraseExtractor ke, Integer rankType, Set<String> stopWords) throws IOException, SearchException {
+    void assignKpDoc(KPInfoProcessor kpip, KeyphraseExtractor ke, int rankType, Set<String> stopWords) throws IOException, SearchException {
 
         //logger.log(Level.INFO, "Assigning keyphrases to documents..");
 
@@ -142,7 +137,7 @@ public class NewMain {
     }
 
     
-    private void assignKpSimDoc(KPInfoProcessor kpip, DocumentSearcher searcher, KeyphraseExtractor ke, Set<String> stopWords) throws IOException, SearchException {
+    void assignKpSimDoc(KPInfoProcessor kpip, DocumentSearcher searcher, KeyphraseExtractor ke, Set<String> stopWords) throws IOException, SearchException {
         Map<String, Keyphrase> kpMap =
                 KPInfoFilesManager.readKPMap(new File(config.infoFileName));
 
@@ -196,7 +191,7 @@ public class NewMain {
     }
 
    
-    public void printKPRanks(KPInfoProcessor kpip, Integer rankType, Set<String> stopWords) throws IOException {
+    void printKPRanks(KPInfoProcessor kpip, int rankType, Set<String> stopWords) throws IOException {
         Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(config.infoFileName));
 
         Double alpha = config.keyphrase.alpha;
@@ -212,10 +207,11 @@ public class NewMain {
 
     }
 
-    private void rankDomainModel(DocumentSearcher searcher) throws IOException, SearchException, ParseException {
+    void rankDomainModel(DocumentSearcher searcher) throws IOException, SearchException, ParseException {
 
         //BARRY; Testing PMI code
-        LinkedHashMap<String,Double> ranks = SaffronMapUtils.readMapFromFile(new File(config.keyphrase.ranksFileName), 40);
+        //LinkedHashMap<String,Double> ranks = SaffronMapUtils.readMapFromFile(new File(config.keyphrase.ranksFileName), 40);
+        Map<String, Double> ranks = mapper.readValue(new File(config.keyphrase.ranksFileName), Map.class);
 
         File nFile = new File(config.nlp.nounsFileName);
         File vFile = new File(config.nlp.verbsFileName);

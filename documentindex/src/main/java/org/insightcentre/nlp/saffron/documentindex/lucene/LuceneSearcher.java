@@ -6,6 +6,7 @@ import org.insightcenter.nlp.saffron.documentindex.SearchException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,10 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Map<String, Integer> searchOccurrence(String topic, Integer docsNo) throws SearchException {
+	public Map<String, Integer> searchOccurrence(String topic, int docsNo) throws SearchException {
+        if(docsNo == 0) {
+            return Collections.EMPTY_MAP;
+        }
 		Map<String, Integer> occurrenceMap = new HashMap<String, Integer>();
 		try {
 			StandardQueryParser luceneParser = new StandardQueryParser(analyzer);
@@ -91,7 +95,7 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 	
 	@Override
-	public Map<String, Integer> searchSpanOccurrence(String term1, String term2, Integer docsNo, Integer spanSlop)
+	public Map<String, Integer> searchSpanOccurrence(String term1, String term2, int docsNo, int spanSlop)
 			throws SearchException {
 
 		Map<String, Integer> occurrenceMap = new HashMap<String, Integer>();
@@ -134,7 +138,7 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Map<String, Float> searchTFIDF(List<String> topicList, Integer docsNo) throws SearchException {
+	public Map<String, Float> searchTFIDF(List<String> topicList, int docsNo) throws SearchException {
 
 		Map<String, Float> tfidfMap = new HashMap<String, Float>();
 		try {
@@ -163,7 +167,7 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Map<String, Float> tfidf(String keyphrase, Integer maxDocumentResults) throws SearchException {
+	public Map<String, Float> tfidf(String keyphrase, int maxDocumentResults) throws SearchException {
 		List<String> topicMorphVar = new ArrayList<String>();
 		topicMorphVar.add(keyphrase.toLowerCase());
 
@@ -171,7 +175,7 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Long numberOfOccurrences(String term, Integer maxDocumentResults) throws SearchException {
+	public Long numberOfOccurrences(String term, int maxDocumentResults) throws SearchException {
 
 		Long frequency = new Long(0);
 
@@ -186,7 +190,7 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Long spanOccurrence(String term1, String term2, Integer spanSlop, Integer maxDocumentResults)
+	public Long spanOccurrence(String term1, String term2, int spanSlop, int maxDocumentResults)
 			throws SearchException {
 		Long occurrence = new Long(0);
 

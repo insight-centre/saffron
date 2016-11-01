@@ -16,6 +16,7 @@ import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 import org.insightcenter.nlp.saffron.documentindex.IndexingException;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneException;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.POSExtractor;
+import org.insightcentre.nlp.saffron.domainmodelling.posextraction.openlp.OpenNLPPOSExtractor;
 
 /**
  * The Configuration for running the domain modeling
@@ -59,8 +60,13 @@ public class Configuration {
     public KeyphraseSimConfiguration kpSim;
     public String stopwordsFile = "src/main/resources/stopwords/english";
     public String indexPath = "index";
+    /** Create the Lucene index */
+    public boolean reuseIndex = false;
     public String infoFileName = "output/info.json";
-    public File corpusPath;
+    public File corpusPath, 
+        tokenizerModel = new File("models/en-token.bin"), 
+        posModel = new File("models/en-pos-maxent.bin"),  
+        chunkModel = new File("models/en-chunker.bin");
 
     /**
      * Load stop words
@@ -78,22 +84,34 @@ public class Configuration {
         return stopwords;
     }
     
+    private POSExtractor posExtractor = null;
     public POSExtractor loadPosExtractor() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        if(posExtractor != null) { 
+            return posExtractor;
+        }
+        try {
+            return posExtractor = new OpenNLPPOSExtractor(tokenizerModel, posModel, chunkModel);
+        } catch(IOException x) {
+            throw new RuntimeException(x);
+        }
     }
 
+    private DocumentSearcher searcher = null;
     public DocumentSearcher loadSearcher() throws IOException, LuceneException, IndexingException {
+        if(searcher != null) {
+            return searcher;
+        }
         Directory directory;
-        File index = new File(indexPath);
+        File indexFile = new File(indexPath);
 
-        if(index.exists()) {
-            directory = DocumentIndexFactory.luceneFileDirectory(index, false);
+        if(reuseIndex) {
+            directory = DocumentIndexFactory.luceneFileDirectory(indexFile, false);
         } else {
-            directory = DocumentIndexFactory.luceneFileDirectory(index, true);
+            directory = DocumentIndexFactory.luceneFileDirectory(indexFile, true);
             indexDocs(directory);
         }
 
-        return DocumentIndexFactory.luceneSearcher(directory, DocumentIndexFactory.LuceneAnalyzer.LOWERCASE_STEMMER);
+        return searcher = DocumentIndexFactory.luceneSearcher(directory, DocumentIndexFactory.LuceneAnalyzer.LOWERCASE_STEMMER);
     }
 
     private void indexDocs(Directory directory) throws IndexingException, IOException  {
