@@ -51,10 +51,9 @@ public class KPPostRankProcessor {
     }
 
 
-  public  void printKpSimRanks(String kpFileName,
+  public  void printKpSimRanks(Map<String, Keyphrase> kpMap,
       String outputFile, Set<String> stopWords) throws IOException {
 
-    Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(kpFileName));
       KPInfoProcessor kpip = new KPInfoProcessor(lp);
 
       Double alpha = config.getDouble(ALPHA);
@@ -67,8 +66,7 @@ public class KPPostRankProcessor {
   }
 
   public  void printPostRankSimilarity(DocumentSearcher lp,
-      Integer rankType, String kpDocsFile, String kpFileName, String outputFile) throws IOException, SearchException {
-    Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(kpFileName));
+      Integer rankType, String kpDocsFile, Map<String, Keyphrase> kpMap, String outputFile) throws IOException, SearchException {
 
     TaxonSimilarity ts = new TaxonSimilarity();
     List<String> taxons =
@@ -114,7 +112,7 @@ public class KPPostRankProcessor {
   }
 
   public  void printPostRankSimilarity(DocumentSearcher lp, 
-      String kpInfoFileName, Map<String, Double> topKPs, String outputFile,
+      Map<String, Keyphrase> kpMap, Map<String, Double> topKPs, String outputFile,
       boolean ncValue) throws IOException, SearchException {
 
     TaxonSimilarity ts = new TaxonSimilarity();
@@ -124,7 +122,6 @@ public class KPPostRankProcessor {
     KPInfoProcessor kpip = new KPInfoProcessor(lp);
 
     Integer docCount = config.getInt(Config.DOCS_COUNT);
-    Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(kpInfoFileName));
     Map<String, Double> resultMap = new HashMap<String, Double>();
 
     Set<String> topKPSet = topKPs.keySet();
@@ -199,7 +196,7 @@ public class KPPostRankProcessor {
   }
 
   public  void printCombineWithDSR(DocumentSearcher lp, 
-      String kpInfoFileName, Map<String, Double> topKPs,
+      Map<String, Keyphrase> kpMap, Map<String, Double> topKPs,
       Map<String, Double> dsrScores, String outputFile) throws IOException, SearchException {
 
     TaxonSimilarity ts = new TaxonSimilarity();
@@ -214,7 +211,6 @@ public class KPPostRankProcessor {
     Set<String> topKPSet = topKPs.keySet();
     List<String> topKPList = new ArrayList<String>(topKPSet);
 
-    Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(kpInfoFileName));
     Map<String, String> stemsMv =
         getMVStringForStems(topKPList, new ArrayList<String>(kpMap.keySet()));
 
@@ -260,7 +256,7 @@ public class KPPostRankProcessor {
   }
 
   public  void printCombineTFIDFWithDSR(DocumentSearcher sd, 
-      String kpInfoFileName, Map<String, Double> topKPs,
+      Map<String, Keyphrase> kpMap, Map<String, Double> topKPs,
       Map<String, Double> dsrScores, String outputFile) throws IOException, SearchException {
 
     //logger.log(Level.INFO, "Loading frequencies for the domain model..");
@@ -272,7 +268,6 @@ public class KPPostRankProcessor {
     List<String> topKPList = new ArrayList<String>(topKPSet);
 
     //logger.log(Level.INFO, "Reading candidate ranks..");
-    Map<String, Keyphrase> kpMap = KPInfoFilesManager.readKPMap(new File(kpInfoFileName));
 
     //logger.log(Level.INFO, "Collecting topic strings for stems..");
     Map<String, String> stemsMv =

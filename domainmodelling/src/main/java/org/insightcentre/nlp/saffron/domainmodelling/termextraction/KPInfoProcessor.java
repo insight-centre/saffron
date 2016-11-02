@@ -148,33 +148,33 @@ public class KPInfoProcessor {
 		return StringUtils.join(terms, " ");
 	}
 
-	/**
-	 * Assign keyphrases to documents and compute ranks
-	 * 
-	 * @param keyphraseMap
-	 * @param docCount
-	 * @return
-	 */
-	protected Map<String, Document> assignKeyphrasesToDocs(Boolean allDocs, Map<String, Keyphrase> keyphraseMap,
-			Integer docCount, Double rankThreshold) {
-
-		Map<String, Document> docMap = new HashMap<String, Document>();
-
-		Set<String> keySet = keyphraseMap.keySet();
-
-		for (String keyphrase : keySet) {
-
-			try {
-
-				Keyphrase keyphraseObj = keyphraseMap.get(keyphrase);
-				docMap = assignKPtoDoc(allDocs, docCount, docMap, keyphrase, keyphraseObj.getRank(), rankThreshold);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-
-		return docMap;
-	}
+//	/**
+//	 * Assign keyphrases to documents and compute ranks
+//	 * 
+//	 * @param keyphraseMap
+//	 * @param docCount
+//	 * @return
+//	 */
+//	protected Map<String, Document> assignKeyphrasesToDocs(Boolean allDocs, Map<String, Keyphrase> keyphraseMap,
+//			Integer docCount, Double rankThreshold) {
+//
+//		Map<String, Document> docMap = new HashMap<String, Document>();
+//
+//		Set<String> keySet = keyphraseMap.keySet();
+//
+//		for (String keyphrase : keySet) {
+//
+//			try {
+//
+//				Keyphrase keyphraseObj = keyphraseMap.get(keyphrase);
+//				docMap = assignKPtoDoc(allDocs, docCount, docMap, keyphrase, keyphraseObj.getRank(), rankThreshold);
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//		}
+//
+//		return docMap;
+//	}
 
 	public Map<String, Document> assignKpSimToDocsFromFile(Boolean allDocs, Map<String, Keyphrase> kpMap,
 			Double rankThreshold, Set<String> stopWords) throws IOException, SearchException {
@@ -227,27 +227,27 @@ public class KPInfoProcessor {
 
 		return docMap;
 	}
-
-	protected static List<String> cutTopKp(Map<String, Double> keyphraseMap, Integer upto) {
-		keyphraseMap = SaffronMapUtils.sortByValues(keyphraseMap);
-
-		List<String> kpList = new ArrayList<String>();
-		Set<String> keyphraseSet = keyphraseMap.keySet();
-		for (String keyphrase : keyphraseSet) {
-			kpList.add(keyphrase);
-		}
-
-		Collections.reverse(kpList);
-
-		Integer top = upto;
-		if (top > kpList.size()) {
-			top = kpList.size();
-		}
-
-		kpList = kpList.subList(0, top);
-
-		return kpList;
-	}
+//
+//	protected static List<String> cutTopKp(Map<String, Double> keyphraseMap, Integer upto) {
+//		keyphraseMap = SaffronMapUtils.sortByValues(keyphraseMap);
+//
+//		List<String> kpList = new ArrayList<String>();
+//		Set<String> keyphraseSet = keyphraseMap.keySet();
+//		for (String keyphrase : keyphraseSet) {
+//			kpList.add(keyphrase);
+//		}
+//
+//		Collections.reverse(kpList);
+//
+//		Integer top = upto;
+//		if (top > kpList.size()) {
+//			top = kpList.size();
+//		}
+//
+//		kpList = kpList.subList(0, top);
+//
+//		return kpList;
+//	}
 
 	protected static List<String> cutTopKpUniqueRoot(Map<String, Double> keyphraseMap, Integer upto)
 			throws SearchException {

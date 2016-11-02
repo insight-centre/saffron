@@ -3,11 +3,14 @@ package org.insightcentre.nlp.saffron.domainmodelling;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 import org.insightcentre.nlp.saffron.domainmodelling.posextraction.ExtractionResultsWrapper;
 import org.insightcentre.nlp.saffron.domainmodelling.termextraction.KPInfoProcessor;
+import org.insightcentre.nlp.saffron.domainmodelling.termextraction.Keyphrase;
 import org.insightcentre.nlp.saffron.domainmodelling.termextraction.KeyphraseExtractor;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -81,11 +84,12 @@ public class NewMainTest {
     @Test
     public void testAssignKpDoc() throws Exception {
         System.out.println("assignKpDoc");
+        Map<String, Keyphrase> kpMap = new HashMap<>();
         KPInfoProcessor kpip = mock(KPInfoProcessor.class);
         KeyphraseExtractor ke = mock(KeyphraseExtractor.class);
         Set<String> stopWords = new TreeSet<>();
         NewMain instance = new NewMain(config);
-        instance.assignKpDoc(kpip, ke, 4, stopWords);
+        instance.assignKpDoc(kpMap, kpip, ke, 4, stopWords);
     }
 
     /**
@@ -94,12 +98,13 @@ public class NewMainTest {
     @Test
     public void testAssignKpSimDoc() throws Exception {
         System.out.println("assignKpSimDoc");
+        Map<String, Keyphrase> kpMap = new HashMap<>();
         KPInfoProcessor kpip = mock(KPInfoProcessor.class);
         DocumentSearcher searcher = mock(DocumentSearcher.class);
         KeyphraseExtractor ke = mock(KeyphraseExtractor.class);
         Set<String> stopWords = new TreeSet<>();
         NewMain instance = new NewMain(config);
-        instance.assignKpSimDoc(kpip, searcher, ke, stopWords);
+        instance.assignKpSimDoc(kpMap, kpip, searcher, ke, stopWords);
     }
 
     /**
@@ -108,10 +113,11 @@ public class NewMainTest {
     @Test
     public void testPrintKPRanks() throws Exception {
         System.out.println("printKPRanks");
+        Map<String, Keyphrase> kpMap = new HashMap<>();
         KPInfoProcessor kpip = mock(KPInfoProcessor.class);
         Set<String> stopWords = new TreeSet<>();
         NewMain instance = new NewMain(config);
-        instance.printKPRanks(kpip, 2, stopWords);
+        instance.printKPRanks(kpMap, kpip, 2, stopWords);
     }
 
     /**
@@ -122,7 +128,7 @@ public class NewMainTest {
         System.out.println("rankDomainModel");
         DocumentSearcher searcher = mock(DocumentSearcher.class);
         NewMain instance = new NewMain(config);
-        instance.rankDomainModel(searcher);
+        instance.rankDomainModel(new HashMap<String, Double>(), searcher);
     }
 
     /**

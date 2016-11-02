@@ -4,6 +4,7 @@
 package org.insightcentre.nlp.saffron.domainmodelling.termextraction;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
@@ -134,58 +135,13 @@ public class KPInfoFilesManager {
     }
   }
 
-  public static Map<String, Keyphrase> readKPMap(File kpFile) throws IOException {
-
-    Map<String, Keyphrase> kpMap = new HashMap<String, Keyphrase>();
-
-      FileInputStream fstream = new FileInputStream(kpFile);
-      // Get the object of DataInputStream
-      DataInputStream in = new DataInputStream(fstream);
-      BufferedReader br = new BufferedReader(new InputStreamReader(in));
-      String strLine;
-      // Read File Line By Line, do not process first line
-      strLine = br.readLine();
-      while ((strLine = br.readLine()) != null) {
-        String[] info = new String[6];
-        int i = 0;
-
-        while (strLine.contains(",")) {
-          String value = strLine.substring(0, strLine.indexOf(","));
-
-          if (value.length() > 0) {
-            info[i] = value;
-          } else {
-            info[i] = "0";
-          }
-
-          strLine = strLine.substring(strLine.indexOf(",") + 1);
-          i++;
-        }
-
-        if (strLine.length() > 0) {
-          info[i] = strLine;
-        } else {
-          info[i] = "0";
-        }
-
-        Integer length = Integer.parseInt(info[1]);
-        Long freq = Long.parseLong(info[2]);
-        Long ybhits = Long.parseLong(info[3]);
-        Integer emb = Integer.parseInt(info[4]);
-
-        Double taxSim = 0.0;
-        if (info[5] != null) {
-          taxSim = Double.parseDouble(info[5]);
-        }
-
-        Keyphrase kp =
-            new Keyphrase(info[0], length, freq, emb, ybhits, taxSim);
-        kpMap.put(info[0], kp);
+  public static Map<String, Keyphrase> readKPMap(File kpFile, ObjectMapper mapper) throws IOException {
+      List<Keyphrase> data = mapper.readValue(kpFile, List.class);
+      Map<String, Keyphrase> kpMap = new HashMap<String, Keyphrase>();
+      for(Keyphrase kp : data) {
+          kpMap.put(kp.getString(), kp);
       }
-      // Close the input stream
-      in.close();
-
-    return kpMap;
+      return kpMap;
   }
 
 }

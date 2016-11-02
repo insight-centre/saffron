@@ -10,11 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.xml.bind.annotation.XmlRootElement;
 import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
 import org.insightcenter.nlp.saffron.documentindex.SearchException;
 
-@XmlRootElement
 public class CorpusWord {
 
 	private String string;
@@ -80,10 +78,9 @@ public class CorpusWord {
 		this.rank = rank;
 	}
 
-	protected static Integer computeEmb(String topKPFile, String word) {
-		List<String> topKPList = TaxonUtils.readWordsFromFile(topKPFile);
+	protected static int computeEmb(List<String> topKPList, String word) {
 
-		Integer emb = 0;
+		int emb = 0;
 		for (String kp : topKPList) {
 			if (kp.contains(" " + word + " ") || kp.startsWith(word + " ") || kp.endsWith(" " + word)) {
 				emb++;
@@ -92,15 +89,14 @@ public class CorpusWord {
 		return emb;
 	}
 
-	protected static Double contextKP(DocumentSearcher lp, String topKPFile, String word) throws IOException,
+	protected static double contextKP(List<String> topKPList, int docsNo, DocumentSearcher lp, String topKPFile, String word) throws IOException,
 			SearchException {
-		List<String> topKPList = TaxonUtils.readWordsFromFile(topKPFile);
 
-		Double contextWordsRank = 0.0;
+		double contextWordsRank = 0.0;
 
 		for (String kp : topKPList) {
 
-			Long spanFreq = lp.spanOccurrence(word, kp, TaxonUtils.DOCS_NO, 2);
+			Long spanFreq = lp.spanOccurrence(word, kp, docsNo, 2);
 
 			if (spanFreq > 0) {
 				contextWordsRank++;
@@ -130,16 +126,16 @@ public class CorpusWord {
 		return string.hashCode();
 	}
 
-	public static Double contextPMIkp(DocumentSearcher lp, List<String> topKPList, String word, Long freq)
+	public static Double contextPMIkp(int docsNo, int tokensNo, DocumentSearcher lp, List<String> topKPList, String word, Long freq)
 			throws IOException, SearchException {
 		Double contextWordsRank = 0.0;
 		for (String kp : topKPList) {
-			Long spanFreq = lp.spanOccurrence(word, kp, TaxonUtils.DOCS_NO, 5);
-			Long kpFreq = lp.numberOfOccurrences(kp, TaxonUtils.DOCS_NO);
+			Long spanFreq = lp.spanOccurrence(word, kp, docsNo, 5);
+			Long kpFreq = lp.numberOfOccurrences(kp, docsNo);
 
-			double pxy = (double) spanFreq / TaxonUtils.TOKENS_NO;
-			double px = (double) kpFreq / TaxonUtils.TOKENS_NO;
-			double py = (double) freq / TaxonUtils.TOKENS_NO;
+			double pxy = (double) spanFreq / tokensNo;
+			double px = (double) kpFreq / tokensNo;
+			double py = (double) freq / tokensNo;
 
 			if (spanFreq > 0) {
 				contextWordsRank += Math.log(pxy / (px * py));
@@ -149,19 +145,18 @@ public class CorpusWord {
 		return contextWordsRank / topKPList.size();
 	}
 
-	protected static Double contextMutualDependencyKP(DocumentSearcher lp, String topKPFile, String word, Long freq)
+	protected static Double contextMutualDependencyKP(List<String> topKPList, int docsNo, int tokensNo, DocumentSearcher lp, String topKPFile, String word, Long freq)
 			throws IOException, SearchException {
-		List<String> topKPList = TaxonUtils.readWordsFromFile(topKPFile);
 
 		Double contextWordsRank = 0.0;
 		for (String kp : topKPList) {
 
-			Long spanFreq = lp.spanOccurrence(word, kp, TaxonUtils.DOCS_NO, 5);
-			Long kpFreq = lp.numberOfOccurrences(kp, TaxonUtils.DOCS_NO);
+			Long spanFreq = lp.spanOccurrence(word, kp, docsNo, 5);
+			Long kpFreq = lp.numberOfOccurrences(kp, docsNo);
 
-			double pxy = (double) spanFreq / TaxonUtils.TOKENS_NO;
-			double px = (double) kpFreq / TaxonUtils.TOKENS_NO;
-			double py = (double) freq / TaxonUtils.TOKENS_NO;
+			double pxy = (double) spanFreq / tokensNo;
+			double px = (double) kpFreq / tokensNo;
+			double py = (double) freq / tokensNo;
 
 			if (spanFreq > 0) {
 				contextWordsRank += Math.log((pxy * pxy) / (px * py)) / Math.log(2) + Math.log(pxy) / Math.log(2);
@@ -171,22 +166,22 @@ public class CorpusWord {
 		return contextWordsRank / topKPList.size();
 	}
 
-	protected static Double contextLogLikelihood(DocumentSearcher lp, String topKPFile, String word, Long freq)
+	protected static Double contextLogLikelihood(List<String> topKPList, int docsNo, int tokensNo, 
+        int spanSlop, DocumentSearcher lp, String word, Long freq)
 			throws IOException, SearchException {
-		List<String> topKPList = TaxonUtils.readWordsFromFile(topKPFile);
 
 		Double contextWordsRank = 0.0;
-		double n = TaxonUtils.TOKENS_NO - TaxonUtils.DOCS_NO * (TaxonUtils.SPAN_SLOP - 1);
+		double n = tokensNo - docsNo * (spanSlop - 1);
 
 		for (String kp : topKPList) {
 
-			Long spanFreq = lp.spanOccurrence(word, kp, TaxonUtils.DOCS_NO, 5);
-			Long kpFreq = lp.numberOfOccurrences(kp, TaxonUtils.DOCS_NO);
+			Long spanFreq = lp.spanOccurrence(word, kp, docsNo, 5);
+			Long kpFreq = lp.numberOfOccurrences(kp, docsNo);
 
 			double fxy = (double) spanFreq;
 			// count number of ngrams, not words
-			double fx = (double) kpFreq * TaxonUtils.SPAN_SLOP;
-			double fy = (double) freq * TaxonUtils.SPAN_SLOP;
+			double fx = (double) kpFreq * spanSlop;
+			double fy = (double) freq * spanSlop;
 			double fx_y = fx - fxy;
 			double f_xy = fy - fxy;
 			double f_x_y = n - fx - fy + fxy;
@@ -202,14 +197,13 @@ public class CorpusWord {
 		return -contextWordsRank / topKPList.size();
 	}
 
-	public static Double domainConsensus(DocumentSearcher sd, String word) throws SearchException {
+	public static Double domainConsensus(Map<String, Integer> docsLength, int docsNo, DocumentSearcher sd, String word) throws SearchException {
 		Double score = 0.0;
 
 		Map<String, Integer> occMap;
 
-		Map<String, Integer> docsLength = readDocumentsLengths(TaxonUtils.DOCS_LENGTH_FILE_NAME);
 
-		occMap = sd.searchOccurrence(word, TaxonUtils.DOCS_NO);
+		occMap = sd.searchOccurrence(word, docsNo);
 		Set<String> keySet = occMap.keySet();
 		for (String docId : keySet) {
 			if (docsLength.get(docId) != null) {
@@ -221,7 +215,7 @@ public class CorpusWord {
 	}
 
 	protected static Map<String, Integer> readDocumentsLengths(String docFile) {
-		Map<String, Integer> docsMap = new HashMap<String, Integer>();
+		Map<String, Integer> docsMap = new HashMap<>();
 
 		try {
 			BufferedReader input = new BufferedReader(new FileReader(docFile));
@@ -241,15 +235,13 @@ public class CorpusWord {
 		return docsMap;
 	}
 
-	protected static Double normalisedDomainImpurity(DocumentSearcher sd, String word) throws IOException,
+	protected static Double normalisedDomainImpurity(Map<String, Integer> docsLength, int docsNo, DocumentSearcher sd, String word) throws IOException,
 			SearchException {
 		Double ndi = 0.0;
 
 		Map<String, Integer> occMap;
 
-		Map<String, Integer> docsLength = readDocumentsLengths(TaxonUtils.DOCS_LENGTH_FILE_NAME);
-
-		occMap = sd.searchOccurrence(word, TaxonUtils.DOCS_NO);
+		occMap = sd.searchOccurrence(word, docsNo);
 		Set<String> keySet = occMap.keySet();
 
 		Double domainFreq = 0.0;
@@ -280,7 +272,7 @@ public class CorpusWord {
 	 * Returns the probability that the word in the index is followed by
 	 * for/to/on/of.
 	 */
-	protected static Double prepositionComposition(DocumentSearcher sd, String word, Long freq) throws IOException,
+	protected static Double prepositionComposition(int docsNo, DocumentSearcher sd, String word, Long freq) throws IOException,
 			SearchException {
 		Double score = 0.0;
 		String[] preps = { "for", "to", "on", "of" };
@@ -289,7 +281,7 @@ public class CorpusWord {
 
 		Long sumPrepOcc = new Long(0);
 		for (String prep : preps) {
-			occMap = sd.searchOccurrence(word + " " + prep, TaxonUtils.DOCS_NO);
+			occMap = sd.searchOccurrence(word + " " + prep, docsNo);
 			Set<String> keySet = occMap.keySet();
 
 			for (String docId : keySet) {
@@ -301,20 +293,20 @@ public class CorpusWord {
 		return score;
 	}
 
-	protected static Double coocurrenceEntropy(DocumentSearcher sd, String candidate, List<CorpusWord> taxons) {
+	protected static Double coocurrenceEntropy(int docsNo, DocumentSearcher sd, String candidate, List<CorpusWord> taxons) {
 		Double entropy = 0.0;
 
 		Integer sumCooc = 0;
 		try {
 
 			for (CorpusWord taxon : taxons) {
-				Integer cooc = computeCoocurrence(sd, candidate, taxon.getString());
+				Integer cooc = computeCoocurrence(docsNo, sd, candidate, taxon.getString());
 				sumCooc += cooc;
 			}
 
 			if (sumCooc > 0) {
 				for (CorpusWord taxon : taxons) {
-					Integer cooc = computeCoocurrence(sd, candidate, taxon.getString());
+					Integer cooc = computeCoocurrence(docsNo, sd, candidate, taxon.getString());
 					Double pt1t2 = ((double) cooc) / sumCooc;
 
 					if (pt1t2 > 0) {
@@ -336,13 +328,13 @@ public class CorpusWord {
 	 * @param word2
 	 * @return the coocurrence of word1 and word2
 	 */
-	private static Integer computeCoocurrence(DocumentSearcher sd, String word1, String word2) throws IOException {
+	private static Integer computeCoocurrence(int docsNo, DocumentSearcher sd, String word1, String word2) throws IOException {
 		Integer cooc = 0;
 
 		try {
-			Map<String, Integer> occMap1 = sd.searchOccurrence(word1, TaxonUtils.DOCS_NO);
+			Map<String, Integer> occMap1 = sd.searchOccurrence(word1, docsNo);
 
-			Map<String, Integer> occMap2 = sd.searchOccurrence(word2, TaxonUtils.DOCS_NO);
+			Map<String, Integer> occMap2 = sd.searchOccurrence(word2, docsNo);
 
 			Set<String> keys = occMap1.keySet();
 			for (String key : keys) {
@@ -357,7 +349,7 @@ public class CorpusWord {
 		return cooc;
 	}
 
-	protected static Double subsumption(DocumentSearcher sd, String word, Long freq, List<CorpusWord> candidates) {
+	protected static Double subsumption(int docsNo, DocumentSearcher sd, String word, Long freq, List<CorpusWord> candidates) {
 		Double subsump = 0.0;
 		Double coocThreshold = 0.7;
 
@@ -367,7 +359,7 @@ public class CorpusWord {
 		try {
 			for (CorpusWord candidate : candidates) {
 
-				Integer cooc = computeCoocurrence(sd, word, candidate.getString());
+				Integer cooc = computeCoocurrence(docsNo, sd, word, candidate.getString());
 				pw1w2 = (double) cooc / candidate.getDocumentFrequency();
 				pw2w1 = (double) cooc / freq;
 

@@ -46,7 +46,7 @@ public class OpenNLPPOSExtractor implements POSExtractor {
             byte[] buf = new byte[1024];
             int i = 0;
             while((i = is.read(buf)) >= 0) {
-                data.append(new String(buf));
+                data.append(new String(buf, 0, i));
             }
         } catch(IOException x) {
             throw new RuntimeException(x);

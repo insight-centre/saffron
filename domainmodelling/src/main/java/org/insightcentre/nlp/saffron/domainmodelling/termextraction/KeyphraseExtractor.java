@@ -63,13 +63,13 @@ public class KeyphraseExtractor implements StatProcessor {
                         new HashMap<String, Long>(), 0, 0);
 
         final File f = new File(docPath);
-        final long fileLength = f.length();
+        //final long fileLength = f.length();
 
         if (!docPath.endsWith(".pdf") && !docPath.endsWith(".txt")) {
             //logger.log(Level.INFO,
             //        "Only pdf and txt files are processed, ignoring file " + docPath
             //                + " .. ");
-        } else if (fileLength > 100) {
+        } else { // TODO: Check why this is done??? if (fileLength > 100) {
             POSBearer posBearer = null;
             try {
                 //String offer = docProvider.offer(docPath);
@@ -137,7 +137,7 @@ public class KeyphraseExtractor implements StatProcessor {
 
                 return erw;
             }
-        } else {
+        //} else {
         	//logger.warn("Skipping file " + docPath + ", less than 100 bytes");
         }
         return null;
@@ -160,6 +160,7 @@ public class KeyphraseExtractor implements StatProcessor {
 
 
 
+    
     /**
      * Build a map with termextraction objects for all the strings extracted with Gate.
      * Compute embeddedness and overall frequency.
@@ -170,14 +171,9 @@ public class KeyphraseExtractor implements StatProcessor {
      * @throws IOException
      * @throws SearchException 
      */
-    public String extractKeyphrases(DocumentSearcher lp, Map<String, Keyphrase> keyphraseStringMap,
+    public List<Keyphrase> extractKeyphrases(DocumentSearcher lp, Map<String, Keyphrase> keyphraseStringMap,
                                     Integer countDocs, Integer corpusFreqThreshold,
                                     Long lengthMax, Set<String> stopWords) throws IOException, SearchException {
-
-        StringBuilder out = new StringBuilder();
-
-        //logger.log(Level.INFO, "Extracted " + keyphraseStringMap.size()
-        //        + " termextraction candidates");
 
         List<String> keyList = new ArrayList<String>(keyphraseStringMap.keySet());
         Collections.sort(keyList);
@@ -185,32 +181,34 @@ public class KeyphraseExtractor implements StatProcessor {
         Set<String> embAllKeyphrasesSet =
                 KPInfoProcessor.extractParsedEmbKP(lp, keyphraseStringMap, 3);
 
+        List<Keyphrase> result = new ArrayList<>();
+        
         for (String key : keyList) {
-            Integer length = keyphraseStringMap.get(key).getLength();
+            int length = keyphraseStringMap.get(key).getLength();
             if (FilterUtils.isProperTopic(key, stopWords) && length <= lengthMax) {
 
-                Long frequency = new Long(0);
-                frequency = lp.numberOfOccurrences(key, countDocs);
+                long frequency = lp.numberOfOccurrences(key, countDocs);
 
                 if (frequency > corpusFreqThreshold) {
-                    out.append(key + ",");
-                    out.append(length + ",");
-                    out.append(frequency + ",");
-                    out.append("0,");
+                    //out.append(key + ",");
+                    //out.append(length + ",");
+                    //out.append(frequency + ",");
+                    //out.append("0,");
                     //logger.log(Level.INFO, "Computing embeddeness for: " + key);
 
-                    Integer emb = 0;
+                    int emb = 0;
                     // compute embeddedness only for multi-word keyphrases,
                     // don't check for maximum length topics
                     if ((length > 1) && (length < lengthMax)) {
                         emb = KPInfoProcessor.computeEmbeddedness(lp, key, embAllKeyphrasesSet);
                     }
-                    out.append(emb + "\n");
+                    //out.append(emb + "\n");
                     //logger.log(Level.INFO, "Done..");
+                    result.add(new Keyphrase(key, length, frequency, emb, 0l, Double.NaN));
                 }
             }
         }
-        return out.toString();
+        return result;
     }
 
     /**

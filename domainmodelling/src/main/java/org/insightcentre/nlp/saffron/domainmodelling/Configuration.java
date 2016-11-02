@@ -131,4 +131,8 @@ public class Configuration {
     public int docsCount() {
         return loadCorpus().size();
     }
+
+    public int tokCount() {
+        return 1000000;
+    }
 }
