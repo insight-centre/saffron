@@ -1,0 +1,107 @@
+/*
+ *  topic-pattern.jape
+ *
+ * Copyright (c) 1998-2004, The University of Sheffield.
+ *
+ *  This file is part of GATE (see http://gate.ac.uk/), and is free
+ *  software, licenced under the GNU Library General Public License,
+ *  Version 2, June 1991 (in the distribution as file licence.html,
+ *  and also available at http://gate.ac.uk/gate/licence.html).
+ *
+ *  Alex Schutz, 2009-02-02
+ *
+ */
+
+Phase:  TopicPattern
+Input:  Token TempContextPattern TempTopicSegment
+Options: control = appelt
+
+MACRO: UP_TO_FOUR_TOKENS
+(
+ ({Token.category !~ "NN|NNS|JJ"})?
+ ({Token.category !~ "NN|NNS|JJ"})?
+ ({Token.category !~ "NN|NNS|JJ"})?
+ ({Token.category !~ "NN|NNS|JJ"})?
+)
+
+
+MACRO: TOPIC_PATTERN
+(
+ (
+  (
+   (
+    {Token.category == NN, Token.kind != punctuation}|
+    ({Token.category == NNS, Token.kind != punctuation}
+     |{Token.category == VBG, Token.kind != punctuation})?
+   )
+  )|
+  (
+   {Token.category == JJ}
+   ({Token.category == CC})?
+  )
+ )*
+ (
+  {Token.category==NN, Token.kind != punctuation}|
+  ({Token.category==NNS, Token.kind != punctuation}
+   |{Token.category == VBG, Token.kind != punctuation})?
+ )
+)
+
+
+/* RULES GO HERE */
+
+Rule: TopicPattern0
+Priority:100
+(
+ ({TempContextPattern}):context
+ (UP_TO_FOUR_TOKENS)
+ (TOPIC_PATTERN):topic
+ ({Token.category == CC})?
+ (TOPIC_PATTERN)?:topic1
+):segment
+-->
+:topic1.Topic = {kind="topicpattern"}
+{
+  gate.AnnotationSet topic = (gate.AnnotationSet)bindings.get("topic");
+  if (topic != null){
+  
+  // gaining access to token annotation and sorting them
+  java.util.ArrayList tokens = new java.util.ArrayList(topic.get("Token", topic.firstNode().getOffset(), topic.lastNode().getOffset()));
+  java.util.Collections.sort(tokens, new gate.util.OffsetComparator());
+  
+  String posSequence = "";   // accumulating pos-sequence here
+  java.util.Iterator tItr = tokens.iterator();
+  while (tItr.hasNext()){
+    gate.FeatureMap tFeat = ((gate.Annotation)tItr.next()).getFeatures(); 
+    posSequence += (String)tFeat.get("category");
+    if (tItr.hasNext()) posSequence += " ";
+  }
+  
+  // gaining access to context
+  gate.AnnotationSet context = (gate.AnnotationSet)bindings.get("context");
+
+  // gaining access to segment
+  gate.AnnotationSet segment = (gate.AnnotationSet)bindings.get("segment");
+
+  
+  gate.FeatureMap topicfeatures = Factory.newFeatureMap();
+  topicfeatures.put("kind", "topicpattern");
+  topicfeatures.put("rule", "TopicPattern0");
+  topicfeatures.put("POSsequence", posSequence);
+  try {
+    String topicText = doc.getContent().getContent( topic.firstNode().getOffset(), topic.lastNode().getOffset() ).toString();
+    String contextText = doc.getContent().getContent( context.firstNode().getOffset(), context.lastNode().getOffset() ).toString();
+    String segmentText = doc.getContent().getContent( segment.firstNode().getOffset(), segment.lastNode().getOffset() ).toString();
+    
+    // adding to features and cleansing the string in the process
+    
+    topicfeatures.put("topicTextualRepresentation", topicText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ") );
+    topicfeatures.put("contextTextualRepresentation", contextText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ")  );
+    topicfeatures.put("segmentTextualRepresentation", segmentText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ")  );
+  } catch (GateException exn){
+    System.err.println(exn.getMessage());
+  }
+  annotations.add(topic.firstNode(), topic.lastNode(), "Topic", topicfeatures);
+  tokens = null;
+  }
+}

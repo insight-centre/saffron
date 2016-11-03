@@ -1,0 +1,72 @@
+/*
+ *  topic-pattern-right.jape
+ *
+ * Copyright (c) 1998-2004, The University of Sheffield.
+ *
+ *  This file is part of GATE (see http://gate.ac.uk/), and is free
+ *  software, licenced under the GNU Library General Public License,
+ *  Version 2, June 1991 (in the distribution as file licence.html,
+ *  and also available at http://gate.ac.uk/gate/licence.html).
+ *
+ *  Georgeta Bordea, 2010-11-03
+ *
+ */
+
+Phase:  ContextPattern
+Input:  TempContextPattern Token
+Options: control = appelt
+
+/* RULES GO HERE */
+
+Rule: TopicPattern1
+Priority: 10
+(
+ 
+  ({Token.root=="use"}):head
+  (UP_TO_FOUR_TOKENS)
+  ({Token.category =~ "VBN|VBG|NN|NNS|JJ|NP|NPS|NNP|NNPS"})[1,9]:topic
+)
+-->
+{
+  gate.AnnotationSet topic = (gate.AnnotationSet)bindings.get("topic");
+  gate.AnnotationSet head = (gate.AnnotationSet)bindings.get("head");
+  if (topic != null){
+  
+  // gaining access to token annotation and sorting them
+  java.util.ArrayList tokens = new java.util.ArrayList(topic.get("Token", topic.firstNode().getOffset(), topic.lastNode().getOffset()));
+  java.util.Collections.sort(tokens, new gate.util.OffsetComparator());
+  
+  String posSequence = "";   // accumulating pos-sequence here
+  String rootSequence = "";   // accumulating root sequence here
+  java.util.Iterator tItr = tokens.iterator();
+  while (tItr.hasNext()){
+    gate.FeatureMap tFeat = ((gate.Annotation)tItr.next()).getFeatures(); 
+    posSequence += (String)tFeat.get("category");
+    rootSequence +=(String)tFeat.get("root");
+    if (tItr.hasNext()) posSequence += " ";
+    if (tItr.hasNext()) rootSequence += " ";
+  }
+  
+  gate.FeatureMap topicfeatures = Factory.newFeatureMap();
+  topicfeatures.put("kind", "topicpattern");
+  topicfeatures.put("rule", "TopicPattern2");
+  topicfeatures.put("POSsequence", posSequence);
+  topicfeatures.put("RootSequence", rootSequence);
+  try {
+    String topicText = doc.getContent().getContent( topic.firstNode().getOffset(), topic.lastNode().getOffset() ).toString();
+    String contextText = doc.getContent().getContent( head.firstNode().getOffset(), head.lastNode().getOffset() ).toString();
+    String segmentText = topicText;
+    
+    // adding to features and cleansing the string in the process
+    
+    topicfeatures.put("topicTextualRepresentation", topicText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ") );
+    topicfeatures.put("contextTextualRepresentation", contextText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ")  );
+    topicfeatures.put("segmentTextualRepresentation", segmentText.replaceAll("-".concat(System.getProperty("line.separator")), "").replaceAll(System.getProperty("line.separator"), " ").replaceAll("\\s+", " ")  );
+    topicfeatures.put("offset", topic.firstNode().getOffset());
+  } catch (GateException exn){
+    System.err.println(exn.getMessage());
+  }
+  outputAS.add(topic.firstNode(), topic.lastNode(), "Topic", topicfeatures);
+  tokens = null;
+  }
+}

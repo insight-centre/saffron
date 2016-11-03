@@ -1,0 +1,119 @@
+/*
+ * expansion.jape
+ *
+ * Copyright (c) 1998-2004, The University of Sheffield.
+ *
+ *  This file is part of GATE (see http://gate.ac.uk/), and is free
+ *  software, licenced under the GNU Library General Public License,
+ *  Version 2, June 1991 (in the distribution as file licence.html,
+ *  and also available at http://gate.ac.uk/gate/licence.html).
+ *
+ *  Georgeta Bordea, 2010-03-02
+ *
+ */
+ 
+Phase:  Expansion
+Input:  Token AcronymCandidate
+Options: control = appelt
+
+Rule: ExpansionRule1
+(
+ ({Token.category =~ "NN|NNS|JJ|NP|NPS|NNP|NNPS|VBN|CD|VBG|IN|CC"})[1,8]:expanded
+ ({Token.kind=="punctuation",Token.string=="("})
+  ({Token.category=="CC"})[0,1]
+ ({AcronymCandidate}):acron
+ ({Token.kind=="punctuation",Token.string==")"})
+):acr
+-->
+{    
+  gate.AnnotationSet expanded = (gate.AnnotationSet)bindings.get("expanded");
+  gate.AnnotationSet acronym = (gate.AnnotationSet)bindings.get("acron");
+  
+  // extract the acronym string 
+  String acronymString = "";  
+  if (acronym != null){
+   java.util.ArrayList acr = new java.util.ArrayList(acronym.get("AcronymCandidate", acronym.firstNode().getOffset(), acronym.lastNode().getOffset()));  
+   java.util.Iterator tItr = acr.iterator();
+   if (tItr.hasNext()){
+    gate.FeatureMap tFeat = ((gate.Annotation)tItr.next()).getFeatures(); 
+    acronymString = (String)tFeat.get("string");
+   }
+  }
+  
+  //get all tokens for expansion  
+  Integer count = 0;
+  java.util.ArrayList tokens = new java.util.ArrayList(expanded.get("Token", expanded.firstNode().getOffset(), expanded.lastNode().getOffset()));
+  java.util.Collections.sort(tokens, new gate.util.OffsetComparator());  
+  java.util.Iterator tItr = tokens.iterator();
+  
+  Integer index = 0;
+  Integer lowerCaseIndex = index + 1;
+  Boolean isExpansion = true;
+  Integer ignored = 0;
+  String matched = "";
+  while (tItr.hasNext()){
+   gate.FeatureMap tFeat = ((gate.Annotation)tItr.next()).getFeatures(); 
+   String cat = (String)tFeat.get("category"); 
+   String str = (String)tFeat.get("string"); 
+   if ((!"CC".equals(cat))&&(!"IN".equals(cat))){
+    if (index < acronymString.length()) {
+     // check for lower case letters in acronym
+     lowerCaseIndex = index + 1;
+     if (lowerCaseIndex < acronymString.length()){
+       String lowerCaseCandidate = acronymString.substring(lowerCaseIndex, lowerCaseIndex + 1);
+       while(!lowerCaseCandidate.equals(lowerCaseCandidate.toUpperCase())){
+     	 lowerCaseIndex++;
+     	 if (lowerCaseIndex < acronymString.length()){
+     	  lowerCaseCandidate = acronymString.substring(lowerCaseIndex, lowerCaseIndex + 1);
+     	 } else {
+     	  break;
+     	 }
+       }
+     }
+     String as = acronymString.substring(index, lowerCaseIndex);
+     String ss = str;
+     if ((lowerCaseIndex - index) < str.length()){
+       ss = str.substring(0, lowerCaseIndex - index);
+     } 
+    
+     if (!ss.equalsIgnoreCase(as)){
+      ignored++;
+      index = 0;
+      matched = "";
+     } else {
+      matched+=str + " ";
+      index = lowerCaseIndex;
+     }
+     count++;
+    } 
+   } /*else {
+      if (index < acronymString.length()) {
+       String as = acronymString.substring(index, index+1);
+       String ss = str.substring(0, 1);
+      
+       if (!ss.equalsIgnoreCase(as)){
+        ignored++;
+        matched+=str + " ";
+       } else {
+          matched+=str + " ";
+          index++;
+       }
+       count++;
+      }
+   }*/
+  }
+   
+  if (index == acronymString.length()) {
+   gate.Annotation expandedAnn = (gate.Annotation)expanded.iterator().next();
+   gate.FeatureMap expandedfeatures = Factory.newFeatureMap();
+   expandedfeatures.put("kind", "expanded");
+   expandedfeatures.put("ignored", ignored);
+   expandedfeatures.put("rule", "AcronymRule1");
+   //remove a space
+   matched = matched.substring(0, matched.length()-1);
+   expandedfeatures.put("matchedTokens", matched);
+   expandedfeatures.put("acronym", acronymString);
+   expandedfeatures.put("index", index);
+   outputAS.add(expanded.firstNode(), expanded.lastNode(), "Expansion", expandedfeatures);
+ }
+}
