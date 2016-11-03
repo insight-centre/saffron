@@ -3,8 +3,6 @@
  */
 package org.insightcentre.nlp.saffron.documentindex.lucene;
 
-import org.insightcenter.nlp.saffron.documentindex.DocumentIndexer;
-import org.insightcenter.nlp.saffron.documentindex.IndexingException;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -13,6 +11,8 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
+import org.insightcentre.nlp.saffron.documentindex.DocumentIndexer;
+import org.insightcentre.nlp.saffron.documentindex.IndexingException;
 
 public class LuceneIndexer implements DocumentIndexer, Closeable {
 
@@ -28,20 +28,20 @@ public class LuceneIndexer implements DocumentIndexer, Closeable {
 		}
 	}
 
-	public void indexDoc(String id, String text) throws IndexingException {
+	public void indexDoc(String id, String text) {
 		try {
 			indexWriter.addDocument(LuceneDocument.makeDocument(id, text));
 		} catch (IOException e) {
-			throw new IndexingException(e.getMessage(), e);
+			throw new RuntimeException(e.getMessage(), e);
 		}
 	}
 
 	@Override
-	public void commit() throws IndexingException {
+	public void commit() {
 		try {
 			indexWriter.commit();
 		} catch (IOException e) {
-			throw new IndexingException(e.getMessage(), e);
+			throw new RuntimeException(e.getMessage(), e);
 		}
 	}
 	

@@ -1,6 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex.lucene;
 
-import org.insightcenter.nlp.saffron.documentindex.SearchException;
+import org.insightcentre.nlp.saffron.documentindex.SearchException;
 
 import java.util.HashMap;
 import java.util.List;

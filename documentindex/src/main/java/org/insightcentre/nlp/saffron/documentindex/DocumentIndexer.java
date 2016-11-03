@@ -1,4 +1,4 @@
-package org.insightcenter.nlp.saffron.documentindex;
+package org.insightcentre.nlp.saffron.documentindex;
 
 import java.io.Closeable;
 

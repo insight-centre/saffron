@@ -1,7 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex.lucene;
 
-import org.insightcenter.nlp.saffron.documentindex.DocumentSearcher;
-import org.insightcenter.nlp.saffron.documentindex.SearchException;
+import org.insightcentre.nlp.saffron.documentindex.SearchException;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -29,6 +28,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.spans.SpanNearQuery;
 import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.store.Directory;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcher;
 
 /**
  * @author Georgeta Bordea

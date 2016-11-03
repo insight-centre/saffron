@@ -1,4 +1,4 @@
-package org.insightcenter.nlp.saffron.documentindex;
+package org.insightcentre.nlp.saffron.documentindex;
 
 public class IndexingException extends Exception {
 	private static final long serialVersionUID = 4610822145163690000L;

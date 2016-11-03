@@ -1,4 +1,4 @@
-package org.insightcenter.nlp.saffron.documentindex;
+package org.insightcentre.nlp.saffron.documentindex;
 
 public class SearchException extends Exception {
 	public SearchException(String message) {
