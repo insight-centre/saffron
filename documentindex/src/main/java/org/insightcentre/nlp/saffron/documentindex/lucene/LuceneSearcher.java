@@ -7,15 +7,19 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.QueryParserBase;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
@@ -207,4 +211,67 @@ public class LuceneSearcher implements DocumentSearcher {
 		occurrence_searcher.getIndexReader().close();
 		tfidf_searcher.getIndexReader().close();
 	}
+
+    private static class AllDocIterator implements Iterator<String> {
+        final IndexReader reader;
+        String data;
+        int i;
+
+        public AllDocIterator(IndexReader reader) {
+            this.reader = reader;
+            this.data = null;
+            this.i = 0;
+            advance();
+        }
+
+        private void advance() {
+            while(i < reader.maxDoc()) {
+                Document d;
+                try {
+                    d = reader.document(i);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+                if(d != null) {
+                    data = d.get(LuceneDocument.CONTENTS_NAME);
+                    i++;
+                    return;
+                }
+                i++;
+            }
+            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < reader.maxDoc();
+        }
+
+        @Override
+        public String next() {
+            String d = data;
+            advance();
+            return d;
+        }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException("Not supported");
+        }
+
+        
+    }
+    
+    @Override
+    public Iterable<String> allDocuments() throws SearchException {
+        return new Iterable<String>() {
+
+            @Override
+            public Iterator<String> iterator() {
+                return new AllDocIterator(occurrence_searcher.getIndexReader());
+            }
+        };
+    }
+
+    
 }

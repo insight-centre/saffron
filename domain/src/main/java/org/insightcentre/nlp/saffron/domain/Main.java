@@ -16,13 +16,17 @@ import java.util.Set;
 import java.util.TreeSet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcher;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.nlp.saffron.documentindex.SearchException;
 
 /**
  *
  * @author John McCrae <john@mccr.ae>
  */
 public class Main {
-    public static List<String> extractDomainModel(Configuration configuration) throws IOException {
+    public static List<String> extractDomainModel(Configuration configuration, DocumentSearcher searcher) throws IOException, SearchException {
         Object2IntMap<String> wordFreq = new Object2IntOpenHashMap<>();
         Object2IntMap<Keyphrase> phraseFreq = new Object2IntOpenHashMap<>();
 
@@ -30,8 +34,8 @@ public class Main {
         
         OpenNLPPOSExtractor posExtractor = configuration.loadPosExtractor();
 
-        for(File f : configuration.loadCorpus()) {
-            posExtractor.processFile(f, wordFreq, phraseFreq, pairs, configuration.span);
+        for(String s : searcher.allDocuments()) {
+            posExtractor.processFile(s, wordFreq, phraseFreq, pairs, configuration.span);
         }
         
         Set<Keyphrase> keyphrases = filterPhrases(phraseFreq, configuration.minFreq,
@@ -56,6 +60,7 @@ public class Main {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
+                accepts("t", "The text corpus to load").withRequiredArg().ofType(File.class);
                 accepts("o", "Where to write the domain model").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
@@ -71,6 +76,10 @@ public class Main {
             if(configuration == null || !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
+            final File corpusFile  = (File)os.valueOf("t");
+            if(corpusFile == null || !corpusFile.exists()) {
+
+            }
             final File output = (File)os.valueOf("o");
             if(output == null) {
                 badOptions(p, "Output not specified");
@@ -79,8 +88,11 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
             Configuration config = mapper.readValue(configuration, Configuration.class);
-
-            List<String> result = extractDomainModel(config);
+            Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
+    
+            DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
+            
+            List<String> result = extractDomainModel(config, searcher);
             
             try(PrintWriter out = new PrintWriter(output)) {
                 for(String r : result) {

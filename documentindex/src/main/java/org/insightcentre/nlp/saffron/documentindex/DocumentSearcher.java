@@ -2,10 +2,12 @@ package org.insightcentre.nlp.saffron.documentindex;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.queryparser.classic.ParseException;
 
 public interface DocumentSearcher extends Closeable {
 
@@ -91,5 +93,12 @@ public interface DocumentSearcher extends Closeable {
 
 	public Long spanOccurrence(String term1, String term2, int spanSlop, int maxDocumentResults)
 			throws SearchException;
+
+    /**
+     * Get all document contents
+     * @return The document contents
+     * @throws SearchException  If an error occurs when searching
+     */
+    public Iterable<String> allDocuments() throws SearchException;
 
 }

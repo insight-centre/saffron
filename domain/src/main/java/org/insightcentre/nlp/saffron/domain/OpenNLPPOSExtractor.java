@@ -38,21 +38,6 @@ public class OpenNLPPOSExtractor {
         this.chunker = chunker;
     }
 
-    
-
-    public void processFile(File f, Object2IntMap<String> wordFreq, 
-        Object2IntMap<Keyphrase> phraseFreq, 
-        Object2IntMap<NearbyPair> pairs,
-        int span) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try(BufferedReader reader = new BufferedReader(new FileReader(f))) {
-            sb.append(reader.readLine());
-            sb.append(" ");
-        } 
-        processFile(sb.toString(), wordFreq, phraseFreq, pairs, span);
-    }
-
-    
     public void processFile(String documentText, Object2IntMap<String> wordFreq, 
         Object2IntMap<Keyphrase> phraseFreq, Object2IntMap<NearbyPair> pairs,
         int span) {

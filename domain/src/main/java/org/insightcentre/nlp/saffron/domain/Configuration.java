@@ -17,10 +17,6 @@ import java.util.Set;
  */
 public class Configuration {
     /**
-     * The folder containing the corpus
-     */
-    public final File corpus;
-    /**
      * The tokenizer model for OpenNLP
      */
     public File tokenizerModel = new File("models/en-token.bin");
@@ -47,7 +43,7 @@ public class Configuration {
     /**
      * The file containing the stopwords
      */
-    public final File stopwords = new File("src/main/resources/stopwords/english");
+    public final File stopwords = new File("models/stopwords/english");
     /**
      * The number of words to use for the domain model
      */
@@ -56,17 +52,6 @@ public class Configuration {
      * Smoothing factor for PMI
      */
     public double epsilon = 0.1;
-
-
-    @JsonCreator
-    public Configuration(@JsonProperty("corpus") File corpus) {
-        this.corpus = corpus;
-    }
-
-   
-    public Collection<File> loadCorpus() {
-        return Arrays.asList(corpus.listFiles());
-    }
 
     private OpenNLPPOSExtractor posExtractor = null;
     public OpenNLPPOSExtractor loadPosExtractor() {
