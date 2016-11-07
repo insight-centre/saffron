@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;

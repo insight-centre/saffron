@@ -17,9 +17,9 @@ import java.util.TreeSet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.nlp.saffron.documentindex.SearchException;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
+import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 /**
  *
@@ -78,7 +78,7 @@ public class Main {
             }
             final File corpusFile  = (File)os.valueOf("t");
             if(corpusFile == null || !corpusFile.exists()) {
-
+                badOptions(p, "Corpus does not exist");
             }
             final File output = (File)os.valueOf("o");
             if(output == null) {

@@ -9,11 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.apache.lucene.store.Directory;
-import org.insightcentre.nlp.saffron.documentindex.DocumentIndexFactory;
-import org.insightcentre.nlp.saffron.documentindex.DocumentIndexer;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.IndexingException;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.taxonomy.graph.DirectedGraph;
 
 /**
@@ -32,6 +30,7 @@ public class Main {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
+                accepts("t", "The text corpus to load").withRequiredArg().ofType(File.class);
                 accepts("o", "Where to write the domain model").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
@@ -47,6 +46,10 @@ public class Main {
             if(configuration == null || !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
+            final File corpusFile  = (File)os.valueOf("t");
+            if(corpusFile == null || !corpusFile.exists()) {
+                badOptions(p, "Corpus does not exist");
+            }
             final File output = (File)os.valueOf("o");
             if(output == null) {
                 badOptions(p, "Output not specified");
@@ -55,8 +58,9 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
             Configuration config = mapper.readValue(configuration, Configuration.class);
+            Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
 
-            DocumentSearcher searcher = loadCorpus(config);
+            DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
 
             Map<String, Topic> topicMap = loadMap(config.topics, mapper);
 
@@ -68,19 +72,6 @@ public class Main {
             t.printStackTrace();
             System.exit(-1);
         }
-    }
-
-    private static DocumentSearcher loadCorpus(Configuration config) throws IOException, IndexingException {
-        Directory indexDir = DocumentIndexFactory.luceneFileDirectory(config.index, false);
-        if(!config.reuseIndex) {
-            try (DocumentIndexer indexer = DocumentIndexFactory.luceneIndexer(indexDir, DocumentIndexFactory.LuceneAnalyzer.LOWERCASE_ONLY)) {
-                for(File file : config.loadCorpus()) {
-                    indexer.indexDoc(file.getName(), loadText(file));
-                }
-                indexer.commit();
-            }
-        }
-        return DocumentIndexFactory.luceneSearcher(indexDir, DocumentIndexFactory.LuceneAnalyzer.LOWERCASE_ONLY);
     }
 
     private static Map<String, Topic> loadMap(File topics, ObjectMapper mapper) throws IOException {

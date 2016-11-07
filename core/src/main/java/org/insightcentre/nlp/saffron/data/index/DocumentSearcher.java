@@ -1,13 +1,10 @@
-package org.insightcentre.nlp.saffron.documentindex;
+package org.insightcentre.nlp.saffron.data.index;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.queryparser.classic.ParseException;
 
 public interface DocumentSearcher extends Closeable {
 

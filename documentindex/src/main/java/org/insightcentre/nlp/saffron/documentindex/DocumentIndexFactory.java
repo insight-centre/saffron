@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
 
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.lucene.AnalyzerLower;
 import org.insightcentre.nlp.saffron.documentindex.lucene.AnalyzerStemmedLower;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneIndexer;
