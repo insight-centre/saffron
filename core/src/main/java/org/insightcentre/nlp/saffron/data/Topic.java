@@ -1,17 +1,19 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Topic implements Comparable<Topic> {
 
     public final String topicString, slug;
     public final int occurrences;
-    public final double score;
+    public double score;
     public final List<MorphologicalVariation> mvList;
     public URL dbpediaURL;
 

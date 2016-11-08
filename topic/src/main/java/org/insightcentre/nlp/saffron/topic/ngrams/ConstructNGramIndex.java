@@ -1,26 +1,23 @@
-package org.insightcentre.nlp.saffron.topic.dbpedia;
+package org.insightcentre.nlp.saffron.topic.ngrams;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.zip.GZIPInputStream;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 
 /**
- * Builds the DBpedia index from the redirects dump
- * 
+ *
  * @author John McCrae <john@mccr.ae>
  */
-public class ConstructDBpediaIndex {
+public class ConstructNGramIndex {
    private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: "  + message);
         p.printHelpOn(System.err);
@@ -31,7 +28,7 @@ public class ConstructDBpediaIndex {
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
-                accepts("d", "The Google NGrams dump file").withRequiredArg().ofType(File.class);
+                accepts("d", "The DBpedia dump file (redirects_en.ttl.bz2)").withRequiredArg().ofType(File.class);
                 accepts("o", "The output model database file").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
@@ -62,7 +59,7 @@ public class ConstructDBpediaIndex {
     }
 
     private static void createDatabase(File redirectFile, File output) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(new BZip2CompressorInputStream(new FileInputStream(redirectFile))));
+        BufferedReader reader = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(redirectFile))));
         String line;
         int i = 0;
         final PreparedStatement stat;
@@ -73,29 +70,27 @@ public class ConstructDBpediaIndex {
         }
         try(Connection c = DriverManager.getConnection("jdbc:sqlite:" + output.getAbsolutePath())) {
             java.sql.Statement s = c.createStatement();
-            s.execute("CREATE TABLE dbpedia "
-                + "(key TEXT NOT NULL,"
-                + " variant TEXT NOT NULL,"
-                + " escaped TEXT NOT NULL)");
-            s.execute("CREATE INDEX idx_escaped ON dbpedia(escaped)");
+            s.execute("CREATE TABLE IF NOT EXISTS ngrams "
+                + "(ngram TEXT NOT NULL,"
+                + " year INT NOT NULL,"
+                + " match_count INT NOT NULL,"
+                + " volume_count TEXT NOT NULL)");
+            s.execute("CREATE INDEX IF NOT EXISTS idx_ngram ON ngrams(ngram)");
             c.setAutoCommit(false);
-            stat = c.prepareStatement("INSERT INTO dbpedia VALUES (?,?,?)");
+            stat = c.prepareStatement("INSERT INTO ngrams VALUES (?,?,?,?)");
             while((line = reader.readLine()) != null) {
                 if(line.startsWith("#"))
                     continue;
                 
-                String[] elems = line.split("\\s+");
+                String[] elems = line.split("\\t");
                 if(elems.length != 4) {
                     throw new IllegalArgumentException("Bad line: " + line);
                 }
                 
-                String variant = dbpediaName(elems[0]);
-                String key = dbpediaName(elems[2]);
-                String cleanName = clean(variant);
-
-                stat.setString(1, key);
-                stat.setString(2, variant);
-                stat.setString(3, cleanName);
+                stat.setString(1, elems[0]);
+                stat.setInt(2, Integer.parseInt(elems[1]));
+                stat.setInt(3, Integer.parseInt(elems[2]));
+                stat.setInt(4, Integer.parseInt(elems[3]));
 
                 stat.addBatch();
 
@@ -110,19 +105,5 @@ public class ConstructDBpediaIndex {
         } catch(SQLException x) {
             throw new RuntimeException(x);
         }
-    }
-
-    private static String dbpediaName(String elem) {
-        if(!elem.startsWith("<http://dbpedia.org/resource/"))
-            throw new IllegalArgumentException(elem);
-        return elem.substring(29, elem.length()-1);
-    }
-
-    private static String clean(String variant) {
-       try {
-           return URLDecoder.decode(variant, "UTF-8").replaceAll("_", " ").replaceAll(" \\(.*\\)$", "").toLowerCase();
-       } catch (UnsupportedEncodingException ex) {
-           throw new RuntimeException(ex); // Will never happen
-       }
     }
 }
