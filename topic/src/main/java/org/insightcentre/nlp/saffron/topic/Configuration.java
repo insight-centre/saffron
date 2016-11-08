@@ -18,14 +18,6 @@ import java.util.Set;
  * @author John McCrae <john@mccr.ae>
  */
 public class Configuration {
-    /** 
-     * The folder containing all the files in the corpus
-     */
-    public File corpus;
-    /**
-     * The domain model
-     */
-    public File domainModelFile;
     /**
      * The file containing the stopwords
      */
@@ -55,14 +47,6 @@ public class Configuration {
         this.gateHome = gateHome;
     }
 
-    public File getCorpus() {
-        return corpus;
-    }
-
-    public void setCorpus(File corpus) {
-        this.corpus = corpus;
-    }
-
     public int getMaxTopics() {
         return maxTopics;
     }
@@ -87,26 +71,12 @@ public class Configuration {
         this.maxTokens = maxTokens;
     }
 
-    @JsonProperty("domainModel")
-    public File getDomainModelFile() {
-        return domainModelFile;
-    }
-
-    @JsonProperty("domainModel")
-    public void setDomainModelFile(File domainModelFile) {
-        this.domainModelFile = domainModelFile;
-    }
-
     public File getStopwordFile() {
         return stopwordFile;
     }
 
     public void setStopwordFile(File stopwordFile) {
         this.stopwordFile = stopwordFile;
-    }
-
-    public Collection<File> loadCorpus() {
-        return Arrays.asList(corpus.listFiles());
     }
 
     private Set<String> sws = null;
@@ -122,20 +92,5 @@ public class Configuration {
             }
         }
         return sws = s;
-    }
-
-    private List<String> dm = null;
-    public List<String> getDomainModel() throws IOException {
-        if(dm != null) {
-            return dm;
-        }
-        List<String> s = new ArrayList<>();
-        try(BufferedReader br = new BufferedReader(new FileReader(domainModelFile))) {
-            String line;
-            while((line = br.readLine()) != null) {
-                s.add(line);
-            }
-        }
-        return dm = s;
     }
 }

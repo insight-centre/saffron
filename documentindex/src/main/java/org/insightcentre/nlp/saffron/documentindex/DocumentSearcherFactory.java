@@ -49,7 +49,7 @@ public class DocumentSearcherFactory {
             dir = luceneFileDirectory(corpus.index, true);
             try(DocumentIndexer indexer = luceneIndexer(dir, LuceneAnalyzer.LOWERCASE_ONLY)) {
                 for(Document doc : corpus.documents) {
-                    indexer.indexDoc(doc.id, loadText(doc.file));
+                    indexer.indexDoc(doc, loadText(doc.file));
                 }
                 indexer.commit();
             }

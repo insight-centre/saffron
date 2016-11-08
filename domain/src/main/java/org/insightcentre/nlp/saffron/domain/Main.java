@@ -17,6 +17,7 @@ import java.util.TreeSet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -34,8 +35,8 @@ public class Main {
         
         OpenNLPPOSExtractor posExtractor = configuration.loadPosExtractor();
 
-        for(String s : searcher.allDocuments()) {
-            posExtractor.processFile(s, wordFreq, phraseFreq, pairs, configuration.span);
+        for(Document doc : searcher.allDocuments()) {
+            posExtractor.processFile(doc.getContents(), wordFreq, phraseFreq, pairs, configuration.span);
         }
         
         Set<Keyphrase> keyphrases = filterPhrases(phraseFreq, configuration.minFreq,

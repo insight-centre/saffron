@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
 import java.util.List;
@@ -11,12 +12,14 @@ import java.util.Objects;
  * 
  * @author John McCrae <john@mccr.ae>
  */
+@JsonIgnoreProperties({"contents"})
 public class Document {
     public final File file;
     public final String id;
     public final String name;
     public final String mimeType;
     public final List<Author> authors;
+    public String contents;
 
     @JsonCreator
     public Document(@JsonProperty(value="file", required=true) File file, 
@@ -31,6 +34,36 @@ public class Document {
         this.authors = authors;
     }
 
+    /**
+     * Set the contents of this file once they have been loaded (i.e., from the source file
+     * 
+     * @param contents The text contents of this document
+     */
+    public void setContents(String contents) {
+        this.contents = contents;
+    }
+
+    /**
+     * Have the contents of the document been loaded
+     * @return True if the document contents are loaded
+     */
+    public boolean hasContents() {
+        return contents != null;
+    }
+            
+    
+    /**
+     * Get the text contents of the document
+     * @return The contents
+     * @throw IllegalArgumentException If the document has not been loaded
+     */
+    public String getContents() {
+        if(contents == null) {
+            throw new IllegalArgumentException("Document has not been loaded yet. Please use DocumentSearcher to index corpus");
+        }
+        return contents;
+    }
+    
     public String getId() {
         return id;
     }

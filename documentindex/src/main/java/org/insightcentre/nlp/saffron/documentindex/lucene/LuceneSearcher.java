@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex.lucene;
 
+import java.io.File;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 import java.io.IOException;
@@ -212,9 +213,9 @@ public class LuceneSearcher implements DocumentSearcher {
 		tfidf_searcher.getIndexReader().close();
 	}
 
-    private static class AllDocIterator implements Iterator<String> {
+    private static class AllDocIterator implements Iterator<org.insightcentre.nlp.saffron.data.Document> {
         final IndexReader reader;
-        String data;
+        org.insightcentre.nlp.saffron.data.Document data;
         int i;
 
         public AllDocIterator(IndexReader reader) {
@@ -233,7 +234,12 @@ public class LuceneSearcher implements DocumentSearcher {
                     throw new RuntimeException(ex);
                 }
                 if(d != null) {
-                    data = d.get(LuceneDocument.CONTENTS_NAME);
+                    data = new org.insightcentre.nlp.saffron.data.Document(new File(d.get(LuceneDocument.SOURCE_FILE)),
+                                                                           d.get(LuceneDocument.UID_NAME), 
+                                                                           d.get(LuceneDocument.FULL_NAME), 
+                                                                           d.get(LuceneDocument.MIME_TYPE),
+                                                                           LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)));
+                    data.setContents(d.get(LuceneDocument.CONTENTS_NAME));
                     i++;
                     return;
                 }
@@ -248,8 +254,8 @@ public class LuceneSearcher implements DocumentSearcher {
         }
 
         @Override
-        public String next() {
-            String d = data;
+        public org.insightcentre.nlp.saffron.data.Document next() {
+            org.insightcentre.nlp.saffron.data.Document d = data;
             advance();
             return d;
         }
@@ -263,11 +269,11 @@ public class LuceneSearcher implements DocumentSearcher {
     }
     
     @Override
-    public Iterable<String> allDocuments() throws SearchException {
-        return new Iterable<String>() {
+    public Iterable<org.insightcentre.nlp.saffron.data.Document> allDocuments() throws SearchException {
+        return new Iterable<org.insightcentre.nlp.saffron.data.Document>() {
 
             @Override
-            public Iterator<String> iterator() {
+            public Iterator<org.insightcentre.nlp.saffron.data.Document> iterator() {
                 return new AllDocIterator(occurrence_searcher.getIndexReader());
             }
         };

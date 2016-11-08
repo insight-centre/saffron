@@ -6,8 +6,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import org.insightcentre.nlp.saffron.topic.Topic.MorphologicalVariation;
+import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Topic.MorphologicalVariation;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
  *
@@ -25,16 +29,48 @@ public class TopicExtraction {
         this.maxTokens = maxTokens;
     }
 
-    
+    private Set<DocumentTopic> convertExtractedDocTopics(Document document, List<ExtractedTopic> tb) {
+        Map<DocumentTopic,DocumentTopic> docTopics = new HashMap<>();
+        for(ExtractedTopic t : tb) {
+            DocumentTopic dt = new DocumentTopic(document.id, t.getTopicString(), 1, t.getPattern(), t.getAcronym());
+            if(docTopics.containsKey(dt)) { // DocumentTopic.equals uses only docId and topicString
+                DocumentTopic dt2 = new DocumentTopic(document.id, t.getTopicString(), docTopics.get(dt).matches, t.getPattern(), t.getAcronym());
+                docTopics.put(dt2, dt2);
+            }
+        }
+        return docTopics.keySet();
+    }
 
-    public Set<Topic> extractTopics(String text, List<String> domainModel, Set<String> stopWords) 
+    public static final class Result {
+        public Set<Topic> topics;
+        public Set<DocumentTopic> docTopics;
+
+        public Result(Set<Topic> topics, Set<DocumentTopic> docTopics) {
+            this.topics = topics;
+            this.docTopics = docTopics;
+        }
+        
+
+        public Set<Topic> getTopics() {
+            return topics;
+        }
+
+        public Set<DocumentTopic> getDocTopics() {
+            return docTopics;
+        }
+
+    }
+
+    public Result extractTopics(Document doc, List<String> domainModel, Set<String> stopWords) 
     		throws IOException {
-        List<ExtractedTopic> tb = topicExtractor.extractTopics(text, domainModel);
+        List<ExtractedTopic> tb = topicExtractor.extractTopics(doc.getContents(), domainModel);
         tb = filterTopics(tb, stopWords);
         
-        Set<Topic> topics = convertExtractedTopics(tb, text);
+        Set<Topic> topics = convertExtractedTopics(tb, doc.getContents());
 
-        return topics; 
+        Set<DocumentTopic> docTopics = convertExtractedDocTopics(doc, tb);
+        
+        return new Result(topics, docTopics);
     }
     
 	private List<ExtractedTopic> filterTopics(List<ExtractedTopic> extractedTopicList, Set<String> stopWords) {
@@ -84,8 +120,8 @@ public class TopicExtraction {
     	
 		//If the variation already exists, increment it. Otherwise create it.
 		boolean variationExists = false;
-		for (MorphologicalVariation mv : topic.getMorphologicalVariations()) {
-			if (mv.getTermString().equals(topicString)) {
+		for (MorphologicalVariation mv : topic.getMvList()) {
+			if (mv.getString().equals(topicString)) {
 				mv.setExtractedTermOccurrences(mv.getExtractedTermOccurrences()+1);
 				variationExists = true;
 				break;
@@ -93,7 +129,7 @@ public class TopicExtraction {
 		}
 		if (!variationExists) {
 	        MorphologicalVariation mv = createMorphologicalVariation(extractedTopic);
-	        topic.addMorphologicalVariation(mv);
+	        topic.getMvList().add(mv);
 		}
     }
     
@@ -102,9 +138,8 @@ public class TopicExtraction {
         Integer tokenCount;
         tokenCount = computeTokensNo(extractedTopic.getPattern());
 
-        Topic topic = new Topic();
-        topic.setRootSequence(rootSequence);
-        topic.setNumberOfTokens(tokenCount);
+        Topic topic = new Topic(rootSequence, null, 1, 0.0, new ArrayList<MorphologicalVariation>());
+        //topic.setNumberOfTokens(tokenCount);
 
         MorphologicalVariation mv = createMorphologicalVariation(extractedTopic);
         topic.addMorphologicalVariation(mv);
@@ -113,12 +148,11 @@ public class TopicExtraction {
     }
 
     private MorphologicalVariation createMorphologicalVariation(ExtractedTopic extractedTopic) {
-        MorphologicalVariation mv = new MorphologicalVariation();
+        MorphologicalVariation mv = new MorphologicalVariation(extractedTopic.getTopicString());
         mv.setPattern(extractedTopic.getPattern());
         mv.setExpandedAcronym(extractedTopic.getExpandedAcronym());
         mv.setExtractedTermOccurrences(1);
         mv.setAcronym(extractedTopic.getAcronym());
-        mv.setTermString(extractedTopic.getTopicString());
     	return mv;
     }
 
@@ -188,4 +222,4 @@ public class TopicExtraction {
         }
         return true;
     }
-}
+    }

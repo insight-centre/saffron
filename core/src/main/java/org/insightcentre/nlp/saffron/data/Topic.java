@@ -10,7 +10,7 @@ import java.util.Objects;
 public class Topic implements Comparable<Topic> {
 
     public final String topicString, slug;
-    public final int occurrences, matches;
+    public final int occurrences;
     public final double score;
     public final List<MorphologicalVariation> mvList;
     public URL dbpediaURL;
@@ -20,14 +20,12 @@ public class Topic implements Comparable<Topic> {
         @JsonProperty(value="topic_string", required = true) String topic_string, 
         @JsonProperty(value="slug", required = true) String slug, 
         @JsonProperty(value="occurrences") int occurrences,
-        @JsonProperty(value="overallFrequency") int matches, 
         @JsonProperty(value="score") double score, 
         @JsonProperty(value="mv_list") List<MorphologicalVariation> mvList) {
         super();
         this.topicString = topic_string;
         this.slug = slug;
         this.occurrences = occurrences;
-        this.matches = matches;
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
     }
@@ -43,10 +41,6 @@ public class Topic implements Comparable<Topic> {
 
     public int getOccurrences() {
         return occurrences;
-    }
-
-    public int getMatches() {
-        return matches;
     }
 
     public double getScore() {
@@ -66,6 +60,10 @@ public class Topic implements Comparable<Topic> {
         return mvList;
     }
 
+    public void addMorphologicalVariation(MorphologicalVariation mv) {
+        mvList.add(mv);
+    }
+    
     @Override
     public int compareTo(Topic o) {
         int i0 = Double.compare(score, o.score);

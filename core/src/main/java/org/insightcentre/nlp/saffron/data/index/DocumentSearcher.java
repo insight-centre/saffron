@@ -2,9 +2,9 @@ package org.insightcentre.nlp.saffron.data.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import org.insightcentre.nlp.saffron.data.Document;
 
 public interface DocumentSearcher extends Closeable {
 
@@ -23,7 +23,6 @@ public interface DocumentSearcher extends Closeable {
 	 *         mentioned
 	 * @throws CorruptIndexException
 	 * @throws IOException
-	 * @throws ParseException
 	 */
 	public Map<String, Integer> searchOccurrence(String topic, int maxDocumentResults) throws SearchException;
 
@@ -44,7 +43,6 @@ public interface DocumentSearcher extends Closeable {
 	 * @return the occurrence in each file
 	 * @throws CorruptIndexException
 	 * @throws IOException
-	 * @throws ParseException
 	 */
 	public Map<String, Integer> searchSpanOccurrence(String term1, String term2, int maxDocumentResults,
 			int spanSlop) throws SearchException;
@@ -61,7 +59,6 @@ public interface DocumentSearcher extends Closeable {
 	 *         mentioned
 	 * @throws CorruptIndexException
 	 * @throws IOException
-	 * @throws ParseException
 	 */
 	public Map<String, Float> searchTFIDF(List<String> topicList, int maxDocumentResults) throws SearchException;
 
@@ -72,7 +69,6 @@ public interface DocumentSearcher extends Closeable {
 	 * @return
 	 * @throws CorruptIndexException
 	 * @throws IOException
-	 * @throws ParseException
 	 */
 	public Long numberOfOccurrences(String term, int maxDocumentResults) throws SearchException;
 
@@ -84,7 +80,6 @@ public interface DocumentSearcher extends Closeable {
 	 * @return
 	 * @throws CorruptIndexException
 	 * @throws IOException
-	 * @throws ParseException
 	 */
 	public Map<String, Float> tfidf(String keyphrase, int maxDocumentResults) throws SearchException;
 
@@ -96,6 +91,6 @@ public interface DocumentSearcher extends Closeable {
      * @return The document contents
      * @throws SearchException  If an error occurs when searching
      */
-    public Iterable<String> allDocuments() throws SearchException;
+    public Iterable<Document> allDocuments() throws SearchException;
 
 }

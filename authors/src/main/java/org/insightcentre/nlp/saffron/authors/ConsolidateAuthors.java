@@ -1,7 +1,5 @@
 package org.insightcentre.nlp.saffron.authors;
 
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import java.util.ArrayList;
@@ -27,7 +25,7 @@ public class ConsolidateAuthors {
     public static final double min_similarity = 0.3;
     public static final double UNASSIGNED_COST = 0.1;
 
-    public static Map<Author, Set<Author>> consolidate(List<Author> authors) {
+    public static Map<Author, Set<Author>> consolidate(Collection<Author> authors) {
         Map<Author, Set<Author>> consolidated = new HashMap<>();
         Set<Author> marked = new HashSet<>();
         for (Author author : authors) {
@@ -55,6 +53,10 @@ public class ConsolidateAuthors {
     }
 
     static Author _choose_author(Collection<Author> authors) {
+        if(authors.isEmpty())
+            throw new IllegalArgumentException();
+        if(authors.size() == 1) 
+            return authors.iterator().next();
         Author best = null;
         double bestScore = 0.0;
         for (Author author : authors) {
@@ -71,7 +73,13 @@ public class ConsolidateAuthors {
                 bestScore = score;
             }
         }
-        return best;
+        Set<String> variants = new HashSet<>();
+        for(Author author : authors) {
+            if(!author.equals(best)) {
+                variants.add(author.name);
+            }
+        }
+        return new Author(best.name, variants);
     }
 
     static int count(String w, char c) {

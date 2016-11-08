@@ -40,12 +40,11 @@ public class TopicTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\"topic_string\": \"topic\", \"slug\": \"slug\", \"occurrences\": 5, \"matches\": 6, \"mv_list\": [{\"string\":\"mv1\"}]}";
+        final String data = "{\"topic_string\": \"topic\", \"slug\": \"slug\", \"occurrences\": 5, \"mv_list\": [{\"string\":\"mv1\"}]}";
         final Topic topic = mapper.readValue(data, Topic.class);
         assertEquals("topic", topic.topicString);
         assertEquals("slug", topic.slug);
         assertEquals(5, topic.occurrences);
-        assertEquals(6, topic.matches);
         assertEquals(1, topic.mvList.size());
         assertEquals("mv1", topic.mvList.get(0).string);
         final String json = mapper.writeValueAsString(topic);
