@@ -2,7 +2,10 @@ package org.insightcentre.nlp.saffron.taxonomy.graph;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import org.insightcentre.nlp.saffron.data.Topic;
 
 /**
  * A directed graph
@@ -80,6 +83,19 @@ public class DirectedGraph<Node> {
         }
         return adjs;
  
+    }
+
+    public Set<Node> getRoots() {
+        Set<Node> nonRoots = new HashSet<>();
+        Set<Node> all      = new HashSet<>();
+        for(Edge e : edges) {
+            Node from = getNode(e.from);
+            Node to   = getNode(e.to);
+            nonRoots.add(to);
+            all.add(from);
+        }
+        all.removeAll(nonRoots);
+        return all;
     }
 
     public static class Edge {

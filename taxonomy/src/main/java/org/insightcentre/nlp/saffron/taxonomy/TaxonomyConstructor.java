@@ -1,10 +1,14 @@
 package org.insightcentre.nlp.saffron.taxonomy;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Topic.MorphologicalVariation;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.taxonomy.graph.DirectedGraph;
@@ -17,7 +21,7 @@ import org.insightcentre.nlp.saffron.taxonomy.graph.GraphPruning;
  */
 public class TaxonomyConstructor {
 
-    public static DirectedGraph<Topic> optimisedSimilarityGraph(DocumentSearcher sd,
+    public static Taxonomy optimisedSimilarityGraph(DocumentSearcher sd,
         double simThreshold, int spanSize, Map<String, Topic> topics, int minCommonDocs) throws SearchException {
 
         List<Topic> nodes = new ArrayList<>(topics.values());
@@ -50,7 +54,16 @@ public class TaxonomyConstructor {
             // edges and self referring edges
             prunedEdges = GraphPruning.pruneMultipleParents(nodes, prunedEdges);
 
-            return prunedEdges;
+            if(prunedEdges.edges.isEmpty()) {
+                System.err.println("No taxonomy extracted");
+                return new Taxonomy("", Collections.EMPTY_LIST);
+            }
+            
+            Set<Topic> roots = prunedEdges.getRoots();
+
+            return buildTaxonomy(roots, prunedEdges);
+
+            //return prunedEdges;
 			//DefaultDirectedWeightedGraph<String, DefaultWeightedEdge> jgrapht = JGraphTRepresentation
             //		.convertToJGraphT(nodes, prunedEdges);
 
@@ -60,15 +73,15 @@ public class TaxonomyConstructor {
             //System.out.println(JGraphTRepresentation.taxonomyTreeText(jgrapht, sumPMIMap));
         } else {
             System.err.println("No edges found, try relaxing the thresholds for similarity.");
-            return new DirectedGraph<>();
+            return new Taxonomy(null, Collections.EMPTY_LIST);
         }
     }
 
     public static List<Edge> normaliseEdgeWeights(List<Edge> edges) {
 
         List<Edge> normEdges = new ArrayList<>();
-        double minWeight = edges.get(0).getWeight();
-        double maxWeight = edges.get(0).getWeight();
+        double minWeight = Double.POSITIVE_INFINITY;
+        double maxWeight = Double.NEGATIVE_INFINITY;
         for (Edge edge : edges) {
             double weight = edge.getWeight();
 
@@ -111,7 +124,7 @@ public class TaxonomyConstructor {
 		for (Topic t : nodes) {
 				Map<String, Integer> occMap = new HashMap<>();
 
-				List<MorphologicalVariation> mvList = t.getMvList();
+				List<MorphologicalVariation> mvList = t.mvList;
 				for (MorphologicalVariation mv : mvList) {
 					String searchString = mv.getString().replace("-", " ");
 					Map<String, Integer> occMapTmp = sd.searchOccurrence(searchString, sd.numDocs());
@@ -142,8 +155,8 @@ public class TaxonomyConstructor {
 				// compute only for the triangular matrix
 				if ((nodes.get(i) != nodes.get(j)) && (i >= j)) {
 
-					String topic1ID = nodes.get(i).getPreferredString();
-					String topic2ID = nodes.get(j).getPreferredString();
+					String topic1ID = nodes.get(i).topicString;
+					String topic2ID = nodes.get(j).topicString;
 
 					// Add substring edges with maximum weight
 					if (topic1ID.endsWith(" " + topic2ID) || topic2ID.endsWith(" " + topic1ID)
@@ -171,11 +184,11 @@ public class TaxonomyConstructor {
 
 							// TODO in previous experiments we used t1Docs +
 							// t2Docs
-							double weight = (double)cooc / (1 + t1Docs + t2Docs);
+							double weight = (double)cooc / (1 + t1Docs * t2Docs);
 							// Double weight = new Double(cooc) / (1 + t1Docs *
 							// t2Docs);
 
-							if (weight > simThreshold) {
+							if (weight >= simThreshold) {
 								// weight =
 								// weight
 								// * weight
@@ -199,8 +212,8 @@ public class TaxonomyConstructor {
 		Map<String, List<Edge>> organisedEdges = new HashMap<>();
 
 		for (Edge tmpEdge : tmpGraph.getEdges()) {
-			String node1 = tmpGraph.getNode(tmpEdge.getFrom()).getPreferredString();
-			String node2 = tmpGraph.getNode(tmpEdge.getTo()).getPreferredString();
+			String node1 = tmpGraph.getNode(tmpEdge.getFrom()).topicString;
+			String node2 = tmpGraph.getNode(tmpEdge.getTo()).topicString;
 
 			if (!organisedEdges.containsKey(node1) && !organisedEdges.containsKey(node2)) {
 				List<Edge> edges = new ArrayList<>();
@@ -245,7 +258,6 @@ public class TaxonomyConstructor {
 
 			for (Topic topic : topics.values()) {
 
-				System.err.println("Computing sum PMI for topic " + topic);
 				double pmi = sumPMI(sd, topic,  organisedEdges, 
                     graph, TOTAL_TOKENS_NO, spanSlop);
 
@@ -263,7 +275,7 @@ public class TaxonomyConstructor {
 
 		double contextWordsRank = 0.0;
 
-		List<Edge> edges = organisedEdges.get(topic.getPreferredString());
+		List<Edge> edges = organisedEdges.get(topic.topicString);
 
 		if (edges != null) {
 			for (Edge edge : edges) {
@@ -278,8 +290,8 @@ public class TaxonomyConstructor {
 				}
 
 				// TODO use all MV strings not just the preferred string
-				String searchString = otherTopic.getPreferredString().replace("-", " ");
-				String searchString1 = topic.getPreferredString().replace("-", " ");
+				String searchString = otherTopic.topicString.replace("-", " ");
+				String searchString1 = topic.topicString.replace("-", " ");
 
                 final long spanFreq;
 //				if (tKP != null) {
@@ -290,8 +302,8 @@ public class TaxonomyConstructor {
 //				}
 
 				double pxy = (double) spanFreq / totalTokensNo;
-				double px = (double) otherTopic.getOverallOccurrence() / totalTokensNo;
-				double py = (double) topic.getOverallMatches() / totalTokensNo;
+				double px = (double) otherTopic.occurrences / totalTokensNo;
+				double py = (double) topic.matches / totalTokensNo;
 
 				if (spanFreq > 0) {
 					contextWordsRank += Math.log(pxy / (px * py));
@@ -334,7 +346,7 @@ public class TaxonomyConstructor {
         if(!nodei.equals(nodej)) {
 
 			if (// (nodej.getTopicString().contains(nodei.getTopicString()))
-			(nodej.getPreferredString().endsWith(" " + nodei.getPreferredString())) || (pmiI > pmiJ)) {
+			(nodej.topicString.endsWith(" " + nodei.topicString)) || (pmiI > pmiJ)) {
 
 				// if (ti.getOverallOccurrence() >
 				// tj.getOverallOccurrence()) {
@@ -360,5 +372,30 @@ public class TaxonomyConstructor {
 
     return cooc;
   }
+
+    private static Taxonomy buildTaxonomy(Set<Topic> roots, DirectedGraph<Topic> prunedEdges) {
+        if(roots.isEmpty()) {
+            throw new IllegalArgumentException("Could not find any roots!");
+        } else if(roots.size() == 1) { 
+            return _buildTaxonomy(roots.iterator().next(), prunedEdges);
+        } else {
+            List<Taxonomy> children = new ArrayList<>();
+            for(Topic root : roots) {
+                children.add(_buildTaxonomy(root, prunedEdges));
+            }
+            return new Taxonomy("", children);
+        }
+    }
+
+    private static Taxonomy _buildTaxonomy(Topic t, DirectedGraph<Topic> prunedEdges) {
+        List<Edge> edges = prunedEdges.getOutgoing(t);
+        List<Taxonomy> children = new ArrayList<>();
+        if(edges != null) {
+            for(Edge e : edges) {
+                children.add(_buildTaxonomy(prunedEdges.getNode(e.getTo()), prunedEdges));
+            }
+        }
+        return new Taxonomy(t.topicString, children);
+    }
 
 }

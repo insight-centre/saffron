@@ -116,5 +116,5 @@ $DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
 echo "########################################"
 echo "## Step 10: Taxonomy Extraction       ##"
 echo "########################################"
-
+$DIR/taxonomy-extract -x $CORPUS -t $OUTPUT/topics-stats.json -o $OUTPUT/taxonomy.json
 

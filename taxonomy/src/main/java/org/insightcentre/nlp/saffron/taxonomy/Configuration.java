@@ -7,7 +7,6 @@ import java.io.File;
  * @author John McCrae <john@mccr.ae>
  */
 public class Configuration {
-    public File topics;
     public boolean reuseIndex = false;
     public double simThreshold = 0.5;
     public int spanSize = 5;

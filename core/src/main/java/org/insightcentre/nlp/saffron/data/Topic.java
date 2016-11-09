@@ -76,6 +76,11 @@ public class Topic implements Comparable<Topic> {
         return true;
     }
 
+    @Override
+    public String toString() {
+        return "Topic{" + "topicString=" + topicString + '}';
+    }
+
     public static class MorphologicalVariation {
         
         /** The string form of this topic as it occurs */
