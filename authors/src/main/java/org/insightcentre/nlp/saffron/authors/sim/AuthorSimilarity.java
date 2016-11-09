@@ -76,6 +76,8 @@ public class AuthorSimilarity {
             double b = v2.get(s);
             bb += b * b;
         }
+        if(aa == 0 || bb == 0)
+            return 0;
         return ab / Math.sqrt(aa * bb);
     }
 
