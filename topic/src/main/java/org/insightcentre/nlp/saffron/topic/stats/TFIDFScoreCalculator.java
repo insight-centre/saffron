@@ -23,10 +23,10 @@ class TFIDFScoreCalculator {
         }
     }
 
-    void calculate(DocumentTopic paper_topic, int topic_paper_count, int total_papers, Object2IntMap<DocumentTopic> unembedded_occ) {
+    void calculate(DocumentTopic paper_topic, int topic_paper_count, int total_papers) {
         double topic_idf = Math.log(total_papers/(double)(topic_paper_count));
         
-        int occ = max(unembedded_occ.getInt(paper_topic), 0);
+        int occ = max(paper_topic.unembedded_occ, 0);
         int total_occ_paper = paper_occ_map.getInt(paper_topic.document_id);
         double tf = occ/(double)(1+total_occ_paper);
 

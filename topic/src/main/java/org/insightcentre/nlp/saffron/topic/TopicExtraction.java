@@ -32,9 +32,9 @@ public class TopicExtraction {
     private Set<DocumentTopic> convertExtractedDocTopics(Document document, List<ExtractedTopic> tb) {
         Map<DocumentTopic,DocumentTopic> docTopics = new HashMap<>();
         for(ExtractedTopic t : tb) {
-            DocumentTopic dt = new DocumentTopic(document.id, t.getRootSequence(), 1, t.getPattern(), t.getAcronym());
+            DocumentTopic dt = new DocumentTopic(document.id, t.getRootSequence(), 1, 1, t.getPattern(), t.getAcronym());
             if(docTopics.containsKey(dt)) { // DocumentTopic.equals uses only docId and topicString
-                DocumentTopic dt2 = new DocumentTopic(document.id, t.getRootSequence(), docTopics.get(dt).matches, t.getPattern(), t.getAcronym());
+                DocumentTopic dt2 = new DocumentTopic(document.id, t.getRootSequence(), docTopics.get(dt).matches + 1, docTopics.get(dt).occurrences, t.getPattern(), t.getAcronym());
                 docTopics.put(dt2, dt2);
             } else {
                 docTopics.put(dt, dt);

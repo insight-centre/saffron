@@ -30,7 +30,7 @@ public class TopicStats {
         // Do this first so filtered topics are not counted in unembedded occurrences
         score_topics(topics, min_score, embeddedness);
         
-        Object2IntMap<DocumentTopic> unembedded_occ = calculate_unembedded_occ(topics, embeddedness_map, docTopics);
+        calculate_unembedded_occ(topics, embeddedness_map, docTopics);
 
         TFIDFScoreCalculator tfidf_score_calc = new TFIDFScoreCalculator(topics, docTopics);
         
@@ -47,7 +47,7 @@ public class TopicStats {
                 System.err.println("Document topics refer to unknown topic: " + paper_topic.topic_string);
                 continue;
             }
-            tfidf_score_calc.calculate(paper_topic, paper_count.getInt(paper_topic.topic_string), total_papers, unembedded_occ);
+            tfidf_score_calc.calculate(paper_topic, paper_count.getInt(paper_topic.topic_string), total_papers);
             paper_topic.score = paper_topic.tfidf * t.score;
         }
     }
@@ -103,24 +103,22 @@ public class TopicStats {
         }
     }
 
-    private Object2IntMap<DocumentTopic> calculate_unembedded_occ(List<Topic> topics, Map<String, List<Topic>> embeddedness_map, List<DocumentTopic> docTopics) {
+    private void calculate_unembedded_occ(List<Topic> topics, Map<String, List<Topic>> embeddedness_map, List<DocumentTopic> docTopics) {
         EmbeddedOccurrencesCalculator unemb_calc = new EmbeddedOccurrencesCalculator(embeddedness_map);
-        int num_topics = topics.size();
-        Object2IntMap<Topic> unembedded_occ = new Object2IntOpenHashMap<>();
-        Object2IntMap<DocumentTopic> dtm = new Object2IntOpenHashMap<>();
+        //int num_topics = topics.size();
+        //Object2IntMap<Topic> unembedded_occ = new Object2IntOpenHashMap<>();
         for(Topic topic : topics) {
             Object2IntMap<String> embedded_occ = unemb_calc.calculate(topic, docTopics);
             for(DocumentTopic docTopic : docTopics) {
                 if(docTopic.topic_string.equals(topic.topicString)) {
-                    dtm.put(docTopic, embedded_occ.getInt(docTopic.document_id));
+                    docTopic.unembedded_occ = docTopic.occurrences - embedded_occ.getInt(docTopic.document_id);
                 }
 
             }
 
-            int total_unembedded_occ = sum(embedded_occ);
-            unembedded_occ.put(topic,topic.occurrences - total_unembedded_occ);
+            //int total_unembedded_occ = sum(embedded_occ);
+            //unembedded_occ.put(topic,topic.occurrences - total_unembedded_occ);
         }
-        return dtm;
     }
 
     private double score_topic(Topic topic, int emb) {

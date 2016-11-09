@@ -13,20 +13,24 @@ import java.util.Objects;
 public class DocumentTopic {
     public final String document_id;
     public final String topic_string;
+    public final int occurrences;
     public final int matches;
     public final String pattern;
     public final String acronym;
     public Double score;
     public Double tfidf;
+    public Integer unembedded_occ;
 
     @JsonCreator
     public DocumentTopic(@JsonProperty(value="document_id",required=true) String document_id, 
                          @JsonProperty(value="topic_string",required=true) String topic_string, 
+                         @JsonProperty("occurences") int occurences, 
                          @JsonProperty("matches") int matches, 
                          @JsonProperty("pattern") String pattern, 
                          @JsonProperty("acronym") String acronym) {
         this.document_id = document_id;
         this.topic_string = topic_string;
+        this.occurrences = occurences;
         this.matches = matches;
         this.pattern = pattern;
         this.acronym = acronym;

@@ -43,27 +43,28 @@ public class ConnectResearchers {
         countOccurrence(author2Topic, topicById, occurrences, matches);
         countTfirf(documentTopics, docById, paper_count, tfirf);
 
-        TreeSet<AuthorTopic> topN = new TreeSet<>(new Comparator<AuthorTopic>() {
-
-            @Override
-            public int compare(AuthorTopic arg0, AuthorTopic arg1) {
-                int i1 = Double.compare(arg0.score, arg1.score);
-                if(i1 == 0) {
-                    int i2 = arg0.researcher_id.compareTo(arg1.researcher_id);
-                    if(i2 == 0) {
-                        int i3 = arg0.topic_id.compareTo(arg1.topic_id);
-                        if(i3 == 0) {
-                            return arg0.hashCode() - arg1.hashCode();
-                        }
-                        return i3;
-                    }
-                    return i2;
-                }
-                return i1;
-            }
-        });
-        
+        List<AuthorTopic> ats = new ArrayList<>();
         for(Map.Entry<Author, List<String>> e : author2Topic.entrySet()) {
+            TreeSet<AuthorTopic> topN = new TreeSet<>(new Comparator<AuthorTopic>() {
+
+                @Override
+                public int compare(AuthorTopic arg0, AuthorTopic arg1) {
+                    int i1 = Double.compare(arg0.score, arg1.score);
+                    if(i1 == 0) {
+                        int i2 = arg0.researcher_id.compareTo(arg1.researcher_id);
+                        if(i2 == 0) {
+                            int i3 = arg0.topic_id.compareTo(arg1.topic_id);
+                            if(i3 == 0) {
+                                return arg0.hashCode() - arg1.hashCode();
+                            }
+                            return i3;
+                        }
+                        return i2;
+                    }
+                    return i1;
+                }
+            });
+        
             System.err.println(e.getKey());
             for(String topicString : e.getValue()) {
                 System.err.println(topicString);
@@ -82,9 +83,10 @@ public class ConnectResearchers {
                     topN.add(at);
                 }
             }
+            ats.addAll(topN);
         }
 
-        return topN;
+        return ats;
         
     }
 

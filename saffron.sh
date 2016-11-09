@@ -102,3 +102,19 @@ echo "########################################"
 echo "## Step 7: Connect Authors            ##"
 echo "########################################"
 $DIR/connect-authors -t $CORPUS -p $OUTPUT/topics-stats.json -d $OUTPUT/doc-topics-stats.json -o $OUTPUT/author-topics.json
+
+echo "########################################"
+echo "## Step 8: Topic Similarity           ##"
+echo "########################################"
+$DIR/topic-sim -d $OUTPUT/doc-topics-stats.json -o $OUTPUT/topic-sim.json
+
+echo "########################################"
+echo "## Step 9: Author Similarity          ##"
+echo "########################################"
+$DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
+
+echo "########################################"
+echo "## Step 10: Taxonomy Extraction       ##"
+echo "########################################"
+
+
