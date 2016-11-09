@@ -18,6 +18,7 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.DomainModel;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -74,7 +75,7 @@ public class Main {
             }
  
             final File configuration = (File)os.valueOf("c");
-            if(configuration == null || !configuration.exists()) {
+            if(configuration != null && !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
             final File corpusFile  = (File)os.valueOf("t");
@@ -88,18 +89,14 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
-            Configuration config = mapper.readValue(configuration, Configuration.class);
+            Configuration config = configuration == null ? new Configuration() : mapper.readValue(configuration, Configuration.class);
             Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
     
             DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
             
-            List<String> result = extractDomainModel(config, searcher);
+            DomainModel result = new DomainModel(extractDomainModel(config, searcher));
             
-            try(PrintWriter out = new PrintWriter(output)) {
-                for(String r : result) {
-                    out.println(r);
-                }
-            }
+            mapper.writeValue(output, result);
         } catch(Throwable t) {
             t.printStackTrace();
             System.exit(-1);

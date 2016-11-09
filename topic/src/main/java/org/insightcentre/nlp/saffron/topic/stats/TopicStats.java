@@ -43,6 +43,10 @@ public class TopicStats {
         //for i, paper_topic in enumerate(q):
         for(DocumentTopic paper_topic : docTopics) {
             Topic t = topics_by_id.get(paper_topic.topic_string);
+            if(t == null) {
+                System.err.println("Document topics refer to unknown topic: " + paper_topic.topic_string);
+                continue;
+            }
             tfidf_score_calc.calculate(paper_topic, paper_count.getInt(paper_topic.topic_string), total_papers, unembedded_occ);
             paper_topic.score = paper_topic.tfidf * t.score;
         }
@@ -52,7 +56,7 @@ public class TopicStats {
         EmbeddednessCalculator emb_calc = new EmbeddednessCalculator();
         
         for(Topic topic : topics) {
-            String[] tokens = topic.slug.split("_");
+            String[] tokens = topic.topicString.split("\\s+");
             emb_calc.add(tokens, topic);
         }
         return emb_calc.calculate();
@@ -108,7 +112,7 @@ public class TopicStats {
             Object2IntMap<String> embedded_occ = unemb_calc.calculate(topic, docTopics);
             for(DocumentTopic docTopic : docTopics) {
                 if(docTopic.topic_string.equals(topic.topicString)) {
-                    dtm.put(docTopic, embedded_occ.get(docTopic.document_id));
+                    dtm.put(docTopic, embedded_occ.getInt(docTopic.document_id));
                 }
 
             }

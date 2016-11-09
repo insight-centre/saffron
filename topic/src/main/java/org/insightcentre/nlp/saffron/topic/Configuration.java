@@ -21,7 +21,7 @@ public class Configuration {
     /**
      * The file containing the stopwords
      */
-    public File stopwordFile = new File("src/main/resources/stopwords/english");
+    public File stopwords = new File("models/stopwords/english");
     /**
      * The maximum number of topics to generate per document
      */
@@ -72,11 +72,11 @@ public class Configuration {
     }
 
     public File getStopwordFile() {
-        return stopwordFile;
+        return stopwords;
     }
 
     public void setStopwordFile(File stopwordFile) {
-        this.stopwordFile = stopwordFile;
+        this.stopwords = stopwordFile;
     }
 
     private Set<String> sws = null;
@@ -85,7 +85,7 @@ public class Configuration {
             return sws;
         }
         Set<String> s = new HashSet<>();
-        try(BufferedReader br = new BufferedReader(new FileReader(stopwordFile))) {
+        try(BufferedReader br = new BufferedReader(new FileReader(stopwords))) {
             String line;
             while((line = br.readLine()) != null) {
                 s.add(line);

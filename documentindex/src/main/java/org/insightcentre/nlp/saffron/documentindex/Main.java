@@ -27,6 +27,7 @@ public class Main {
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The file containing the corpus metadata OR a folder all files of which will be automatically indexed").withRequiredArg().ofType(File.class);
                 accepts("i", "The file to write the index to").withRequiredArg().ofType(File.class);
+                accepts("o", "Where to write the output corpus metadata file to").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
             
@@ -42,6 +43,7 @@ public class Main {
                 badOptions(p, "Configuration does not exist");
             }
             final File indexFile = (File)os.valueOf("i");
+            final File outputFile = (File)os.valueOf("o");
             
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
@@ -51,10 +53,11 @@ public class Main {
                 if(indexFile == null) {
                     badOptions(p, "Corpus file is a folder but index file is null");
                 }
+                if(outputFile == null) {
+                    badOptions(p, "Corpus file is a folder but output file not specified");
+                }
                 corpus = Corpus.fromFolder(corpusFile, indexFile);
-                File corpusMetadata = new File(indexFile.getAbsolutePath() + "-corpus.json");
-                mapper.writeValue(corpusMetadata, corpus);
-                System.err.println("Wrote corpus metadata to " + corpusMetadata.getAbsolutePath());
+                mapper.writeValue(outputFile, corpus);
             } else {
                 corpus = mapper.readValue(corpusFile, Corpus.class);
                 if(indexFile != null && !indexFile.equals(corpus.index)) {

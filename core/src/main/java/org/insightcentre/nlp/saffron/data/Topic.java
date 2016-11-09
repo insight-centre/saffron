@@ -11,55 +11,33 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Topic implements Comparable<Topic> {
 
-    public final String topicString, slug;
-    public final int occurrences;
+    @JsonProperty("topic_string")
+    /** The unique string for this topic */
+    public final String topicString;
+    /** The number of times this occurs in text */
+    public int occurrences;
+    /** The number of documents this occurs in */
+    public int matches;
+    /** The importance of this topic */
     public double score;
+    /** Any detected morphological variations of this term */
     public final List<MorphologicalVariation> mvList;
+    /** The link to DBpedia (may be null) */
     public URL dbpediaURL;
 
     @JsonCreator
     public Topic(
         @JsonProperty(value="topic_string", required = true) String topic_string, 
-        @JsonProperty(value="slug", required = true) String slug, 
         @JsonProperty(value="occurrences") int occurrences,
+        @JsonProperty(value="matches") int matches,
         @JsonProperty(value="score") double score, 
         @JsonProperty(value="mv_list") List<MorphologicalVariation> mvList) {
         super();
         this.topicString = topic_string;
-        this.slug = slug;
         this.occurrences = occurrences;
+        this.matches     = matches;
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
-    }
-
-    @JsonProperty("topic_string")
-    public String getTopic_string() {
-        return topicString;
-    }
-
-    public String getSlug() {
-        return slug;
-    }
-
-    public int getOccurrences() {
-        return occurrences;
-    }
-
-    public double getScore() {
-        return score;
-    }
-
-    public URL getDbpediaURL() {
-        return dbpediaURL;
-    }
-
-    public void setDbpediaURL(URL dbpediaURL) {
-        this.dbpediaURL = dbpediaURL;
-    }
-
-    @JsonProperty("mv_list")
-    public List<MorphologicalVariation> getMvList() {
-        return mvList;
     }
 
     public void addMorphologicalVariation(MorphologicalVariation mv) {
@@ -71,9 +49,6 @@ public class Topic implements Comparable<Topic> {
         int i0 = Double.compare(score, o.score);
         if (i0 == 0) {
             int i1 = topicString.compareTo(o.topicString);
-            if (i1 == 0) {
-                return slug.compareTo(o.slug);
-            }
             return i1;
         }
         return i0;
@@ -103,13 +78,17 @@ public class Topic implements Comparable<Topic> {
 
     public static class MorphologicalVariation {
         
+        /** The string form of this topic as it occurs */
         public final String string;
+        /** The number of times this variant occurs */
         public int extractedTermOccurrences;
+        /** The pattern that this term matched */
         public String pattern;
+        /** The expanded version of the acronym (if any) */
         public String expandedAcronym;
+        /** The acronym for the term */
         public String acronym;
 
-      
         @JsonCreator
         public MorphologicalVariation(@JsonProperty(value="string") String string) {
             super();
@@ -123,38 +102,6 @@ public class Topic implements Comparable<Topic> {
         @Override
         public String toString() {
             return "MorphologicalVariation [string=" + string + "]";
-        }
-
-        public int getExtractedTermOccurrences() {
-            return extractedTermOccurrences;
-        }
-
-        public void setExtractedTermOccurrences(int extractedTermOccurrences) {
-            this.extractedTermOccurrences = extractedTermOccurrences;
-        }
-
-        public String getPattern() {
-            return pattern;
-        }
-
-        public void setPattern(String pattern) {
-            this.pattern = pattern;
-        }
-
-        public String getExpandedAcronym() {
-            return expandedAcronym;
-        }
-
-        public void setExpandedAcronym(String expandedAcronym) {
-            this.expandedAcronym = expandedAcronym;
-        }
-
-        public String getAcronym() {
-            return acronym;
-        }
-
-        public void setAcronym(String acronym) {
-            this.acronym = acronym;
         }
 
         @Override

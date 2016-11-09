@@ -209,15 +209,9 @@ public class LinkToDBpedia implements Closeable {
             ObjectMapper mapper = new ObjectMapper();
             Configuration config = mapper.readValue(configFile, Configuration.class);
 
-            List<Topic> outTopics = new ArrayList<>();
-            try (LinkToDBpedia linker = new LinkToDBpedia(config.database)) {
-                Iterator<Topic> topics = mapper.readValues(new JsonFactory().createParser(input), Topic.class);
-                while (topics.hasNext()) {
-                    outTopics.add(linker.matchDBpediaArticle(topics.next()));
-                }
-            }
+            List<Topic> outTopics = mapper.readValue(input, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            mapper.writeValue(output, outTopics);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, outTopics);
 
         } catch (Throwable t) {
             t.printStackTrace();

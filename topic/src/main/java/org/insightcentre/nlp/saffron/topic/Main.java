@@ -117,7 +117,7 @@ public class Main {
                     }
                     mv2.add(mvx);
                 }
-                Topic t2 = new Topic(topic.topicString, topic.slug, t3.occurrences + topic.occurrences, topic.score, mv2);
+                Topic t2 = new Topic(topic.topicString, t3.occurrences + topic.occurrences, t3.matches + topic.matches, topic.score, mv2);
                 topicMap.put(t2.topicString, t2);
             } else {
                 topicMap.put(topic.topicString, topic);

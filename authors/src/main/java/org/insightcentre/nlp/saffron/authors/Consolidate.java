@@ -61,7 +61,7 @@ public class Consolidate {
 
             Corpus corpus2 = applyConsolidation(corpus, consolidation);
 
-            mapper.writerWithDefaultPrettyPrinter().writeValue(corpusFile, corpus2);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus2);
             
         } catch(Throwable t) {
             t.printStackTrace();

@@ -52,11 +52,7 @@ public class LuceneDocument {
     public static List<Author> unmkAuthors(String field) {
         ObjectMapper mapper = new ObjectMapper();
         try {
-            Iterator<Author> authors = mapper.readValues(new JsonFactory().createParser(field), Author.class);
-            List<Author> a = new ArrayList<>();
-            while(authors.hasNext())
-                a.add(authors.next());
-            return a;
+            return mapper.readValue(field, mapper.getTypeFactory().constructCollectionType(List.class, Author.class));
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
