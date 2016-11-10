@@ -51,7 +51,7 @@ public class DocumentSearcherFactory {
             try(DocumentIndexer indexer = luceneIndexer(dir, LuceneAnalyzer.LOWERCASE_ONLY)) {
                 for(Document doc : corpus.documents) {
                     Document doc2 = DocumentAnalyzer.analyze(doc);
-                    indexer.indexDoc(doc2, doc2.contents);
+                    indexer.indexDoc(doc2, doc2.getContents());
                 }
                 indexer.commit();
             }

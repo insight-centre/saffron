@@ -2,10 +2,13 @@ package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -13,6 +16,7 @@ import java.util.Objects;
  * 
  * @author John McCrae <john@mccr.ae>
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties({"contents"})
 public class Document {
     public final File file;
@@ -21,19 +25,22 @@ public class Document {
     @JsonProperty("mime_type")
     public String mimeType;
     public List<Author> authors;
-    public String contents;
+    private String contents;
+    public Map<String, String> metadata;
 
     @JsonCreator
     public Document(@JsonProperty(value="file", required=true) File file, 
                     @JsonProperty(value="id", required=true) String id,
                     @JsonProperty("name") String name,
                     @JsonProperty("mime_type") String mimeType, 
-                    @JsonProperty("authors") List<Author> authors) {
+                    @JsonProperty("authors") List<Author> authors,
+                    @JsonProperty("metadata") Map<String, String> metadata) {
         this.file = file;
         this.id = id;
         this.name = name;
         this.mimeType = mimeType;
         this.authors = authors == null ? new ArrayList<Author>() : authors;
+        this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
     }
 
     /**

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.zip.ZipEntry;
@@ -48,7 +49,9 @@ public class Corpus {
         }
         List<Document> docs = new ArrayList<>();
         for(File f : folder.listFiles()) {
-            docs.add(new Document(f, f.getName(), f.getName(), Files.probeContentType(f.toPath()), Collections.EMPTY_LIST));
+            docs.add(new Document(f, f.getName(), f.getName(), 
+                Files.probeContentType(f.toPath()), new ArrayList<Author>(), 
+                new HashMap<String, String>()));
         }
         
         return new Corpus(docs, index);
@@ -71,7 +74,10 @@ public class Corpus {
         while(zes.hasMoreElements()) {
             ZipEntry ze = zes.nextElement();
             if(!ze.isDirectory()) {
-                docs.add(new Document(new File(zipFile, ze.getName()), ze.getName(), ze.getName(), Files.probeContentType(new File(ze.getName()).toPath()), Collections.EMPTY_LIST));
+                docs.add(new Document(new File(zipFile, ze.getName()), ze.getName(), 
+                    ze.getName(), Files.probeContentType(new File(ze.getName()).toPath()), 
+                    new ArrayList<Author>(), new HashMap<String, String>()));
+                    
             }
         }
         

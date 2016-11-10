@@ -21,6 +21,7 @@ A single document in a corpus. It has the following properties
 * `name`: The human readable name of the document
 * `mime_type`: The MIME type of the document
 * `authors`: An array of authors of this document
+* `metadata`: An object containing any other properties
 
 ### Author
 

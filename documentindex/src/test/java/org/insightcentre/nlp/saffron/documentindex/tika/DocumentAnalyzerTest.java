@@ -43,14 +43,14 @@ public class DocumentAnalyzerTest {
     @Test
     public void testAnalyze() throws Exception {
         System.out.println("analyze");
-        Document txtFile = new Document(new File("src/test/resources/test.txt"), "test" , "test", null, Collections.EMPTY_LIST);
-        Document pdfFile = new Document(new File("src/test/resources/test.pdf"), "test" , "test", null, Collections.EMPTY_LIST);
-        Document docFile = new Document(new File("src/test/resources/test.doc"), "test" , "test", null, Collections.EMPTY_LIST);
+        Document txtFile = new Document(new File("src/test/resources/test.txt"), "test" , "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP);
+        Document pdfFile = new Document(new File("src/test/resources/test.pdf"), "test" , "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP);
+        Document docFile = new Document(new File("src/test/resources/test.doc"), "test" , "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP);
         DocumentAnalyzer instance = new DocumentAnalyzer();
         
         for(Document d : Arrays.asList(txtFile, pdfFile, docFile)) {
             Document result = instance.analyze(d);
-            assertEquals("This is a test file.", result.contents.trim());
+            assertEquals("This is a test file.", result.getContents().trim());
         }
     }
 
