@@ -7,8 +7,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Objects;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * A corpus of documents for processing
@@ -46,6 +49,30 @@ public class Corpus {
         List<Document> docs = new ArrayList<>();
         for(File f : folder.listFiles()) {
             docs.add(new Document(f, f.getName(), f.getName(), Files.probeContentType(f.toPath()), Collections.EMPTY_LIST));
+        }
+        
+        return new Corpus(docs, index);
+    }
+
+    /**
+     * Create a corpus from a folder, each file will be considered a single document
+     * @param zipFile The folder
+     * @param index The index to write the index
+     * @return A corpus object
+     * @throws IOException If an IO error occurs
+     */
+    public static Corpus fromZIP(File zipFile, File index) throws IOException {
+        if(!zipFile.exists() && zipFile.isDirectory()) {
+            throw new IllegalArgumentException(zipFile.getName() + " does not exist or is a folder");
+        }
+        List<Document> docs = new ArrayList<>();
+        ZipFile zip = new ZipFile(zipFile);
+        Enumeration<? extends ZipEntry> zes = zip.entries();
+        while(zes.hasMoreElements()) {
+            ZipEntry ze = zes.nextElement();
+            if(!ze.isDirectory()) {
+                docs.add(new Document(new File(zipFile, ze.getName()), ze.getName(), ze.getName(), Files.probeContentType(new File(ze.getName()).toPath()), Collections.EMPTY_LIST));
+            }
         }
         
         return new Corpus(docs, index);

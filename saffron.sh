@@ -60,7 +60,7 @@ then
     CORPUS=$1
     $DIR/index-corpus -c $CORPUS -l $OUTPUT/index || die "Indexing failed"
     cp $1 $OUTPUT/corpus-unconsolidated.json
-elif [ -d $1 ]
+elif [ -d $1 ] || [[ "$!" == *.zip ]]
 then
     CORPUS=$OUTPUT/corpus-unconsolidated.json
     $DIR/index-corpus -c $1 -i $OUTPUT/index -o $CORPUS || die "Indexing failed"

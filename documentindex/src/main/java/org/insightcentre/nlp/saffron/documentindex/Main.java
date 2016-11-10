@@ -58,7 +58,16 @@ public class Main {
                 }
                 corpus = Corpus.fromFolder(corpusFile, indexFile);
                 mapper.writeValue(outputFile, corpus);
-            } else {
+            } else if(corpusFile.getName().endsWith(".zip")) {
+                if(indexFile == null) {
+                    badOptions(p, "Corpus file is a ZIP but index file is null");
+                }
+                if(outputFile == null) {
+                    badOptions(p, "Corpus file is a ZIP but output file not specified");
+                }
+                corpus = Corpus.fromZIP(corpusFile, indexFile);
+                mapper.writeValue(outputFile, corpus);
+             } else {
                 corpus = mapper.readValue(corpusFile, Corpus.class);
                 if(indexFile != null && !indexFile.equals(corpus.index)) {
                     System.err.println("Using " + indexFile + " as index not " + corpus.index + " as in metadata");
