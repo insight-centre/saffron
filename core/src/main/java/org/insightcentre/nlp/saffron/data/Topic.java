@@ -23,7 +23,7 @@ public class Topic implements Comparable<Topic> {
     /** Any detected morphological variations of this term */
     public final List<MorphologicalVariation> mvList;
     /** The link to DBpedia (may be null) */
-    public URL dbpediaURL;
+    public URL dbpedia_url;
 
     @JsonCreator
     public Topic(
@@ -86,11 +86,11 @@ public class Topic implements Comparable<Topic> {
         /** The string form of this topic as it occurs */
         public final String string;
         /** The number of times this variant occurs */
-        public int extractedTermOccurrences;
+        public int occurrences;
         /** The pattern that this term matched */
         public String pattern;
         /** The expanded version of the acronym (if any) */
-        public String expandedAcronym;
+        public String expanded_acronym;
         /** The acronym for the term */
         public String acronym;
 

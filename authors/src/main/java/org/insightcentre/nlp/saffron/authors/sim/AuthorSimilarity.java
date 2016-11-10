@@ -2,7 +2,6 @@ package org.insightcentre.nlp.saffron.authors.sim;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -29,9 +28,9 @@ public class AuthorSimilarity {
         List<AuthorAuthor> topicAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
         for(AuthorTopic at : ats) {
-            if(!vectors.containsKey(at.researcher_id))
-                vectors.put(at.researcher_id, new Object2DoubleOpenHashMap<String>());
-            vectors.get(at.researcher_id).put(at.topic_id, at.score);
+            if(!vectors.containsKey(at.author_id))
+                vectors.put(at.author_id, new Object2DoubleOpenHashMap<String>());
+            vectors.get(at.author_id).put(at.topic_id, at.score);
         }
         for(String t1 : vectors.keySet()) {
             TreeSet<AuthorAuthor> topN = new TreeSet<>(new Comparator<AuthorAuthor>() {

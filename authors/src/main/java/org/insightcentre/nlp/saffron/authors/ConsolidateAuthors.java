@@ -49,7 +49,7 @@ public class ConsolidateAuthors {
     }
 
     public static boolean isSimilar(Author author, Author author2) {
-        return new PyAuthorSim().similar(author.getName(), author2.getName());
+        return new PyAuthorSim().similar(author.name, author2.name);
     }
 
     static Author _choose_author(Collection<Author> authors) {
@@ -60,7 +60,7 @@ public class ConsolidateAuthors {
         Author best = null;
         double bestScore = 0.0;
         for (Author author : authors) {
-            PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.getName());
+            PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.name);
             double score = 0.0;
             for (int i = 0; i < pa.words.length; i++) {
                 double wordScore = (pa.words[i].length() - count(pa.words[i], '_'))
@@ -79,7 +79,7 @@ public class ConsolidateAuthors {
                 variants.add(author.name);
             }
         }
-        return new Author(best.name, variants);
+        return new Author(best.id, best.name, variants);
     }
 
     static int count(String w, char c) {

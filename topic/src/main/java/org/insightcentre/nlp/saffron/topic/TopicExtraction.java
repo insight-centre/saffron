@@ -32,9 +32,9 @@ public class TopicExtraction {
     private Set<DocumentTopic> convertExtractedDocTopics(Document document, List<ExtractedTopic> tb) {
         Map<DocumentTopic,DocumentTopic> docTopics = new HashMap<>();
         for(ExtractedTopic t : tb) {
-            DocumentTopic dt = new DocumentTopic(document.id, t.getRootSequence(), 1, 1, t.getPattern(), t.getAcronym());
+            DocumentTopic dt = new DocumentTopic(document.id, t.getRootSequence(), 1, t.getPattern(), t.getAcronym());
             if(docTopics.containsKey(dt)) { // DocumentTopic.equals uses only docId and topicString
-                DocumentTopic dt2 = new DocumentTopic(document.id, t.getRootSequence(), docTopics.get(dt).matches + 1, docTopics.get(dt).occurrences, t.getPattern(), t.getAcronym());
+                DocumentTopic dt2 = new DocumentTopic(document.id, t.getRootSequence(), docTopics.get(dt).occurrences + 1, t.getPattern(), t.getAcronym());
                 docTopics.put(dt2, dt2);
             } else {
                 docTopics.put(dt, dt);
@@ -125,7 +125,7 @@ public class TopicExtraction {
         topic.occurrences++;
 		for (MorphologicalVariation mv : topic.mvList) {
 			if (mv.getString().equals(topicString)) {
-				mv.extractedTermOccurrences++;
+				mv.occurrences++;
 				variationExists = true;
 				break;
 			}
@@ -152,8 +152,8 @@ public class TopicExtraction {
     private MorphologicalVariation createMorphologicalVariation(ExtractedTopic extractedTopic) {
         MorphologicalVariation mv = new MorphologicalVariation(extractedTopic.getTopicString());
         mv.pattern = extractedTopic.getPattern();
-        mv.expandedAcronym = extractedTopic.getExpandedAcronym();
-        mv.extractedTermOccurrences = 1;
+        mv.expanded_acronym = extractedTopic.getExpandedAcronym();
+        mv.occurrences = 1;
         mv.acronym = extractedTopic.getAcronym();
     	return mv;
     }

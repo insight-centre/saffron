@@ -25,7 +25,7 @@ public class Document {
     public Document(@JsonProperty(value="file", required=true) File file, 
                     @JsonProperty(value="id", required=true) String id,
                     @JsonProperty("name") String name,
-                    @JsonProperty("mimeType") String mimeType, 
+                    @JsonProperty("mime_type") String mimeType, 
                     @JsonProperty("authors") List<Author> authors) {
         this.file = file;
         this.id = id;
@@ -72,6 +72,7 @@ public class Document {
         return file;
     }
 
+    @JsonProperty("mime_type")
     public String getMimeType() {
         return mimeType;
     }

@@ -14,7 +14,6 @@ public class DocumentTopic {
     public final String document_id;
     public final String topic_string;
     public final int occurrences;
-    public final int matches;
     public final String pattern;
     public final String acronym;
     public Double score;
@@ -25,53 +24,13 @@ public class DocumentTopic {
     public DocumentTopic(@JsonProperty(value="document_id",required=true) String document_id, 
                          @JsonProperty(value="topic_string",required=true) String topic_string, 
                          @JsonProperty("occurences") int occurences, 
-                         @JsonProperty("matches") int matches, 
                          @JsonProperty("pattern") String pattern, 
                          @JsonProperty("acronym") String acronym) {
         this.document_id = document_id;
         this.topic_string = topic_string;
         this.occurrences = occurences;
-        this.matches = matches;
         this.pattern = pattern;
         this.acronym = acronym;
-    }
-
-    @JsonProperty("document_id")
-    public String getDocumentId() {
-        return document_id;
-    }
-
-    @JsonProperty("topic_string")
-    public String getTopicString() {
-        return topic_string;
-    }
-
-    public int getMatches() {
-        return matches;
-    }
-
-    public String getPattern() {
-        return pattern;
-    }
-
-    public String getAcronym() {
-        return acronym;
-    }
-
-    public Double getScore() {
-        return score;
-    }
-
-    public void setScore(Double score) {
-        this.score = score;
-    }
-
-    public Double getTfidf() {
-        return tfidf;
-    }
-
-    public void setTfidf(Double tfidf) {
-        this.tfidf = tfidf;
     }
 
     @Override

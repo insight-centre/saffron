@@ -123,7 +123,7 @@ public class LinkToDBpedia implements Closeable {
         // TODO: Do something better here
         if (topic2titles.size() == 1) {
             try {
-                original.dbpediaURL = new URL("http://dbpedia.org/resource/" + topic2titles.get(0).dbpediaKey);
+                original.dbpedia_url = new URL("http://dbpedia.org/resource/" + topic2titles.get(0).dbpediaKey);
             } catch (MalformedURLException ex) {
                 System.err.println("Bad URL " + topic2titles.get(0).dbpediaKey);
             }

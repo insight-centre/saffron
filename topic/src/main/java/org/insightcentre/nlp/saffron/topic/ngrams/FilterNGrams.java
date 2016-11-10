@@ -76,7 +76,7 @@ public class FilterNGrams {
     }
 
     private static boolean is_invalid(Topic topic) {
-        if(topic.dbpediaURL != null)
+        if(topic.dbpedia_url != null)
             return false;
         String[] words = topic.topicString.split("\\s+");
         // The original Saffron implementation only filters topics of exactly

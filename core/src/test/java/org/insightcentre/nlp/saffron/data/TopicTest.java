@@ -46,6 +46,7 @@ public class TopicTest {
         assertEquals(5, topic.occurrences);
         assertEquals(1, topic.mvList.size());
         assertEquals("mv1", topic.mvList.get(0).string);
+        topic.dbpedia_url = new URL("http://dbpedia.org/resource/Example");
         final String json = mapper.writeValueAsString(topic);
         assertEquals(topic, mapper.readValue(json, Topic.class));
         

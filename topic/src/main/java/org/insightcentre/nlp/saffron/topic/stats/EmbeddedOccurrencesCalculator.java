@@ -75,7 +75,7 @@ class EmbeddedOccurrencesCalculator {
     public int sum(List<DocumentTopic> dts) {
         int sum = 0;
         for(DocumentTopic dt : dts)
-            sum += dt.matches;
+            sum += dt.occurrences;
         return sum;
     }
 

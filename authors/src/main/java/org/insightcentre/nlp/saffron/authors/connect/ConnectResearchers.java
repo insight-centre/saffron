@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeSet;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
@@ -22,6 +23,42 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  * @author John McCrae <john@mccr.ae>
  */
 public class ConnectResearchers {
+    private static class AT {
+        public final String author;
+        public final String topic;
+
+        public AT(String author, String topic) {
+            this.author = author;
+            this.topic = topic;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 17 * hash + Objects.hashCode(this.author);
+            hash = 17 * hash + Objects.hashCode(this.topic);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final AT other = (AT) obj;
+            if (!Objects.equals(this.author, other.author)) {
+                return false;
+            }
+            if (!Objects.equals(this.topic, other.topic)) {
+                return false;
+            }
+            return true;
+        }
+        
+    }
     private final int top_n;
 
     public ConnectResearchers(int top_n) {
@@ -36,10 +73,10 @@ public class ConnectResearchers {
         //Map<Author, List<String>> author2Doc   = buildAuthor2Doc(documentTopics, docById);
         Map<String, Topic>        topicById    = buildTopicById(topics);
 
-        Object2IntMap<Author>     occurrences = new Object2IntOpenHashMap<>();
-        Object2IntMap<Author>     matches     = new Object2IntOpenHashMap<>();
-        Object2IntMap<Author>     paper_count = new Object2IntOpenHashMap<>();
-        Object2DoubleMap<Author>  tfirf       = new Object2DoubleOpenHashMap<>();
+        Object2IntMap<AT>     occurrences = new Object2IntOpenHashMap<>();
+        Object2IntMap<AT>     matches     = new Object2IntOpenHashMap<>();
+        Object2IntMap<AT>     paper_count = new Object2IntOpenHashMap<>();
+        Object2DoubleMap<AT>  tfirf       = new Object2DoubleOpenHashMap<>();
         countOccurrence(author2Topic, topicById, occurrences, matches);
         countTfirf(documentTopics, docById, paper_count, tfirf);
 
@@ -51,7 +88,7 @@ public class ConnectResearchers {
                 public int compare(AuthorTopic arg0, AuthorTopic arg1) {
                     int i1 = Double.compare(arg0.score, arg1.score);
                     if(i1 == 0) {
-                        int i2 = arg0.researcher_id.compareTo(arg1.researcher_id);
+                        int i2 = arg0.author_id.compareTo(arg1.author_id);
                         if(i2 == 0) {
                             int i3 = arg0.topic_id.compareTo(arg1.topic_id);
                             if(i3 == 0) {
@@ -67,14 +104,15 @@ public class ConnectResearchers {
         
             System.err.println(e.getKey());
             for(String topicString : e.getValue()) {
+                AT atKey = new AT(e.getKey().id, topicString);
                 System.err.println(topicString);
                 AuthorTopic at = new AuthorTopic();
-                at.researcher_id = e.getKey().name;
+                at.author_id     = e.getKey().id;
                 at.topic_id      = topicString;
-                at.tfirf         = tfirf.getDouble(e.getKey());
-                at.matches       = matches.getInt(e.getKey());
-                at.occurrences   = occurrences.getInt(e.getKey());
-                at.paper_count   = paper_count.getInt(e.getKey());
+                at.tfirf         = tfirf.getDouble(atKey);
+                at.matches       = matches.getInt(atKey);
+                at.occurrences   = occurrences.getInt(atKey);
+                at.paper_count   = paper_count.getInt(atKey);
                 at.score         = at.tfirf * at.paper_count;
                 if(topN.size() < top_n) {
                     topN.add(at);
@@ -121,7 +159,7 @@ public class ConnectResearchers {
         return docById;
     }
 
-    private void countOccurrence(Map<Author, List<String>> author2Topic, Map<String, Topic> topics, Object2IntMap<Author> occurrences, Object2IntMap<Author> matches) {
+    private void countOccurrence(Map<Author, List<String>> author2Topic, Map<String, Topic> topics, Object2IntMap<AT> occurrences, Object2IntMap<AT> matches) {
         for(Map.Entry<Author, List<String>> e : author2Topic.entrySet()) {
             Author a = e.getKey();
             for(String topic_string : e.getValue()) {
@@ -130,19 +168,21 @@ public class ConnectResearchers {
                     System.err.println("Topic missing: " + topic_string);
                     continue;
                 }
-                occurrences.put(a, occurrences.getInt(a) + t.occurrences);
-                matches.put(a, matches.getInt(a) + t.matches);
+                AT at = new AT(a.id, topic_string);
+                occurrences.put(at, occurrences.getInt(at) + t.occurrences);
+                matches.put(at, matches.getInt(at) + t.matches);
             }
         }
     }
 
-    private void countTfirf(List<DocumentTopic> docTopics, Map<String, Document> docById, Object2IntMap<Author> paper_count, Object2DoubleMap<Author> tfirf) {
+    private void countTfirf(List<DocumentTopic> docTopics, Map<String, Document> docById, Object2IntMap<AT> paper_count, Object2DoubleMap<AT> tfirf) {
         for(DocumentTopic dt : docTopics) {
             Document doc = docById.get(dt.document_id);
             for(Author a : doc.authors) {
-                paper_count.put(a, paper_count.getInt(a) + 1);
+                AT at = new AT(a.id, dt.topic_string);
+                paper_count.put(at, paper_count.getInt(at) + 1);
                 if(dt.tfidf != null)
-                    tfirf.put(a, tfirf.getDouble(a) + dt.tfidf);
+                    tfirf.put(at, tfirf.getDouble(at) + dt.tfidf);
             }
         }
     }

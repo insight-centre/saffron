@@ -52,7 +52,7 @@ script takes two arguments
 1. The corpus, which may be 
     1. A folder containing files in TXT, DOC or PDF
     2. A zip file containing files in TXT, DOC or PDF
-    3. A Json metadata file describing the corpus (see [Saffron Formats](FORMATS))
+    3. A Json metadata file describing the corpus (see [Saffron Formats](FORMATS.md))
 2. The output folder to which the results are written
 
 For example
