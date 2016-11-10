@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,9 +17,10 @@ import java.util.Objects;
 public class Document {
     public final File file;
     public final String id;
-    public final String name;
-    public final String mimeType;
-    public final List<Author> authors;
+    public String name;
+    @JsonProperty("mime_type")
+    public String mimeType;
+    public List<Author> authors;
     public String contents;
 
     @JsonCreator
@@ -31,7 +33,7 @@ public class Document {
         this.id = id;
         this.name = name;
         this.mimeType = mimeType;
-        this.authors = authors;
+        this.authors = authors == null ? new ArrayList<Author>() : authors;
     }
 
     /**

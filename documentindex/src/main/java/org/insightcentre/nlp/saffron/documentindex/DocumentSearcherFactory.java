@@ -13,6 +13,7 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.documentindex.DocumentIndexFactory.LuceneAnalyzer;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneIndexer;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneSearcher;
+import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 
 /**
  * For creating a document searcher
@@ -49,7 +50,8 @@ public class DocumentSearcherFactory {
             dir = luceneFileDirectory(corpus.index, true);
             try(DocumentIndexer indexer = luceneIndexer(dir, LuceneAnalyzer.LOWERCASE_ONLY)) {
                 for(Document doc : corpus.documents) {
-                    indexer.indexDoc(doc, loadText(doc.file));
+                    Document doc2 = DocumentAnalyzer.analyze(doc);
+                    indexer.indexDoc(doc2, doc2.contents);
                 }
                 indexer.commit();
             }
@@ -58,17 +60,6 @@ public class DocumentSearcherFactory {
         }
         return luceneSearcher(dir, LuceneAnalyzer.LOWERCASE_ONLY);
     }
-    
-    private static String loadText(File f) throws IOException {
-        BufferedReader br = new BufferedReader(new FileReader(f));
-        StringBuilder sb = new StringBuilder();
-        String line = null;
-        while((line = br.readLine()) != null) {
-            sb.append(line).append(" ");
-        }
-        return sb.toString();
-    }
-
 
     private static Directory luceneFileDirectory(File indexPath, boolean clearExistingIndex)
         throws IOException, IndexingException {
