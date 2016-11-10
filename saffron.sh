@@ -96,17 +96,17 @@ $DIR/dbpedia-lookup -c $OUTPUT/dbpedia.config -t $OUTPUT/topics-extracted.json \
 echo "########################################"
 echo "## Step 6: Topic Statistics           ##"
 echo "########################################"
-$DIR/topic-stats -t $OUTPUT/topics-extracted.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics-stats.json --ot $OUTPUT/topics-stats.json
+$DIR/topic-stats -t $OUTPUT/topics-extracted.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
 
 echo "########################################"
 echo "## Step 7: Connect Authors            ##"
 echo "########################################"
-$DIR/connect-authors -t $CORPUS -p $OUTPUT/topics-stats.json -d $OUTPUT/doc-topics-stats.json -o $OUTPUT/author-topics.json
+$DIR/connect-authors -t $CORPUS -p $OUTPUT/topics.json -d $OUTPUT/doc-topics.json -o $OUTPUT/author-topics.json
 
 echo "########################################"
 echo "## Step 8: Topic Similarity           ##"
 echo "########################################"
-$DIR/topic-sim -d $OUTPUT/doc-topics-stats.json -o $OUTPUT/topic-sim.json
+$DIR/topic-sim -d $OUTPUT/doc-topics.json -o $OUTPUT/topic-sim.json
 
 echo "########################################"
 echo "## Step 9: Author Similarity          ##"
@@ -116,5 +116,5 @@ $DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
 echo "########################################"
 echo "## Step 10: Taxonomy Extraction       ##"
 echo "########################################"
-$DIR/taxonomy-extract -x $CORPUS -t $OUTPUT/topics-stats.json -o $OUTPUT/taxonomy.json
+$DIR/taxonomy-extract -x $CORPUS -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json
 
