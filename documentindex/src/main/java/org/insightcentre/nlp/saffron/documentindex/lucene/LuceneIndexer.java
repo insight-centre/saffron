@@ -31,6 +31,8 @@ public class LuceneIndexer implements DocumentIndexer, Closeable {
     @Override
 	public void indexDoc(org.insightcentre.nlp.saffron.data.Document doc, String text) {
 		try {
+            if(doc.id == null)
+                throw new IllegalArgumentException("Error reading " + doc.file);
 			indexWriter.addDocument(LuceneDocument.makeDocument(doc.id, text, doc.authors, doc.name, doc.file, doc.mimeType));
 		} catch (IOException e) {
 			throw new RuntimeException(e.getMessage(), e);

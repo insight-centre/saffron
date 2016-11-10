@@ -31,12 +31,12 @@ public class LuceneDocument {
 
 	public static Document makeDocument(String id, String text, List<Author> authors, String fullName, File original, String mimeType) {
 		Document doc = new Document();
-		doc.add(new StringField(UID_NAME, id, Field.Store.YES));
-		doc.add(new TextField(CONTENTS_NAME, text, Field.Store.YES));
-		doc.add(new TextField(SOURCE_FILE, original.getAbsolutePath(), Field.Store.YES));
-		doc.add(new TextField(FULL_NAME, fullName, Field.Store.YES));
+		doc.add(new StringField(UID_NAME, id == null ? "" : id , Field.Store.YES));
+		doc.add(new TextField(CONTENTS_NAME, text == null ? "" : text, Field.Store.YES));
+		doc.add(new TextField(SOURCE_FILE, original == null ? "" : original.getAbsolutePath(), Field.Store.YES));
+		doc.add(new TextField(FULL_NAME, fullName == null ? "" : fullName, Field.Store.YES));
 		doc.add(new TextField(AUTHORS_NAME, mkAuthors(authors), Field.Store.YES));
-		doc.add(new TextField(MIME_TYPE, mimeType, Field.Store.YES));
+		doc.add(new TextField(MIME_TYPE, mimeType == null ? "" : mimeType, Field.Store.YES));
 		return doc;
 	}
 
