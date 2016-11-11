@@ -25,6 +25,8 @@ author
 10. *Taxonomy Extraction*: Organizes the topics into a single hierarchical 
 graph that allows for easy browsing of the corpus and deep insights.
 
+![Saffron Service Workflow](blob/master/docs/Saffron%20Services.png)
+
 Installation
 ------------
 
