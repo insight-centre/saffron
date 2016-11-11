@@ -96,7 +96,7 @@ $DIR/dbpedia-lookup -c $OUTPUT/dbpedia.config -t $OUTPUT/topics-extracted.json \
 echo "########################################"
 echo "## Step 6: Topic Statistics           ##"
 echo "########################################"
-$DIR/topic-stats -t $OUTPUT/topics-extracted.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
+$DIR/topic-stats -t $OUTPUT/topics-dbpedia.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
 
 echo "########################################"
 echo "## Step 7: Connect Authors            ##"
