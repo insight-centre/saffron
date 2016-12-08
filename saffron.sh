@@ -58,7 +58,7 @@ echo "########################################"
 if [[ "$1" == *.json ]]
 then
     CORPUS=$1
-    $DIR/index-corpus -c $CORPUS -l $OUTPUT/index || die "Indexing failed"
+    $DIR/index-corpus -c $CORPUS -i $OUTPUT/index || die "Indexing failed"
     cp $1 $OUTPUT/corpus-unconsolidated.json
 elif [ -d $1 ] || [[ "$!" == *.zip ]]
 then
