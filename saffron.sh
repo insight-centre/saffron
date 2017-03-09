@@ -37,7 +37,8 @@ cat > $OUTPUT/domain-model.config << DM_CONFIG
     "stopwords": "$DIR/models/stopwords/english",
     "tokenizerModel": "$DIR/models/en-token.bin",
     "posModel": "$DIR/models/en-pos-maxent.bin",
-    "chunkModel": "$DIR/models/en-chunker.bin"
+    "chunkModel": "$DIR/models/en-chunker.bin",
+    "sentModel": "$DIR/models/en-sent.bin"
 }
 DM_CONFIG
 cat > $OUTPUT/topic-extraction.config << TE_CONFIG

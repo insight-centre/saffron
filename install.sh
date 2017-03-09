@@ -17,6 +17,11 @@ then
     curl http://opennlp.sourceforge.net/models-1.5/en-token.bin      -o models/en-token.bin
 fi
 
+if [ ! -f models/en-sent.bin ]
+then
+    curl http://opennlp.sourceforge.net/models-1.5/en-sent.bin      -o models/en-sent.bin
+fi
+
 if [ ! -f models/en-pos-maxent.bin ]
 then
     curl http://opennlp.sourceforge.net/models-1.5/en-pos-maxent.bin -o models/en-pos-maxent.bin

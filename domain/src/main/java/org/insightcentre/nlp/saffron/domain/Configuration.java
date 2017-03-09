@@ -25,9 +25,13 @@ public class Configuration {
      */
     public File posModel = new File("models/en-pos-maxent.bin");
     /**
-     * The chunkModel for OpenNLP
+     * The chunk model for OpenNLP
      */
     public File chunkModel = new File("models/en-chunker.bin");
+    /**
+     * The sentence model for OpenNLP
+     */
+    public File sentModel = new File("models/en-sent.bin");
     /**
      * The maximum span to consider for nearby keyphrases
      */
@@ -59,7 +63,7 @@ public class Configuration {
             return posExtractor;
         }
         try {
-            return posExtractor = new OpenNLPPOSExtractor(tokenizerModel, posModel, chunkModel);
+            return posExtractor = new OpenNLPPOSExtractor(tokenizerModel, posModel, chunkModel, sentModel);
         } catch(IOException x) {
             throw new RuntimeException(x);
         }

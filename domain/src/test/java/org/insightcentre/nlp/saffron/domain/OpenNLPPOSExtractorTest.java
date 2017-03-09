@@ -7,6 +7,7 @@ import java.io.IOException;
 import opennlp.tools.chunker.Chunker;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
+import opennlp.tools.sentdetect.SentenceDetector;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -58,6 +59,7 @@ public class OpenNLPPOSExtractorTest {
         POSTagger tagger = mock(POSTagger.class);
         Tokenizer tokenizer = mock(Tokenizer.class);
         Chunker chunker = mock(Chunker.class);
+        SentenceDetector detector = mock(SentenceDetector.class);
         
         String documentText = "Welcome to the world of double rent and half standards. Having spent six hours asleep on the tables of an OBriens sandwich bar in the company of the more-than-patient staff, we arrive at our Edinburgh accommodation.".toLowerCase();
         String[] tokens = new String[] {
@@ -81,6 +83,7 @@ public class OpenNLPPOSExtractorTest {
         when(tokenizer.tokenize(documentText)).thenReturn(tokens);
         when(tagger.tag(tokens)).thenReturn(tags);
         when(chunker.chunk(tokens, tags)).thenReturn(chunks);
+        when(detector.sentDetect(documentText)).thenReturn(new String[] { documentText });
  
     
         
@@ -88,7 +91,7 @@ public class OpenNLPPOSExtractorTest {
         Object2IntMap<Keyphrase> phraseFreq = new Object2IntOpenHashMap<>();
         Object2IntMap<NearbyPair> pairs = new Object2IntOpenHashMap<>();
         int span = 5;
-        OpenNLPPOSExtractor instance = new OpenNLPPOSExtractor(tagger, tokenizer, chunker);
+        OpenNLPPOSExtractor instance = new OpenNLPPOSExtractor(tagger, tokenizer, chunker, detector);
         instance.processFile(documentText, wordFreq, phraseFreq, pairs, span);
         assertEquals(11, wordFreq.size());
         assertEquals(6, phraseFreq.size());

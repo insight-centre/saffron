@@ -37,6 +37,7 @@ public class Main {
         OpenNLPPOSExtractor posExtractor = configuration.loadPosExtractor();
 
         for(Document doc : searcher.allDocuments()) {
+            System.err.println("Processing " + doc.name);
             posExtractor.processFile(doc.getContents(), wordFreq, phraseFreq, pairs, configuration.span);
         }
         
