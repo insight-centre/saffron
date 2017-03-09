@@ -64,4 +64,17 @@ public class TopicExtractorGateTest {
         }
     }
 
+    @Test
+    public void testExtractTopics2() {
+        System.out.println("extractTopics");
+        String documentText = "The EA Frostbite 2 Engine was further developed into EA Frostbite 3";
+        List<String> domainModel = Arrays.asList("test", "word");
+        if(gateHome.exists()) {
+            TopicExtractorGate instance = new TopicExtractorGate(gateHome);
+            List<ExtractedTopic> result = instance.extractTopics(documentText, domainModel);
+            System.err.println(result);
+        }
+ 
+    }
+    
 }

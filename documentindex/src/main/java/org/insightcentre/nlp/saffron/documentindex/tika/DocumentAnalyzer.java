@@ -22,7 +22,7 @@ public class DocumentAnalyzer {
 
     public static Document analyze(Document d) throws IOException {
         AutoDetectParser parser = new AutoDetectParser();
-        BodyContentHandler handler = new BodyContentHandler();
+        BodyContentHandler handler = new BodyContentHandler(-1);
         Metadata metadata = new Metadata();
         InputStream stream = TikaInputStream.get(d.file.toPath());
         try {
