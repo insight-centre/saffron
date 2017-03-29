@@ -19,20 +19,28 @@ import org.insightcentre.nlp.saffron.taxonomy.graph.DirectedGraph.Edge;
 public class GraphPruning {
 
     public static <Node> DirectedGraph<Node> pruneGraph(DirectedGraph<Node> graph, Map<Node, Double> pmiMap) {
+        return pruneGraph(graph, pmiMap, 0);
+    }
 
-        List<Edge> aggregatedList = new ArrayList<>();
+    public static <Node> DirectedGraph<Node> pruneGraph(DirectedGraph<Node> graph, Map<Node, Double> pmiMap, int depth) {
+
+        DirectedGraph<Node> aggregatedList = new DirectedGraph<>(graph.getNodes());
 
         int i = 0;
-        for (Set<Node> strong : connectedSets(graph)) {
+        Set<Set<Node>> connSets = connectedSets(graph);
+        for(int j = 0; j < depth; j++) System.err.print("  ");
+        System.err.printf("%d connected sets from %d nodes\n", connSets.size(), graph.nodes.size());
+        for (Set<Node> strong : connSets) {
 
             i++;
+            List<Node> componentNodes = new ArrayList<>(strong);
             // logger.log(Level.INFO, "Pruning component " + i + "..");
-            List<Node> componentNodes = filterNodes(graph.getNodes(), strong);
-            List<Edge> filteredEdges = filterEdges(graph.getEdges(), graph, strong);
+            DirectedGraph<Node> filteredEdges = filterEdges(graph, strong);
+            //System.err.printf("%d edges after filtering\n", filteredEdges.getEdges().size());
 
-            if (componentNodes.size() > 1) {
+            if (strong.size() > 1) {
 
-                Node root = findRootName(pmiMap, componentNodes);
+                Node root = findRootName(pmiMap, strong);
 
                 // Node root = findRankedRootName(pmiMap, componentNodes,
                 // filteredEdges);
@@ -41,25 +49,30 @@ public class GraphPruning {
                 //    .log(Level.INFO, "Found component root: " + root.getTopicString());
                 // remove incoming edges for root, this step might create other
                 // subcomponents
-                List<Edge> cleanedList = new ArrayList<>();
-                for (Edge edge : filteredEdges) {
-                    Node to = graph.getNode(edge.getTo());
-                    if (to.equals(root)) {
-                        cleanedList.add(new Edge(edge.getFrom(), edge.getTo(), edge.getWeight()));
+                DirectedGraph<Node> cleanedList = new DirectedGraph<>(componentNodes);
+                for (Edge edge : filteredEdges.getEdges()) {
+                    Node to = filteredEdges.getNode(edge.getTo());
+                    Node from = filteredEdges.getNode(edge.getFrom());
+                    if (!to.equals(root)) {
+                        cleanedList.addEdge(to, from, edge.getWeight());
+                       // (new Edge(edge.getFrom(), edge.getTo(), edge.getWeight()));
                     }
                 }
+                //System.err.printf("Cleaned to %d\n", cleanedList.getEdges().size());
 
-                cleanedList = disconnectFalseRoots(new DirectedGraph(graph.nodes, cleanedList), root);
+                cleanedList = disconnectFalseRoots(cleanedList, root);
                 // connectFalseRootsToRoot(cleanedList, componentNodes, root);
+                //System.err.printf("Disconnected to %d\n", cleanedList.getEdges().size());
 
-                DirectedGraph tmpGraph = new DirectedGraph(graph.nodes, cleanedList).filterBySet(componentNodes);
+                DirectedGraph tmpGraph = cleanedList.filterBySet(componentNodes);
                 Set<Set<Node>> sets = connectedSets(tmpGraph);
+                //System.err.printf("Left %d connected sets\n", sets.size());
 
                 if (sets.size() == 1) {
 
                     //logger.log(Level.INFO, "Finding the minimum spanning tree..");
                     Edmonds ed = new Edmonds();
-                    List<Edge> resultList = ed.getMaxBranching(root, tmpGraph, cleanedList);
+                    DirectedGraph<Node> resultList = ed.getMaxBranching(root, tmpGraph, cleanedList);
 
                     aggregatedList.addAll(resultList);
                 } else {
@@ -67,11 +80,11 @@ public class GraphPruning {
                     for (Set<Node> component : sets) {
                         i++;
                         //logger.log(Level.INFO, "Pruning component " + i + "..");
-                        List<Node> cNodes = filterNodes(componentNodes, component);
-                        List<Edge> fEdges = filterEdges(cleanedList, tmpGraph, component);
+                        List<Node> cNodes = new ArrayList<>(component);
+                        DirectedGraph<Node> fEdges = filterEdges(tmpGraph, component);
 
                         if (cNodes.size() > 1) {
-                            pruneGraph(new DirectedGraph(tmpGraph.edges, fEdges).filterBySet(cNodes), pmiMap);
+                            pruneGraph(fEdges.filterBySet(cNodes), pmiMap, depth + 1);
                         }
                     }
                 }
@@ -80,12 +93,12 @@ public class GraphPruning {
             }
         }
 
-        return new DirectedGraph<>(graph.getNodes(), aggregatedList);
+        return aggregatedList;
     }
 
     public static <Node> DirectedGraph<Node> pruneMultipleParents(List<Node> nodes, DirectedGraph<Node> graph) {
 
-        List<Edge> cleanedEdges = new ArrayList<>();
+        DirectedGraph<Node> cleanedEdges = new DirectedGraph<Node>(nodes);
 
         for (Node node : nodes) {
             List<Edge> incoming = graph.getIncoming(node);
@@ -94,7 +107,9 @@ public class GraphPruning {
                 Edge incomingEdge = findMaxWeightEdge(incoming);
                 if ((incomingEdge != null)
                     && (incomingEdge.getFrom() != incomingEdge.getTo())) {
-                    cleanedEdges.add(incomingEdge);
+                    cleanedEdges.addEdge(graph.getNode(incomingEdge.getFrom()),
+                            graph.getNode(incomingEdge.getTo()),
+                            incomingEdge.getWeight());
                 }
             }
 
@@ -102,14 +117,16 @@ public class GraphPruning {
             if (outgoing != null) {
                 for (Edge outgoingEdge : outgoing) {
                     if (outgoingEdge.getFrom() != outgoingEdge.getTo()) {
-                        cleanedEdges.add(outgoingEdge);
+                        cleanedEdges.addEdge(graph.getNode(outgoingEdge.getFrom()),
+                            graph.getNode(outgoingEdge.getTo()),
+                            outgoingEdge.getWeight());
                     }
                 }
             }
         }
 
         // TODO remove parallel edges
-        return new DirectedGraph<>(nodes, cleanedEdges);
+        return cleanedEdges;
     }
 
     public static <Node> Set<Set<Node>> connectedSets(DirectedGraph<Node> graph) {
@@ -119,7 +136,7 @@ public class GraphPruning {
             s.add(n);
             sets.put(n, s);
         }
-        for (Edge e : graph.edges) {
+        for (Edge e : graph.getEdges()) {
             Node n1 = graph.getNode(e.getFrom());
             Node n2 = graph.getNode(e.getTo());
             Set<Node> s1 = sets.get(n1);
@@ -144,22 +161,21 @@ public class GraphPruning {
         return filteredNodes;
     }
 
-    private static <Node> List<Edge> filterEdges(List<Edge> edges,
-        DirectedGraph<Node> graph, Set<Node> nodes) {
+    private static <Node> DirectedGraph<Node> filterEdges(DirectedGraph<Node> graph, Set<Node> nodes) {
 
-        List<Edge> filteredEdges = new ArrayList<>();
+        DirectedGraph<Node> filteredEdges = new DirectedGraph<>(new ArrayList<>(nodes));
 
-        for (Edge edge : edges) {
+        for (Edge edge : graph.getEdges()) {
             Node from = graph.getNode(edge.getFrom());
             Node to = graph.getNode(edge.getTo());
             if (nodes.contains(from) && nodes.contains(to)) {
-                filteredEdges.add(new Edge(edge.getFrom(), edge.getTo(), edge.getWeight()));
+                filteredEdges.addEdge(from, to, edge.getWeight());
             }
         }
         return filteredEdges;
     }
 
-    private static <Node> Node findRootName(Map<Node, Double> pmiMap, List<Node> nodes) {
+    private static <Node> Node findRootName(Map<Node, Double> pmiMap, Collection<Node> nodes) {
 
         double maxSumPMI = Double.NEGATIVE_INFINITY;
         Node root = null;
@@ -173,17 +189,17 @@ public class GraphPruning {
         }
 
         if (root == null) {
-            root = nodes.get(0);
+            root = nodes.iterator().next();
         }
 
         return root;
     }
 
-    private static <Node> List<Edge> disconnectFalseRoots(DirectedGraph<Node> graph, Node root) {
-        Collection<Edge> edges = graph.edges;
-        Object2IntMap<Node> incomingLinks = new Object2IntOpenHashMap<>();
+    private static <Node> DirectedGraph<Node> disconnectFalseRoots(DirectedGraph<Node> graph, Node root) {
+        Collection<Edge> edges = graph.getEdges();
+        final Object2IntMap<Node> incomingLinks = new Object2IntOpenHashMap<>();
 
-        List<Edge> cleanedList = new ArrayList<>();
+        DirectedGraph<Node> cleanedList = new DirectedGraph<>(graph.getNodes());
 
         // compute the number of incoming links for each node
         for (Edge edge : edges) {
@@ -194,8 +210,8 @@ public class GraphPruning {
         for (Edge edge : edges) {
             Node nodeFrom = graph.getNode(edge.getFrom());
 
-            if (nodeFrom.equals(root) || incomingLinks.get(nodeFrom) > 0) {
-                cleanedList.add(edge);
+            if (nodeFrom != null && incomingLinks.containsKey(nodeFrom) && (nodeFrom.equals(root) || incomingLinks.get(nodeFrom) > 0)) {
+                cleanedList.addEdge(edge, graph);
             }
         }
 

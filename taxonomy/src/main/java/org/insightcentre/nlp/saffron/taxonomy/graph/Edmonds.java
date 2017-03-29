@@ -96,20 +96,20 @@ public class Edmonds {
     
     private ArrayList<Node> cycle;
     
-    public List<DirectedGraph.Edge> getMaxBranching(Object _root, DirectedGraph graph, List<DirectedGraph.Edge> edges) {
+    public <N> DirectedGraph<N> getMaxBranching(Object _root, DirectedGraph graph, DirectedGraph<N> edges) {
         Node root = new Node(_root);
         AdjacencyList list = new AdjacencyList();
-        for(DirectedGraph.Edge e : edges) {
+        for(DirectedGraph.Edge e : edges.getEdges()) {
             list.addEdge(new Node(graph.getNode(e.getFrom())), new Node(graph.getNode(e.getTo())), e.getWeight());
         }
         AdjacencyList result = getMaxBranching(root, list);
 
-        List<DirectedGraph.Edge> rval = new ArrayList<>();
+        DirectedGraph<N> rval = new DirectedGraph<>(graph.nodes);
         for(List<Edge> es : result.adjacencies.values())  {
             for(Edge e : es) {
-                rval.add(new DirectedGraph.Edge(graph.nodes.indexOf(e.from.o),
-                                                graph.nodes.indexOf(e.to.o),
-                                                e.weight));
+                rval.addEdge((N)e.from.o,
+                             (N)e.to.o,
+                             e.weight);
             }
         }
         return rval;

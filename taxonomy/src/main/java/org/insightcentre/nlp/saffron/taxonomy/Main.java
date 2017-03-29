@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
@@ -30,7 +30,8 @@ public class Main {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                accepts("x", "The text corpus to load").withRequiredArg().ofType(File.class);
+                //accepts("x", "The text corpus to load").withRequiredArg().ofType(File.class);
+                accepts("d", "The document topic alignment").withRequiredArg().ofType(File.class);
                 accepts("t", "The topics to load").withRequiredArg().ofType(File.class);
                 accepts("o", "Where to write the domain model").withRequiredArg().ofType(File.class);
             }};
@@ -47,9 +48,13 @@ public class Main {
             if(configuration != null && !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
-            final File corpusFile  = (File)os.valueOf("x");
-            if(corpusFile == null || !corpusFile.exists()) {
-                badOptions(p, "Corpus does not exist");
+//            final File corpusFile  = (File)os.valueOf("x");
+//            if(corpusFile == null || !corpusFile.exists()) {
+//                badOptions(p, "Corpus does not exist");
+//            }
+            final File docTopicFile = (File)os.valueOf("d");
+            if(docTopicFile != null && !docTopicFile.exists()) {
+                badOptions(p, "Doc-topic file does not exist");
             }
             final File topicFile  = (File)os.valueOf("t");
             if(topicFile == null || !topicFile.exists()) {
@@ -63,14 +68,16 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
             Configuration config = configuration == null ? new Configuration() : mapper.readValue(configuration, Configuration.class);
-            Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
+            //Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
+            List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics   = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
+//            DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
 
             Map<String, Topic> topicMap = loadMap(topics, mapper);
 
-            Taxonomy graph = TaxonomyConstructor.optimisedSimilarityGraph(searcher, config.simThreshold, config.spanSize, topicMap, config.minCommonDocs);
+            //Taxonomy graph = TaxonomyConstructor.optimisedSimilarityGraph(docTopics, config.simThreshold, config.spanSize, topicMap, config.minCommonDocs);
+            Taxonomy graph = SimpleTaxonomy.optimisedSimilarityGraph(docTopics, topicMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
             
