@@ -7,13 +7,13 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import ru.ispras.atr.features.refcorpus.Weirdness
 import ru.ispras.atr.rank.OneFeatureTCWeighterConfig
 // Be careful with this class one of the Cs is actually a cyrillic letter
-import ru.ispras.atr.candidates.TССConfig
+import ru.ispras.atr.candidates.TCCConfig
 import ru.ispras.atr.preprocess._
 import ru.ispras.atr.ATRConfig
 
 class TopicExtraction(config : Configuration) {
   val nlpPreprocessor = EmoryNLPPreprocessorConfig().build()
-  val candidatesCollector = TССConfig().build()
+  val candidatesCollector = TCCConfig().build()
   val candidatesWeighter = OneFeatureTCWeighterConfig(Weirdness()).build()
   val threshold = config.threshold
 
