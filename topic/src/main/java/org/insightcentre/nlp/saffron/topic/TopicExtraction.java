@@ -51,7 +51,7 @@ public class TopicExtraction {
             this.topics = topics;
             this.docTopics = docTopics;
         }
-        
+
 
         public Set<Topic> getTopics() {
             return topics;
@@ -64,18 +64,18 @@ public class TopicExtraction {
     }
 
     public Result extractTopics(Document doc, List<String> domainModel, Set<String> stopWords) 
-    		throws IOException {
+        throws IOException {
         List<ExtractedTopic> tb = topicExtractor.extractTopics(doc.getContents(), domainModel);
         tb = filterTopics(tb, stopWords);
-        
+
         Set<Topic> topics = convertExtractedTopics(tb, doc.getContents());
 
         Set<DocumentTopic> docTopics = convertExtractedDocTopics(doc, tb);
-        
+
         return new Result(topics, docTopics);
     }
-    
-	private List<ExtractedTopic> filterTopics(List<ExtractedTopic> extractedTopicList, Set<String> stopWords) {
+
+    private List<ExtractedTopic> filterTopics(List<ExtractedTopic> extractedTopicList, Set<String> stopWords) {
         //Filter topics
         if (extractedTopicList != null) {
             return filterExtractedTopics(extractedTopicList, stopWords);
@@ -84,31 +84,31 @@ public class TopicExtraction {
         }
     }
 
-	/**
-	 * Converts ExtractedTopic objects to Topic/Morphological Variation objects 
-	 * which are more user-friendly when used as a service.
-	 */
+    /**
+     * Converts ExtractedTopic objects to Topic/Morphological Variation objects 
+     * which are more user-friendly when used as a service.
+     */
     public Set<Topic> convertExtractedTopics(List<ExtractedTopic> extractedTopics, String text) {
-    	HashMap<String/*rootSequence*/, Topic> topicMap = new HashMap<>();
-    	
+        HashMap<String/*rootSequence*/, Topic> topicMap = new HashMap<>();
+
         Set<Topic> topics = new HashSet<>();
         for (ExtractedTopic extractedTopic : extractedTopics) {
-        	String rootSequence = extractedTopic.getRootSequence();
-        	
-        	//String context = extractedTopic.getContext();
-        	//String contextP = extractedTopic.getContextPattern();
-        	//logger.debug("\nExtracted: "+rootSequence+"\nContext: "
-        	//				+context+"\nPattern: "+contextP);
-        	
-        	Topic topic;
-        	if (topicMap.containsKey(rootSequence)) {
-        		topic = topicMap.get(rootSequence);
-        		updateTopic(topic, extractedTopic);
-        	} else {
+            String rootSequence = extractedTopic.getRootSequence();
+
+            //String context = extractedTopic.getContext();
+            //String contextP = extractedTopic.getContextPattern();
+            //logger.debug("\nExtracted: "+rootSequence+"\nContext: "
+            //				+context+"\nPattern: "+contextP);
+
+            Topic topic;
+            if (topicMap.containsKey(rootSequence)) {
+                topic = topicMap.get(rootSequence);
+                updateTopic(topic, extractedTopic);
+            } else {
                 topic = createTopic(extractedTopic);
                 topics.add(topic);
-        	}
-        	topicMap.put(rootSequence, topic);
+            }
+            topicMap.put(rootSequence, topic);
         }
         return topics;
     }
@@ -118,24 +118,26 @@ public class TopicExtraction {
      * variation for topic.  
      */
     private void updateTopic(Topic topic, ExtractedTopic extractedTopic) {
-    	String topicString = extractedTopic.getTopicString();
-    	
-		//If the variation already exists, increment it. Otherwise create it.
-		boolean variationExists = false;
+        String topicString = extractedTopic.getTopicString();
+        if(topicString.equals("real life")) 
+            System.err.println(extractedTopic);
+
+        //If the variation already exists, increment it. Otherwise create it.
+        boolean variationExists = false;
         topic.occurrences++;
-		for (MorphologicalVariation mv : topic.mvList) {
-			if (mv.getString().equals(topicString)) {
-				mv.occurrences++;
-				variationExists = true;
-				break;
-			}
-		}
-		if (!variationExists) {
-	        MorphologicalVariation mv = createMorphologicalVariation(extractedTopic);
-	        topic.mvList.add(mv);
-		}
+        for (MorphologicalVariation mv : topic.mvList) {
+            if (mv.getString().equals(topicString)) {
+                mv.occurrences++;
+                variationExists = true;
+                break;
+            }
+        }
+        if (!variationExists) {
+            MorphologicalVariation mv = createMorphologicalVariation(extractedTopic);
+            topic.mvList.add(mv);
+        }
     }
-    
+
     private Topic createTopic(ExtractedTopic extractedTopic) {
         String rootSequence = extractedTopic.getRootSequence();
         //int tokenCount = computeTokensNo(extractedTopic.getPattern());
@@ -155,7 +157,7 @@ public class TopicExtraction {
         mv.expanded_acronym = extractedTopic.getExpandedAcronym();
         mv.occurrences = 1;
         mv.acronym = extractedTopic.getAcronym();
-    	return mv;
+        return mv;
     }
 
     private List<ExtractedTopic> filterExtractedTopics(List<ExtractedTopic> extractedTopics, Set<String> stopWords) {
@@ -176,7 +178,7 @@ public class TopicExtraction {
 
         return filtered;
     }
- 
+
     public static int computeTokensNo(String s) {
         return s.split(" ").length;
     }
@@ -209,9 +211,9 @@ public class TopicExtraction {
         }
 
         // first or last word not in stopwords
-    	String firstWord = words[0].toLowerCase();
-    	String lastWord = words[words.length-1].toLowerCase();
-    	if (stopWords.contains(firstWord) || stopWords.contains(lastWord)) {
+        String firstWord = words[0].toLowerCase();
+        String lastWord = words[words.length-1].toLowerCase();
+        if (stopWords.contains(firstWord) || stopWords.contains(lastWord)) {
             return false;
         }
 
@@ -224,4 +226,4 @@ public class TopicExtraction {
         }
         return true;
     }
-    }
+}
