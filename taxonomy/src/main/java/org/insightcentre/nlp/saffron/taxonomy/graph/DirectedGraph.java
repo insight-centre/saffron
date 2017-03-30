@@ -16,15 +16,20 @@ import org.insightcentre.nlp.saffron.data.Topic;
  */
 public class DirectedGraph<Node> {
     public final List<Node> nodes;
-    public final List<Edge> edges;
+    private final List<Edge> edges;
 
-    public DirectedGraph() {
-        this.edges = Collections.EMPTY_LIST;
-        this.nodes = Collections.EMPTY_LIST;
-    }
+   // public DirectedGraph() {
+//        this.edges = new ArrayList<>();
+//        this.nodes = new ArrayList<>();
+//    }
     
-    public DirectedGraph(List<Node> nodes, List<Edge> edges) {
-        this.nodes = nodes;
+    public DirectedGraph(List<Node> nodes) {
+        this.nodes = Collections.unmodifiableList(nodes);
+        this.edges = new ArrayList<>();
+    }
+
+    private DirectedGraph(List<Node> nodes, List<Edge> edges) {
+        this.nodes = Collections.unmodifiableList(nodes);
         this.edges = edges;
     }
 
@@ -33,7 +38,7 @@ public class DirectedGraph<Node> {
     }
 
     public List<Edge> getEdges() {
-        return edges;
+        return Collections.unmodifiableList(edges);
     }
 
     public Node getNode(int id) {
@@ -43,8 +48,33 @@ public class DirectedGraph<Node> {
     public void addEdge(Node n1, Node n2, double weight) {
         int i = nodes.indexOf(n1);
         int j = nodes.indexOf(n2);
+        if(i < 0) { 
+            System.err.println(nodes.size());
+            throw new RuntimeException("Not found " + n1);
+        }
+        if(j < 0)
+            throw new RuntimeException("Not found " + n2);
         edges.add(new Edge(i, j, weight));
     }
+
+    public void addEdge(Edge e2, DirectedGraph<Node> srcGraph) {
+        int i = nodes.indexOf(srcGraph.getNode(e2.getFrom()));
+        int j = nodes.indexOf(srcGraph.getNode(e2.getTo()));
+        if(i < 0) { 
+            System.err.println(nodes.size());
+            throw new RuntimeException("Not found " + i);
+        }
+        if(j < 0)
+            throw new RuntimeException("Not found " + j);
+        edges.add(new Edge(i, j, e2.getWeight()));
+    }
+
+    public void addAll(DirectedGraph<Node> g2) {
+        for(Edge e : g2.getEdges()) {
+            addEdge(e, g2);
+        }
+    }
+
 
     public DirectedGraph<Node> filterBySet(List<Node> nodes) {
         int[] remap = new int[this.nodes.size()];
@@ -103,6 +133,8 @@ public class DirectedGraph<Node> {
         private final double weight;
 
         public Edge(int from, int to, double weight) {
+            assert(from >= 0);
+            assert(to >= 0);
             this.from = from;
             this.to = to;
             this.weight = weight;

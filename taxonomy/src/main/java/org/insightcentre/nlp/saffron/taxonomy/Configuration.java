@@ -8,7 +8,7 @@ import java.io.File;
  */
 public class Configuration {
     public boolean reuseIndex = false;
-    public double simThreshold = 0.5;
+    public double simThreshold = 0.01;
     public int spanSize = 5;
     public int minCommonDocs = 1;
 }
