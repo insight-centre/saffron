@@ -4,18 +4,32 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
-import ru.ispras.atr.features.refcorpus.Weirdness
-import ru.ispras.atr.rank.OneFeatureTCWeighterConfig
-// Be careful with this class one of the Cs is actually a cyrillic letter
+import ru.ispras.atr.features.FeatureConfig
+import ru.ispras.atr.features.refcorpus.{Weirdness, ReferenceCorpusConfig}
+import ru.ispras.atr.rank.{OneFeatureTCWeighterConfig, VotingTCWeighterConfig}
 import ru.ispras.atr.candidates.TCCConfig
 import ru.ispras.atr.preprocess._
 import ru.ispras.atr.ATRConfig
+import scala.collection.JavaConversions._
 
 class TopicExtraction(config : Configuration) {
   val nlpPreprocessor = EmoryNLPPreprocessorConfig().build()
-  val candidatesCollector = TCCConfig().build()
-  val candidatesWeighter = OneFeatureTCWeighterConfig(Weirdness()).build()
+  val candidatesCollector = TCCConfig(config.ngramMin to config.ngramMax, config.minTermFreq).build()
+  val candidatesWeighter = config.method match {
+    case "one" =>
+      OneFeatureTCWeighterConfig(mkFeats(config)(0)).build()
+    case "voting" =>
+      VotingTCWeighterConfig(mkFeats(config)).build()
+    case _ =>
+      throw new UnsupportedOperationException("Unknown method: " + config.method)
+  }
   val threshold = config.threshold
+
+  def mkFeats(config : Configuration) : Seq[FeatureConfig] = {
+    config.features.map({ 
+      case "weirdness" => Weirdness(ReferenceCorpusConfig(config.corpus))
+    })
+  }
 
   def extractTopics(docs : Iterable[Document]) : (List[DocumentTopic],Set[Topic]) = {
     val terms = {
