@@ -34,6 +34,10 @@ then
     unzip stopwords.zip -d models/
     rm stopwords.zip
 fi
+if [ ! -f models/COHA_term_occurrences.txt ]
+then
+    curl https://at.ispras.ru/owncloud/index.php/s/0eUMJywO3AhXDHb/download -o models/COHA_term_occurrences.txt
+fi
 
 if [ ! -f gate ]
 then

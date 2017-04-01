@@ -54,6 +54,7 @@ cat > $OUTPUT/dbpedia.config << DBP_CONFIG
 DBP_CONFIG
 cat > $OUTPUT/atr4s.config << ATR4S_CONFIG
 {
+    "corpus": "$DIR/models/COHA_term_cooccurrences.txt"
 }
 ATR4S_CONFIG
 
