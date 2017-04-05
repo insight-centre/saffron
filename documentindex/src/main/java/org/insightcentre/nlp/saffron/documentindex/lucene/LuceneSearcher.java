@@ -198,6 +198,7 @@ public class LuceneSearcher implements DocumentSearcher {
 			throws SearchException {
 		Long occurrence = new Long(0);
 
+                // TODO: Avoid calling IndexSearcher.document!!
 		Map<String, Integer> occMap = searchSpanOccurrence(term1, term2, maxDocumentResults, spanSlop);
 		for (Integer occ : occMap.values()) {
 			occurrence += occ;
