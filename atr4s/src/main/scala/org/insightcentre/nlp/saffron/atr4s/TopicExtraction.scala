@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.atr4s
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 
 import ru.ispras.atr.features.FeatureConfig
 import ru.ispras.atr.features.refcorpus.{Weirdness, ReferenceCorpusConfig}
@@ -31,7 +32,8 @@ class TopicExtraction(config : Configuration) {
     })
   }
 
-  def extractTopics(docs : Iterable[Document]) : (List[DocumentTopic],Set[Topic]) = {
+  def extractTopics(searcher : DocumentSearcher) : (List[DocumentTopic],Set[Topic]) = {
+    val docs = searcher.allDocuments()
     val terms = {
       val dataset = nlpPreprocessor.preprocess(docs.map(doc =>
           (doc.id, doc.getContents())).toSeq)
@@ -59,7 +61,10 @@ class TopicExtraction(config : Configuration) {
   def freq(string : String, sub_string : String) = {
     var i = 0
     var j = 0
-    while({ j = string.indexOf(sub_string,j) ; j} >= 0) i += 1
+    while({ j = string.indexOf(sub_string,j) ; j} >= 0) {
+      i += 1
+      j += 1
+    }
     i
   }
 }

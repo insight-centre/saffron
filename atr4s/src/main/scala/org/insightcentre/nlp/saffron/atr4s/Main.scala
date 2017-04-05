@@ -56,7 +56,7 @@ object Main {
 
       val extractor = new TopicExtraction(config)
 
-      val (docTopics, topics) = extractor.extractTopics(searcher.allDocuments())
+      val (docTopics, topics) = extractor.extractTopics(searcher)
 
       mapper.writerWithDefaultPrettyPrinter().writeValue(outputTopics, asJavaIterable(topics))
       mapper.writerWithDefaultPrettyPrinter().writeValue(outputDocTopics, asJavaIterable(docTopics))
