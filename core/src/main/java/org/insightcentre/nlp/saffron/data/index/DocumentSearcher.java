@@ -70,7 +70,7 @@ public interface DocumentSearcher extends Closeable {
 	 * @throws CorruptIndexException
 	 * @throws IOException
 	 */
-	public Long numberOfOccurrences(String term, int maxDocumentResults) throws SearchException;
+	public long numberOfOccurrences(String term) throws SearchException;
 
 	/**
 	 * Search tfidf for a given termextraction in all indexed documents
