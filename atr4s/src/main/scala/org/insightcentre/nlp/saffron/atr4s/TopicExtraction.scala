@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.atr4s
 
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Topic.MorphologicalVariation;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 
@@ -34,37 +35,32 @@ class TopicExtraction(config : Configuration) {
 
   def extractTopics(searcher : DocumentSearcher) : (List[DocumentTopic],Set[Topic]) = {
     val docs = searcher.allDocuments()
-    val terms = {
+    val topics = {
       val dataset = nlpPreprocessor.preprocess(docs.map(doc =>
           (doc.id, doc.getContents())).toSeq)
       val candidates = candidatesCollector.collect(dataset)
       val sortedTerms = candidatesWeighter.weightAndSort(candidates, dataset)
-      sortedTerms.filter(_._2 > threshold)
-
+      val filteredTerms = sortedTerms.filter(_._2 > threshold)
+      val can2lemmas = candidates.map(tc => tc.canonicalRepr -> tc.lemmas).toMap
+      filteredTerms.map({ case (string, score) =>
+        val lemmas = can2lemmas(string)
+        val lemma1 = lemmas(0).toLowerCase
+        new Topic(lemma1, -1, -1, score, lemmas.map(l => new MorphologicalVariation(l)))
+      })
     }
-    val topics = terms.map({ case (string, score) =>
-      new Topic(string, -1, -1, score, null)
-    })
+    //val topics = terms.map({ case (string, score) =>
+    //  new Topic(string, -1, -1, score, null)
+    //})
     val documentTopics = docs.flatMap({ doc =>
       topics.flatMap({ topic =>
-        val f = freq(doc.getContents(), topic.topicString)
+        val f = searcher.numberOfOccurrences(topic.topicString)
         if(f > 0) {
-          Some(new DocumentTopic(doc.id, topic.topicString, f, null, null))
+          Some(new DocumentTopic(doc.id, topic.topicString, f.toInt, null, null))
         } else {
           None
         }
       })
     })
     (documentTopics.toList, topics.toSet)
-  }
-
-  def freq(string : String, sub_string : String) = {
-    var i = 0
-    var j = 0
-    while({ j = string.indexOf(sub_string,j) ; j} >= 0) {
-      i += 1
-      j += 1
-    }
-    i
   }
 }
