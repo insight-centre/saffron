@@ -180,11 +180,10 @@ public class LuceneSearcher implements DocumentSearcher {
 	}
 
 	@Override
-	public Long numberOfOccurrences(String term, int maxDocumentResults) throws SearchException {
+	public long numberOfOccurrences(String term) throws SearchException {
 
-		Long frequency = new Long(0);
-
-		Map<String, Integer> occMap = searchOccurrence(term.toLowerCase(), maxDocumentResults);
+		long frequency = 0;
+		Map<String, Integer> occMap = searchOccurrence(term.toLowerCase(), occurrence_searcher.getIndexReader().maxDoc());
 		Set<String> keySet = occMap.keySet();
 
 		for (String docId : keySet) {
