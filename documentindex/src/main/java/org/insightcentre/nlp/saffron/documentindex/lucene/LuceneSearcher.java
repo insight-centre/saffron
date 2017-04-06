@@ -183,11 +183,18 @@ public class LuceneSearcher implements DocumentSearcher {
 	public long numberOfOccurrences(String term) throws SearchException {
 
 		long frequency = 0;
-		Map<String, Integer> occMap = searchOccurrence(term.toLowerCase(), occurrence_searcher.getIndexReader().maxDoc());
-		Set<String> keySet = occMap.keySet();
+                int docsNo = occurrence_searcher.getIndexReader().maxDoc();
+                
+		try {
+			StandardQueryParser luceneParser = new StandardQueryParser(analyzer);
+			Query query = luceneParser.parse("\"" + QueryParserBase.escape(term) + "\"",
+					LuceneDocument.CONTENTS_NAME);
 
-		for (String docId : keySet) {
-			frequency += occMap.get(docId);
+			final TopDocs docs = occurrence_searcher.search(query, docsNo);
+
+                        frequency += docs.scoreDocs.length;
+		} catch (IOException | QueryNodeException e) {
+			throw new SearchException(e.getMessage(), e);
 		}
 
 		return frequency;
