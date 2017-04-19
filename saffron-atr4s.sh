@@ -85,7 +85,7 @@ echo "## Step 3: Topic Extraction           ##"
 echo "########################################"
 $DIR/atr4s-topics -c $OUTPUT/atr4s.config \
     -x $CORPUS -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/doc-topics-extracted.json
+    -o $OUTPUT/doc-topics.json
 #$DIR/extract-topics -c $OUTPUT/topic-extraction.config -x $CORPUS \
 #    -d $OUTPUT/domain-model.json -t $OUTPUT/topics-extracted.json \
 #    -o $OUTPUT/doc-topics-extracted.json || die "Topic extraction failed"
@@ -100,12 +100,12 @@ echo "########################################"
 echo "## Step 5: DBpedia Lookup             ##"
 echo "########################################"
 $DIR/dbpedia-lookup -c $OUTPUT/dbpedia.config -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/topics-dbpedia.json
+    -o $OUTPUT/topics.json
 
-echo "########################################"
-echo "## Step 6: Topic Statistics           ##"
-echo "########################################"
-$DIR/topic-stats -t $OUTPUT/topics-dbpedia.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
+#echo "########################################"
+#echo "## Step 6: Topic Statistics           ##"
+#echo "########################################"
+#$DIR/topic-stats -t $OUTPUT/topics-dbpedia.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
 
 echo "########################################"
 echo "## Step 7: Connect Authors            ##"
@@ -127,3 +127,4 @@ echo "## Step 10: Taxonomy Extraction       ##"
 echo "########################################"
 $DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json
 
+python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

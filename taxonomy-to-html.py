@@ -13,8 +13,8 @@ def print_taxonomy(tax, topic2docs, docs, indent=2):
         print(("  " * indent) + """  <div class="panel-body" id=""" + "\"" + ident + "\"" + """ ">""")
 
     print(("  " * indent) + """  <ul>""")
-    for doc in topic2docs[tax["root"]]:
-        print("<li>" + docs[doc]["name"] + " - " + ",".join([a["name"] for a in docs[doc]["authors"]])+ "</li>")
+    for doc, freq in sorted(topic2docs[tax["root"]].items(), key=lambda x: -x[1])[:10]:
+        print("<li>" + docs[doc]["name"] + " - " + ",".join([a["name"] for a in docs[doc]["authors"]])+ " (" + str(freq) + ")</li>")
     print(("  " * indent) + """  </ul>""")
 
     if tax["children"]:
@@ -35,9 +35,12 @@ def main(args):
     topic2docs = {}
     for dt in doc_topics:
         if dt["topic_string"] in topic2docs:
-            topic2docs[dt["topic_string"]].add(dt["document_id"])
+            if dt["document_id"] in topic2docs[dt["topic_string"]]:
+                topic2docs[dt["topic_string"]][dt["document_id"]] += dt["occurrences"]
+            else:
+                topic2docs[dt["topic_string"]][dt["document_id"]] = dt["occurrences"]
         else:
-            topic2docs[dt["topic_string"]] = set([dt["document_id"]])
+            topic2docs[dt["topic_string"]] = {dt["document_id"]: dt["occurrences"]}
 
     docs = {doc["id"]: doc for doc in corpus["documents"]}
     print("""<html>

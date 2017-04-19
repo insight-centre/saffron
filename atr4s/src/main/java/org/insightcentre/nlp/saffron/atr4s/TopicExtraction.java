@@ -59,7 +59,7 @@ public class TopicExtraction {
         List<FeatureConfig> feats = new ArrayList<>();
         for(String name : config.features) {
             if(name.equals("weirdness")) {
-                feats.add(new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-20)));
+                feats.add(new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-3)));
             } else {
                 throw new IllegalArgumentException();
             }
@@ -128,8 +128,11 @@ public class TopicExtraction {
             Iterable<Tuple2<String,Object>> sortedTerms = JavaConversions.asJavaIterable(
                     candidatesWeighter.weightAndSort(candidates, dataset));
             int i = 0;
+            System.err.println("Top 10 terms");
             for(Tuple2<String,Object> term : sortedTerms) {
                 final Double score = (Double)term._2;
+                if(i < 10)
+                    System.err.printf("%s %.4f\n", term._1, score);
                 if(score > threshold && i++ < maxTopics) {
                     TermCandidate tc = candmap.get(term._1);
                     Seq<String> lemmas = tc.lemmas();

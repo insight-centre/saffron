@@ -11,8 +11,6 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 
 /**
  *
@@ -77,7 +75,8 @@ public class Main {
             Map<String, Topic> topicMap = loadMap(topics, mapper);
 
             //Taxonomy graph = TaxonomyConstructor.optimisedSimilarityGraph(docTopics, config.simThreshold, config.spanSize, topicMap, config.minCommonDocs);
-            Taxonomy graph = SimpleTaxonomy.optimisedSimilarityGraph(docTopics, topicMap);
+            //Taxonomy graph = SimpleTaxonomy.optimisedSimilarityGraph(docTopics, topicMap);
+            Taxonomy graph = new GreedyBinary(1.0, 1.0).optimisedSimilarityGraph(docTopics, topicMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
             
