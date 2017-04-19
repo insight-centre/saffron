@@ -1,15 +1,11 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-package org.insightcentre.nlp.saffron.atr4s;
+package org.insightcentre.nlp.saffron.topic.atr4s;
 
+import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import org.insightcentre.nlp.saffron.atr4s.Main.Configuration;
+import org.insightcentre.nlp.saffron.topic.atr4s.Main.Configuration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;

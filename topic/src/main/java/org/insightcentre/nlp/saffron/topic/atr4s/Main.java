@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.atr4s;
+package org.insightcentre.nlp.saffron.topic.atr4s;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;

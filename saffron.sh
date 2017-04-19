@@ -52,6 +52,11 @@ cat > $OUTPUT/dbpedia.config << DBP_CONFIG
     "database": "$DIR/models/dbpedia.db"
 }
 DBP_CONFIG
+cat > $OUTPUT/atr4s.config << ATR4S_CONFIG
+{
+    "corpus": "$DIR/models/COHA_term_cooccurrences.txt"
+}
+ATR4S_CONFIG
 
 echo "########################################"
 echo "## Step 1:Indexing corpus             ##"
@@ -70,52 +75,43 @@ else
 fi
 
 echo "########################################"
-echo "## Step 2: Domain Model               ##"
+echo "## Step 2: Topic Extraction           ##"
 echo "########################################"
-$DIR/domain-model -c $OUTPUT/domain-model.config -t $CORPUS \
-    -o $OUTPUT/domain-model.json || die "Domain modelling failed"
+$DIR/extract-topics -c $OUTPUT/atr4s.config \
+    -x $CORPUS -t $OUTPUT/topics-extracted.json \
+    -o $OUTPUT/doc-topics.json
 
 echo "########################################"
-echo "## Step 3: Topic Extraction           ##"
-echo "########################################"
-$DIR/extract-topics -c $OUTPUT/topic-extraction.config -x $CORPUS \
-    -d $OUTPUT/domain-model.json -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/doc-topics-extracted.json || die "Topic extraction failed"
-
-echo "########################################"
-echo "## Step 4: Author Consolidation       ##"
+echo "## Step 3: Author Consolidation       ##"
 echo "########################################"
 $DIR/consolidate-authors -t $CORPUS -o $OUTPUT/corpus.json
 CORPUS=$OUTPUT/corpus.json
 
 echo "########################################"
-echo "## Step 5: DBpedia Lookup             ##"
+echo "## Step 4: DBpedia Lookup             ##"
 echo "########################################"
 $DIR/dbpedia-lookup -c $OUTPUT/dbpedia.config -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/topics-dbpedia.json
+    -o $OUTPUT/topics.json
 
 echo "########################################"
-echo "## Step 6: Topic Statistics           ##"
-echo "########################################"
-$DIR/topic-stats -t $OUTPUT/topics-dbpedia.json -d $OUTPUT/doc-topics-extracted.json --od $OUTPUT/doc-topics.json --ot $OUTPUT/topics.json
-
-echo "########################################"
-echo "## Step 7: Connect Authors            ##"
+echo "## Step 5: Connect Authors            ##"
 echo "########################################"
 $DIR/connect-authors -t $CORPUS -p $OUTPUT/topics.json -d $OUTPUT/doc-topics.json -o $OUTPUT/author-topics.json
 
 echo "########################################"
-echo "## Step 8: Topic Similarity           ##"
+echo "## Step 6: Topic Similarity           ##"
 echo "########################################"
 $DIR/topic-sim -d $OUTPUT/doc-topics.json -o $OUTPUT/topic-sim.json
 
 echo "########################################"
-echo "## Step 9: Author Similarity          ##"
+echo "## Step 7: Author Similarity          ##"
 echo "########################################"
 $DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
 
 echo "########################################"
-echo "## Step 10: Taxonomy Extraction       ##"
+echo "## Step 8: Taxonomy Extraction       ##"
 echo "########################################"
-$DIR/taxonomy-extract -x $CORPUS -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json
+$DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json
 
+echo "Creating taxonomy at" $OUTPUT/taxonomy.html
+python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

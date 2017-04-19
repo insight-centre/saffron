@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.atr4s;
+package org.insightcentre.nlp.saffron.topic.atr4s;
 
 import java.util.ArrayList;
 import java.util.HashMap;
