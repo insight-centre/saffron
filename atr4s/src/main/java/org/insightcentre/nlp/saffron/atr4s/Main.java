@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.atr4s;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -8,7 +9,6 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
-import parquet.org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * Main point for the ATR4S-based extract-topics command
@@ -78,7 +78,8 @@ public class Main {
 
     public static class Configuration {
 
-        public double threshold = 0.5;
+        public double threshold = 0.0;
+        public int maxTopics = 1000;
         public int ngramMin = 1;
         public int ngramMax = 4;
         public int minTermFreq = 2;

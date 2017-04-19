@@ -39,6 +39,7 @@ public class TopicExtraction {
     private final TermCandidatesCollector candidatesCollector;
     private final TermCandidatesWeighter candidatesWeighter;
     private final double threshold;
+    private final int maxTopics;
 
     public TopicExtraction(Main.Configuration config) {
         this.config = config;
@@ -51,6 +52,7 @@ public class TopicExtraction {
             throw new IllegalArgumentException("Unknown method: " + config.method);
         }
         this.threshold = config.threshold;
+        this.maxTopics = config.maxTopics;
     }
     
     private static List<FeatureConfig> mkFeats(Main.Configuration config) {
@@ -125,9 +127,10 @@ public class TopicExtraction {
             }
             Iterable<Tuple2<String,Object>> sortedTerms = JavaConversions.asJavaIterable(
                     candidatesWeighter.weightAndSort(candidates, dataset));
+            int i = 0;
             for(Tuple2<String,Object> term : sortedTerms) {
                 final Double score = (Double)term._2;
-                if(score > threshold) {
+                if(score > threshold && i++ < maxTopics) {
                     TermCandidate tc = candmap.get(term._1);
                     Seq<String> lemmas = tc.lemmas();
                     Map<String,Integer> docOccurs = new HashMap<>();

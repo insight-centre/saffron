@@ -102,10 +102,8 @@ public class ConnectResearchers {
                 }
             });
         
-            System.err.println(e.getKey());
             for(String topicString : e.getValue()) {
                 AT atKey = new AT(e.getKey().id, topicString);
-                System.err.println(topicString);
                 AuthorTopic at = new AuthorTopic();
                 at.author_id     = e.getKey().id;
                 at.topic_id      = topicString;

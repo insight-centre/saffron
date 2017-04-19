@@ -193,11 +193,11 @@ public class SimpleTaxonomy {
 
         for (Edge edge : edges) {
             if (!makesCycle(wg, edge)) {
-                System.err.println("Add edge: " + edge);
+                //System.err.println("Add edge: " + edge);
                 finalGraph.add(edge);
                 wg = new WeightedGraph(finalGraph);
             } else {
-                System.err.println("Skip edge: " + edge);
+                //System.err.println("Skip edge: " + edge);
             }
         }
 
