@@ -1,17 +1,14 @@
 package org.insightcentre.nlp.saffron.atr4s;
 
-import static com.sun.jersey.server.wadl.generators.resourcedoc.xhtml.Elements.val;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import parquet.org.codehaus.jackson.map.ObjectMapper;
-import static scala.collection.JavaConversions.asJavaIterable;
 
 /**
  * Main point for the ATR4S-based extract-topics command
