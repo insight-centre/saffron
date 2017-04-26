@@ -1,9 +1,7 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.store.Directory;
@@ -25,38 +23,40 @@ public class DocumentSearcherFactory {
     /**
      * Create a document searcher
      * @param corpus The corpus metadata
+     * @param index The location of the index
      * @return A document searcher
      * @throws IOException If a disk error occurs
      */
-    public static DocumentSearcher loadSearcher(Corpus corpus) throws IOException {
-        return loadSearcher(corpus, false);
+    public static DocumentSearcher loadSearcher(Corpus corpus, File index) throws IOException {
+        return loadSearcher(corpus, index, false);
     }
 
     /**
      * Create a document searcher
      * @param corpus The corpus metadata
+     * @param index The location of the index
      * @param rebuild Rebuild the corpus even if it already exists
      * @return A document searcher
      * @throws IOException If a disk error occurs
      */
  
-    public static DocumentSearcher loadSearcher(Corpus corpus, boolean rebuild) throws IOException {
-        if (corpus.index == null) {
+    public static DocumentSearcher loadSearcher(Corpus corpus, File index, boolean rebuild) throws IOException {
+        if (index == null) {
             throw new IllegalArgumentException("Corpus must have an index");
         } 
         
         final Directory dir;
-        if (rebuild || !corpus.index.exists()) {
-            dir = luceneFileDirectory(corpus.index, true);
+        if (rebuild || !index.exists()) {
+            dir = luceneFileDirectory(index, true);
             try(DocumentIndexer indexer = luceneIndexer(dir, LuceneAnalyzer.LOWERCASE_ONLY)) {
-                for(Document doc : corpus.documents) {
+                for(Document doc : corpus.getDocuments()) {
                     Document doc2 = DocumentAnalyzer.analyze(doc);
                     indexer.indexDoc(doc2, doc2.getContents());
                 }
                 indexer.commit();
             }
         } else {
-            dir = luceneFileDirectory(corpus.index, false);
+            dir = luceneFileDirectory(index, false);
         }
         return luceneSearcher(dir, LuceneAnalyzer.LOWERCASE_ONLY);
     }

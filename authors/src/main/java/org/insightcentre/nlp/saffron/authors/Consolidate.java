@@ -12,7 +12,7 @@ import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Document;
 
 /**
@@ -53,13 +53,13 @@ public class Consolidate {
             
             ObjectMapper mapper = new ObjectMapper();
 
-            Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
+            IndexedCorpus corpus        = mapper.readValue(corpusFile, IndexedCorpus.class);
 
             Set<Author> authors = extractAuthors(corpus);
             
             Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
 
-            Corpus corpus2 = applyConsolidation(corpus, consolidation);
+            IndexedCorpus corpus2 = applyConsolidation(corpus, consolidation);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus2);
             
@@ -69,7 +69,7 @@ public class Consolidate {
         }
     }
 
-    private static Set<Author> extractAuthors(Corpus corpus) {
+    private static Set<Author> extractAuthors(IndexedCorpus corpus) {
         Set<Author> authors = new HashSet<Author>();
         for(Document doc : corpus.getDocuments()) {
             for(Author author : doc.getAuthors()) {
@@ -79,7 +79,7 @@ public class Consolidate {
         return authors;
     }
 
-    private static Corpus applyConsolidation(Corpus corpus, Map<Author, Set<Author>> consolidation) {
+    private static IndexedCorpus applyConsolidation(IndexedCorpus corpus, Map<Author, Set<Author>> consolidation) {
         Map<Author, Author> rmap = new HashMap<>();
         for(Map.Entry<Author, Set<Author>> e1 : consolidation.entrySet()) {
             for(Author a1 : e1.getValue()) {
@@ -96,7 +96,7 @@ public class Consolidate {
             Document doc2 = new Document(document.file, document.id, document.name, document.mimeType, authors2, document.metadata);
             documents.add(doc2);
         }
-        return new Corpus(documents, corpus.index);
+        return new IndexedCorpus(documents, corpus.index);
     }
  
 }

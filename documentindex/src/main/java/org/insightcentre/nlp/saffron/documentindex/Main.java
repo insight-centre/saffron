@@ -3,12 +3,10 @@ package org.insightcentre.nlp.saffron.documentindex;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
-import javax.security.auth.login.Configuration;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 
 /**
  *
@@ -47,7 +45,7 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
-            Corpus corpus;
+            final Corpus corpus;
             
             if(corpusFile.isDirectory()) {
                 if(indexFile == null) {
@@ -56,7 +54,7 @@ public class Main {
                 if(outputFile == null) {
                     badOptions(p, "Corpus file is a folder but output file not specified");
                 }
-                corpus = Corpus.fromFolder(corpusFile, indexFile);
+                corpus = CorpusTools.fromFolder(corpusFile);
                 mapper.writeValue(outputFile, corpus);
             } else if(corpusFile.getName().endsWith(".zip")) {
                 if(indexFile == null) {
@@ -65,17 +63,29 @@ public class Main {
                 if(outputFile == null) {
                     badOptions(p, "Corpus file is a ZIP but output file not specified");
                 }
-                corpus = Corpus.fromZIP(corpusFile, indexFile);
+                corpus = CorpusTools.fromZIP(corpusFile);
                 mapper.writeValue(outputFile, corpus);
+             } else if(corpusFile.getName().endsWith(".tar.gz") || corpusFile.getName().endsWith(".tgz")) {
+                if(indexFile == null) {
+                    badOptions(p, "Corpus file is a ZIP but index file is null");
+                }
+                if(outputFile == null) {
+                    badOptions(p, "Corpus file is a ZIP but output file not specified");
+                }
+                corpus = CorpusTools.fromTarball(corpusFile);
+                mapper.writeValue(outputFile, corpus);
+                 
              } else {
-                corpus = mapper.readValue(corpusFile, Corpus.class);
-                if(indexFile != null && !indexFile.equals(corpus.index)) {
-                    System.err.println("Using " + indexFile + " as index not " + corpus.index + " as in metadata");
-                    corpus = new Corpus(corpus.documents, indexFile);
+                IndexedCorpus icorpus = mapper.readValue(corpusFile, IndexedCorpus.class);
+                if(indexFile != null && !indexFile.equals(icorpus.index)) {
+                    System.err.println("Using " + indexFile + " as index not " + icorpus.index + " as in metadata");
+                    corpus = new IndexedCorpus(icorpus.documents, indexFile);
+                } else {
+                    corpus = icorpus;
                 }
             }
 
-            DocumentSearcherFactory.loadSearcher(corpus, true);
+            DocumentSearcherFactory.loadSearcher(corpus, indexFile, true);
         } catch(Throwable t) {
             t.printStackTrace();
             System.exit(-1);

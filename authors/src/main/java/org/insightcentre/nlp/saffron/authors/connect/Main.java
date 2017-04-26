@@ -8,6 +8,7 @@ import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -67,7 +68,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             Configuration config          = configurationFile == null ? new Configuration() : mapper.readValue(configurationFile, Configuration.class);
-            Corpus corpus                 = mapper.readValue(corpusFile, Corpus.class);
+            IndexedCorpus corpus                 = mapper.readValue(corpusFile, IndexedCorpus.class);
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 

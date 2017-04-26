@@ -42,7 +42,7 @@ public class Document {
         this.authors = authors == null ? new ArrayList<Author>() : authors;
         this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
     }
-
+    
     /**
      * Set the contents of this file once they have been loaded (i.e., from the source file
      * 
@@ -79,6 +79,12 @@ public class Document {
 
     public File getFile() {
         return file;
+    }
+
+
+
+    public Map<String, String> getMetadata() {
+        return metadata;
     }
 
     @JsonProperty("mime_type")

@@ -2,7 +2,7 @@ package org.insightcentre.nlp.saffron.data.index;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 
 /**
  * For creating a document searcher
@@ -16,10 +16,10 @@ public class DocumentSearcherFactory {
      * @param corpus The corpus metadata
      * @return A document searcher
      */
-    public static DocumentSearcher loadSearcher(Corpus corpus) {
+    public static DocumentSearcher loadSearcher(IndexedCorpus corpus) {
         try {
             Class c = Class.forName("org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory");
-            Method method = c.getDeclaredMethod("loadSearcher", Corpus.class);
+            Method method = c.getDeclaredMethod("loadSearcher", IndexedCorpus.class);
             return (DocumentSearcher)method.invoke(null, corpus);
         } catch(ClassNotFoundException x) {
             throw new RuntimeException("Could not locate document search implementation, please include document indexer on class path", x);
@@ -34,10 +34,10 @@ public class DocumentSearcherFactory {
      * @param rebuild Rebuild the corpus even if it already exists
      * @return A document searcher
      */
-    public static DocumentSearcher loadSearcher(Corpus corpus, boolean rebuild) {
+    public static DocumentSearcher loadSearcher(IndexedCorpus corpus, boolean rebuild) {
         try {
             Class c = Class.forName("org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory");
-            Method method = c.getDeclaredMethod("loadSearcher", Corpus.class, Boolean.class);
+            Method method = c.getDeclaredMethod("loadSearcher", IndexedCorpus.class, Boolean.class);
             return (DocumentSearcher)method.invoke(null, corpus, rebuild);
         } catch(ClassNotFoundException x) {
             throw new RuntimeException("Could not locate document search implementation, please include document indexer on class path", x);

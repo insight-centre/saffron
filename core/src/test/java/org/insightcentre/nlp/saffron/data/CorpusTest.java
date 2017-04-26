@@ -40,10 +40,10 @@ public class CorpusTest {
     @Test
     public void test() throws IOException {
         final String data = "{\"documents\":[]}";
-        final Corpus corpus = mapper.readValue(data, Corpus.class);
+        final IndexedCorpus corpus = mapper.readValue(data, IndexedCorpus.class);
         assertEquals(Collections.EMPTY_LIST, corpus.documents);
         final String json = mapper.writeValueAsString(corpus);
-        assertEquals(corpus, mapper.readValue(json, Corpus.class));
+        assertEquals(corpus, mapper.readValue(json, IndexedCorpus.class));
         
     }
 }

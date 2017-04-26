@@ -19,6 +19,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.DomainModel;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -91,7 +92,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
             Configuration config = configuration == null ? new Configuration() : mapper.readValue(configuration, Configuration.class);
-            Corpus corpus        = mapper.readValue(corpusFile, Corpus.class);
+            IndexedCorpus corpus        = mapper.readValue(corpusFile, IndexedCorpus.class);
     
             DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
             
