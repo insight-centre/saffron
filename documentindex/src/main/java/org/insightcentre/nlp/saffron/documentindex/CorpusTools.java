@@ -30,54 +30,6 @@ import org.insightcentre.nlp.saffron.data.Document;
  * @author John McCrae <john@mccr.ae>
  */
 public class CorpusTools {
-//
-//    /**
-//     * Return a local (temporary) file that contains the content of the location.
-//     * This may extract or download the data from the 
-//     * @param loc
-//     * @return
-//     * @throws IOException 
-//     */
-//    public static File fileForLocation(Location loc) throws IOException {
-//        switch (loc.getType()) {
-//            case file:
-//                return new File(loc.getFile());
-//            case url: {
-//                File f = File.createTempFile(loc.getName(), "");
-//                f.deleteOnExit();
-//                URL target = new URL(loc.getFile());
-//                ReadableByteChannel rbc = Channels.newChannel(target.openStream());
-//                FileOutputStream fos = new FileOutputStream(f);
-//                fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-//                return f;
-//            }
-//            case zip: {
-//                File f2 = File.createTempFile(loc.getName(), "");
-//                f2.deleteOnExit();
-//                ZipFile zf = new ZipFile(new File(loc.getFile()));
-//                ZipEntry ze = zf.getEntry(loc.getName());
-//                if (ze == null) {
-//                    throw new IOException(String.format("Could not locate %s in %s", loc.getName(), loc.getFile()));
-//                } else {
-//                    FileOutputStream fos2 = new FileOutputStream(f2);
-//                    InputStream is = zf.getInputStream(ze);
-//
-//                    fos2.getChannel().transferFrom(Channels.newChannel(is), 0, Long.MAX_VALUE);
-//                    return f2;
-//                }
-//            }
-//            case tarball: {
-//                File f = File.createTempFile(loc.getName(), "");
-//                f.deleteOnExit();
-//                TarArchiveInputStream tais = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(new File(loc.getFile()))));
-//                tais.
-//                
-//            }
-//        }
-//        throw new RuntimeException("unreachable");
-//    }
-//    
-
     /**
      * Create a corpus from a folder, each file will be considered a single
      * document
@@ -268,9 +220,9 @@ public class CorpusTools {
 
                             @Override
                             public Document next() {
-                                advance();
-                                if(tae == null) throw new NoSuchElementException();
                                 try {
+                                    advance();
+                                    if(tae == null) throw new NoSuchElementException();
                                     if (file != null) {
                                         file.delete();
                                     }
@@ -282,9 +234,13 @@ public class CorpusTools {
 
                                     return new Document(file, tae.getName(),
                                             tae.getName(), Files.probeContentType(new File(tae.getName()).toPath()),
-                                            new ArrayList<Author>(), new HashMap<String, String>());
+                                            new ArrayList<Author>(), new HashMap<String, String>());                                    
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);
+                                } finally {
+                                    try {
+                                        tae = tais.getNextTarEntry();
+                                    } catch(IOException x) { }
                                 }
                             }
                         };

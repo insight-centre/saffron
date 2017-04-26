@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 
@@ -60,7 +60,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
             Configuration config = mapper.readValue(configuration, Configuration.class);
-            Corpus corpus = mapper.readValue(corpusFile, Corpus.class);
+            IndexedCorpus corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
             DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
 
             TopicExtraction extractor = new TopicExtraction(config);

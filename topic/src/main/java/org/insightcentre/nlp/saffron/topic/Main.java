@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.DomainModel;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -79,7 +79,7 @@ public class Main {
             // Read configuration
             Configuration config = mapper.readValue(configuration, Configuration.class);
             DomainModel   domainModel = mapper.readValue(domainModelFile, DomainModel.class);
-            Corpus        corpus = mapper.readValue(corpusFile, Corpus.class);
+            IndexedCorpus        corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
             DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
             
 
