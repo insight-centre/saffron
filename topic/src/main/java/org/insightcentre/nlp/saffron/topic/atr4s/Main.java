@@ -91,7 +91,7 @@ public class Main {
         public int ngramMin = 1;
         public int ngramMax = 4;
         public int minTermFreq = 2;
-        public WeightingMethod method = WeightingMethod.voting;
+        public WeightingMethod method = WeightingMethod.one;
         public List<Feature> features = java.util.Arrays.asList(Feature.novelTopicModel,
                 Feature.cValue, Feature.relevance, Feature.linkProbability,
                 Feature.domainCoherence, Feature.keyConceptRelatedness);

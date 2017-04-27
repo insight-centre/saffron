@@ -111,7 +111,7 @@ public class TopicExtraction {
                 case novelTopicModel:
                     return NovelTopicModel.make();
                 case linkProbability:
-                    return LinkProbability.make();
+                    return new LinkProbability(0.018, config.infoMeasure);
                 case keyConceptRelatedness:
                     //return KeyConceptRelatedness.make();
                     
