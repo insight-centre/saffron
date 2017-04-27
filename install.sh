@@ -7,9 +7,11 @@ command -v unzip >/dev/null 2>&1 || { echo >&2 "Please install unzip."; exit 1; 
 
 mkdir -p models
 
-if [ ! -f models/COHA_term_occurrences.txt ]
+if [ ! -f models/COHA_term_occurrences.txt ] && [ ! -f models/info_measure.txt ] && [ ! -f models/w2vConcepts ]
 then
     curl https://at.ispras.ru/owncloud/index.php/s/0eUMJywO3AhXDHb/download -o models/COHA_term_cooccurrences.txt
+    curl https://at.ispras.ru/owncloud/index.php/s/MzVm6GVOQ4eTJyR/download -o models/info_measure.txt
+    curl https://at.ispras.ru/owncloud/index.php/s/SWP1YiISQPQCqTj/download -o models/w2vConcepts.model
 fi
 
 if [ ! -f models/dbpedia.db ]

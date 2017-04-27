@@ -16,7 +16,7 @@ OUTPUT=$2
 mkdir -p $OUTPUT
 
 # Step 0: Create configurations
-if [ ! -f $DIR/models/COHA_term_cooccurrences.txt ]
+if [ ! -f $DIR/models/COHA_term_cooccurrences.txt ] || [ ! -f $DIR/models/info_measure.txt ] || [ ! -f $DIR/models/w2vConcepts.model ]
 then
     die "ATR4S data not installed"
 fi
@@ -31,7 +31,9 @@ cat > $OUTPUT/dbpedia.config << DBP_CONFIG
 DBP_CONFIG
 cat > $OUTPUT/atr4s.config << ATR4S_CONFIG
 {
-    "corpus": "$DIR/models/COHA_term_cooccurrences.txt"
+    "corpus": "$DIR/models/COHA_term_cooccurrences.txt",
+    "infoMeasure": "$DIR/models/info_measure.txt",
+    "w2vmodelPath": "$DIR/models/w2vConcepts.model"
 }
 ATR4S_CONFIG
 

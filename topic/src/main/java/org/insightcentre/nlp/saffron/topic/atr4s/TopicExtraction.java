@@ -19,12 +19,33 @@ import ru.ispras.atr.datamodel.DSDataset;
 import ru.ispras.atr.datamodel.TermCandidate;
 import ru.ispras.atr.datamodel.TermOccurrence;
 import ru.ispras.atr.features.FeatureConfig;
+import ru.ispras.atr.features.contexts.DomainCoherence;
+import ru.ispras.atr.features.contexts.PostRankDC;
+import ru.ispras.atr.features.keyrel.DocKeysExtractorConfig;
+import ru.ispras.atr.features.keyrel.KeyConceptRelatedness;
+import ru.ispras.atr.features.keyrel.NormWord2VecAdapterConfig;
+import ru.ispras.atr.features.occurrences.AvgTermFrequency;
+import ru.ispras.atr.features.occurrences.Basic;
+import ru.ispras.atr.features.occurrences.CValue;
+import ru.ispras.atr.features.occurrences.ComboBasic;
+import ru.ispras.atr.features.occurrences.ResidualIDF;
+import ru.ispras.atr.features.occurrences.TotalTFIDF;
+import ru.ispras.atr.features.refcorpus.DomainPertinence;
 import ru.ispras.atr.features.refcorpus.ReferenceCorpusConfig;
+import ru.ispras.atr.features.refcorpus.Relevance;
 import ru.ispras.atr.features.refcorpus.Weirdness;
+import ru.ispras.atr.features.tm.NovelTopicModel;
+import ru.ispras.atr.features.wiki.LinkProbability;
 import ru.ispras.atr.preprocess.EmoryNLPPreprocessorConfig;
 import ru.ispras.atr.preprocess.NLPPreprocessor;
 import ru.ispras.atr.rank.OneFeatureTCWeighterConfig;
+import ru.ispras.atr.rank.PUTCWeighter;
+import ru.ispras.atr.rank.PUTCWeighterConfig;
 import ru.ispras.atr.rank.TermCandidatesWeighter;
+import ru.ispras.atr.rank.VotingTCWeighter;
+import ru.ispras.atr.rank.VotingTCWeighterConfig;
+import ru.ispras.pu4spark.LogisticRegressionConfig;
+import ru.ispras.pu4spark.TraditionalPULearnerConfig;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
@@ -46,23 +67,66 @@ public class TopicExtraction {
         this.nlpPreprocessor =  EmoryNLPPreprocessorConfig.make().build();
         this.candidatesCollector = TCCConfig.make(range(config.ngramMin, config.ngramMax), 
             config.minTermFreq, TermOccurrencesCollectorConfig.make()).build();
-        if(config.method.equals("one")) {
-            this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeats(config).get(0)).build();
-        } else {
-            throw new IllegalArgumentException("Unknown method: " + config.method);
+        switch(config.method) {
+            case one:
+                this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeat(config.features.get(0), config)).build();
+                break;
+            case voting:
+                this.candidatesWeighter = VotingTCWeighterConfig.make(mkFeats(config)).build();
+                break;
+            case puatr:
+                this.candidatesWeighter = PUTCWeighterConfig.make(mkFeat(config.baseFeature, config), 
+                        100, mkFeats(config), new TraditionalPULearnerConfig(0.05, 1, new LogisticRegressionConfig(100, 1.0e-8, 0.0))).build();
+            default:
+                throw new IllegalArgumentException("Unknown method: " + config.method);
         }
         this.threshold = config.threshold;
         this.maxTopics = config.maxTopics;
     }
     
+    private static FeatureConfig mkFeat(Main.Feature name, Main.Configuration config) {
+        switch(name) {
+                case weirdness: 
+                    return new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-3));
+                case avgTermFreq:
+                    return new AvgTermFrequency();
+                case residualIdf:
+                    return new ResidualIDF();
+                case totalTfIdf:
+                    return new TotalTFIDF();
+                case cValue:
+                    return CValue.make();
+                case basic:
+                    return Basic.make();
+                case comboBasic:
+                    return new ComboBasic(0.75, 0.1);
+                case postRankDC:
+                    return PostRankDC.make();
+                case relevance:
+                    return new Relevance(ReferenceCorpusConfig.apply(config.corpus, 1e-3));
+                case domainPertinence:
+                    return new DomainPertinence(ReferenceCorpusConfig.apply(config.corpus, 1e-3), 0.1);
+                case domainCoherence:
+                    return DomainCoherence.make();
+                case novelTopicModel:
+                    return NovelTopicModel.make();
+                case linkProbability:
+                    return LinkProbability.make();
+                case keyConceptRelatedness:
+                    //return KeyConceptRelatedness.make();
+                    
+                    return new KeyConceptRelatedness(DocKeysExtractorConfig.make(), 
+                            500, 2, 1, 15, new NormWord2VecAdapterConfig(config.w2vmodelPath, true, 0)
+                    );
+                default:
+                    throw new IllegalArgumentException("Bad feature name for ATR4S: " + name);
+            }
+    }
+    
     private static List<FeatureConfig> mkFeats(Main.Configuration config) {
         List<FeatureConfig> feats = new ArrayList<>();
-        for(String name : config.features) {
-            if(name.equals("weirdness")) {
-                feats.add(new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-3)));
-            } else {
-                throw new IllegalArgumentException();
-            }
+        for(Main.Feature name : config.features) {
+            feats.add(mkFeat(name, config));
         }
         return feats;
         

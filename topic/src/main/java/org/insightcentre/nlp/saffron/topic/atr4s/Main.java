@@ -75,6 +75,14 @@ public class Main {
             System.exit(-1);
         }
     }
+    
+    public enum WeightingMethod {
+        one, voting, puatr
+    };
+    
+    public enum Feature {
+        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, domainCoherence, domainPertinence, novelTopicModel, linkProbability, keyConceptRelatedness
+    };
 
     public static class Configuration {
 
@@ -83,9 +91,14 @@ public class Main {
         public int ngramMin = 1;
         public int ngramMax = 4;
         public int minTermFreq = 2;
-        public String method = "one"; // "one" || "voting" || "puatr"
-        public List<String> features = java.util.Arrays.asList("weirdness");
+        public WeightingMethod method = WeightingMethod.voting;
+        public List<Feature> features = java.util.Arrays.asList(Feature.novelTopicModel,
+                Feature.cValue, Feature.relevance, Feature.linkProbability,
+                Feature.domainCoherence, Feature.keyConceptRelatedness);
         public String corpus;
+        public String infoMeasure;
+        public String w2vmodelPath;
+        public Feature baseFeature = Feature.comboBasic;
 
     }
 }

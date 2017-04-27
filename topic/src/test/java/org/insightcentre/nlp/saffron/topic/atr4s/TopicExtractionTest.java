@@ -56,6 +56,8 @@ public class TopicExtractionTest {
         DocumentSearcher searcher = mock(DocumentSearcher.class);
         when(searcher.allDocuments()).thenReturn(Arrays.asList(d1));
         Configuration config = new Configuration();
+        config.method = Main.WeightingMethod.one;
+        config.features = Arrays.asList(Main.Feature.weirdness);
         File f = new File("src/test/resources/termoccs.txt");
         if(f.exists()) {
             config.corpus = f.getAbsolutePath();
