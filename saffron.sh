@@ -16,37 +16,14 @@ OUTPUT=$2
 mkdir -p $OUTPUT
 
 # Step 0: Create configurations
-if [ ! -f $DIR/models/stopwords/english ]
+if [ ! -f $DIR/models/COHA_term_cooccurrences.txt ]
 then
-    die "Stopwords do not exist"
-fi
-if [ ! -f $DIR/models/en-chunker.bin ] || [ ! -f $DIR/models/en-pos-maxent.bin ] || [ ! -f $DIR/models/en-token.bin ]
-then
-    die "OpenNLP Models do not exist"
-fi
-if [ ! -d $DIR/gate ]
-then
-    die "GATE not installed"
+    die "ATR4S data not installed"
 fi
 if [ ! -f $DIR/models/dbpedia.db ]
 then
     die "DBpedia Index not built"
 fi
-cat > $OUTPUT/domain-model.config << DM_CONFIG
-{
-    "stopwords": "$DIR/models/stopwords/english",
-    "tokenizerModel": "$DIR/models/en-token.bin",
-    "posModel": "$DIR/models/en-pos-maxent.bin",
-    "chunkModel": "$DIR/models/en-chunker.bin",
-    "sentModel": "$DIR/models/en-sent.bin"
-}
-DM_CONFIG
-cat > $OUTPUT/topic-extraction.config << TE_CONFIG
-{
-    "stopwords": "$DIR/models/stopwords/english",
-    "gateHome": "$DIR/gate"
-}
-TE_CONFIG
 cat > $OUTPUT/dbpedia.config << DBP_CONFIG
 {
     "database": "$DIR/models/dbpedia.db"

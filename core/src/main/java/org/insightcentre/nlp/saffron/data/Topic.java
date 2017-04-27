@@ -88,11 +88,11 @@ public class Topic implements Comparable<Topic> {
         /** The number of times this variant occurs */
         public int occurrences;
         /** The pattern that this term matched */
-        public String pattern;
+        //public String pattern;
         /** The expanded version of the acronym (if any) */
-        public String expanded_acronym;
+        //public String expanded_acronym;
         /** The acronym for the term */
-        public String acronym;
+        //public String acronym;
 
         @JsonCreator
         public MorphologicalVariation(@JsonProperty(value="string") String string) {

@@ -3,13 +3,19 @@ package org.insightcentre.nlp.saffron.documentindex;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
 import org.apache.commons.io.FileUtils;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.core.LowerCaseFilter;
+import org.apache.lucene.analysis.standard.StandardFilter;
+import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
-import org.insightcentre.nlp.saffron.documentindex.DocumentIndexFactory.LuceneAnalyzer;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneIndexer;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneSearcher;
 import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
@@ -54,7 +60,7 @@ public class DocumentSearcherFactory {
                 throw new IllegalArgumentException("Corpus must have an index");
             }
             dir = luceneFileDirectory(index, true);
-            try (DocumentIndexer indexer = luceneIndexer(dir, LuceneAnalyzer.LOWERCASE_ONLY)) {
+            try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
                 for (Document doc : corpus.getDocuments()) {
                     Document doc2 = DocumentAnalyzer.analyze(doc);
                     indexer.indexDoc(doc2, doc2.getContents());
@@ -63,7 +69,7 @@ public class DocumentSearcherFactory {
             }
 
         }
-        return luceneSearcher(dir, LuceneAnalyzer.LOWERCASE_ONLY);
+        return luceneSearcher(dir, LOWERCASE_ONLY);
     }
 
     private static Directory luceneFileDirectory(File indexPath, boolean clearExistingIndex)
@@ -74,14 +80,30 @@ public class DocumentSearcherFactory {
         return FSDirectory.open(indexPath);
     }
 
-    private static DocumentIndexer luceneIndexer(Directory directory, LuceneAnalyzer analyzer)
+    private static DocumentIndexer luceneIndexer(Directory directory, Analyzer analyzer)
             throws IndexingException {
-        return new LuceneIndexer(directory, analyzer.analyzer);
+        return new LuceneIndexer(directory, analyzer);
     }
 
-    private static DocumentSearcher luceneSearcher(Directory directory, LuceneAnalyzer analyzer)
+    private static DocumentSearcher luceneSearcher(Directory directory, Analyzer analyzer)
             throws IOException {
-        return new LuceneSearcher(directory, analyzer.analyzer);
+        return new LuceneSearcher(directory, analyzer);
     }
 
+    private static final Analyzer LOWERCASE_ONLY = new AnalyzerLower();
+    
+    public static final Version LUCENE_VERSION = Version.LUCENE_44;
+    public static final class AnalyzerLower extends Analyzer {
+
+
+	@Override
+	protected Analyzer.TokenStreamComponents createComponents(final String fieldName, final Reader reader) {
+		StandardTokenizer source = new StandardTokenizer(LUCENE_VERSION, reader);
+
+		TokenStream filter = new StandardFilter(LUCENE_VERSION, source);
+		filter = new LowerCaseFilter(LUCENE_VERSION, filter);
+
+		return new Analyzer.TokenStreamComponents(source, filter);
+	}
+    }
 }

@@ -12,6 +12,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.insightcentre.nlp.saffron.documentindex.DocumentIndexer;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.documentindex.IndexingException;
 
 public class LuceneIndexer implements DocumentIndexer, Closeable {
@@ -21,7 +22,7 @@ public class LuceneIndexer implements DocumentIndexer, Closeable {
 	public LuceneIndexer(Directory directory, Analyzer analyzer) throws IndexingException {
 		super();
 		try {
-			IndexWriterConfig config = new IndexWriterConfig(LuceneConfig.LUCENE_VERSION, analyzer);
+			IndexWriterConfig config = new IndexWriterConfig(DocumentSearcherFactory.LUCENE_VERSION, analyzer);
 			this.indexWriter = new IndexWriter(directory, config);
 		} catch (IOException e) {
 			throw new IndexingException(e.getMessage(), e);
