@@ -23,7 +23,7 @@ mkdir -p models
 
 if [ ! -f models/COHA_term_occurrences.txt ] || [ ! -f models/info_measure.txt ] || [ ! -f models/w2vConcepts ] || [ ! -f models/dbpedia.db ]
 then
-    curl http://server1.nlp.insight-centre.org/saffron-data/models.tar.bz2 -o models.tar.bz2
+    curl http://server1.nlp.insight-centre.org/saffron-datasets/models.tar.bz2 -o models.tar.bz2
     tar xjf models.tar.bz2 && rm models.tar.bz2
 fi
 
