@@ -39,15 +39,6 @@ then
     curl https://at.ispras.ru/owncloud/index.php/s/0eUMJywO3AhXDHb/download -o models/COHA_term_occurrences.txt
 fi
 
-if [ ! -f gate ]
-then
-    echo "You need to install GATE... please do the following:"
-    echo "Download GATE from http://downloads.sourceforge.net/project/gate/gate/8.2/gate-8.2-build5482-BIN.zip"
-    echo "unzip gate-8.2-build5482-BIN.zip"
-    echo "ln -s /path/to/gate `pwd`/gate"
-    read -p "Continue when GATE is installed"
-fi
-
 if [ ! -f models/dbpedia.db ]
 then
     echo "Building DBpedia"
@@ -55,19 +46,6 @@ then
     mvn -q exec:java -p topic/pom.xml -Dexec.mainClass="org.insightcentre.nlp.saffron.topic.dbpedia.ConstructDBpediaIndex" -Dexec.args="-d redirects_en.ttl.bz2 -o models/dbpedia.db"
     rm redirects_en.ttl.bz2
 fi
-
-#if [ ! -f models/ngrams.db ]
-#then
-#    echo "Building NGrams"
-#    mkdir ngrams
-#    cd ngrams
-#    cat ../topic/src/main/resources/bigram_links.txt | xargs wget --limit-rate=10000k 
-#    cd -
-#    for f in `ls ngrams`
-#    do
-#        mvn -q exec:java -Dexec.mainClass="org.insightcentre.nlp.saffron.topics.ngrams.ConstructNGramIndex" -Dexec.args="-d $f -o models/ngrams.db"
-#    done
-#fi
 
 echo "Building Saffron"
 mvn install

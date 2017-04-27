@@ -181,7 +181,7 @@ public class GreedyBinary {
                 rightTopics.add(t);
             }
         }
-        System.err.printf("[%s] -> [%s] [%s]\n", rootTopic.topicString, bestLeft.topicString, bestRight.topicString);
+        //System.err.printf("[%s] -> [%s] [%s]\n", rootTopic.topicString, bestLeft.topicString, bestRight.topicString);
         return new Taxonomy(rootTopic.topicString, Arrays.asList(
                 split(bestLeft, leftTopics, precomputed),
                 split(bestRight, rightTopics, precomputed)
