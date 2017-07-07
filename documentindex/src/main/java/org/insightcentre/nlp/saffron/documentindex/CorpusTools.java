@@ -71,7 +71,7 @@ public class CorpusTools {
             next = null;
             if(currIter != null && currIter.hasNext()) {
                 next = currIter.next();
-                while(currIter != null && !currIter.hasNext() && i < files.length) {
+                while(currIter != null && !currIter.hasNext() && i < files.length - 1) {
                     i++;
                     if(files[i].isDirectory()) {
                         currIter = new FolderIterator(files[i].listFiles());
