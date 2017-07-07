@@ -44,6 +44,59 @@ public class CorpusTools {
         return new FolderCorpus(folder);
     }
 
+    public static class FolderIterator implements Iterator<File> {
+        final File[] files;
+        int i = -1;
+        Iterator<File> currIter = null;
+        File next = null;
+
+        public FolderIterator(File[] files) {
+            this.files = files;
+            advance();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return next != null;
+        }
+
+        @Override
+        public File next() {
+            File f = next;
+            advance();
+            return f;
+        }
+        
+        public void advance() {
+            next = null;
+            if(currIter != null && currIter.hasNext()) {
+                next = currIter.next();
+                while(currIter != null && !currIter.hasNext()) {
+                    i++;
+                    if(files[i].isDirectory()) {
+                        currIter = new FolderIterator(files[i].listFiles());
+                    } else {
+                        currIter = null;
+                    }                    
+                }
+            } else {
+                while(next == null && i < files.length) {
+                    i++;
+                    if(i >= files.length) {
+                        // end of list
+                    } else if(files[i].isDirectory()) {
+                        currIter  = new FolderIterator(files[i].listFiles());
+                        if(currIter.hasNext())
+                            next = currIter.next();
+                    } else {
+                        next = files[i];
+                    }
+                }
+            }
+        }
+        
+    }
+    
     private static class FolderCorpus implements Corpus {
 
         private final File folder;
@@ -57,18 +110,16 @@ public class CorpusTools {
             return new Iterable<Document>() {
                 @Override
                 public Iterator<Document> iterator() {
-                    final File[] files = folder.listFiles();
+                    final FolderIterator iter = new FolderIterator(folder.listFiles());
                     return new Iterator<Document>() {
-                        int i = 0;
-
                         @Override
                         public boolean hasNext() {
-                            return i < files.length;
+                            return iter.hasNext();
                         }
 
                         @Override
                         public Document next() {
-                            File f = files[i++];
+                            File f = iter.next();
                             try {
                                 return new Document(f, f.getName(), f.getName(),
                                         Files.probeContentType(f.toPath()), new ArrayList<Author>(),

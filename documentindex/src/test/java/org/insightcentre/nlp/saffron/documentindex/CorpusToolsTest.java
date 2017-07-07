@@ -1,8 +1,11 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import com.google.common.io.Files;
 import java.io.File;
+import java.io.IOException;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools.FolderIterator;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -35,6 +38,29 @@ public class CorpusToolsTest {
     public void tearDown() {
     }
 
+    @Test
+    public void testFolderIterator() throws IOException {
+        File f = Files.createTempDir();
+        f.deleteOnExit();
+        File f2 = new File(f, "foo");
+        f2.createNewFile();
+        f2.deleteOnExit();
+        File f3 = new File(f, "bar");
+        f3.mkdir();
+        f3.deleteOnExit();
+        File f4 = new File(f3, "baz");
+        f4.createNewFile();
+        f4.deleteOnExit();
+        
+        FolderIterator fi = new FolderIterator(f.listFiles());
+        assert(fi.hasNext());
+        assertEquals("foo", fi.next().getName());
+        assert(fi.hasNext());
+        assertEquals("baz", fi.next().getName());
+        assert(!fi.hasNext());
+        
+    }
+    
     /**
      * Test of fromFolder method, of class CorpusTools.
      */
