@@ -69,7 +69,7 @@ public class TopicExtraction {
             config.minTermFreq, TermOccurrencesCollectorConfig.make()).build();
         switch(config.method) {
             case one:
-                this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeat(config.features.get(0), config)).build();
+                this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeat(config.baseFeature, config)).build();
                 break;
             case voting:
                 this.candidatesWeighter = VotingTCWeighterConfig.make(mkFeats(config)).build();
