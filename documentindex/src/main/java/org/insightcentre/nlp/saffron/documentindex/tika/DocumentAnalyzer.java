@@ -20,6 +20,15 @@ import org.xml.sax.SAXException;
  */
 public class DocumentAnalyzer {
 
+    public static String removeLigatures(String s) {
+        return s.replaceAll("\ufb00", "ff").
+                replaceAll("\ufb03", "ffi").
+                replaceAll("\ufb04", "ffl").
+                replaceAll("\ufb01", "fi").
+                replaceAll("\ufb02", "fl");
+                
+    }
+    
     public static Document analyze(Document d) throws IOException {
         AutoDetectParser parser = new AutoDetectParser();
         BodyContentHandler handler = new BodyContentHandler(-1);
@@ -30,18 +39,18 @@ public class DocumentAnalyzer {
         } catch (SAXException | TikaException ex) {
             throw new IOException(ex);
         }
-        d.setContents(handler.toString());
+        d.setContents(removeLigatures(handler.toString()));
         if(metadata.get(Metadata.CONTENT_TYPE) != null)
-            d.mimeType = metadata.get(Metadata.CONTENT_TYPE);
+            d.mimeType = removeLigatures(metadata.get(Metadata.CONTENT_TYPE));
         if(metadata.getValues(Office.AUTHOR) != null && d.authors.isEmpty()) {
             d.authors = new ArrayList<>();
             for(String names : metadata.getValues(Office.AUTHOR))
                 for(String name : names.split(","))
-                    d.authors.add(new Author(name.trim()));
+                    d.authors.add(new Author(removeLigatures(name.trim())));
         }
         if(metadata.get(TikaCoreProperties.TITLE) != null
             && !metadata.get(TikaCoreProperties.TITLE).equals("")) 
-            d.name = metadata.get(TikaCoreProperties.TITLE);
+            d.name = removeLigatures(metadata.get(TikaCoreProperties.TITLE));
         return d;
     }
 }

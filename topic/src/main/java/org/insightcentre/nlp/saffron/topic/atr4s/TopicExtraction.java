@@ -199,27 +199,40 @@ public class TopicExtraction {
                     System.err.printf("%s %.4f\n", term._1, score);
                 if(score > threshold && i++ < maxTopics) {
                     TermCandidate tc = candmap.get(term._1);
-                    Seq<String> lemmas = tc.lemmas();
+                    
+                    //Seq<String> lemmas = tc.lemmas();
+                    Set<String> lemmas = new HashSet<>();
                     Map<String,Integer> docOccurs = new HashMap<>();
                     int occurrences = 0;
                     for(TermOccurrence to : JavaConversions.asJavaIterable(tc.occurrences())) {
+                        StringBuilder sb = new StringBuilder();
+                        for(String l : JavaConversions.asJavaIterable(to.lemmas())) {
+                            if(sb.length() != 0)
+                                sb.append(" ");
+                            sb.append(l);
+                        }
+                        lemmas.add(sb.toString());
                         if(docOccurs.containsKey(to.docName()))
                             docOccurs.put(to.docName(), docOccurs.get(to.docName()) + 1);
                         else
                             docOccurs.put(to.docName(), 1);
                         occurrences++;
                     }
-                    String lemma1 = lemmas.apply(0).toLowerCase();
+                    
+                    String lemma1 = tc.canonicalRepr().replaceAll("_", " ");
                     List<Topic.MorphologicalVariation> morphVars = new ArrayList<>();
-                    for(String lemma : JavaConversions.asJavaIterable(lemmas)) {
+                    for(String lemma : lemmas) {
                         morphVars.add(new Topic.MorphologicalVariation(lemma));
                     }
+                    morphVars.add(new Topic.MorphologicalVariation(lemma1));
                     
                     result.topics.add(new Topic(lemma1, occurrences, docOccurs.size(), score, morphVars));
                     for(Map.Entry<String, Integer> docOcc : docOccurs.entrySet()) {
                         result.docTopics.add(new DocumentTopic(docOcc.getKey(), lemma1, docOcc.getValue(), null, null));
                     }
-                }
+                } /*else {
+                    System.err.println("Ignoring " + term._1);
+                }*/
             }
             
         } catch(SearchException x) {
