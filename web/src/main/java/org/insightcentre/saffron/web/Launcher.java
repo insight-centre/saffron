@@ -6,6 +6,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 import joptsimple.OptionParser;
@@ -16,6 +18,7 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
@@ -28,13 +31,9 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
  */
 public class Launcher extends AbstractHandler {
 
-    private final File dir;
     private final SaffronData saffron;
-    private final ResourceHandler staticHandler;
 
-    public Launcher(File dir, ResourceHandler staticHandler) throws IOException {
-        this.dir = dir;
-        this.staticHandler = staticHandler;
+    public Launcher(File dir) throws IOException {
         if (dir.exists()) {
             saffron = SaffronData.fromDirectory(dir);
         } else {
@@ -105,7 +104,7 @@ public class Launcher extends AbstractHandler {
                     }
                 } else if (request.getPathInfo().equals("/author-topics")) {
                     final String author = request.getParameter("author");
-                    final String topic = request.getParameter("topic2");
+                    final String topic = request.getParameter("topic");
                     final List<AuthorTopic> ats;
                     if(author != null) {
                         ats = saffron.getTopicByAuthor(author);
@@ -128,19 +127,20 @@ public class Launcher extends AbstractHandler {
                 } else if (request.getPathInfo().equals("/doc-topics")) {
                     final String doc = request.getParameter("doc");
                     final String topic = request.getParameter("topic");
-                    final List<DocumentTopic> dts;
                     if(doc != null) {
-                        dts = saffron.getTopicByDoc(doc);
-                    } else if (topic != null) {
-                        dts = saffron.getDocByTopic(topic);
-                    } else {
-                        dts = null;
-                    }
-                    if(dts != null) {
+                        final List<DocumentTopic> dts = saffron.getTopicByDoc(doc);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), dts);
+                        
+                    } else if(topic != null) {
+                        final List<Document> docs = saffron.getDocByTopic(topic);
+                        response.setContentType("application/json;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        mapper.writeValue(response.getWriter(), docs);
+                        
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -165,6 +165,26 @@ public class Launcher extends AbstractHandler {
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), null);
+                    }
+                } else if (request.getPathInfo().equals("/top-topics")) {
+                    final int n = Integer.parseInt(request.getParameter("n"));
+                    final int offset = request.getParameter("offset") == null ? 20 :
+                            Integer.parseInt(request.getParameter("offset"));
+                    response.setContentType("application/json;charset=utf-8");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    mapper.writeValue(response.getWriter(), saffron.getTopTopics(n, offset + n));
+                } else if (request.getPathInfo().startsWith("/topic/")) {
+                    final String topicString = request.getPathInfo().substring(7);
+                    final Topic topic = saffron.getTopic(topicString);
+                    if(topic != null) {
+                        
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/topic.html")));
+                        data = data.replaceAll("\\{\\{topic\\}\\}", mapper.writeValueAsString(topic));
+                        response.getWriter().write(data);
                     }
                 }
                 // Running a new Saffron instance
@@ -227,7 +247,7 @@ public class Launcher extends AbstractHandler {
             resourceHandler.setResourceBase("static");
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
-            handlers.setHandlers(new Handler[]{new Launcher(directory,resourceHandler), resourceHandler});
+            handlers.setHandlers(new Handler[]{new Launcher(directory), resourceHandler});
             server.setHandler(handlers);
 
             server.start();

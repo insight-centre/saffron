@@ -7,8 +7,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -33,6 +38,8 @@ public class SaffronData {
     private HashMap<String,List<TopicTopic>> topicByTopic1, topicByTopic2;
     private HashMap<String,List<DocumentTopic>> docByTopic, topicByDoc;
     private HashMap<String,List<AuthorTopic>> authorByTopic, topicByAuthor;
+    private List<String> topicsSorted;
+    private HashMap<String,Document> corpus;
 
     public Taxonomy getTaxonomy() {
         return taxonomy;
@@ -114,23 +121,56 @@ public class SaffronData {
         this.docTopics = docTopics;
     }
     
-    public List<DocumentTopic> getDocByTopic(String topic) {
-        return docByTopic.get(topic);
+    public List<Document> getDocByTopic(String topic) {
+        final List<DocumentTopic> dts = docByTopic.get(topic);
+        if(dts == null) {
+            return Collections.EMPTY_LIST;
+        } else {
+            final List<Document> docs = new ArrayList<>();
+            for(DocumentTopic dt : dts) {
+                Document d = corpus.get(dt.document_id);
+                if(d != null) {
+                    docs.add(d);
+                }
+            }
+            return docs;
+        }
     }
     
     public List<DocumentTopic> getTopicByDoc(String doc) {
         return topicByDoc.get(doc);
     }
 
+    public Collection<String> getTopTopics(int from, int to) {
+        return topicsSorted.subList(from, to);
+    }
+    
     public Topic getTopic(String topic) {
         return topics.get(topic);
     }
 
-    public void setTopics(Collection<Topic> topics) {
+    public void setTopics(Collection<Topic> _topics) {
         this.topics = new HashMap<>();
-        for(Topic t : topics) {
+        this.topicsSorted = new ArrayList<>();
+        for(Topic t : _topics) {
             this.topics.put(t.topicString, t);
+            this.topicsSorted.add(t.topicString);
         }
+        this.topicsSorted.sort(new Comparator<String>() {
+            @Override
+            public int compare(String o1, String o2) {
+                if(topics.containsKey(o1) && topics.containsKey(o2)) {
+                    double wt1 = topics.get(o1).score;
+                    double wt2 = topics.get(o2).score;
+                    if(wt1 > wt2) {
+                        return -1;
+                    } else if (wt2 > wt1) {
+                        return +1;
+                    }
+                }
+                return o1.compareTo(o2);
+            }
+        });
     }
 
     public List<TopicTopic> getTopicSim() {
@@ -152,11 +192,13 @@ public class SaffronData {
     }
     
     public List<TopicTopic> getTopicByTopic1(String topic1) {
-        return topicByTopic1.get(topic1);
+        List<TopicTopic> tt = topicByTopic1.get(topic1);
+        return tt == null ? Collections.EMPTY_LIST : tt;
     }
     
     public List<TopicTopic> getTopicByTopic2(String topic2) {
-        return topicByTopic2.get(topic2);
+        List<TopicTopic> tt = topicByTopic2.get(topic2);
+        return tt == null ? Collections.EMPTY_LIST : tt;
     }
     
     
@@ -167,7 +209,8 @@ public class SaffronData {
      */
     public boolean isLoaded() {
         return taxonomy != null && authorSim != null && topicSim != null
-                && authorTopics != null && docTopics != null && topics != null;
+                && authorTopics != null && docTopics != null && topics != null
+                && corpus != null;
     }
     
     /**
@@ -224,7 +267,20 @@ public class SaffronData {
         saffron.setTopics((List<Topic>)mapper.readValue(topicsFile, 
                 tf.constructCollectionType(List.class, Topic.class)));
         
+        File corpusFile = new File(directory, "corpus.json");
+        if(!corpusFile.exists())
+            throw new FileNotFoundException("Could not find corpus.json");
+        
+        saffron.setCorpus((Corpus)mapper.readValue(corpusFile, IndexedCorpus.class));
+        
         return saffron;
+    }
+
+    private void setCorpus(Corpus corpus) {
+        this.corpus = new HashMap<>();
+        for(Document d : corpus.getDocuments()) {
+            this.corpus.put(d.id, d);
+        }
     }
     
 }
