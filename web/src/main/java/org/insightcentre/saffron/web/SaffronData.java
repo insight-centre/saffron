@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
@@ -40,6 +41,8 @@ public class SaffronData {
     private HashMap<String,List<AuthorTopic>> authorByTopic, topicByAuthor;
     private List<String> topicsSorted;
     private HashMap<String,Document> corpus;
+    private HashMap<String,List<Document>> corpusByAuthor;
+    private HashMap<String,Author> authors;
 
     public Taxonomy getTaxonomy() {
         return taxonomy;
@@ -96,11 +99,13 @@ public class SaffronData {
     }
     
     public List<AuthorTopic> getAuthorByTopic(String topic) {
-        return authorByTopic.get(topic);
+        List<AuthorTopic> ats = authorByTopic.get(topic);
+        return ats == null ? Collections.EMPTY_LIST : ats;
     }
     
     public List<AuthorTopic> getTopicByAuthor(String author) {
-        return topicByAuthor.get(author);
+        List<AuthorTopic> ats =  topicByAuthor.get(author);
+        return ats == null ? Collections.EMPTY_LIST : ats;
     }
 
     public List<DocumentTopic> getDocTopics() {
@@ -137,8 +142,20 @@ public class SaffronData {
         }
     }
     
-    public List<DocumentTopic> getTopicByDoc(String doc) {
-        return topicByDoc.get(doc);
+    public List<Topic> getTopicByDoc(String doc) {
+        List<DocumentTopic> dts = topicByDoc.get(doc);
+        if(dts == null) {
+            return Collections.EMPTY_LIST;
+        } else {
+            List<Topic> topics = new ArrayList<>();
+            for(DocumentTopic dt : dts) {
+                Topic t = getTopic(dt.topic_string);
+                if(t != null) {
+                    topics.add(t);
+                }
+            }
+            return topics;
+        }
     }
 
     public Collection<String> getTopTopics(int from, int to) {
@@ -278,9 +295,32 @@ public class SaffronData {
 
     private void setCorpus(Corpus corpus) {
         this.corpus = new HashMap<>();
+        this.corpusByAuthor = new HashMap<>();
+        this.authors = new HashMap<>();
         for(Document d : corpus.getDocuments()) {
             this.corpus.put(d.id, d);
+            for(Author a : d.getAuthors()) {
+                if(!corpusByAuthor.containsKey(a.id)) {
+                    corpusByAuthor.put(a.id, new ArrayList<Document>());
+                }
+                corpusByAuthor.get(a.id).add(d);
+                if(!authors.containsKey(a.id)) {
+                    authors.put(a.id, a);
+                }
+            }
         }
     }
     
+    public List<Document> getDocsByAuthor(String authorId) {
+        List<Document> docs = corpusByAuthor.get(authorId);
+        return docs == null ? Collections.EMPTY_LIST : docs;
+    }
+    
+    public Author getAuthor(String authorId) {
+        return authors.get(authorId);
+    }
+    
+    public Document getDoc(String docId) {
+        return corpus.get(docId);
+    }
 }
