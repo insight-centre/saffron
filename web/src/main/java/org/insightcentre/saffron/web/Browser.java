@@ -31,7 +31,15 @@ public class Browser extends AbstractHandler {
 
     public Browser(File dir) throws IOException {
         if (dir.exists()) {
-            saffron = SaffronData.fromDirectory(dir);
+            SaffronData s2;
+            try {
+                s2 = SaffronData.fromDirectory(dir);
+            } catch(Exception x) {
+                x.printStackTrace();
+                System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+                s2 = new SaffronData();
+            }
+            saffron = s2;
         } else {
             saffron = new SaffronData();
         }

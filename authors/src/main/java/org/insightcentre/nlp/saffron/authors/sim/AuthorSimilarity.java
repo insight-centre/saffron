@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.authors.sim;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +25,7 @@ public class AuthorSimilarity {
         this.top_n = top_n;
     }
 
-    public List<AuthorAuthor> topicSimilarity(List<AuthorTopic> ats) {
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats) {
         List<AuthorAuthor> topicAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
         for(AuthorTopic at : ats) {

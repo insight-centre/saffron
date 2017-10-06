@@ -84,7 +84,7 @@ public class SaffronData {
         return authorTopics;
     }
 
-    public void setAuthorTopics(List<AuthorTopic> authorTopics) {
+    public void setAuthorTopics(Collection<AuthorTopic> authorTopics) {
         authorByTopic = new HashMap<>();
         topicByAuthor = new HashMap<>();
         for(AuthorTopic at : authorTopics) {
@@ -95,7 +95,7 @@ public class SaffronData {
                 topicByAuthor.put(at.author_id, new ArrayList<AuthorTopic>());
             topicByAuthor.get(at.author_id).add(at);
         }
-        this.authorTopics = authorTopics;
+        this.authorTopics = new ArrayList<>(authorTopics);
     }
     
     public List<AuthorTopic> getAuthorByTopic(String topic) {
@@ -293,7 +293,7 @@ public class SaffronData {
         return saffron;
     }
 
-    private void setCorpus(Corpus corpus) {
+    public void setCorpus(Corpus corpus) {
         this.corpus = new HashMap<>();
         this.corpusByAuthor = new HashMap<>();
         this.authors = new HashMap<>();

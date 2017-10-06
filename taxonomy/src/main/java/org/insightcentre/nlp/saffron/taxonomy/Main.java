@@ -76,7 +76,7 @@ public class Main {
 
             //Taxonomy graph = TaxonomyConstructor.optimisedSimilarityGraph(docTopics, config.simThreshold, config.spanSize, topicMap, config.minCommonDocs);
             //Taxonomy graph = SimpleTaxonomy.optimisedSimilarityGraph(docTopics, topicMap);
-            Taxonomy graph = new GreedyBinary(1.0, 1.0).optimisedSimilarityGraph(docTopics, topicMap);
+            Taxonomy graph = extractTaxonomy(docTopics, topicMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
             
@@ -86,7 +86,11 @@ public class Main {
         }
     }
 
-    private static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper) throws IOException {
+    public static Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {
+        return new GreedyBinary(1.0, 1.0).optimisedSimilarityGraph(docTopics, topicMap);
+    }
+
+    public static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper) throws IOException {
         Map<String, Topic> tMap = new HashMap<>();
         for(Topic topic : topics) 
             tMap.put(topic.topicString, topic);

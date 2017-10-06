@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.List;
-import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -51,7 +50,7 @@ public class Welcome extends AbstractHandler {
                     ServletFileUpload upload = new ServletFileUpload(factory);
                     List<FileItem> items = upload.parseRequest(request);
                     if(items.size() == 1) {
-                        File tmpFile = File.createTempFile("corpus", ".zip");
+                        File tmpFile = File.createTempFile("corpus", items.get(0).getName());
                         tmpFile.deleteOnExit();
                         byte[] buf = new byte[4096];
                         try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {

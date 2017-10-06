@@ -206,7 +206,6 @@ public class SaffronCrawler extends WebCrawler {
                 badOptions(p, "The output folder is required");
                 return;
             }
-            SaffronCrawlerFactory factory = new SaffronCrawlerFactory(saveFolder);
 
             final String crawlStorageFolder;
             if (os.has("t")) {
@@ -216,44 +215,48 @@ public class SaffronCrawler extends WebCrawler {
                 crawlStorageFolder = f.getAbsolutePath();
             }
             int numberOfCrawlers = os.has("c") ? (Integer) os.valueOf("c") : 7;
-
-            CrawlConfig config = new CrawlConfig();
-            config.setCrawlStorageFolder(crawlStorageFolder);
-            config.setIncludeBinaryContentInCrawling(true);
-
-            factory.setLanguageFilter((String) os.valueOf("l"));
-            factory.setCollectionLimit((Integer) os.valueOf("n"));
-            factory.setUrlFilter((String) os.valueOf("u"));
-
-
-            /*
-             * Instantiate the controller for this crawl.
-             */
-            PageFetcher pageFetcher = new PageFetcher(config);
-            RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
-            RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
-            CrawlController controller = new CrawlController(config, pageFetcher, robotstxtServer);
-
+            final String urlFilter = (String) os.valueOf("u");
+            final Integer collectionLimit = (Integer) os.valueOf("n");
+            final String languageFilter = (String) os.valueOf("l");
             if (!os.has("s")) {
                 badOptions(p, "A seed URL is required");
             }
-            controller.addSeed(((URL) os.valueOf("s")).toString());
-            
-
-            /*
-             * Start the crawl. This is a blocking operation, meaning that your code
-             * will reach the line after this only when crawling is finished.
-             */
-            System.err.println("Starting crawl");
-            controller.start(factory, numberOfCrawlers);
+            final String seedURL = ((URL) os.valueOf("s")).toString();
 
             ObjectMapper mapper = new ObjectMapper();
-
-            CrawledCorpus c = new CrawledCorpus(factory.getDocuments());
+            CrawledCorpus c = crawl(crawlStorageFolder, saveFolder, languageFilter, collectionLimit, urlFilter, seedURL, numberOfCrawlers);
             mapper.writeValue(new File(saveFolder, "corpus.json"), c);
         } catch (Throwable t) {
             t.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    public static CrawledCorpus crawl(final String crawlStorageFolder, File saveFolder, 
+            final String languageFilter, final int collectionLimit, 
+            final String urlFilter, final String seedURL, 
+            int numberOfCrawlers) throws Exception, IOException {
+        SaffronCrawlerFactory factory = new SaffronCrawlerFactory(saveFolder);
+        CrawlConfig config = new CrawlConfig();
+        config.setCrawlStorageFolder(crawlStorageFolder);
+        config.setIncludeBinaryContentInCrawling(true);
+        factory.setLanguageFilter(languageFilter);
+        factory.setCollectionLimit(collectionLimit);
+        factory.setUrlFilter(urlFilter);
+        /*
+        * Instantiate the controller for this crawl.
+        */
+        PageFetcher pageFetcher = new PageFetcher(config);
+        RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
+        RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
+        CrawlController controller = new CrawlController(config, pageFetcher, robotstxtServer);
+        controller.addSeed(seedURL);
+        /*
+        * Start the crawl. This is a blocking operation, meaning that your code
+        * will reach the line after this only when crawling is finished.
+        */
+        System.err.println("Starting crawl");
+        controller.start(factory, numberOfCrawlers);
+        return new CrawledCorpus(factory.getDocuments());
     }
 }

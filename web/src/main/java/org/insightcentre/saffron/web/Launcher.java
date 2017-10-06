@@ -65,7 +65,7 @@ public class Launcher {
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory);
-            Executor executor = new Executor(browser.saffron);
+            Executor executor = new Executor(browser.saffron, directory);
             Welcome welcome = new Welcome(browser.saffron, executor);
             handlers.setHandlers(new Handler[]{welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);

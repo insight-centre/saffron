@@ -12,6 +12,7 @@ import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Document;
 
@@ -69,7 +70,7 @@ public class Consolidate {
         }
     }
 
-    private static Set<Author> extractAuthors(IndexedCorpus corpus) {
+    public static Set<Author> extractAuthors(Corpus corpus) {
         Set<Author> authors = new HashSet<Author>();
         for(Document doc : corpus.getDocuments()) {
             for(Author author : doc.getAuthors()) {
@@ -79,7 +80,7 @@ public class Consolidate {
         return authors;
     }
 
-    private static IndexedCorpus applyConsolidation(IndexedCorpus corpus, Map<Author, Set<Author>> consolidation) {
+    public static IndexedCorpus applyConsolidation(IndexedCorpus corpus, Map<Author, Set<Author>> consolidation) {
         Map<Author, Author> rmap = new HashMap<>();
         for(Map.Entry<Author, Set<Author>> e1 : consolidation.entrySet()) {
             for(Author a1 : e1.getValue()) {
