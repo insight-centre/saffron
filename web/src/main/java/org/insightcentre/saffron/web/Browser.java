@@ -27,13 +27,12 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
  * @author John McCrae <john@mccr.ae>
  */
 public class Browser extends AbstractHandler {
-    private final SaffronData saffron;
+    final SaffronData saffron;
 
     public Browser(File dir) throws IOException {
         if (dir.exists()) {
             saffron = SaffronData.fromDirectory(dir);
         } else {
-            dir.mkdirs();
             saffron = new SaffronData();
         }
     }
@@ -46,7 +45,7 @@ public class Browser extends AbstractHandler {
             throws IOException, ServletException {
         try {
             // Exposing an existing directory
-            if (saffron.isLoaded()) {
+            if (saffron != null && saffron.isLoaded()) {
                 final ObjectMapper mapper = new ObjectMapper();
                 System.err.println(target);
                 if (target.equals("/taxonomy")) {
@@ -221,13 +220,8 @@ public class Browser extends AbstractHandler {
                         }
                     }
                 }
-                // Running a new Saffron instance
-            } else {
-                if(target.equals("/") || target.equals("")) {
-                    baseRequest.setHandled(true);
-                    response.sendRedirect("/welcome.html");
-                }
-            }
+                
+            } 
         } catch (Exception x) {
             x.printStackTrace();
             throw new ServletException(x);
