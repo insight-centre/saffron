@@ -140,19 +140,18 @@ public class Browser extends AbstractHandler {
                     final String author = request.getParameter("author");
                     final String topic = request.getParameter("topic");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
-                    final List<AuthorTopic> ats;
-                    if (author != null) {
-                        ats = saffron.getTopicByAuthor(author);
-                    } else if (topic != null) {
-                        ats = saffron.getAuthorByTopic(topic);
-                    } else {
-                        ats = null;
-                    }
-                    if (ats != null) {
+                    if(author != null) {
+                        final List<AuthorTopic> ats = saffron.getTopicByAuthor(author);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), getTopNAuthorTopics(ats, n));
+                    } else if (topic != null) {
+                        final List<Author> as = saffron.authorTopicsToAuthors(getTopNAuthorTopics(saffron.getAuthorByTopic(topic), n));
+                        response.setContentType("application/json;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        mapper.writeValue(response.getWriter(), as);
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -196,6 +195,20 @@ public class Browser extends AbstractHandler {
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), t);
+                    } else {
+                        response.setContentType("application/json;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                        baseRequest.setHandled(true);
+                        mapper.writeValue(response.getWriter(), null);
+                    }
+                } else if (target.equals("/author-docs")) {
+                    final String authorId = request.getParameter("author");
+                    if(authorId != null) {
+                        List<Document> docs = saffron.getDocsByAuthor(authorId);
+                        response.setContentType("application/json;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        mapper.writeValue(response.getWriter(), docs);
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

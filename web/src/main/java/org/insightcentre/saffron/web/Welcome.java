@@ -77,8 +77,8 @@ public class Welcome extends AbstractHandler {
                     DiskFileItemFactory factory = new DiskFileItemFactory();
                     ServletFileUpload upload = new ServletFileUpload(factory);
                     List<FileItem> items = upload.parseRequest(request);
-                    if(items.size() == 1) {
-                        File tmpFile = File.createTempFile("corpus", ".zip");
+                    if(items.size() >= 1) {
+                        File tmpFile = File.createTempFile("corpus", ".json");
                         tmpFile.deleteOnExit();
                         byte[] buf = new byte[4096];
                         try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {

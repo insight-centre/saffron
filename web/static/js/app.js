@@ -54,8 +54,8 @@ angular.module('app').component('relatedtopics', {
     },
     controller: function ($http) {
         var ctrl = this;
-        ctrl.title = "Related topics";
         if(ctrl.topic) {
+            ctrl.title = "Related topics";
             $http.get('/topic-sim?n=20&topic1=' + ctrl.topic).then(function (response) {
                 ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
@@ -68,6 +68,7 @@ angular.module('app').component('relatedtopics', {
                 }
             });
         } else if(ctrl.doc) {
+            ctrl.title = "Main topics";
             $http.get('/doc-topics?n=20&doc=' + ctrl.doc).then(function(response) {
                 ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
@@ -80,11 +81,12 @@ angular.module('app').component('relatedtopics', {
                 }
             });
         } else if(ctrl.author) {
+            ctrl.title = "Main topics";
             $http.get('/author-topics?n=20&author=' + ctrl.author).then(function(response) {
                 ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.topics.push({
-                        "topic_string": response.data[t].topic_string,
+                        "topic_string": response.data[t].topic_id,
                         "pos": (t + 1),
                         "left": t < response.data.length / 2,
                         "right": t >= response.data.length / 2
@@ -109,7 +111,8 @@ angular.module('app').component('relatedauthors', {
                 ctrl.authors = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
-                        "name": response.data[t].author_id,
+                        "id": response.data[t].id,
+                        "name": response.data[t].name,
                         "pos": (t + 1),
                         "left": t < response.data.length / 2,
                         "right": t >= response.data.length / 2
@@ -136,19 +139,32 @@ angular.module('app').component('relatedauthors', {
 angular.module('app').component('relateddocuments', {
     templateUrl: '/document-list.html',
     bindings: {
-        topic: '<'
+        topic: '<',
+        author: '<'
     },
     controller: function ($http) {
         var ctrl = this;
-        $http.get('/doc-topics?topic=' + ctrl.topic).then(function (response) {
-            ctrl.docs = [];
-            for (t = 0; t < response.data.length; t++) {
-                ctrl.docs.push({
-                    "doc": response.data[t],
-                    "pos": (t + 1)
-                });
-            }
-        })
+        if(ctrl.topic) {
+            $http.get('/doc-topics?topic=' + ctrl.topic).then(function (response) {
+                ctrl.docs = [];
+                for (t = 0; t < response.data.length; t++) {
+                    ctrl.docs.push({
+                        "doc": response.data[t],
+                        "pos": (t + 1)
+                    });
+                }
+            });
+        } else if(ctrl.author) {
+            $http.get('/author-docs?author=' + ctrl.author).then(function (response) {
+                ctrl.docs = [];
+                for (t = 0; t < response.data.length; t++) {
+                    ctrl.docs.push({
+                        "doc": response.data[t],
+                        "pos": (t + 1)
+                    });
+                }
+            })
+        }
     }
 });
 
