@@ -92,6 +92,7 @@ public class Main {
 
     public static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper) throws IOException {
         Map<String, Topic> tMap = new HashMap<>();
+        //System.err.printf("%d topics\n", topics.size());
         for(Topic topic : topics) 
             tMap.put(topic.topicString, topic);
         return tMap;

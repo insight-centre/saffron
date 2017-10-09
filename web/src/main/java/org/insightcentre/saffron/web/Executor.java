@@ -256,7 +256,7 @@ public class Executor extends AbstractHandler {
         }
 
         public void setStatusMessage(String statusMessage) {
-            System.err.printf("[STAGE %d] %s", stage, statusMessage);
+            System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
             this.statusMessage2 = statusMessage;
         }
         

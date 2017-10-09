@@ -2,6 +2,8 @@ package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -43,6 +45,7 @@ public class SaffronData {
     private HashMap<String,Document> corpus;
     private HashMap<String,List<Document>> corpusByAuthor;
     private HashMap<String,Author> authors;
+    private HashMap<String,IntList> taxoMap;
 
     public Taxonomy getTaxonomy() {
         return taxonomy;
@@ -50,6 +53,7 @@ public class SaffronData {
 
     public void setTaxonomy(Taxonomy taxonomy) {
         this.taxonomy = taxonomy;
+        this.taxoMap = getTaxoLocations(taxonomy);
     }
 
     public List<AuthorAuthor> getAuthorSim() {
@@ -142,19 +146,12 @@ public class SaffronData {
         }
     }
     
-    public List<Topic> getTopicByDoc(String doc) {
+    public List<DocumentTopic> getTopicByDoc(String doc) {
         List<DocumentTopic> dts = topicByDoc.get(doc);
         if(dts == null) {
             return Collections.EMPTY_LIST;
         } else {
-            List<Topic> topics = new ArrayList<>();
-            for(DocumentTopic dt : dts) {
-                Topic t = getTopic(dt.topic_string);
-                if(t != null) {
-                    topics.add(t);
-                }
-            }
-            return topics;
+            return dts;
         }
     }
 
@@ -322,5 +319,59 @@ public class SaffronData {
     
     public Document getDoc(String docId) {
         return corpus.get(docId);
+    }
+    
+    private HashMap<String, IntList> getTaxoLocations(Taxonomy t) {
+        IntList il = new IntArrayList();
+        HashMap<String, IntList> map = new HashMap<>();
+        _getTaxoLocations(t, il, map);
+        return map;
+    }
+
+    private void _getTaxoLocations(Taxonomy t, IntList il, HashMap<String, IntList> map) {
+        map.put(t.root, il);
+        for(int i = 0; i < t.children.size(); i++) {
+            IntList il2 = new IntArrayList(il);
+            il2.add(i);
+            _getTaxoLocations(t.children.get(i), il2, map);
+        }
+    }
+    
+    private Taxonomy taxoNavigate(Taxonomy t, IntList il) {
+        for(int i : il) {
+            t = t.children.get(i);
+        }
+        return t;
+    }
+    
+    public List<String> getTaxoParents(String topic_string) {
+        IntList il = taxoMap.get(topic_string);
+        if(il != null) {
+            Taxonomy t = taxonomy;
+            List<String> route = new ArrayList<>();
+            for(int i : il) {
+                route.add(t.root);
+                t = t.children.get(i);
+            }
+            return route;
+        } else {
+            return Collections.EMPTY_LIST;
+        }
+    }
+    
+    
+    
+    public List<String> getTaxoChildren(String topic_string) {
+        IntList il = taxoMap.get(topic_string);
+        if(il != null) {
+            Taxonomy t = taxoNavigate(taxonomy, il);
+            List<String> children = new ArrayList<>();
+            for(Taxonomy t2 : t.children) {
+                children.add(t2.root);
+            }
+            return children;
+        } else {
+            return Collections.EMPTY_LIST;
+        }
     }
 }

@@ -16,6 +16,7 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
  * @author John McCrae <john@mccr.ae>
  */
 public class TopicSimilarity {
+
     private final double threshold;
     private final int top_n;
 
@@ -23,26 +24,27 @@ public class TopicSimilarity {
         this.threshold = threshold;
         this.top_n = top_n;
     }
-    
 
     public List<TopicTopic> topicSimilarity(List<DocumentTopic> documentTopics) {
         List<TopicTopic> topicTopics = new ArrayList<>();
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
-        for(DocumentTopic dt : documentTopics) {
-            if(!vectors.containsKey(dt.topic_string))
+        System.err.printf("%s doc-topics\n", documentTopics.size());
+        for (DocumentTopic dt : documentTopics) {
+            if (!vectors.containsKey(dt.topic_string)) {
                 vectors.put(dt.topic_string, new Object2IntOpenHashMap<String>());
-            if(dt.unembedded_occ != null)
-                vectors.get(dt.topic_string).put(dt.document_id, dt.unembedded_occ);
+            }
+            //if(dt.occurrences != null)
+            vectors.get(dt.topic_string).put(dt.document_id, dt.occurrences);
         }
-        for(String t1 : vectors.keySet()) {
+        for (String t1 : vectors.keySet()) {
             TreeSet<TopicTopic> topN = new TreeSet<>(new Comparator<TopicTopic>() {
 
                 @Override
                 public int compare(TopicTopic arg0, TopicTopic arg1) {
                     int i1 = Double.compare(arg0.similarity, arg1.similarity);
-                    if(i1 == 0) {
+                    if (i1 == 0) {
                         int i2 = arg0.topic1.compareTo(arg1.topic1);
-                        if(i2 == 0) {
+                        if (i2 == 0) {
                             return arg0.topic2.compareTo(arg1.topic2);
                         }
                         return i2;
@@ -50,16 +52,18 @@ public class TopicSimilarity {
                     return i1;
                 }
             });
-            for(String t2 : vectors.keySet()) {
-                if(!t1.equals(t2)) {
-                    double s= sim(vectors.get(t1), vectors.get(t2));
-                    if(s > threshold)
+            for (String t2 : vectors.keySet()) {
+                if (!t1.equals(t2)) {
+                    double s = sim(vectors.get(t1), vectors.get(t2));
+                    if (s > threshold) {
                         topN.add(new TopicTopic(t1, t2, s));
+                    }
                 }
-                while(topN.size() > top_n)
-                    topN.pollFirst();
-                topicTopics.addAll(topN);
             }
+            while (topN.size() > top_n) {
+                topN.pollFirst();
+            }
+            topicTopics.addAll(topN);
         }
 
         return topicTopics;
@@ -67,18 +71,20 @@ public class TopicSimilarity {
 
     private double sim(Object2IntMap<String> v1, Object2IntMap<String> v2) {
         double aa = 0, bb = 0, ab = 0;
-        for(String s : v1.keySet()) {
+        for (String s : v1.keySet()) {
             double a = v1.get(s);
             aa += a * a;
-            if(v2.containsKey(s)) 
+            if (v2.containsKey(s)) {
                 ab += a * v2.get(s);
+            }
         }
-        for(String s : v2.keySet()) {
+        for (String s : v2.keySet()) {
             double b = v2.get(s);
             bb += b * b;
         }
-        if(aa == 0 || bb == 0)
+        if (aa == 0 || bb == 0) {
             return 0;
+        }
         return ab / Math.sqrt(aa * bb);
     }
 }

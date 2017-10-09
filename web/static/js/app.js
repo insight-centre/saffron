@@ -54,39 +54,40 @@ angular.module('app').component('relatedtopics', {
     },
     controller: function ($http) {
         var ctrl = this;
+        ctrl.title = "Related topics";
         if(ctrl.topic) {
-            $http.get('/topic-sim?topic1=' + ctrl.topic).then(function (response) {
-                ctrl.topics = response.data;
+            $http.get('/topic-sim?n=20&topic1=' + ctrl.topic).then(function (response) {
+                ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.topics.push({
-                        "topic_string": response.data[t].topic_string,
+                        "topic_string": response.data[t].topic2_id,
                         "pos": (t + 1),
-                        "left": t <= response.data.length / 2,
-                        "right": t > response.data.length / 2
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
                     });
                 }
             });
         } else if(ctrl.doc) {
-            $http.get('/doc-topics?doc=' + ctrl.doc).then(function(response) {
+            $http.get('/doc-topics?n=20&doc=' + ctrl.doc).then(function(response) {
                 ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.topics.push({
                         "topic_string": response.data[t].topic_string,
                         "pos": (t + 1),
-                        "left": t <= response.data.length / 2,
-                        "right": t > response.data.length / 2
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
                     });
                 }
             });
         } else if(ctrl.author) {
-            $http.get('/author-topics?author=' + ctrl.author).then(function(response) {
+            $http.get('/author-topics?n=20&author=' + ctrl.author).then(function(response) {
                 ctrl.topics = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.topics.push({
                         "topic_string": response.data[t].topic_string,
                         "pos": (t + 1),
-                        "left": t <= response.data.length / 2,
-                        "right": t > response.data.length / 2
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
                     });
                 }
             });
@@ -110,8 +111,8 @@ angular.module('app').component('relatedauthors', {
                     ctrl.authors.push({
                         "name": response.data[t].author_id,
                         "pos": (t + 1),
-                        "left": t <= response.data.length / 2,
-                        "right": t > response.data.length / 2
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
                     });
                 }
             });
@@ -122,8 +123,8 @@ angular.module('app').component('relatedauthors', {
                     ctrl.authors.push({
                         "id": response.data[t].author2,
                         "pos": (t + 1),
-                        "left": t <= response.data.length / 2,
-                        "right": t > response.data.length / 2
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
                         
                     });
                 }
@@ -144,9 +145,7 @@ angular.module('app').component('relateddocuments', {
             for (t = 0; t < response.data.length; t++) {
                 ctrl.docs.push({
                     "doc": response.data[t],
-                    "pos": (t + 1),
-                    "left": t <= response.data.length / 2,
-                    "right": t > response.data.length / 2
+                    "pos": (t + 1)
                 });
             }
         })
@@ -173,3 +172,33 @@ angular.module('app').component('doc', {
     }
 });
 
+angular.module('app').controller('Breadcrumbs', function($scope,$http) {
+   if(topic) {
+       $scope.parents = [];
+       $http.get('/parents?topic=' + topic.topic_string).then(function(response) {
+           $scope.parents = response.data;
+       })
+   } 
+});
+
+angular.module('app').component('childtopics', {
+    templateUrl: '/topic-list.html',
+    bindings: {
+        topic: '<'
+    },
+    controller: function ($http) {
+        var ctrl = this;
+        ctrl.title = "Child topics";
+        $http.get('/children?topic=' + ctrl.topic).then(function (response) {
+            ctrl.topics = [];
+            for (t = 0; t < response.data.length; t++) {
+                ctrl.topics.push({
+                    "topic_string": response.data[t],
+                    "pos": (t + 1),
+                    "left": t < response.data.length / 2,
+                    "right": t >= response.data.length / 2
+                });
+            }
+        });
+    }
+});
