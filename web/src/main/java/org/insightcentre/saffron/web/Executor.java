@@ -204,7 +204,7 @@ public class Executor extends AbstractHandler {
         
         status.stage++;
         status.setStatusMessage("Connecting authors to topics");
-        ConnectResearchers cr = new ConnectResearchers(100);
+        ConnectResearchers cr = new ConnectResearchers(1000);
         Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, corpus2.documents);
         
         status.setStatusMessage("Saving author connections");

@@ -116,6 +116,7 @@ public class Browser extends AbstractHandler {
                     final String topic1 = request.getParameter("topic1");
                     final String topic2 = request.getParameter("topic2");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
+                    final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     final List<TopicTopic> tts;
                     if (topic1 != null) {
                         tts = saffron.getTopicByTopic1(topic1);
@@ -125,7 +126,7 @@ public class Browser extends AbstractHandler {
                         tts = null;
                     }
                     if (tts != null) {
-                        List<TopicTopic> tts2 = getTopN(tts, n);
+                        List<TopicTopic> tts2 = getTopN(tts, n, offset);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -140,14 +141,15 @@ public class Browser extends AbstractHandler {
                     final String author = request.getParameter("author");
                     final String topic = request.getParameter("topic");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
+                    final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if(author != null) {
                         final List<AuthorTopic> ats = saffron.getTopicByAuthor(author);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), getTopNAuthorTopics(ats, n));
+                        mapper.writeValue(response.getWriter(), getTopNAuthorTopics(ats, n, offset));
                     } else if (topic != null) {
-                        final List<Author> as = saffron.authorTopicsToAuthors(getTopNAuthorTopics(saffron.getAuthorByTopic(topic), n));
+                        final List<Author> as = saffron.authorTopicsToAuthors(getTopNAuthorTopics(saffron.getAuthorByTopic(topic), n, offset));
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -162,12 +164,13 @@ public class Browser extends AbstractHandler {
                     final String doc = request.getParameter("doc");
                     final String topic = request.getParameter("topic");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
+                    final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (doc != null) {
                         final List<DocumentTopic> dts = saffron.getTopicByDoc(doc);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), getTopNDocTopics(dts, n));
+                        mapper.writeValue(response.getWriter(), getTopNDocTopics(dts, n, offset));
 
                     } else if (topic != null) {
                         final List<Document> docs = saffron.getDocByTopic(topic);
@@ -289,7 +292,7 @@ public class Browser extends AbstractHandler {
         }
     }
 
-    private List<TopicTopic> getTopN(final List<TopicTopic> tts, final int n) {
+    private List<TopicTopic> getTopN(final List<TopicTopic> tts, final int n, final int offset) {
         tts.sort(new Comparator<TopicTopic>() {
             @Override
             public int compare(TopicTopic o1, TopicTopic o2) {
@@ -304,16 +307,16 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        final List<TopicTopic> tts2;
-        if (n < tts.size()) {
-            tts2 = tts.subList(0, n);
+        if(tts.size() < offset) {
+            return Collections.EMPTY_LIST;
+        } else if(tts.size() < offset + n) {
+            return tts.subList(offset, tts.size());
         } else {
-            tts2 = tts;
+            return tts.subList(offset, offset+n);
         }
-        return tts2;
     }
 
-    private List<DocumentTopic> getTopNDocTopics(final List<DocumentTopic> tts, final int n) {
+    private List<DocumentTopic> getTopNDocTopics(final List<DocumentTopic> tts, final int n, final int offset) {
         tts.sort(new Comparator<DocumentTopic>() {
             @Override
             public int compare(DocumentTopic o1, DocumentTopic o2) {
@@ -328,16 +331,16 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        final List<DocumentTopic> tts2;
-        if (n < tts.size()) {
-            tts2 = tts.subList(0, n);
+        if(tts.size() < offset) {
+            return Collections.EMPTY_LIST;
+        } else if(tts.size() < offset + n) {
+            return tts.subList(offset, tts.size());
         } else {
-            tts2 = tts;
+            return tts.subList(offset, offset+n);
         }
-        return tts2;
     }
 
-    private List<AuthorTopic> getTopNAuthorTopics(final List<AuthorTopic> tts, final int n) {
+    private List<AuthorTopic> getTopNAuthorTopics(final List<AuthorTopic> tts, final int n, final int offset) {
         tts.sort(new Comparator<AuthorTopic>() {
             @Override
             public int compare(AuthorTopic o1, AuthorTopic o2) {
@@ -352,12 +355,12 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        final List<AuthorTopic> tts2;
-        if (n < tts.size()) {
-            tts2 = tts.subList(0, n);
+        if(tts.size() < offset) {
+            return Collections.EMPTY_LIST;
+        } else if(tts.size() < offset + n) {
+            return tts.subList(offset, tts.size());
         } else {
-            tts2 = tts;
+            return tts.subList(offset, offset+n);
         }
-        return tts2;
     }
 }
