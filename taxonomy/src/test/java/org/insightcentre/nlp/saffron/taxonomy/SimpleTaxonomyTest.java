@@ -52,13 +52,13 @@ public class SimpleTaxonomyTest {
     public void testOptimisedSimilarityGraph() {
         System.out.println("optimisedSimilarityGraph");
         List<DocumentTopic> docTopics = Arrays.asList(
-                new DocumentTopic("doc1", "topic1", 1, null, null),
-                new DocumentTopic("doc1", "topic2", 1, null, null),
-                new DocumentTopic("doc2", "topic2", 1, null, null),
-                new DocumentTopic("doc2", "topic3", 1, null, null),
-                new DocumentTopic("doc2", "topic4", 1, null, null),
-                new DocumentTopic("doc3", "topic4", 1, null, null),
-                new DocumentTopic("doc3", "topic5", 1, null, null)
+                new DocumentTopic("doc1", "topic1", 1, null, null, null),
+                new DocumentTopic("doc1", "topic2", 1, null, null, null),
+                new DocumentTopic("doc2", "topic2", 1, null, null, null),
+                new DocumentTopic("doc2", "topic3", 1, null, null, null),
+                new DocumentTopic("doc2", "topic4", 1, null, null, null),
+                new DocumentTopic("doc3", "topic4", 1, null, null, null),
+                new DocumentTopic("doc3", "topic5", 1, null, null, null)
         );
         Map<String, Topic> topics = new HashMap<String, Topic>() {{
              put("topic1", new Topic("topic1", 1, 0, 0, Collections.EMPTY_LIST));

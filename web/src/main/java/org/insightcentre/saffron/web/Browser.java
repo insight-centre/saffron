@@ -93,11 +93,11 @@ public class Browser extends AbstractHandler {
                 } else if (target.equals("/author-sim")) {
                     final String author1 = request.getParameter("author1");
                     final String author2 = request.getParameter("author2");
-                    final List<AuthorAuthor> aas;
+                    final List<Author> aas;
                     if (author1 != null) {
-                        aas = saffron.getAuthorSimByAuthor1(author1);
+                        aas = saffron.authorAuthorToAuthor2(saffron.getAuthorSimByAuthor1(author1));
                     } else if (author2 != null) {
-                        aas = saffron.getAuthorSimByAuthor2(author2);
+                        aas = saffron.authorAuthorToAuthor1(saffron.getAuthorSimByAuthor2(author2));
                     } else {
                         aas = null;
                     }

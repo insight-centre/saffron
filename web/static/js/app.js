@@ -142,7 +142,8 @@ angular.module('app').component('relatedauthors', {
                 ctrl.authors = [];
                 for(t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
-                        "id": response.data[t].author2,
+                        "id": response.data[t].id,
+                        "name": response.data[t].name,
                         "pos": (t + 1),
                         "left": t < response.data.length / 2,
                         "right": t >= response.data.length / 2

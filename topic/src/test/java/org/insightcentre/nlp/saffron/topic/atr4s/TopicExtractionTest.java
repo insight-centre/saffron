@@ -66,7 +66,7 @@ public class TopicExtractionTest {
             expResult.topics = new HashSet<>();
             expResult.topics.add(new Topic("company", 2, 1, 655.4725860581262, Arrays.asList(new Topic.MorphologicalVariation("company"))));
             expResult.docTopics = new ArrayList<>();
-            expResult.docTopics.add(new DocumentTopic("id1", "company", 2, null, null));
+            expResult.docTopics.add(new DocumentTopic("id1", "company", 2, null, null, null));
             TopicExtraction.Result result = instance.extractTopics(searcher);
             assertEquals(expResult, result);
         } else {

@@ -12,6 +12,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.topic.tfidf.TFIDF;
 import ru.ispras.atr.candidates.TCCConfig;
 import ru.ispras.atr.candidates.TermCandidatesCollector;
 import ru.ispras.atr.candidates.TermOccurrencesCollectorConfig;
@@ -228,7 +229,7 @@ public class TopicExtraction {
                     
                     result.topics.add(new Topic(lemma1, occurrences, docOccurs.size(), score, morphVars));
                     for(Map.Entry<String, Integer> docOcc : docOccurs.entrySet()) {
-                        result.docTopics.add(new DocumentTopic(docOcc.getKey(), lemma1, docOcc.getValue(), null, null));
+                        result.docTopics.add(new DocumentTopic(docOcc.getKey(), lemma1, docOcc.getValue(), null, null, null));
                     }
                 } /*else {
                     System.err.println("Ignoring " + term._1);
@@ -238,6 +239,7 @@ public class TopicExtraction {
         } catch(SearchException x) {
             throw new RuntimeException(x);
         }
+        TFIDF.addTfidf(result.docTopics);
         return result;
     }
     

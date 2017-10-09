@@ -63,7 +63,7 @@ public class SaffronData {
 
     public void setAuthorSim(List<AuthorAuthor> authorSim) {
         authorByAuthor1 = new HashMap<>();
-        authorByAuthor1 = new HashMap<>();
+        authorByAuthor2 = new HashMap<>();
         for (AuthorAuthor aa : authorSim) {
             if (!authorByAuthor1.containsKey(aa.author1_id)) {
                 authorByAuthor1.put(aa.author1_id, new ArrayList<AuthorAuthor>());
@@ -86,6 +86,29 @@ public class SaffronData {
     public List<AuthorAuthor> getAuthorSimByAuthor2(String author2) {
         List<AuthorAuthor> aas = authorByAuthor2.get(author2);
         return aas == null ? Collections.EMPTY_LIST : aas;
+    }
+    
+    public List<Author> authorAuthorToAuthor1(List<AuthorAuthor> aas) {
+        List<Author> as = new ArrayList<>();
+        for(AuthorAuthor aa : aas) {
+            Author a = getAuthor(aa.author1_id);
+            if(a != null) {
+                as.add(a);
+            }
+        }
+        return as;
+    }
+    
+    
+    public List<Author> authorAuthorToAuthor2(List<AuthorAuthor> aas) {
+        List<Author> as = new ArrayList<>();
+        for(AuthorAuthor aa : aas) {
+            Author a = getAuthor(aa.author2_id);
+            if(a != null) {
+                as.add(a);
+            }
+        }
+        return as;
     }
 
     public List<AuthorTopic> getAuthorTopics() {
