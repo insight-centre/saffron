@@ -58,7 +58,7 @@ public class DocumentTest {
         final Document document = mapper.readValue(data, Document.class);
         assertEquals("Test Document", document.name);
         assertEquals("test", document.id);
-        assertEquals("These are the document contents", document.getContents());
+        assertEquals("These are the document contents", document.contents());
         assertEquals(1, document.authors.size());
         assertEquals(new Author("Joe Bloggs"), document.authors.get(0));
         assertEquals("text/plain", document.mimeType);

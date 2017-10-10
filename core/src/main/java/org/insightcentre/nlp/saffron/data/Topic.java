@@ -12,30 +12,42 @@ import java.util.Objects;
 public class Topic implements Comparable<Topic> {
 
     @JsonProperty("topic_string")
-    /** The unique string for this topic */
+    /**
+     * The unique string for this topic
+     */
     public final String topicString;
-    /** The number of times this occurs in text */
+    /**
+     * The number of times this occurs in text
+     */
     public int occurrences;
-    /** The number of documents this occurs in */
+    /**
+     * The number of documents this occurs in
+     */
     public int matches;
-    /** The importance of this topic */
+    /**
+     * The importance of this topic
+     */
     public double score;
-    /** Any detected morphological variations of this term */
+    /**
+     * Any detected morphological variations of this term
+     */
     public final List<MorphologicalVariation> mvList;
-    /** The link to DBpedia (may be null) */
+    /**
+     * The link to DBpedia (may be null)
+     */
     public URL dbpedia_url;
 
     @JsonCreator
     public Topic(
-        @JsonProperty(value="topic_string", required = true) String topic_string, 
-        @JsonProperty(value="occurrences") int occurrences,
-        @JsonProperty(value="matches") int matches,
-        @JsonProperty(value="score") double score, 
-        @JsonProperty(value="mv_list") List<MorphologicalVariation> mvList) {
+            @JsonProperty(value = "topic_string", required = true) String topic_string,
+            @JsonProperty(value = "occurrences") int occurrences,
+            @JsonProperty(value = "matches") int matches,
+            @JsonProperty(value = "score") double score,
+            @JsonProperty(value = "mv_list") List<MorphologicalVariation> mvList) {
         super();
         this.topicString = topic_string;
         this.occurrences = occurrences;
-        this.matches     = matches;
+        this.matches = matches;
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
     }
@@ -43,15 +55,20 @@ public class Topic implements Comparable<Topic> {
     public void addMorphologicalVariation(MorphologicalVariation mv) {
         mvList.add(mv);
     }
-    
+
     @Override
     public int compareTo(Topic o) {
         int i0 = Double.compare(score, o.score);
         if (i0 == 0) {
-            int i1 = topicString.compareTo(o.topicString);
-            return i1;
+            int i = Integer.compare(occurrences, o.occurrences);
+            if (i == 0) {
+                int i1 = topicString.compareTo(o.topicString);
+                return i1;
+            } else {
+                return -i;
+            }
         }
-        return i0;
+        return -i0;
     }
 
     @Override
@@ -82,28 +99,39 @@ public class Topic implements Comparable<Topic> {
     }
 
     public static class MorphologicalVariation {
-        
-        /** The string form of this topic as it occurs */
+
+        /**
+         * The string form of this topic as it occurs
+         */
         public final String string;
-        /** The number of times this variant occurs */
+        /**
+         * The number of times this variant occurs
+         */
         public int occurrences;
-        /** The pattern that this term matched */
+
+        /**
+         * The pattern that this term matched
+         */
         //public String pattern;
-        /** The expanded version of the acronym (if any) */
+        /**
+         * The expanded version of the acronym (if any)
+         */
         //public String expanded_acronym;
-        /** The acronym for the term */
+        /**
+         * The acronym for the term
+         */
         //public String acronym;
 
         @JsonCreator
-        public MorphologicalVariation(@JsonProperty(value="string") String string) {
+        public MorphologicalVariation(@JsonProperty(value = "string") String string) {
             super();
             this.string = string;
         }
-        
+
         public String getString() {
             return string;
         }
-        
+
         @Override
         public String toString() {
             return "MorphologicalVariation [string=" + string + "]";
@@ -130,7 +158,7 @@ public class Topic implements Comparable<Topic> {
             }
             return true;
         }
-        
+
     }
-    
+
 }
