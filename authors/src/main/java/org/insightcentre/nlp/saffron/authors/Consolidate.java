@@ -94,7 +94,7 @@ public class Consolidate {
             for(Author a : document.authors) {
                 authors2.add(rmap.get(a));
             }
-            Document doc2 = new Document(document.file, document.id, document.name, document.mimeType, authors2, document.metadata);
+            Document doc2 = new Document(document.file, document.id, document.name, document.mimeType, authors2, document.metadata, document.getContents());
             documents.add(doc2);
         }
         return new IndexedCorpus(documents, corpus.index);

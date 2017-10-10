@@ -60,9 +60,9 @@ public class LuceneSearcher implements DocumentSearcher {
                             d.get(LuceneDocument.FULL_NAME),
                             d.get(LuceneDocument.MIME_TYPE),
                             LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)),
-                            LuceneDocument.unmkMetadata(d.get(LuceneDocument.METADATA))
+                            LuceneDocument.unmkMetadata(d.get(LuceneDocument.METADATA)),
+                            d.get(LuceneDocument.CONTENTS_NAME)
                     );
-                    data.setContents(d.get(LuceneDocument.CONTENTS_NAME));
                     i++;
                     return;
                 }

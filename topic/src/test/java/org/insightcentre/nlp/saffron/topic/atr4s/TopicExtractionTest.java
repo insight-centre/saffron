@@ -52,7 +52,7 @@ public class TopicExtractionTest {
         System.out.println("extractTopics");
         Document d1 = mock(Document.class);
         when(d1.getId()).thenReturn("id1");
-        when(d1.getContents()).thenReturn("The IBM company. IBM is a company.");
+        when(d1.contents()).thenReturn("The IBM company. IBM is a company.");
         DocumentSearcher searcher = mock(DocumentSearcher.class);
         when(searcher.allDocuments()).thenReturn(Arrays.asList(d1));
         Configuration config = new Configuration();

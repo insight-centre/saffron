@@ -42,6 +42,7 @@ public class DocumentSearcherFactory {
         return loadSearcher(corpus, index, false);
     }
 
+    private static final DocumentAnalyzer TIKA_ANALYZER = new DocumentAnalyzer();
     /**
      * Create a document searcher
      *
@@ -53,8 +54,14 @@ public class DocumentSearcherFactory {
      */
     public static DocumentSearcher loadSearcher(Corpus corpus, File index, Boolean rebuild) throws IOException {
         final Directory dir;
-        if (corpus instanceof IndexedCorpus && ((IndexedCorpus) corpus).index.exists() && !rebuild) {
-            dir = luceneFileDirectory(((IndexedCorpus)corpus).index, false);
+        if(corpus instanceof IndexedCorpus) {
+            IndexedCorpus ic = (IndexedCorpus)corpus;
+            if(ic.index != null && !ic.index.equals(index)) {
+                System.err.println("Corpus location does not match supplied index");
+            }
+        }
+        if (index.exists() && !rebuild) {
+            dir = luceneFileDirectory(index, false);
         } else {
             if (index == null) {
                 throw new IllegalArgumentException("Corpus must have an index");
@@ -62,8 +69,8 @@ public class DocumentSearcherFactory {
             dir = luceneFileDirectory(index, true);
             try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
                 for (Document doc : corpus.getDocuments()) {
-                    Document doc2 = DocumentAnalyzer.analyze(doc);
-                    indexer.indexDoc(doc2, doc2.getContents());
+                    Document doc2 = TIKA_ANALYZER.analyze(doc);
+                    indexer.indexDoc(doc2, doc2.contents());
                 }
                 indexer.commit();
             }

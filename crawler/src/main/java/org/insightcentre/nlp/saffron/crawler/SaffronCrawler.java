@@ -128,7 +128,7 @@ public class SaffronCrawler extends WebCrawler {
         SUPPORTED_TYPES.add("application/rtf");
         SUPPORTED_TYPES.add("text/plain");
     };
-    
+        
     @Override
     public void visit(Page page) {
         if ((languageFilter == null || page.getLanguage().equals(languageFilter))
@@ -144,7 +144,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL());
                 }
-                corpus.add(new Document(file, key, htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags()));
+                corpus.add(new Document(file, key, htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
@@ -158,7 +158,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch(IOException x) {
                     System.err.println("Could not write binary for " + url);
                 }
-                corpus.add(new Document(file, key, url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP));
+                corpus.add(new Document(file, key, url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }

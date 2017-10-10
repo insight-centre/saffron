@@ -182,7 +182,7 @@ public class TopicExtraction {
         try {
             List<Tuple2<String, String>> docs = new ArrayList<>();
             for(Document doc : searcher.allDocuments()) {
-                docs.add(new Tuple2<>(doc.getId(), doc.getContents()));
+                docs.add(new Tuple2<>(doc.getId(), doc.contents()));
             }
             DSDataset dataset = nlpPreprocessor.preprocess(JavaConversions.iterableAsScalaIterable(docs).toSeq());
             Seq<TermCandidate> candidates = candidatesCollector.collect(dataset);

@@ -51,4 +51,19 @@ public class DocumentTest {
         assertEquals(document, mapper.readValue(json, Document.class));
         
     }
+    
+    @Test
+    public void test2() throws IOException {
+        final String data = "{\"contents\":\"These are the document contents\",\"id\":\"test\",\"name\":\"Test Document\",\"authors\":[{\"name\":\"Joe Bloggs\"}]}";
+        final Document document = mapper.readValue(data, Document.class);
+        assertEquals("Test Document", document.name);
+        assertEquals("test", document.id);
+        assertEquals("These are the document contents", document.getContents());
+        assertEquals(1, document.authors.size());
+        assertEquals(new Author("Joe Bloggs"), document.authors.get(0));
+        assertEquals("text/plain", document.mimeType);
+        final String json = mapper.writeValueAsString(document);
+        assertEquals(document, mapper.readValue(json, Document.class));
+        
+    }
 }
