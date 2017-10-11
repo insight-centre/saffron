@@ -7,7 +7,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -65,7 +64,7 @@ public class TopicExtractionBenchmark {
                 found++;
             }
             recall[i] = (double) found / goldTopics.size();
-            precision[i] = (double) found / (i + 1);
+            precision[i] = (double) found / Math.min(extracted.size(), i + 1);
         }
         return new Scores(recall, precision);
     }
@@ -84,7 +83,7 @@ public class TopicExtractionBenchmark {
                 {
                     accepts("o", "The output topic file").withRequiredArg().ofType(File.class);
                     accepts("g", "The gold topic file").withRequiredArg().ofType(File.class);
-                    accepts("r", "Use gold terms in output");
+                    accepts("r", "Do not limit the system to only the reference translations");
                 }
             };
             final OptionSet os;
@@ -109,7 +108,7 @@ public class TopicExtractionBenchmark {
             List<Topic> extracted = mapper.readValue(outFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
             List<Topic> gold = mapper.readValue(goldFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            Scores scores = evaluate(extracted, gold, os.has("r"));
+            Scores scores = evaluate(extracted, gold, !os.has("r"));
 
             System.out.println("|      K | Precision@K | Recall@K |");
             System.out.println("|--------+-------------+----------|");
