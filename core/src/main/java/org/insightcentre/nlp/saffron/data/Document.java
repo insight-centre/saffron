@@ -46,7 +46,7 @@ public class Document {
         this.mimeType = mimeType == null && contents != null ? "text/plain" : mimeType;
         this.authors = authors == null ? new ArrayList<Author>() : authors;
         this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
-        this.contents = new InMemory(contents);
+        this.contents = contents == null ? null : new InMemory(contents);
     }
     
     /**

@@ -12,7 +12,12 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 
@@ -20,7 +25,7 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
  * @author Georgeta Bordea
  *
  */
-public class LuceneSearcher implements DocumentSearcher {
+public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.saffron.data.Document.Loader {
 
     private final IndexSearcher occurrence_searcher;
 
@@ -34,6 +39,31 @@ public class LuceneSearcher implements DocumentSearcher {
     public void close() throws IOException {
         occurrence_searcher.getIndexReader().close();
     }
+
+    @Override
+    public String getContents(org.insightcentre.nlp.saffron.data.Document d) {
+        
+        BooleanQuery query = new BooleanQuery();
+        query.add(new TermQuery(new Term(LuceneDocument.UID_NAME, d.id)), BooleanClause.Occur.MUST);
+        try {        
+            TopDocs td = occurrence_searcher.search(query, 1);
+            if(td.totalHits >= 1) {
+                Document doc = occurrence_searcher.getIndexReader().document(td.scoreDocs[0].doc);
+                return doc.getField(LuceneDocument.CONTENTS_NAME).stringValue();
+            } else {
+                throw new RuntimeException(d.id + " not in Lucene Index");
+            }
+        } catch(IOException x) {
+            throw new RuntimeException(x);
+        }
+    }
+
+    @Override
+    public String getContentsSerializable(org.insightcentre.nlp.saffron.data.Document d) {
+        return null;
+    }
+    
+    
 
     private static class AllDocIterator implements Iterator<org.insightcentre.nlp.saffron.data.Document> {
 

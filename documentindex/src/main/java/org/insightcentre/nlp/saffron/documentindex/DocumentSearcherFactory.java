@@ -4,6 +4,7 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ListIterator;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -26,7 +27,7 @@ import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
  * @author John McCrae <john@mccr.ae>
  */
 public class DocumentSearcherFactory {
-
+    
     private DocumentSearcherFactory() {
     }
 
@@ -41,8 +42,9 @@ public class DocumentSearcherFactory {
     public static DocumentSearcher loadSearcher(Corpus corpus, File index) throws IOException {
         return loadSearcher(corpus, index, false);
     }
-
+    
     private static final DocumentAnalyzer TIKA_ANALYZER = new DocumentAnalyzer();
+
     /**
      * Create a document searcher
      *
@@ -52,16 +54,22 @@ public class DocumentSearcherFactory {
      * @return A document searcher
      * @throws IOException If a disk error occurs
      */
-    public static DocumentSearcher loadSearcher(Corpus corpus, File index, Boolean rebuild) throws IOException {
+    public static DocumentSearcher loadSearcher(Corpus corpus, File index, boolean rebuild) throws IOException {
         final Directory dir;
-        if(corpus instanceof IndexedCorpus) {
-            IndexedCorpus ic = (IndexedCorpus)corpus;
-            if(ic.index != null && !ic.index.equals(index)) {
+        if (corpus instanceof IndexedCorpus) {
+            IndexedCorpus ic = (IndexedCorpus) corpus;
+            if (ic.index != null && !ic.index.equals(index)) {
                 System.err.println("Corpus location does not match supplied index");
             }
         }
-        if (index.exists() && !rebuild) {
+        if (corpus instanceof IndexedCorpus && index.exists() && !rebuild) {
             dir = luceneFileDirectory(index, false);
+            IndexedCorpus ic = (IndexedCorpus) corpus;
+            LuceneSearcher searcher = new LuceneSearcher(dir, LOWERCASE_ONLY);
+            ListIterator<Document> docs = ic.documents.listIterator();
+            while (docs.hasNext()) {
+                docs.set(docs.next().withLoader(searcher));
+            }
         } else {
             if (index == null) {
                 throw new IllegalArgumentException("Corpus must have an index");
@@ -74,11 +82,11 @@ public class DocumentSearcherFactory {
                 }
                 indexer.commit();
             }
-
+            
         }
         return luceneSearcher(dir, LOWERCASE_ONLY);
     }
-
+    
     private static Directory luceneFileDirectory(File indexPath, boolean clearExistingIndex)
             throws IOException, IndexingException {
         if (clearExistingIndex) {
@@ -86,31 +94,31 @@ public class DocumentSearcherFactory {
         }
         return FSDirectory.open(indexPath);
     }
-
+    
     private static DocumentIndexer luceneIndexer(Directory directory, Analyzer analyzer)
             throws IndexingException {
         return new LuceneIndexer(directory, analyzer);
     }
-
+    
     private static DocumentSearcher luceneSearcher(Directory directory, Analyzer analyzer)
             throws IOException {
         return new LuceneSearcher(directory, analyzer);
     }
-
+    
     private static final Analyzer LOWERCASE_ONLY = new AnalyzerLower();
     
     public static final Version LUCENE_VERSION = Version.LUCENE_44;
+
     public static final class AnalyzerLower extends Analyzer {
-
-
-	@Override
-	protected Analyzer.TokenStreamComponents createComponents(final String fieldName, final Reader reader) {
-		StandardTokenizer source = new StandardTokenizer(LUCENE_VERSION, reader);
-
-		TokenStream filter = new StandardFilter(LUCENE_VERSION, source);
-		filter = new LowerCaseFilter(LUCENE_VERSION, filter);
-
-		return new Analyzer.TokenStreamComponents(source, filter);
-	}
+        
+        @Override
+        protected Analyzer.TokenStreamComponents createComponents(final String fieldName, final Reader reader) {
+            StandardTokenizer source = new StandardTokenizer(LUCENE_VERSION, reader);
+            
+            TokenStream filter = new StandardFilter(LUCENE_VERSION, source);
+            filter = new LowerCaseFilter(LUCENE_VERSION, filter);
+            
+            return new Analyzer.TokenStreamComponents(source, filter);
+        }
     }
 }
