@@ -4,6 +4,8 @@ import java.io.File;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Iterator;
 
 import org.apache.lucene.analysis.Analyzer;
@@ -57,6 +59,7 @@ public class LuceneSearcher implements DocumentSearcher {
                 if (d != null) {
                     data = new org.insightcentre.nlp.saffron.data.Document(new File(d.get(LuceneDocument.SOURCE_FILE)),
                             d.get(LuceneDocument.UID_NAME),
+                            docURL(d),
                             d.get(LuceneDocument.FULL_NAME),
                             d.get(LuceneDocument.MIME_TYPE),
                             LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)),
@@ -69,6 +72,15 @@ public class LuceneSearcher implements DocumentSearcher {
                 i++;
             }
             throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        private static URL docURL(Document d) {
+            try {
+                String url = d.get(LuceneDocument.URL);
+                return url == null ? null : new URL(url);
+            } catch(MalformedURLException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override

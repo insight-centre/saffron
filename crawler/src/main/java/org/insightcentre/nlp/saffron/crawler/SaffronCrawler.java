@@ -16,6 +16,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collections;
 import java.util.HashSet;
@@ -144,7 +145,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL());
                 }
-                corpus.add(new Document(file, key, htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
+                corpus.add(new Document(file, key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
@@ -158,11 +159,19 @@ public class SaffronCrawler extends WebCrawler {
                 } catch(IOException x) {
                     System.err.println("Could not write binary for " + url);
                 }
-                corpus.add(new Document(file, key, url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
+                corpus.add(new Document(file, key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
             }
+        }
+    }
+
+    private static URL pageURL(Page page) {
+        try {
+            return new URL(page.getWebURL().getURL());
+        } catch(MalformedURLException x) {
+            throw new RuntimeException(x);
         }
     }
 

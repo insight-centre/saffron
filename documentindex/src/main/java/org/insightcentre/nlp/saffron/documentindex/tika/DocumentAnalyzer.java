@@ -30,11 +30,16 @@ public class DocumentAnalyzer implements Document.Loader {
     }
 
     public Document analyze(Document d) throws IOException {
-        if (d.file != null) {
+        if (d.file != null || d.url != null) {
             AutoDetectParser parser = new AutoDetectParser();
             BodyContentHandler handler = new BodyContentHandler(-1);
             Metadata metadata = new Metadata();
-            InputStream stream = TikaInputStream.get(d.file.toPath());
+            final InputStream stream;
+            if(d.file != null) {
+                stream = TikaInputStream.get(d.file.toPath());
+            } else {
+                stream = TikaInputStream.get(d.url);
+            }
             try {
                 parser.parse(stream, handler, metadata);
             } catch (SAXException | TikaException ex) {

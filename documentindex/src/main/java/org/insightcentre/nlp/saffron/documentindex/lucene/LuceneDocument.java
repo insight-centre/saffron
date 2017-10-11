@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.document.Document;
@@ -21,6 +22,7 @@ import org.insightcentre.nlp.saffron.data.Author;
 public class LuceneDocument {
 
 	public static final String UID_NAME = "uid";
+	public static final String URL = "url";
 	public static final String CONTENTS_NAME = "contents";
 	public static final String SOURCE_FILE = "contents";
 	public static final String AUTHORS_NAME = "authors";
@@ -28,10 +30,11 @@ public class LuceneDocument {
 	public static final String MIME_TYPE = "mime";
 	public static final String METADATA = "metadata";
 
-	public static Document makeDocument(String id, String text, List<Author> authors, String fullName, File original, String mimeType, Map<String, String> metadata) {
+	public static Document makeDocument(String id, String text, URL url, List<Author> authors, String fullName, File original, String mimeType, Map<String, String> metadata) {
 		Document doc = new Document();
 		doc.add(new StringField(UID_NAME, id == null ? "" : id , Field.Store.YES));
 		doc.add(new TextField(CONTENTS_NAME, text == null ? "" : text, Field.Store.YES));
+		doc.add(new TextField(URL, url == null ? "" : url.toString(), Field.Store.YES));
 		doc.add(new TextField(SOURCE_FILE, original == null ? "" : original.getAbsolutePath(), Field.Store.YES));
 		doc.add(new TextField(FULL_NAME, fullName == null ? "" : fullName, Field.Store.YES));
 		doc.add(new TextField(AUTHORS_NAME, mkAuthors(authors), Field.Store.YES));

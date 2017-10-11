@@ -1,11 +1,10 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +20,7 @@ import java.util.Objects;
 public class Document {
     public final File file;
     public final String id;
+    public final URL url;
     public String name;
     @JsonProperty("mime_type")
     public String mimeType;
@@ -31,14 +31,16 @@ public class Document {
     @JsonCreator
     public Document(@JsonProperty(value="file") File file, 
                     @JsonProperty(value="id", required=true) String id,
+                    @JsonProperty(value="url") URL url,
                     @JsonProperty("name") String name,
                     @JsonProperty("mime_type") String mimeType, 
                     @JsonProperty("authors") List<Author> authors,
                     @JsonProperty("metadata") Map<String, String> metadata,
                     @JsonProperty("contents") String contents) {
-        if(file == null && contents == null)
+        if(file == null && contents == null && url == null)
             throw new IllegalArgumentException("Please give either document contents or link to file");
         this.file = file;
+        this.url = url;
         this.id = id;
         this.name = name;
         this.mimeType = mimeType == null && contents != null ? "text/plain" : mimeType;
