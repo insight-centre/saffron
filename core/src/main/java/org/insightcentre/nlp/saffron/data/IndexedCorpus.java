@@ -28,7 +28,7 @@ public class IndexedCorpus implements Corpus {
         this.documents = documents;
         this.index = index;
     }
-
+    
     public File getIndex() {
         return index;
     }

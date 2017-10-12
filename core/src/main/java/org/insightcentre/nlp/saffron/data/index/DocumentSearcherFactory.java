@@ -15,7 +15,7 @@ public class DocumentSearcherFactory {
     private DocumentSearcherFactory() {}
     
     public static DocumentSearcher loadSearcher(IndexedCorpus corpus) {
-        if(corpus.index == null) throw new IllegalArgumentException();
+        if(corpus.index == null) throw new IllegalArgumentException("Corpus has no index");
         return loadSearcher(corpus, corpus.index, false);
     }
     /**

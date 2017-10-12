@@ -19,6 +19,7 @@ import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
+import org.insightcentre.nlp.saffron.topic.tfidf.TFIDF;
 
 /**
  * This is used to create a Doc-Topics file from a taxonomy, such as those used
@@ -34,12 +35,13 @@ public class EnrichTopics {
         Object2IntMap<String> topicFreq = new Object2IntOpenHashMap<>();
         Object2IntMap<String> docFreq = new Object2IntOpenHashMap<>();
         for (Document d : corpus.getDocuments()) {
-            String contents = d.getContents().toLowerCase();
+            String contents = d.contents().toLowerCase();
             for (String seed : topicStrings) {
                 int i = 0;
                 int n = 0;
                 while ((i = contents.indexOf(seed, i)) >= 0) {
                     n++;
+                    i++;
                 }
                 if(n > 0) {
                     DocumentTopic dt = new DocumentTopic(d.id, seed, n, null, null, null);
@@ -52,6 +54,8 @@ public class EnrichTopics {
         for(String topic : topicStrings) {
             topics.add(new Topic(topic, topicFreq.getInt(topic), docFreq.getInt(topic), 0.0, Collections.EMPTY_LIST));
         }
+        
+        TFIDF.addTfidf(docTopics);
 
         return new Result(docTopics, topics);
     }
