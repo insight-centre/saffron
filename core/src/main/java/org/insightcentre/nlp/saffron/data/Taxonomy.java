@@ -29,6 +29,21 @@ public class Taxonomy {
     public List<Taxonomy> getChildren() {
         return children;
     }
+    
+    /**
+     * Is the target value anywhere in this taxonomy
+     * @param name The root value that may be in this taxonomy
+     * @return 
+     */
+    public boolean hasDescendent(String name) {
+        if(this.root.equals(name))
+            return true;
+        for(Taxonomy child : children) {
+            if(child.hasDescendent(name))
+                return true;
+        }
+        return false;
+    } 
 
     @Override
     public int hashCode() {

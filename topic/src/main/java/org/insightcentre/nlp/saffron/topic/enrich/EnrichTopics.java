@@ -28,6 +28,26 @@ import org.insightcentre.nlp.saffron.topic.tfidf.TFIDF;
  * @author John McCrae <john@mccr.ae>
  */
 public class EnrichTopics {
+    
+    /**
+     * Count how many times t occurs in s
+     * @param s
+     * @param t
+     * @return 
+     */
+    private static int count(String[] s, String[] t) {
+        int n = 0;
+        OUTER: for(int i = 0; i < s.length; i++) {
+            if(s[i].equals(t[0])) {
+                for(int j = 1; j < t.length && i + j < s.length; j++) {
+                    if(!s[i+j].equals(t[j]))
+                        continue OUTER;
+                }
+                n++;
+            }
+        }
+        return n;
+    }
 
     private static Result enrich(Set<String> topicStrings, IndexedCorpus corpus) {
         List<DocumentTopic> docTopics = new ArrayList<>();
@@ -35,14 +55,10 @@ public class EnrichTopics {
         Object2IntMap<String> topicFreq = new Object2IntOpenHashMap<>();
         Object2IntMap<String> docFreq = new Object2IntOpenHashMap<>();
         for (Document d : corpus.getDocuments()) {
-            String contents = d.contents().toLowerCase();
+            String[] contents = d.contents().toLowerCase().split("\\s+");
             for (String seed : topicStrings) {
-                int i = 0;
-                int n = 0;
-                while ((i = contents.indexOf(seed, i)) >= 0) {
-                    n++;
-                    i++;
-                }
+                String[] topic = seed.split("\\s+");
+                int n = count(contents, topic);
                 if(n > 0) {
                     DocumentTopic dt = new DocumentTopic(d.id, seed, n, null, null, null);
                     docTopics.add(dt);
@@ -52,7 +68,9 @@ public class EnrichTopics {
             }
         }
         for(String topic : topicStrings) {
-            topics.add(new Topic(topic, topicFreq.getInt(topic), docFreq.getInt(topic), 0.0, Collections.EMPTY_LIST));
+            topics.add(new Topic(topic, topicFreq.getInt(topic), docFreq.getInt(topic), 
+                    (double)docFreq.getInt(topic) / corpus.getDocuments().size(), 
+                    Collections.EMPTY_LIST));
         }
         
         TFIDF.addTfidf(docTopics);
