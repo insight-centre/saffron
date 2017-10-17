@@ -77,12 +77,12 @@ public class Train {
                 return;
             }
             
-            final Configuration config;
+            final TaxonomyExtractionConfiguration config;
             final File configFile = (File)os.valueOf("c");
             if(configFile == null) {
-                config = new Configuration();
+                config = new TaxonomyExtractionConfiguration();
             } else {
-                config = mapper.readValue(configFile, Configuration.class);
+                config = mapper.readValue(configFile, TaxonomyExtractionConfiguration.class);
             }
                               
             if(config.verify() != null) {
@@ -153,7 +153,7 @@ public class Train {
     }
 
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
-            List<List<StringPair>> taxos, Configuration config) throws IOException {
+            List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         Features features = makeFeatures(config, docTopics, topicMap);
         
         Instances instances = loadInstances(taxos, features, config.negSampling);
@@ -181,7 +181,7 @@ public class Train {
         writeClassifier(config.modelFile, classifier);
     }
 
-    static Features makeFeatures(Configuration config, List<DocumentTopic> docTopics,
+    static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics,
             Map<String, Topic> topicMap) throws IOException {
         // TODO: SVD
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
@@ -310,34 +310,7 @@ public class Train {
 
     }
     
-    public static class Configuration {
-        public double negSampling = 5;
-        @JsonProperty("class") public String _class = SMOreg.class.getName();
-        public File arffFile = null;
-        public File gloveFile = null;
-        public File svdAveFile = null;
-        public File svdMinMaxFile = null;
-        public File modelFile = null;
-        public FeatureSelection features = null;
-        
-        public String verify() {
-            if(negSampling <= 0) { return "Bad Neg Sampling value"; }
-            if(modelFile == null) { return "Model File is required"; } 
-            return null;
-        }
-    }
-    
-    public static class FeatureSelection {
-        public boolean inclusion = false;
-        public boolean overlap = false;
-        public boolean lcs = false;
-        public boolean svdSimAve = false;
-        public boolean svdSimMax = false;
-        public boolean topicDiff = false;
-        public boolean relFreq = false;
-    }
-    
-    static Classifier loadClassifier(Configuration config) {
+    static Classifier loadClassifier(TaxonomyExtractionConfiguration config) {
         final String className = config._class;
         final Class c;
         try {

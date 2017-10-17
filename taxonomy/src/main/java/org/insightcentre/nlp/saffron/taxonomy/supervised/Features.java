@@ -23,14 +23,14 @@ public class Features {
     private final Matrix svdMatrixAve, svdMatrixMinMax;
     private final Map<String, IntSet> topicDocuments;
     private final Map<String, double[]> vectors;
-    private final Train.FeatureSelection selection;
+    private final TaxonomyExtractionConfiguration.FeatureSelection selection;
     private final Map<String, Topic> topicMap;
 
     public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, 
             Map<String, IntSet> topicDocuments, 
             Map<String, double[]> vectors,
             Map<String, Topic> topicMap,
-            Train.FeatureSelection selection) {
+            TaxonomyExtractionConfiguration.FeatureSelection selection) {
         this.svdMatrixAve = svdMatrixAve;
         this.svdMatrixMinMax = svdMatrixMinMax;
         this.topicDocuments = topicDocuments;
@@ -240,7 +240,7 @@ public class Features {
             v.add(longestCommonSubseq(top, bottom));
         if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
             v.add(svdSimAve(top, bottom));
-        if((selection == null || selection.svdSimMax) && svdMatrixMinMax != null)
+        if((selection == null || selection.svdSimMinMax) && svdMatrixMinMax != null)
             v.add(svdSimMixMax(top, bottom));
         if((selection == null || selection.topicDiff) && topicDocuments != null)
             v.add(topicComplementDiff(top, bottom));
@@ -259,7 +259,7 @@ public class Features {
             v.add("longestCommonSubseq");
         if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
             v.add("svdSimAve");
-        if((selection == null || selection.svdSimMax) && svdMatrixMinMax != null)
+        if((selection == null || selection.svdSimMinMax) && svdMatrixMinMax != null)
             v.add("svdSimMixMax");
         if((selection == null || selection.topicDiff) && topicDocuments != null)
             v.add("topicComplementDiff");

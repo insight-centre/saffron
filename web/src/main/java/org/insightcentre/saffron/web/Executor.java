@@ -38,6 +38,9 @@ import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import static org.insightcentre.nlp.saffron.taxonomy.Main.extractTaxonomy;
 import static org.insightcentre.nlp.saffron.taxonomy.Main.loadMap;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration;
 import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -234,8 +237,15 @@ public class Executor extends AbstractHandler {
         Map<String, Topic> topicMap = loadMap(topics, mapper);
 
         status.setStatusMessage("Building taxonomy");
-        Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
+        //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         
+        TaxonomyExtractionConfiguration config = 
+                mapper.readValue(new File("../models/config.json"), TaxonomyExtractionConfiguration.class);
+        config.modelFile = new File("../models/weka.bin");
+        SupervisedTaxo supTaxo = new SupervisedTaxo(config, res.docTopics, topicMap);
+        GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo);
+        Taxonomy graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
+            
         status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(directory, "taxonomy.json"), graph);
         data.setTaxonomy(graph);

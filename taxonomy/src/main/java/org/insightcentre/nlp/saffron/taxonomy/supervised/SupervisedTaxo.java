@@ -23,7 +23,7 @@ public class SupervisedTaxo {
     private final Classifier classifier;
     private final ArrayList<Attribute> attributes;
     
-    public SupervisedTaxo(Train.Configuration config, List<DocumentTopic> docTopics,
+    public SupervisedTaxo(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics,
             Map<String, Topic> topicMap) throws IOException {
         this.features = Train.makeFeatures(config, docTopics, topicMap);
         this.classifier = readClassifier(config);
@@ -56,7 +56,7 @@ public class SupervisedTaxo {
         }
     }
 
-    private static Classifier readClassifier(Train.Configuration config) throws IOException {
+    private static Classifier readClassifier(TaxonomyExtractionConfiguration config) throws IOException {
         try (final ObjectInputStream ois = new ObjectInputStream(new FileInputStream(config.modelFile))) {
             final Classifier c;
             try {

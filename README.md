@@ -48,6 +48,17 @@ Alternatively Saffron can be used in a Docker image as follows
 Running
 -------
 
+Web Interface
+=============
+
+To start the Saffon Web server simply choose a directory for Saffron to create
+the models and run the command as follows
+
+    ./saffron-web.sh output-folder/
+
+Command Line Interface
+======================
+
 All steps of Saffron can be executed by running the `saffron.sh` script. This 
 script takes two arguments
 

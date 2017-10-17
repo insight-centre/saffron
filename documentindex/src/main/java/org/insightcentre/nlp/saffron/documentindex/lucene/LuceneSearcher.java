@@ -107,7 +107,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
         private static URL docURL(Document d) {
             try {
                 String url = d.get(LuceneDocument.URL);
-                return url == null ? null : new URL(url);
+                return url == null || url.equals("") ? null : new URL(url);
             } catch(MalformedURLException x) {
                 throw new RuntimeException(x);
             }

@@ -63,7 +63,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             // Read configuration
-            Configuration config = configuration == null ? new Configuration() : mapper.readValue(configuration, Configuration.class);
+            TaxonomyExtractionConfiguration config = configuration == null ? new TaxonomyExtractionConfiguration() : mapper.readValue(configuration, TaxonomyExtractionConfiguration.class);
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics   = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
@@ -89,7 +89,4 @@ public class Main {
         return tMap;
     }
      
-     public static class Configuration extends Train.Configuration {
-         public double simThreshold = 0.0;
-     }
 }
