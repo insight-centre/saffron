@@ -22,8 +22,9 @@ public class TaxonomyExtractionBenchmark {
     private static int matches(Taxonomy taxo, Set<StringPair> gold) {
         int m = 0;
         for(Taxonomy child : taxo.children) {
-            if(gold.contains(new StringPair(taxo.root.toLowerCase(), child.root.toLowerCase()))) 
+            if(gold.contains(new StringPair(taxo.root.toLowerCase(), child.root.toLowerCase()))) {
                 m++;
+            }
             m += matches(child, gold);
         }
         return m;
@@ -37,10 +38,12 @@ public class TaxonomyExtractionBenchmark {
         return m;
     }
     private static class Scores {
+        public int matches;
         public double precision;
         public double recall;
 
-        public Scores(double precision, double recall) {
+        public Scores(int matches, double precision, double recall) {
+            this.matches = matches;
             this.precision = precision;
             this.recall = recall;
         }
@@ -48,7 +51,7 @@ public class TaxonomyExtractionBenchmark {
     
     private static Scores evalTaxo(Taxonomy extracted, Set<StringPair> gold) {
         final int matches = matches(extracted, gold);
-        return new Scores(
+        return new Scores(matches,
                 (double)matches / size(extracted),
                 (double)matches / gold.size());
     }
@@ -101,6 +104,11 @@ public class TaxonomyExtractionBenchmark {
             
             final Scores s = evalTaxo(taxo, gold);
             
+            
+            System.err.printf("|-----------|--------|\n");
+            System.err.printf("| Matches   | % 6d |\n", s.matches);
+            System.err.printf("| Predicted | % 6d |\n", (int)size(taxo));
+            System.err.printf("| Gold      | % 6d |\n", gold.size());
             System.err.printf("|-----------|--------|\n");
             System.err.printf("| Precision | %.4f |\n", s.precision);
             System.err.printf("| Recall    | %.4f |\n", s.recall);
@@ -131,7 +139,7 @@ public class TaxonomyExtractionBenchmark {
                     if(elems.length != 2) {
                         throw new IOException("Bad Line: " + line);
                     }
-                    links.add(new StringPair(elems[0].toLowerCase(), elems[1].toLowerCase()));
+                    links.add(new StringPair(elems[1].toLowerCase(), elems[0].toLowerCase()));
                 }
             }
         }

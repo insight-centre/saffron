@@ -27,7 +27,6 @@ public class Main {
   
     public static void main(String[] args) {
         try {
-            args = "-c tmp/config.json -d ../benchmarks/data/texeval/food_en-doc-topics.json -t ../benchmarks/data/texeval/food_en-topics.json -o tmp/taxonomy.json".split(" ");
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
@@ -70,7 +69,7 @@ public class Main {
 
             Map<String, Topic> topicMap = loadMap(topics, mapper);
             
-            SupervisedTaxo supTaxo = new SupervisedTaxo(config, docTopics);
+            SupervisedTaxo supTaxo = new SupervisedTaxo(config, docTopics, topicMap);
             GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo);
             Taxonomy graph = extractor.extractTaxonomy(docTopics, topicMap);
 

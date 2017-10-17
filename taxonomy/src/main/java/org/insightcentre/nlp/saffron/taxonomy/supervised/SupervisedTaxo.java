@@ -1,13 +1,12 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.DataInputStream;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
@@ -24,8 +23,9 @@ public class SupervisedTaxo {
     private final Classifier classifier;
     private final ArrayList<Attribute> attributes;
     
-    public SupervisedTaxo(Train.Configuration config, List<DocumentTopic> docTopics) throws IOException {
-        this.features = Train.makeFeatures(config, docTopics);
+    public SupervisedTaxo(Train.Configuration config, List<DocumentTopic> docTopics,
+            Map<String, Topic> topicMap) throws IOException {
+        this.features = Train.makeFeatures(config, docTopics, topicMap);
         this.classifier = readClassifier(config);
         this.attributes = Train.buildAttributes(features.featureNames());
     }

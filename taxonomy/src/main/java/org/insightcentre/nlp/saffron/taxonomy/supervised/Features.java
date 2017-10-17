@@ -1,13 +1,17 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import Jama.Matrix;
+import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
+import it.unimi.dsi.fastutil.doubles.DoubleList;
 import it.unimi.dsi.fastutil.ints.IntRBTreeSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import static java.lang.Math.max;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.data.Topic;
 
 /**
  * Provides supervised feature extraction for taxonomy learning
@@ -19,12 +23,20 @@ public class Features {
     private final Matrix svdMatrixAve, svdMatrixMinMax;
     private final Map<String, IntSet> topicDocuments;
     private final Map<String, double[]> vectors;
+    private final Train.FeatureSelection selection;
+    private final Map<String, Topic> topicMap;
 
-    public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, Map<String, IntSet> topicDocuments, Map<String, double[]> vectors) {
+    public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, 
+            Map<String, IntSet> topicDocuments, 
+            Map<String, double[]> vectors,
+            Map<String, Topic> topicMap,
+            Train.FeatureSelection selection) {
         this.svdMatrixAve = svdMatrixAve;
         this.svdMatrixMinMax = svdMatrixMinMax;
         this.topicDocuments = topicDocuments;
         this.vectors = vectors;
+        this.topicMap = topicMap;
+        this.selection = selection;
     }
 
     /**
@@ -199,40 +211,60 @@ public class Features {
             return 0;
         }
     }
+    
+    /**
+     * The relative frequency of the terms given as log(freq(top)/freq(bottom))
+     * @param top
+     * @param bottom
+     * @return 
+     */
+    public double relFreq(String top, String bottom) {
+        if(topicMap != null) {
+            Topic t1 = topicMap.get(top);
+            Topic t2 = topicMap.get(bottom);
+            if(t1 != null && t2 != null && t1.occurrences > 0 && t2.occurrences > 0) {
+                return Math.log((double)t1.occurrences) - Math.log((double)t2.occurrences);
+            }
+        }
+        return 0;
+    }
+    
 
     public double[] buildFeatures(String top, String bottom) {
-        int n = 3 + (svdMatrixAve != null ? 1 : 0)
-                + (svdMatrixMinMax != null ? 1 : 0)
-                + (topicDocuments != null ? 1 : 0);
-        double[] v = new double[n];
-        int i = 0;
-        v[i++] = inclusion(top, bottom);
-        v[i++] = overlap(top, bottom);
-        v[i++] = longestCommonSubseq(top, bottom);
-        if(svdMatrixAve != null) 
-            v[i++] = svdSimAve(top, bottom);
-        if(svdMatrixMinMax != null)
-            v[i++] = svdSimMixMax(top, bottom);
-        if(topicDocuments != null)
-            v[i++] = topicComplementDiff(top, bottom);
-        return v;
+        DoubleList v = new DoubleArrayList();
+        if(selection == null || selection.inclusion)
+            v.add(inclusion(top, bottom));
+        if(selection == null || selection.overlap)
+            v.add(overlap(top, bottom));
+        if(selection == null || selection.lcs)
+            v.add(longestCommonSubseq(top, bottom));
+        if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
+            v.add(svdSimAve(top, bottom));
+        if((selection == null || selection.svdSimMax) && svdMatrixMinMax != null)
+            v.add(svdSimMixMax(top, bottom));
+        if((selection == null || selection.topicDiff) && topicDocuments != null)
+            v.add(topicComplementDiff(top, bottom));
+        if((selection == null || selection.relFreq) && topicMap != null)
+            v.add(relFreq(top, bottom));
+        return v.toDoubleArray();
     }
     
     public String[] featureNames() {
-        int n = 3 + (svdMatrixAve != null ? 1 : 0)
-                + (svdMatrixMinMax != null ? 1 : 0)
-                + (topicDocuments != null ? 1 : 0);
-        String[] v = new String[n];
-        int i = 0;
-        v[i++] = "inclusion";
-        v[i++] = "overlap";
-        v[i++] = "longestCommonSubseq";
-        if(svdMatrixAve != null) 
-            v[i++] = "svdSimAve";
-        if(svdMatrixMinMax != null)
-            v[i++] = "svdSimMixMax";
-        if(topicDocuments != null)
-            v[i++] = "topicComplementDiff";
-        return v;
+        ArrayList<String> v = new ArrayList<>();
+        if(selection == null || selection.inclusion)
+            v.add("inclusion");
+        if(selection == null || selection.overlap)
+            v.add("overlap");
+        if(selection == null || selection.lcs)
+            v.add("longestCommonSubseq");
+        if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
+            v.add("svdSimAve");
+        if((selection == null || selection.svdSimMax) && svdMatrixMinMax != null)
+            v.add("svdSimMixMax");
+        if((selection == null || selection.topicDiff) && topicDocuments != null)
+            v.add("topicComplementDiff");
+        if((selection == null || selection.relFreq) && topicMap != null)
+            v.add("relFreq");
+        return v.toArray(new String[v.size()]);
     }
 }

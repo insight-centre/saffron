@@ -3,8 +3,10 @@ package org.insightcentre.nlp.saffron.data;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * A taxonomy of topics
@@ -44,6 +46,33 @@ public class Taxonomy {
         }
         return false;
     } 
+    
+    /**
+     * Verify if there are no loops in this taxonomy
+     * @return true if there are no loops
+     */
+    public boolean verifyTree() {
+        Set<String> terms = new HashSet<>();
+        return _isTree(terms);
+    }
+    
+
+    private boolean _isTree(Set<String> terms) {
+        if(terms.contains(root)) {
+            return false;
+        } else {
+            terms.add(root);
+            for(Taxonomy t : children) {
+                if(!t._isTree(terms)) {
+                    return false;
+                }
+            }
+            terms.remove(root);
+            return true;
+        }
+    }
+
+    
 
     @Override
     public int hashCode() {
@@ -70,6 +99,5 @@ public class Taxonomy {
         }
         return true;
     }
-
 
 }

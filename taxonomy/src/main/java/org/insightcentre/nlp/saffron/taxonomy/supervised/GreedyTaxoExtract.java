@@ -3,6 +3,8 @@ package org.insightcentre.nlp.saffron.taxonomy.supervised;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -46,15 +48,33 @@ public class GreedyTaxoExtract {
             scoresByChild.put(t1, list);
         }
         
-        String topParent = null;
+        ArrayList<String> orphans = new ArrayList<>();
+        {
+            Iterator<Map.Entry<String, List<ScoredString>>> iter = scoresByChild.entrySet().iterator();
+            while(iter.hasNext()) {
+                Map.Entry<String, List<ScoredString>> e = iter.next();
+                String s1 = e.getKey();
+                List<ScoredString> ss = e.getValue();
+                if(ss.isEmpty()) {
+                    iter.remove();
+                    orphans.add(s1);
+                }
+            }
+        }
+        
         HashMap<String, Taxonomy> taxos = new HashMap<>();
+        HashMap<String, Taxonomy> topTaxos = new HashMap<>();
+        HashSet<String> children = new HashSet<>();
         while(!scoresByChild.isEmpty()) {
             String parent = null, child = null;
             double hpScore = Double.NEGATIVE_INFINITY;
-            for(String s1 : scoresByChild.keySet()) {
-                List<ScoredString> ss = scoresByChild.get(s1);
+            Iterator<Map.Entry<String, List<ScoredString>>> iter = scoresByChild.entrySet().iterator();
+            while(iter.hasNext()) {
+                Map.Entry<String, List<ScoredString>> e = iter.next();
+                String s1 = e.getKey();
+                List<ScoredString> ss = e.getValue();
                 if(ss.isEmpty()) {
-                    scoresByChild.remove(s1);
+                    iter.remove();
                 } else {
                     double score = ss.get(0).score;
                     if(score > hpScore) {
@@ -64,6 +84,7 @@ public class GreedyTaxoExtract {
                     }
                 }       
             }
+            //System.err.println(child + " => " + parent);
             if(parent == null || child == null)
                 break;
             Taxonomy pTaxo = taxos.get(parent);
@@ -89,13 +110,62 @@ public class GreedyTaxoExtract {
                 }
                 pTaxo.children.add(cTaxo);
             }
-            if(topParent == null || topParent.equals(child)) 
-                topParent = parent;
-            scoresByChild.remove(child);
+            topTaxos.remove(child);
+            children.add(child);
+            if(!children.contains(parent))
+                topTaxos.put(parent, pTaxo);
             
+            if(topTaxos.isEmpty()) {
+                throw new RuntimeException("Error adding " + child + " => " + parent);
+            }
+            scoresByChild.remove(child);
         }
         
-        return taxos.get(topParent);
+        Iterator<String> orphanIter = orphans.iterator();
+        while(orphanIter.hasNext()) {
+            if(topTaxos.containsKey(orphanIter.next()))
+                orphanIter.remove();
+        }
+        
+        return addOrphans(mergeTaxos(topTaxos, topicMap), orphans);
+    }
+
+    private Taxonomy addOrphans(Taxonomy t, List<String> orphans) {
+        for(String orphan : orphans) {
+            t.children.add(new Taxonomy(orphan, new ArrayList<Taxonomy>()));
+        }
+        return t;
+    }
+    
+    private Taxonomy mergeTaxos(HashMap<String, Taxonomy> topTaxos,
+            Map<String, Topic> topics) {
+        if(topTaxos.isEmpty()) {
+            throw new RuntimeException("Did not extract any taxonomies (no terms?)");
+        } else if(topTaxos.size() == 1) {
+            return topTaxos.values().iterator().next();
+        } else {
+            String topTopic = null;
+            double topScore = Double.NEGATIVE_INFINITY;
+            int topOcc = Integer.MIN_VALUE;
+            for(String topicString : topTaxos.keySet()) {
+                Topic t = topics.get(topicString);
+                if(t != null) {
+                    if(t.score > topScore || 
+                            (t.score == topScore && t.occurrences > topOcc)) {
+                        topScore = t.score;
+                        topOcc = t.occurrences;
+                        topTopic = topicString;
+                    }
+                }
+            }
+            if(topTopic == null)
+                throw new RuntimeException("Unreachable");
+            Taxonomy t = topTaxos.remove(topTopic);
+            t.children.addAll(topTaxos.values());
+            if(!t.verifyTree())
+                throw new RuntimeException("loops!");
+            return t;
+        }
     }
     
     private static final class ScoredString {

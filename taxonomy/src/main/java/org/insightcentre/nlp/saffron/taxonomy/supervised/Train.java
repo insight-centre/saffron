@@ -22,7 +22,9 @@ import java.util.Random;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import weka.classifiers.Classifier;
 import weka.classifiers.functions.SMOreg;
 import weka.core.Attribute;
@@ -52,6 +54,7 @@ public class Train {
                 {
                     accepts("d", "The doc-topics connection").withRequiredArg().ofType(File.class);
                     accepts("t", "The taxonomies to train on").withRequiredArg().withValuesSeparatedBy(',').ofType(File.class);
+                    accepts("p", "The topics to train on").withRequiredArg().ofType(File.class);
                     accepts("c", "The configuration").withRequiredArg().ofType(File.class);
                 }
             };
@@ -65,6 +68,8 @@ public class Train {
             }
             final ObjectMapper mapper = new ObjectMapper();
 
+            final File topicsFile = (File)os.valueOf("p");
+            
             final File docTopicsFile = (File) os.valueOf("d");
             final List<File> taxoFiles = (List<File>) os.valuesOf("t");
             if (taxoFiles == null) {
@@ -95,7 +100,12 @@ public class Train {
                 taxos.add(loadTaxoFile(taxoFile, mapper));
             }
 
-            train(docTopics, taxos, config);
+            final List<Topic> topics = topicsFile == null ? null :
+                    (List<Topic>)mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            
+            Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper);
+            
+            train(docTopics, topicMap, taxos, config);
 
         } catch (Exception x) {
             x.printStackTrace();
@@ -142,9 +152,9 @@ public class Train {
         }
     }
 
-    private static void train(List<DocumentTopic> docTopics, 
+    private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, Configuration config) throws IOException {
-        Features features = makeFeatures(config, docTopics);
+        Features features = makeFeatures(config, docTopics, topicMap);
         
         Instances instances = loadInstances(taxos, features, config.negSampling);
         
@@ -171,10 +181,11 @@ public class Train {
         writeClassifier(config.modelFile, classifier);
     }
 
-    static Features makeFeatures(Configuration config, List<DocumentTopic> docTopics) throws IOException {
+    static Features makeFeatures(Configuration config, List<DocumentTopic> docTopics,
+            Map<String, Topic> topicMap) throws IOException {
         // TODO: SVD
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
-        Features features = new Features(null, null, indexDocTopics(docTopics), glove);
+        Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
         return features;
     }
 
@@ -307,12 +318,23 @@ public class Train {
         public File svdAveFile = null;
         public File svdMinMaxFile = null;
         public File modelFile = null;
+        public FeatureSelection features = null;
         
         public String verify() {
             if(negSampling <= 0) { return "Bad Neg Sampling value"; }
             if(modelFile == null) { return "Model File is required"; } 
             return null;
         }
+    }
+    
+    public static class FeatureSelection {
+        public boolean inclusion = false;
+        public boolean overlap = false;
+        public boolean lcs = false;
+        public boolean svdSimAve = false;
+        public boolean svdSimMax = false;
+        public boolean topicDiff = false;
+        public boolean relFreq = false;
     }
     
     static Classifier loadClassifier(Configuration config) {
