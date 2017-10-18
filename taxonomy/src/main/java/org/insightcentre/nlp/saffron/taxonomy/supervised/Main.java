@@ -73,7 +73,7 @@ public class Main {
             SupervisedTaxo supTaxo = new SupervisedTaxo(config, docTopics, topicMap);
             final Taxonomy graph;
             if(config.mode == Mode.greedy) {
-                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo);
+                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo, config.maxChildren);
                 graph = extractor.extractTaxonomy(docTopics, topicMap);
             } else {
                 MSTTaxoExtract extractor = new MSTTaxoExtract(supTaxo);

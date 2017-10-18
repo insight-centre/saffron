@@ -15,12 +15,15 @@ import java.util.Set;
  */
 public class Taxonomy {
     public final String root;
+    public final double score;
     public final List<Taxonomy> children;
 
     @JsonCreator
     public Taxonomy(@JsonProperty("root") String root, 
+                    @JsonProperty("score") double score,
                     @JsonProperty("children") List<Taxonomy> children) {
         this.root = root;
+        this.score = score;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
     }
 
@@ -72,18 +75,20 @@ public class Taxonomy {
         }
     }
 
-    
-
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 73 * hash + Objects.hashCode(this.root);
-        hash = 73 * hash + Objects.hashCode(this.children);
+        hash = 97 * hash + Objects.hashCode(this.root);
+        hash = 97 * hash + (int) (Double.doubleToLongBits(this.score) ^ (Double.doubleToLongBits(this.score) >>> 32));
+        hash = 97 * hash + Objects.hashCode(this.children);
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj == null) {
             return false;
         }
@@ -91,6 +96,9 @@ public class Taxonomy {
             return false;
         }
         final Taxonomy other = (Taxonomy) obj;
+        if (Double.doubleToLongBits(this.score) != Double.doubleToLongBits(other.score)) {
+            return false;
+        }
         if (!Objects.equals(this.root, other.root)) {
             return false;
         }
@@ -99,5 +107,7 @@ public class Taxonomy {
         }
         return true;
     }
+
+    
 
 }

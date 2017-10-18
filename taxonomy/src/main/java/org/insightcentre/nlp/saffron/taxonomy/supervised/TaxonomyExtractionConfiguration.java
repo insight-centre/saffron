@@ -31,6 +31,8 @@ public class TaxonomyExtractionConfiguration {
     public FeatureSelection features = null;
     /** The mode (algorithm) to use to derive the tree */
     public Mode mode = Mode.greedy;
+    /** A limit on the number of children to be added under one node (does not work in MST mode) */
+    public int maxChildren = Integer.MAX_VALUE;
 
     /**
      * Verify this model

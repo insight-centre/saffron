@@ -36,9 +36,9 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import static org.insightcentre.nlp.saffron.taxonomy.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration.Mode.greedy;
@@ -246,7 +246,7 @@ public class Executor extends AbstractHandler {
             SupervisedTaxo supTaxo = new SupervisedTaxo(config, res.docTopics, topicMap);
         final Taxonomy graph;
         if(config.mode == greedy) {
-            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo);
+            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         } else {
             MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);

@@ -20,10 +20,13 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 public class GreedyTaxoExtract {
 
     private final SupervisedTaxo classifier;
+    private final int maxChildren;
 
-    public GreedyTaxoExtract(SupervisedTaxo classifier) {
+    public GreedyTaxoExtract(SupervisedTaxo classifier, int maxChildren) {
         this.classifier = classifier;
+        this.maxChildren = maxChildren;
     }
+
     
     public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {
         HashMap<String, List<ScoredString>> scoresByChild = new HashMap<>();
@@ -90,25 +93,29 @@ public class GreedyTaxoExtract {
             Taxonomy pTaxo = taxos.get(parent);
             Taxonomy cTaxo = taxos.get(child);
             if(pTaxo == null && cTaxo == null) {
-                pTaxo = new Taxonomy(parent, new ArrayList<Taxonomy>());
-                cTaxo = new Taxonomy(child, new ArrayList<Taxonomy>());
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, new ArrayList<Taxonomy>());
+                cTaxo = new Taxonomy(child, topicMap.get(child).score, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo == null) {
-                pTaxo = new Taxonomy(parent, new ArrayList<Taxonomy>());
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
-            } else if(cTaxo == null) {
-                cTaxo = new Taxonomy(child, new ArrayList<Taxonomy>());
+            } else if(cTaxo == null && pTaxo.children.size() < maxChildren) {
+                cTaxo = new Taxonomy(child, topicMap.get(child).score, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(child, cTaxo);
-            } else {
+            } else if(pTaxo.children.size() < maxChildren) {
                 if (pTaxo.hasDescendent(child) || cTaxo.hasDescendent(parent)) {
                     scoresByChild.get(child).remove(0);
                     continue; // This is a loop
                 }
                 pTaxo.children.add(cTaxo);
+            } else {
+                // pTaxo.children.size() > maxChildren
+                scoresByChild.get(child).remove(0);
+                continue;
             }
             topTaxos.remove(child);
             children.add(child);
@@ -127,12 +134,12 @@ public class GreedyTaxoExtract {
                 orphanIter.remove();
         }
         
-        return addOrphans(mergeTaxos(topTaxos, topicMap), orphans);
+        return addOrphans(mergeTaxos(topTaxos, topicMap), orphans, topicMap);
     }
 
-    private Taxonomy addOrphans(Taxonomy t, List<String> orphans) {
+    private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Topic> topicMap) {
         for(String orphan : orphans) {
-            t.children.add(new Taxonomy(orphan, new ArrayList<Taxonomy>()));
+            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, new ArrayList<Taxonomy>()));
         }
         return t;
     }

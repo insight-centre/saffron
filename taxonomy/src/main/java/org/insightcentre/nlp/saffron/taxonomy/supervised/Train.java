@@ -1,6 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import Jama.Matrix;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.IntRBTreeSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
@@ -8,9 +8,11 @@ import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +28,6 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import weka.classifiers.Classifier;
-import weka.classifiers.functions.SMOreg;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -154,7 +155,11 @@ public class Train {
 
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
-        Features features = makeFeatures(config, docTopics, topicMap);
+        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
+        
+        Features features = new Features(null, null, indexDocTopics(docTopics), null, topicMap, config.features);
+        
+        features = glove == null ? features : learnSVD(taxos, features, config);
         
         Instances instances = loadInstances(taxos, features, config.negSampling);
         
@@ -181,13 +186,6 @@ public class Train {
         writeClassifier(config.modelFile, classifier);
     }
 
-    static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics,
-            Map<String, Topic> topicMap) throws IOException {
-        // TODO: SVD
-        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
-        Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
-        return features;
-    }
 
     private static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
         Object2IntMap<String> docIds = new Object2IntOpenHashMap<>();
@@ -268,6 +266,69 @@ public class Train {
         System.arraycopy(fss, 0, d, 0, fss.length);
         d[fss.length] = score;
         return new DenseInstance(1.0, d);
+    }
+
+    private static Features learnSVD(List<List<StringPair>> taxos, Features features, TaxonomyExtractionConfiguration config) {
+        Matrix ave = learnSVD(taxos, features.svdByAve);
+        writeMatrix(ave, config.svdAveFile);
+        Matrix minMax = learnSVD(taxos, features.svdByMinMax);
+        writeMatrix(minMax, config.svdMinMaxFile);
+        return new Features(ave, minMax, features);
+    }
+    
+    private static Matrix learnSVD(List<List<StringPair>> taxos, SVD svd) {
+        Matrix m = null;
+        for(List<StringPair> sps : taxos) {
+            for(StringPair sp : sps) {
+                svd.addExample(sp._1, sp._2, +1);
+                svd.addExample(sp._2, sp._1, -1);
+            }
+            if(m == null) {
+                m = svd.solve();
+            } else {
+                m.plusEquals(svd.solve());
+            }
+        }
+        if(m != null)
+            m.timesEquals(1.0 / taxos.size());
+        return m;
+    }
+
+    private static void writeMatrix(Matrix matrix, File file) {
+        try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+            oos.writeInt(matrix.getRowDimension());
+            oos.writeInt(matrix.getColumnDimension());
+            for(int i = 0; i < matrix.getRowDimension(); i++) {
+                for(int j = 0; j < matrix.getColumnDimension(); j++) {
+                    oos.writeDouble(matrix.get(i, j));
+                }
+            }
+        } catch(IOException x) {
+            throw new RuntimeException(x);
+        }
+    }
+
+    public static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics, Map<String, Topic> topicMap) throws IOException {
+        Matrix svdAveMatrix = config.svdAveFile == null ? null :
+                readMatrix(config.svdAveFile);
+        Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null :
+                readMatrix(config.svdMinMaxFile);
+        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
+        return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), glove, topicMap, config.features);
+    }
+
+    private static Matrix readMatrix(File svdAveFile) throws IOException {
+        try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(svdAveFile))) {
+            int m = ois.readInt();
+            int n = ois.readInt();
+            Matrix matrix = new Matrix(m, n);
+            for(int i = 0; i < m; i++) {
+                for(int j = 0; j < n; j++) {
+                    matrix.set(i, j, ois.readDouble());
+                }
+            }
+            return matrix;
+        }
     }
     
     public static class StringPair {

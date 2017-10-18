@@ -38,6 +38,16 @@ public class Features {
         this.topicMap = topicMap;
         this.selection = selection;
     }
+    
+    Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, Features other) {
+        this.svdMatrixAve = svdMatrixAve;
+        this.svdMatrixMinMax = svdMatrixMinMax;
+        this.topicDocuments = other.topicDocuments;
+        this.vectors = other.vectors;
+        this.topicMap = other.topicMap;
+        this.selection = other.selection;
+        
+    }
 
     /**
      * Returns +1 if bottom includes top, -1 if top includes bottom or 0
@@ -106,6 +116,20 @@ public class Features {
         return v == null ? null : new Matrix(v, v.length);
     }
 
+    public SVD svdByAve = new SVD() {
+        @Override
+        public double[] vector(String t) {
+            return vectorByAve(t).getColumnPackedCopy();
+        }
+    };
+    
+    public SVD svdByMinMax = new SVD() {
+        @Override
+        public double[] vector(String t) {
+            return vectorMinMax(t).getColumnPackedCopy();
+        }
+    };
+    
     private Matrix vectorByAve(String sent) {
         String[] sents = PrettyGoodTokenizer.tokenize(sent);
         if (sents.length == 0) {
