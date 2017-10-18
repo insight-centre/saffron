@@ -36,11 +36,12 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import static org.insightcentre.nlp.saffron.taxonomy.Main.extractTaxonomy;
 import static org.insightcentre.nlp.saffron.taxonomy.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration;
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration.Mode.greedy;
 import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -242,9 +243,15 @@ public class Executor extends AbstractHandler {
         TaxonomyExtractionConfiguration config = 
                 mapper.readValue(new File("../models/config.json"), TaxonomyExtractionConfiguration.class);
         config.modelFile = new File("../models/weka.bin");
-        SupervisedTaxo supTaxo = new SupervisedTaxo(config, res.docTopics, topicMap);
-        GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo);
-        Taxonomy graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
+            SupervisedTaxo supTaxo = new SupervisedTaxo(config, res.docTopics, topicMap);
+        final Taxonomy graph;
+        if(config.mode == greedy) {
+            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo);
+            graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
+        } else {
+            MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);
+            graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
+        }
             
         status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(directory, "taxonomy.json"), graph);

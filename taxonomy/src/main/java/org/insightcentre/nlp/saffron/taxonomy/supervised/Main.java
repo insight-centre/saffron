@@ -11,6 +11,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration.Mode;
 
 /**
  * Create a taxonomy based on a supervised model
@@ -70,8 +71,14 @@ public class Main {
             Map<String, Topic> topicMap = loadMap(topics, mapper);
             
             SupervisedTaxo supTaxo = new SupervisedTaxo(config, docTopics, topicMap);
-            GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo);
-            Taxonomy graph = extractor.extractTaxonomy(docTopics, topicMap);
+            final Taxonomy graph;
+            if(config.mode == Mode.greedy) {
+                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo);
+                graph = extractor.extractTaxonomy(docTopics, topicMap);
+            } else {
+                MSTTaxoExtract extractor = new MSTTaxoExtract(supTaxo);
+                graph = extractor.extractTaxonomy(docTopics, topicMap);
+            }
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
             

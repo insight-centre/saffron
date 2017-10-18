@@ -30,6 +30,12 @@ public class TaxonomyExtractionBenchmark {
         return m;
     }
 
+    private static class Stats {
+        public int size;
+        public int maxDepth;
+        public int childSq;
+    }
+    
     private static double size(Taxonomy taxo) {
         int m = 1;
         for(Taxonomy child : taxo.children) {
@@ -37,6 +43,21 @@ public class TaxonomyExtractionBenchmark {
         }
         return m;
     }
+    
+    private static Stats stats(Taxonomy taxo) {
+        Stats s = new Stats();
+        s.size = 1;
+        s.maxDepth = 1;
+        s.childSq = taxo.children.size() * taxo.children.size();
+        for(Taxonomy child : taxo.children) {
+            Stats c = stats(child);
+            s.size += c.size;
+            s.maxDepth = Math.max(s.maxDepth, c.maxDepth + 1);
+            s.childSq += c.childSq;
+        }
+        return s;
+    }
+    
     private static class Scores {
         public int matches;
         public double precision;
@@ -103,12 +124,15 @@ public class TaxonomyExtractionBenchmark {
             }
             
             final Scores s = evalTaxo(taxo, gold);
+            final Stats stats = stats(taxo);
             
             
             System.err.printf("|-----------|--------|\n");
             System.err.printf("| Matches   | % 6d |\n", s.matches);
-            System.err.printf("| Predicted | % 6d |\n", (int)size(taxo));
+            System.err.printf("| Predicted | % 6d |\n", stats.size);
             System.err.printf("| Gold      | % 6d |\n", gold.size());
+            System.err.printf("| Depth     | % 6d |\n", stats.maxDepth);
+            System.err.printf("| Branching | %.4f |\n", Math.sqrt((double)stats.childSq) / stats.size);
             System.err.printf("|-----------|--------|\n");
             System.err.printf("| Precision | %.4f |\n", s.precision);
             System.err.printf("| Recall    | %.4f |\n", s.recall);

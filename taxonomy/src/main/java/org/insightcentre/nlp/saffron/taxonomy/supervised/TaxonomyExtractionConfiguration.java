@@ -29,6 +29,8 @@ public class TaxonomyExtractionConfiguration {
     public File modelFile = null;
     /** The feature selection or null for all features*/
     public FeatureSelection features = null;
+    /** The mode (algorithm) to use to derive the tree */
+    public Mode mode = Mode.greedy;
 
     /**
      * Verify this model
@@ -61,5 +63,9 @@ public class TaxonomyExtractionConfiguration {
         public boolean topicDiff = false;
         /** Use the relative frequency feature */
         public boolean relFreq = false;
+    }
+    
+    public enum Mode {
+        greedy, mst
     }
 }
