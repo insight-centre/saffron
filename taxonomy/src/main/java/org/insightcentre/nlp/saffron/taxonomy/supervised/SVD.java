@@ -31,10 +31,13 @@ public abstract class SVD {
         if(ids.containsKey(top)) {
             topId = ids.getInt(top);
         } else {
+            double[] v = vector(top);
+            if(v == null)
+                return;
             topId = ids.size();
             ids.put(top, topId);
-            vectors.add(vector(top));
-            scores.add(new DoubleArrayList(new double[ids.size()]));
+            vectors.add(v);
+            scores.add(new DoubleArrayList(new double[ids.size()-1]));
             for(DoubleList dl : scores) {
                 dl.add(0);
             }
@@ -44,10 +47,13 @@ public abstract class SVD {
         if(ids.containsKey(bottom)) {
             bottomId = ids.getInt(bottom);
         } else {
+            double[] v = vector(bottom);
+            if(v == null)
+                return;
             bottomId = ids.size();
             ids.put(bottom, bottomId);
-            vectors.add(vector(bottom));
-            scores.add(new DoubleArrayList(new double[ids.size()]));
+            vectors.add(v);
+            scores.add(new DoubleArrayList(new double[ids.size()-1]));
             for(DoubleList dl : scores) {
                 dl.add(0);
             }
@@ -67,7 +73,12 @@ public abstract class SVD {
         for(int i = 0; i < S.getColumnDimension(); i++) {
             S.set(i, i, 1.0 / S.get(i, i));
         }
-        return svd.getU().times(S).times(svd.getV().transpose())
-                .times(B).times(svd.getV()).times(S).times(svd.getU().transpose());
+        System.err.printf("W: %d x %d\n", W.getRowDimension(), W.getColumnDimension());
+        System.err.printf("U: %d x %d\n", svd.getU().getRowDimension(), svd.getU().getColumnDimension());
+        System.err.printf("S: %d x %d\n", S.getRowDimension(), S.getColumnDimension());
+        System.err.printf("V: %d x %d\n", svd.getV().getRowDimension(), svd.getV().getColumnDimension());
+        System.err.printf("B: %d x %d\n", B.getRowDimension(), B.getColumnDimension());
+        return svd.getV().times(S).times(svd.getU().transpose())
+                .times(B).times(svd.getU()).times(S).times(svd.getV().transpose());
     }
 }

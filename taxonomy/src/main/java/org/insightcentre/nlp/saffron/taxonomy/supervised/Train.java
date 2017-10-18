@@ -115,6 +115,10 @@ public class Train {
     }
 
     private static Map<String, double[]> loadGLoVE(File gloveFile) throws IOException {
+        if(!gloveFile.exists()) {
+            System.err.println("GloVe file does not exist. Not using GloVe");
+            return null;
+        }
         final Map<String, double[]> data = new HashMap<>();
         try (BufferedReader in = new BufferedReader(new FileReader(gloveFile))) {
             String line;
@@ -157,7 +161,7 @@ public class Train {
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
         
-        Features features = new Features(null, null, indexDocTopics(docTopics), null, topicMap, config.features);
+        Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
         
         features = glove == null ? features : learnSVD(taxos, features, config);
         

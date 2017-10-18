@@ -119,14 +119,16 @@ public class Features {
     public SVD svdByAve = new SVD() {
         @Override
         public double[] vector(String t) {
-            return vectorByAve(t).getColumnPackedCopy();
+            Matrix v = vectorByAve(t);
+            return v == null ? null : v.getColumnPackedCopy();
         }
     };
     
     public SVD svdByMinMax = new SVD() {
         @Override
         public double[] vector(String t) {
-            return vectorMinMax(t).getColumnPackedCopy();
+            Matrix v = vectorMinMax(t);
+            return v == null ? null : v.getColumnPackedCopy();
         }
     };
     
