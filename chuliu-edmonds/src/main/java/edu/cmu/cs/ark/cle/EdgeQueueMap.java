@@ -94,10 +94,7 @@ class EdgeQueueMap<V> {
 		for (Pair<EdgeQueue<V>, Weighted<Edge<V>>> queueAndReplace : l) {
 			final EdgeQueue<V> queue = queueAndReplace.first;
 			final Weighted<Edge<V>> replace = queueAndReplace.second;
-                        System.err.println("Build edges");
-                        final ArrayList<ExclusiveEdge<V>> edges = new ArrayList<>(queue.edges);
-                        System.err.println("ok");
-			for (ExclusiveEdge<V> wEdgeAndExcluded : edges) {
+			for (ExclusiveEdge<V> wEdgeAndExcluded : queue.edges) {
 				final List<Edge<V>> replaces = wEdgeAndExcluded.excluded;
 				replaces.add(replace.val);
 				result.addEdge(ExclusiveEdge.of(
@@ -105,7 +102,6 @@ class EdgeQueueMap<V> {
 						replaces,
 						wEdgeAndExcluded.weight - replace.weight));
 			}
-                        System.err.println("done");
 		}
 		queueByDestination.put(component, result);
 		return result;
