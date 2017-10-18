@@ -13,7 +13,6 @@ import java.util.Map;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.taxonomy.graph.Edmonds;
 /**
  * Extract a taxonomy by using a MST
  * @author John McCrae <john@mccr.ae>
@@ -46,12 +45,15 @@ public class MSTTaxoExtract {
                 topNode = t1.topicString;
             }
         }
+        System.err.println("Built graph");
         WeightedGraph<String> graph = DenseWeightedGraph.from(topics, matrix);
         
         if(topNode == null) {
             throw new IllegalArgumentException("No topics for taxonomy construction");
         }
+        System.err.println("Starting Chu-Liu Edmonds");
         final Weighted<Arborescence<String>> arbor = ChuLiuEdmonds.getMaxArborescence(graph, topNode);
+        System.err.println("Finished... building taxonomy");
         return buildTaxo(topNode, arbor);        
     }
 

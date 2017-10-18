@@ -25,6 +25,7 @@ public class Launcher {
 
     public static void main(String[] args) {
         try {
+            args = "-d state-of-the-union".split(" ");
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
