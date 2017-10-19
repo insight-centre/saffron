@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
@@ -11,7 +12,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration.Mode;
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode;
 
 /**
  * Create a taxonomy based on a supervised model

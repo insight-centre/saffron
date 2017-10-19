@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.topic.atr4s;
 
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,30 +41,29 @@ import ru.ispras.atr.features.wiki.LinkProbability;
 import ru.ispras.atr.preprocess.EmoryNLPPreprocessorConfig;
 import ru.ispras.atr.preprocess.NLPPreprocessor;
 import ru.ispras.atr.rank.OneFeatureTCWeighterConfig;
-import ru.ispras.atr.rank.PUTCWeighter;
 import ru.ispras.atr.rank.PUTCWeighterConfig;
 import ru.ispras.atr.rank.TermCandidatesWeighter;
-import ru.ispras.atr.rank.VotingTCWeighter;
 import ru.ispras.atr.rank.VotingTCWeighterConfig;
 import ru.ispras.pu4spark.LogisticRegressionConfig;
 import ru.ispras.pu4spark.TraditionalPULearnerConfig;
 import scala.Tuple2;
 import scala.collection.JavaConversions;
 import scala.collection.Seq;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
 
 /**
  * Extract Topics using ATR4S
  * @author John McCrae <john@mccr.ae>
  */
 public class TopicExtraction {
-    private final Main.Configuration config;
+    private final TermExtractionConfiguration config;
     private final NLPPreprocessor nlpPreprocessor;
     private final TermCandidatesCollector candidatesCollector;
     private final TermCandidatesWeighter candidatesWeighter;
     private final double threshold;
     private final int maxTopics;
 
-    public TopicExtraction(Main.Configuration config) {
+    public TopicExtraction(TermExtractionConfiguration config) {
         this.config = config;
         this.nlpPreprocessor =  EmoryNLPPreprocessorConfig.make().build();
         this.candidatesCollector = TCCConfig.make(range(config.ngramMin, config.ngramMax), 
@@ -85,7 +85,7 @@ public class TopicExtraction {
         this.maxTopics = config.maxTopics;
     }
     
-    private static FeatureConfig mkFeat(Main.Feature name, Main.Configuration config) {
+    private static FeatureConfig mkFeat(Feature name, TermExtractionConfiguration config) {
         switch(name) {
                 case weirdness: 
                     return new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-3));
@@ -124,9 +124,9 @@ public class TopicExtraction {
             }
     }
     
-    private static List<FeatureConfig> mkFeats(Main.Configuration config) {
+    private static List<FeatureConfig> mkFeats(TermExtractionConfiguration config) {
         List<FeatureConfig> feats = new ArrayList<>();
-        for(Main.Feature name : config.features) {
+        for(Feature name : config.features) {
             feats.add(mkFeat(name, config));
         }
         return feats;

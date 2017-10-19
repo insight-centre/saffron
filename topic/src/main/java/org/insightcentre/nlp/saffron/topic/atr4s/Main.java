@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.topic.atr4s;
 
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class Main {
             }
             ObjectMapper mapper = new ObjectMapper();
             // Read configuration
-            Configuration config = mapper.readValue(configuration, Configuration.class);
+            TermExtractionConfiguration config = mapper.readValue(configuration, TermExtractionConfiguration.class);
             IndexedCorpus corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
             DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
 
@@ -76,29 +77,5 @@ public class Main {
         }
     }
     
-    public enum WeightingMethod {
-        one, voting, puatr
-    };
-    
-    public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, domainCoherence, domainPertinence, novelTopicModel, linkProbability, keyConceptRelatedness
-    };
 
-    public static class Configuration {
-
-        public double threshold = 0.0;
-        public int maxTopics = 1000;
-        public int ngramMin = 1;
-        public int ngramMax = 4;
-        public int minTermFreq = 2;
-        public WeightingMethod method = WeightingMethod.one;
-        public List<Feature> features = java.util.Arrays.asList(Feature.novelTopicModel,
-                Feature.cValue, Feature.relevance, Feature.linkProbability,
-                Feature.domainCoherence, Feature.keyConceptRelatedness);
-        public String corpus;
-        public String infoMeasure;
-        public String w2vmodelPath;
-        public Feature baseFeature = Feature.comboBasic;
-
-    }
 }

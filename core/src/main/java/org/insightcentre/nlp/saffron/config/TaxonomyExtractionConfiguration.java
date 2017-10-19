@@ -1,8 +1,7 @@
-package org.insightcentre.nlp.saffron.taxonomy.supervised;
+package org.insightcentre.nlp.saffron.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
-import weka.classifiers.functions.SMOreg;
 
 /**
  * Configuration for supervised taxonomy extraction
@@ -14,7 +13,7 @@ public class TaxonomyExtractionConfiguration {
     public double negSampling = 5;
     @JsonProperty("class")
     /** The class of the Weka classifier */
-    public String _class = SMOreg.class.getName();
+    public String _class = "weka.classifiers.functions.SMOreg";
     /** Where to put the training data as an ARFF (for debugging with Weka),
      *  or null to not output training data.
      */

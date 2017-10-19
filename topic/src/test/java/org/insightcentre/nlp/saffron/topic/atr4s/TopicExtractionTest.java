@@ -1,16 +1,17 @@
 package org.insightcentre.nlp.saffron.topic.atr4s;
 
-import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import org.insightcentre.nlp.saffron.topic.atr4s.Main.Configuration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.WeightingMethod;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -55,9 +56,9 @@ public class TopicExtractionTest {
         when(d1.contents()).thenReturn("The IBM company. IBM is a company.");
         DocumentSearcher searcher = mock(DocumentSearcher.class);
         when(searcher.allDocuments()).thenReturn(Arrays.asList(d1));
-        Configuration config = new Configuration();
-        config.method = Main.WeightingMethod.one;
-        config.features = Arrays.asList(Main.Feature.weirdness);
+        TermExtractionConfiguration config = new TermExtractionConfiguration();
+        config.method = WeightingMethod.one;
+        config.features = Arrays.asList(Feature.weirdness);
         File f = new File("src/test/resources/termoccs.txt");
         if(f.exists()) {
             config.corpus = f.getAbsolutePath();

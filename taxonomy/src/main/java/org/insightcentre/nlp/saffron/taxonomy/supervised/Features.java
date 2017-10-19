@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import Jama.Matrix;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.doubles.DoubleList;

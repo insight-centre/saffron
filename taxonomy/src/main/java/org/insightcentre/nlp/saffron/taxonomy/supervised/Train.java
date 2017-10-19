@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import Jama.Matrix;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.ints.IntRBTreeSet;

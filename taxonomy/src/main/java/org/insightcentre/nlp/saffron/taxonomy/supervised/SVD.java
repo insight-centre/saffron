@@ -73,11 +73,11 @@ public abstract class SVD {
         for(int i = 0; i < S.getColumnDimension(); i++) {
             S.set(i, i, 1.0 / S.get(i, i));
         }
-        System.err.printf("W: %d x %d\n", W.getRowDimension(), W.getColumnDimension());
-        System.err.printf("U: %d x %d\n", svd.getU().getRowDimension(), svd.getU().getColumnDimension());
-        System.err.printf("S: %d x %d\n", S.getRowDimension(), S.getColumnDimension());
-        System.err.printf("V: %d x %d\n", svd.getV().getRowDimension(), svd.getV().getColumnDimension());
-        System.err.printf("B: %d x %d\n", B.getRowDimension(), B.getColumnDimension());
+//        System.err.printf("W: %d x %d\n", W.getRowDimension(), W.getColumnDimension());
+//        System.err.printf("U: %d x %d\n", svd.getU().getRowDimension(), svd.getU().getColumnDimension());
+//        System.err.printf("S: %d x %d\n", S.getRowDimension(), S.getColumnDimension());
+//        System.err.printf("V: %d x %d\n", svd.getV().getRowDimension(), svd.getV().getColumnDimension());
+//        System.err.printf("B: %d x %d\n", B.getRowDimension(), B.getColumnDimension());
         return svd.getV().times(S).times(svd.getU().transpose())
                 .times(B).times(svd.getU()).times(S).times(svd.getV().transpose());
     }

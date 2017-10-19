@@ -40,8 +40,8 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration;
-import static org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionConfiguration.Mode.greedy;
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
+import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
 import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -172,7 +172,7 @@ public class Executor extends AbstractHandler {
 
         status.stage++;
         status.setStatusMessage("Extracting Topics");
-        TopicExtraction extractor = new TopicExtraction(new org.insightcentre.nlp.saffron.topic.atr4s.Main.Configuration());
+        TopicExtraction extractor = new TopicExtraction(new org.insightcentre.nlp.saffron.config.TermExtractionConfiguration());
 
         TopicExtraction.Result res = extractor.extractTopics(searcher);
 
