@@ -132,6 +132,7 @@ public class SaffronCrawler extends WebCrawler {
         
     @Override
     public void visit(Page page) {
+        System.err.println(page.getWebURL().getURL());
         if ((languageFilter == null || page.getLanguage().equals(languageFilter))
                 && (urlFilter == null || page.getWebURL().getURL().matches(urlFilter))) {
                 byte[] urlBytes = page.getWebURL().getURL().getBytes();

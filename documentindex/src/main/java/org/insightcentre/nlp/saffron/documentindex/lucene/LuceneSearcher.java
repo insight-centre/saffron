@@ -101,7 +101,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
                 }
                 i++;
             }
-            throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            data = null;
         }
 
         private static URL docURL(Document d) {

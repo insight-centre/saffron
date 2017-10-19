@@ -175,9 +175,10 @@ public class Executor extends AbstractHandler {
                     File f = Files.createTempDir();
                     String crawlStorageFolder = f.getAbsolutePath();
                     Corpus corpus = SaffronCrawler.crawl(crawlStorageFolder, directory,
-                            null, maxPages, domain ? "\\d+://\\Q" + url2.getHost() + "\\E.*" : ".*",
+                            null, maxPages, domain ? "\\w+://\\Q" + url2.getHost() + "\\E.*" : ".*",
                             url, 7);
                     if(advanced) {
+                        System.err.println("Advanced");
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
@@ -217,7 +218,7 @@ public class Executor extends AbstractHandler {
     }
     
 
-    void execute(Corpus corpus, Configuration configuration) throws IOException {
+    void execute(Corpus corpus, Configuration config) throws IOException {
         status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
@@ -235,7 +236,7 @@ public class Executor extends AbstractHandler {
 
         status.stage++;
         status.setStatusMessage("Extracting Topics");
-        TopicExtraction extractor = new TopicExtraction(configuration.termExtraction);
+        TopicExtraction extractor = new TopicExtraction(config.termExtraction);
 
         TopicExtraction.Result res = extractor.extractTopics(searcher);
 

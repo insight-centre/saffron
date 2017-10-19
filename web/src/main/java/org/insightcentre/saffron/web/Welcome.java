@@ -32,7 +32,8 @@ public class Welcome extends AbstractHandler {
     
     private static boolean advanced(HttpServletRequest request) {
         String paramString = request.getParameter("advanced");
-        return "true".equalsIgnoreCase(request.getParameter("advanced"));
+        System.err.println(paramString);
+        return paramString != null;
     }
     
     private static boolean advanced(List<FileItem> items) {

@@ -2,9 +2,10 @@ package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
-import java.io.FileReader;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.Writer;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -18,7 +19,6 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
@@ -263,17 +263,19 @@ public class Browser extends AbstractHandler {
                 } else if (target.startsWith("/doc_content/")) {
                     final String docId = target.substring(13);
                     final Document doc = saffron.getDoc(docId);
-                    if (doc != null) {
+                    if (doc != null && doc.file != null) {
                         File f = doc.file;
                         response.setContentType(Files.probeContentType(f.toPath()));
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        FileReader reader = new FileReader(f);
-                        Writer writer = response.getWriter();
-                        char[] buf = new char[4096];
-                        int i = 0;
-                        while ((i = reader.read(buf)) >= 0) {
-                            writer.write(buf, 0, i);
+                        try(InputStream reader = new FileInputStream(f)) {
+                            try(OutputStream writer = response.getOutputStream()) {
+                                byte[] buf = new byte[4096];
+                                int i = 0;
+                                while ((i = reader.read(buf)) >= 0) {
+                                    writer.write(buf, 0, i);
+                                }
+                            }
                         }
                     }
                 } else if (target.equals("/status")) {
