@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -67,12 +68,12 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
 
-            Configuration config          = configurationFile == null ? new Configuration() : mapper.readValue(configurationFile, Configuration.class);
+            AuthorTopicConfiguration config          = configurationFile == null ? new AuthorTopicConfiguration() : mapper.readValue(configurationFile, AuthorTopicConfiguration.class);
             IndexedCorpus corpus                 = mapper.readValue(corpusFile, IndexedCorpus.class);
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            ConnectResearchers cr = new ConnectResearchers(config.top_n);
+            ConnectAuthorTopic cr = new ConnectAuthorTopic(config);
 
             Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, docTopics, corpus.documents);
             
@@ -83,9 +84,4 @@ public class Main {
             System.exit(-1);
         }
     }
-
-    public static class Configuration {
-        public int top_n = 100;
-    }
-
 }

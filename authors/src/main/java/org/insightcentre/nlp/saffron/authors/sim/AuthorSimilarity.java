@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 
@@ -21,9 +22,9 @@ public class AuthorSimilarity {
     private final double threshold;
     private final int top_n;
 
-    public AuthorSimilarity(double threshold, int top_n) {
-        this.threshold = threshold;
-        this.top_n = top_n;
+    public AuthorSimilarity(AuthorSimilarityConfiguration config) {
+        this.threshold = config.threshold;
+        this.top_n = config.topN;
     }
 
     public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats) {

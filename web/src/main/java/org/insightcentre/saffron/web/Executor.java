@@ -3,6 +3,7 @@ package org.insightcentre.saffron.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -16,13 +17,15 @@ import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.authors.Consolidate;
 import static org.insightcentre.nlp.saffron.authors.Consolidate.applyConsolidation;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
-import org.insightcentre.nlp.saffron.authors.connect.ConnectResearchers;
+import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
@@ -54,11 +57,21 @@ public class Executor extends AbstractHandler {
     private final SaffronData data;
     private final File directory;
     private final Status status;
+    private Corpus corpus;
+    private Configuration defaultConfig;
+    private Configuration config;
 
     public Executor(SaffronData data, File directory) {
         this.data = data;
         this.directory = directory;
         this.status = new Status();
+        try {
+            this.defaultConfig = new ObjectMapper().readValue(new File("../models/config.json"), Configuration.class);
+        } catch(IOException x) {
+            this.defaultConfig = new Configuration();
+            System.err.println("Could not load config.json in models folder... using default configuration");
+        }
+                
     }
 
     public boolean isExecuting() {
@@ -69,7 +82,39 @@ public class Executor extends AbstractHandler {
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
             HttpServletResponse response) throws IOException, ServletException {
         if (isExecuting()) {
-            if (target == null || "".equals(target) || "/".equals(target)) {
+            if (corpus != null && config == null && (target == null || "".equals(target) || "/".equals(target))) {
+                response.setContentType("text/html");
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+                String page = FileUtils.readFileToString(new File("static/advanced.html"));
+                page = page.replaceAll("\\{\\{config\\}\\}", new ObjectMapper().writeValueAsString(defaultConfig));
+                response.getWriter().print(page);
+            } else if (corpus != null && config == null && ("/advanced".equals(target))) {
+                BufferedReader r = hsr.getReader();
+                StringBuilder sb = new StringBuilder();
+                try {
+                    String line;
+                    while((line = r.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    this.config = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+                } catch(Exception x) {
+                    x.printStackTrace();
+                    return;
+                }
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            execute(corpus, config);
+                        } catch(IOException x) {
+                            x.printStackTrace();
+                        }
+                    }
+                }).start();
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+            } else if (target == null || "".equals(target) || "/".equals(target)) {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
@@ -90,7 +135,7 @@ public class Executor extends AbstractHandler {
         }
     }
 
-    void startWithZip(final File tmpFile) {
+    void startWithZip(final File tmpFile, final boolean advanced) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -103,7 +148,12 @@ public class Executor extends AbstractHandler {
                     } else {
                         corpus = CorpusTools.fromZIP(tmpFile);
                     }
-                    execute(corpus);
+                    if(advanced) {
+                        Executor.this.corpus = corpus;
+                        Executor.this.status.advanced = true;
+                    } else {
+                        execute(corpus, defaultConfig);
+                    }
                 } catch (Exception x) {
                     status.failed = true;
                     status.setStatusMessage("Failed: " + x.getMessage());
@@ -113,7 +163,8 @@ public class Executor extends AbstractHandler {
         }).start();
     }
 
-    void startWithCrawl(final String url, final int maxPages, final boolean domain) {
+    void startWithCrawl(final String url, final int maxPages, final boolean domain,
+            final boolean advanced) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -126,7 +177,12 @@ public class Executor extends AbstractHandler {
                     Corpus corpus = SaffronCrawler.crawl(crawlStorageFolder, directory,
                             null, maxPages, domain ? "\\d+://\\Q" + url2.getHost() + "\\E.*" : ".*",
                             url, 7);
-                    execute(corpus);
+                    if(advanced) {
+                        Executor.this.corpus = corpus;
+                        Executor.this.status.advanced = true;
+                    } else {
+                        execute(corpus, defaultConfig);
+                    }
                 } catch (Exception x) {
                     status.failed = true;
                     status.setStatusMessage("Failed: " + x.getMessage());
@@ -135,8 +191,8 @@ public class Executor extends AbstractHandler {
             }
         }).start();
     }
-
-    void startWithJson(final File tmpFile) {
+    
+    void startWithJson(final File tmpFile, final boolean advanced) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -145,7 +201,12 @@ public class Executor extends AbstractHandler {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     IndexedCorpus corpus = mapper.readValue(tmpFile, IndexedCorpus.class);
-                    execute(corpus);
+                    if(advanced) {
+                        Executor.this.corpus = corpus;
+                        Executor.this.status.advanced = true;
+                    } else {
+                        execute(corpus, defaultConfig);
+                    }
                 } catch (Exception x) {
                     status.failed = true;
                     status.setStatusMessage("Failed: " + x.getMessage());
@@ -154,8 +215,10 @@ public class Executor extends AbstractHandler {
             }
         }).start();
     }
+    
 
-    void execute(Corpus corpus) throws IOException {
+    void execute(Corpus corpus, Configuration configuration) throws IOException {
+        status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
         
@@ -172,7 +235,7 @@ public class Executor extends AbstractHandler {
 
         status.stage++;
         status.setStatusMessage("Extracting Topics");
-        TopicExtraction extractor = new TopicExtraction(new org.insightcentre.nlp.saffron.config.TermExtractionConfiguration());
+        TopicExtraction extractor = new TopicExtraction(configuration.termExtraction);
 
         TopicExtraction.Result res = extractor.extractTopics(searcher);
 
@@ -208,7 +271,7 @@ public class Executor extends AbstractHandler {
         
         status.stage++;
         status.setStatusMessage("Connecting authors to topics");
-        ConnectResearchers cr = new ConnectResearchers(1000);
+        ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
         Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, corpus2.documents);
         
         status.setStatusMessage("Saving author connections");
@@ -217,7 +280,7 @@ public class Executor extends AbstractHandler {
         
         status.stage++;
         status.setStatusMessage("Connecting topics");
-        TopicSimilarity ts = new TopicSimilarity(0.1, 50);
+        TopicSimilarity ts = new TopicSimilarity(config.topicSim);
         final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics);
             
         status.setStatusMessage("Saving topic connections");
@@ -226,7 +289,7 @@ public class Executor extends AbstractHandler {
         
         status.stage++;
         status.setStatusMessage("Connecting authors to authors");
-        AuthorSimilarity as = new AuthorSimilarity(0.1, 50);
+        AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
         final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics);
             
         status.setStatusMessage("Saving author connections");
@@ -240,13 +303,12 @@ public class Executor extends AbstractHandler {
         status.setStatusMessage("Building taxonomy");
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         
-        TaxonomyExtractionConfiguration config = 
-                mapper.readValue(new File("../models/config.json"), TaxonomyExtractionConfiguration.class);
-        config.modelFile = new File("../models/weka.bin");
-            SupervisedTaxo supTaxo = new SupervisedTaxo(config, res.docTopics, topicMap);
+        if(config.taxonomy.modelFile == null)
+            config.taxonomy.modelFile = new File("../models/weka.bin");
+        SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, res.docTopics, topicMap);
         final Taxonomy graph;
-        if(config.mode == greedy) {
-            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.maxChildren);
+        if(config.taxonomy.mode == greedy) {
+            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         } else {
             MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);
@@ -266,6 +328,7 @@ public class Executor extends AbstractHandler {
         public int stage = 0;
         public boolean failed = false;
         public boolean completed = false;
+        public boolean advanced = false;
         private String statusMessage2 = "";
 
         public String getStatusMessage() {

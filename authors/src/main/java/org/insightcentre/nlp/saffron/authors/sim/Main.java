@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
@@ -54,10 +55,10 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
 
-            Configuration config = configuration == null ? new Configuration () : mapper.readValue(configuration, Configuration.class);
+            AuthorSimilarityConfiguration config = configuration == null ? new AuthorSimilarityConfiguration () : mapper.readValue(configuration, AuthorSimilarityConfiguration.class);
             List<AuthorTopic> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, AuthorTopic.class));
 
-            AuthorSimilarity ts = new AuthorSimilarity(config.threshold, config.top_n);
+            AuthorSimilarity ts = new AuthorSimilarity(config);
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             

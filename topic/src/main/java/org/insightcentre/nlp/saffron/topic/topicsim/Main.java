@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
@@ -53,10 +54,10 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
 
-            Configuration config = configuration == null ? new Configuration () : mapper.readValue(configuration, Configuration.class);
+            TopicSimilarityConfiguration config = configuration == null ? new TopicSimilarityConfiguration () : mapper.readValue(configuration, TopicSimilarityConfiguration.class);
             List<DocumentTopic> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
 
-            TopicSimilarity ts = new TopicSimilarity(config.threshold, config.top_n);
+            TopicSimilarity ts = new TopicSimilarity(config);
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             
@@ -68,10 +69,4 @@ public class Main {
         }
 
     }
-
-    public static class Configuration {
-        public int top_n = 50;
-        public double threshold = 0.1;
-    }
-
 }

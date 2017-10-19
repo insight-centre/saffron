@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -22,7 +23,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  *
  * @author John McCrae <john@mccr.ae>
  */
-public class ConnectResearchers {
+public class ConnectAuthorTopic {
     private static class AT {
         public final String author;
         public final String topic;
@@ -61,8 +62,8 @@ public class ConnectResearchers {
     }
     private final int top_n;
 
-    public ConnectResearchers(int top_n) {
-        this.top_n = top_n;
+    public ConnectAuthorTopic(AuthorTopicConfiguration config) {
+        this.top_n = config.topN;
     }
     
     public Collection<AuthorTopic> connectResearchers(List<Topic> topics, List<DocumentTopic> documentTopics,

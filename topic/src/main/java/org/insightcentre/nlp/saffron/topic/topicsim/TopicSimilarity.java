@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 
@@ -20,9 +21,9 @@ public class TopicSimilarity {
     private final double threshold;
     private final int top_n;
 
-    public TopicSimilarity(double threshold, int top_n) {
-        this.threshold = threshold;
-        this.top_n = top_n;
+    public TopicSimilarity(TopicSimilarityConfiguration config) {
+        this.threshold = config.threshold;
+        this.top_n = config.topN;
     }
 
     public List<TopicTopic> topicSimilarity(List<DocumentTopic> documentTopics) {

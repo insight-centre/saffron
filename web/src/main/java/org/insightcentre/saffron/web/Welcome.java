@@ -29,6 +29,15 @@ public class Welcome extends AbstractHandler {
         this.data = data;
         this.executor = executor;
     }
+    
+    private static boolean advanced(HttpServletRequest request) {
+        String paramString = request.getParameter("advanced");
+        return "true".equalsIgnoreCase(request.getParameter("advanced"));
+    }
+    
+    private static boolean advanced(List<FileItem> items) {
+        return items.size() > 1 && items.get(1).isFormField() && items.get(1).getString() != null;
+    }
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
@@ -49,7 +58,7 @@ public class Welcome extends AbstractHandler {
                     DiskFileItemFactory factory = new DiskFileItemFactory();
                     ServletFileUpload upload = new ServletFileUpload(factory);
                     List<FileItem> items = upload.parseRequest(request);
-                    if(items.size() == 1) {
+                    if(items.size() >= 1) {
                         File tmpFile = File.createTempFile("corpus", items.get(0).getName());
                         tmpFile.deleteOnExit();
                         byte[] buf = new byte[4096];
@@ -59,7 +68,7 @@ public class Welcome extends AbstractHandler {
                                 fos.write(buf, 0, i);
                             }
                         }
-                        executor.startWithZip(tmpFile);
+                        executor.startWithZip(tmpFile, advanced(items));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
@@ -69,7 +78,7 @@ public class Welcome extends AbstractHandler {
                             Integer.parseInt(request.getParameter("max_pages"));
                     boolean domain = request.getParameter("domain") != null;
                     if(url != null && maxPages != null) {
-                        executor.startWithCrawl(url, maxPages, domain);
+                        executor.startWithCrawl(url, maxPages, domain, advanced(request));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
@@ -87,7 +96,7 @@ public class Welcome extends AbstractHandler {
                                 fos.write(buf, 0, i);
                             }
                         }
-                        executor.startWithJson(tmpFile);
+                        executor.startWithJson(tmpFile, advanced(items));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
