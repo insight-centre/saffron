@@ -10,7 +10,7 @@ public class TermExtractionConfiguration {
     /** Minimum threshold score to extract */
     public double threshold = 0.0;
     /** Maximum number of topics to extract */
-    public int maxTopics = 1000;
+    public int maxTopics = 100;
     /** The shortest length of term to consider */
     public int ngramMin = 1;
     /** The longest term to consider */
