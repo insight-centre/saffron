@@ -264,7 +264,7 @@ public class Browser extends AbstractHandler {
                     final String docId = target.substring(13);
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null && doc.file != null) {
-                        File f = doc.file;
+                        File f = doc.file.toFile();
                         response.setContentType(Files.probeContentType(f.toPath()));
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);

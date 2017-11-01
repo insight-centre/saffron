@@ -160,7 +160,7 @@ public class Train {
 
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
-        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
+        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
         
         Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
         
@@ -175,7 +175,7 @@ public class Train {
             saver.setInstances(instances);
             try {
                 //System.err.println(String.format("Saving features to %s", config.arffFile.getPath()));
-                saver.setFile(config.arffFile);
+                saver.setFile(config.arffFile.toFile());
                 saver.writeBatch();
             } catch (IOException x) {
                 x.printStackTrace();
@@ -188,7 +188,7 @@ public class Train {
             throw new RuntimeException("Could not train classifier", x);
         }
         
-        writeClassifier(config.modelFile, classifier);
+        writeClassifier(config.modelFile.toFile(), classifier);
     }
 
 
@@ -275,9 +275,9 @@ public class Train {
 
     private static Features learnSVD(List<List<StringPair>> taxos, Features features, TaxonomyExtractionConfiguration config) {
         Matrix ave = learnSVD(taxos, features.svdByAve);
-        writeMatrix(ave, config.svdAveFile);
+        writeMatrix(ave, config.svdAveFile.toFile());
         Matrix minMax = learnSVD(taxos, features.svdByMinMax);
-        writeMatrix(minMax, config.svdMinMaxFile);
+        writeMatrix(minMax, config.svdMinMaxFile.toFile());
         return new Features(ave, minMax, features);
     }
     
@@ -315,10 +315,10 @@ public class Train {
 
     public static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics, Map<String, Topic> topicMap) throws IOException {
         Matrix svdAveMatrix = config.svdAveFile == null ? null :
-                readMatrix(config.svdAveFile);
+                readMatrix(config.svdAveFile.toFile());
         Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null :
-                readMatrix(config.svdMinMaxFile);
-        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile);
+                readMatrix(config.svdMinMaxFile.toFile());
+        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
         return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), glove, topicMap, config.features);
     }
 

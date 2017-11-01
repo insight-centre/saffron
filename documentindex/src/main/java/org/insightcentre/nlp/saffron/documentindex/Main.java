@@ -10,6 +10,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  *
@@ -59,7 +60,7 @@ public class Main {
                     badOptions(p, "Corpus file is a folder but output file not specified");
                 }
                 corpus = CorpusTools.fromFolder(corpusFile);
-                mapper.writeValue(outputFile, toIndexed(corpus, indexFile));
+                mapper.writeValue(outputFile, toIndexed(corpus, SaffronPath.fromFile(indexFile)));
             } else if(corpusFile.getName().endsWith(".zip")) {
                 if(indexFile == null) {
                     badOptions(p, "Corpus file is a ZIP but index file is null");
@@ -68,7 +69,7 @@ public class Main {
                     badOptions(p, "Corpus file is a ZIP but output file not specified");
                 }
                 corpus = CorpusTools.fromZIP(corpusFile);
-                mapper.writeValue(outputFile, toIndexed(corpus, indexFile));
+                mapper.writeValue(outputFile, toIndexed(corpus, SaffronPath.fromFile(indexFile)));
              } else if(corpusFile.getName().endsWith(".tar.gz") || corpusFile.getName().endsWith(".tgz")) {
                 if(indexFile == null) {
                     badOptions(p, "Corpus file is a ZIP but index file is null");
@@ -77,13 +78,13 @@ public class Main {
                     badOptions(p, "Corpus file is a ZIP but output file not specified");
                 }
                 corpus = CorpusTools.fromTarball(corpusFile);
-                mapper.writeValue(outputFile, toIndexed(corpus, indexFile));
+                mapper.writeValue(outputFile, toIndexed(corpus, SaffronPath.fromFile(indexFile)));
                  
              } else {
                 IndexedCorpus icorpus = mapper.readValue(corpusFile, IndexedCorpus.class);
                 if(indexFile != null && !indexFile.equals(icorpus.index)) {
                     System.err.println("Using " + indexFile + " as index not " + icorpus.index + " as in metadata");
-                    corpus = new IndexedCorpus(icorpus.documents, indexFile);
+                    corpus = new IndexedCorpus(icorpus.documents, SaffronPath.fromFile(indexFile));
                 } else {
                     corpus = icorpus;
                 }
@@ -97,7 +98,7 @@ public class Main {
 
     }
     
-    private static IndexedCorpus toIndexed(Corpus corpus, File indexFile) {
+    private static IndexedCorpus toIndexed(Corpus corpus, SaffronPath indexFile) {
         if(corpus instanceof IndexedCorpus) {
             return (IndexedCorpus)corpus;
         } else {

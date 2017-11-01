@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.documentindex.lucene;
 
-import java.io.File;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 import java.io.IOException;
@@ -19,6 +18,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 
 /**
@@ -87,7 +87,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
                     throw new RuntimeException(ex);
                 }
                 if (d != null) {
-                    data = new org.insightcentre.nlp.saffron.data.Document(new File(d.get(LuceneDocument.SOURCE_FILE)),
+                    data = new org.insightcentre.nlp.saffron.data.Document(new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
                             d.get(LuceneDocument.UID_NAME),
                             docURL(d),
                             d.get(LuceneDocument.FULL_NAME),

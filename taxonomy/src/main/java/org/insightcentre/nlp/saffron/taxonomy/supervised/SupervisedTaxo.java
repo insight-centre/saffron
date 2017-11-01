@@ -58,7 +58,7 @@ public class SupervisedTaxo {
     }
 
     private static Classifier readClassifier(TaxonomyExtractionConfiguration config) throws IOException {
-        try (final ObjectInputStream ois = new ObjectInputStream(new FileInputStream(config.modelFile))) {
+        try (final ObjectInputStream ois = new ObjectInputStream(new FileInputStream(config.modelFile.toFile()))) {
             final Classifier c;
             try {
                 return (Classifier) ois.readObject();

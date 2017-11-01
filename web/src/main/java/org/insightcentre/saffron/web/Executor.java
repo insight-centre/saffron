@@ -43,8 +43,8 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -232,7 +232,7 @@ public class Executor extends AbstractHandler {
         for (Document d : corpus.getDocuments()) {
             docs.add(d);
         }
-        IndexedCorpus indexedCorpus = new IndexedCorpus(docs, indexFile);
+        IndexedCorpus indexedCorpus = new IndexedCorpus(docs, SaffronPath.fromFile(indexFile));
 
         status.stage++;
         status.setStatusMessage("Extracting Topics");
@@ -305,7 +305,7 @@ public class Executor extends AbstractHandler {
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         
         if(config.taxonomy.modelFile == null)
-            config.taxonomy.modelFile = new File("../models/weka.bin");
+            config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/weka.bin");
         SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, res.docTopics, topicMap);
         final Taxonomy graph;
         if(config.taxonomy.mode == greedy) {

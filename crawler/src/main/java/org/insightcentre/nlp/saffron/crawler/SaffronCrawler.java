@@ -25,6 +25,7 @@ import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  *
@@ -146,7 +147,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL());
                 }
-                corpus.add(new Document(file, key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
@@ -160,7 +161,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch(IOException x) {
                     System.err.println("Could not write binary for " + url);
                 }
-                corpus.add(new Document(file, key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }

@@ -23,6 +23,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 
 /**
@@ -122,7 +123,7 @@ public class CorpusTools {
                         public Document next() {
                             File f = iter.next();
                             try {
-                                return new Document(f, f.getName(), null, f.getName(),
+                                return new Document(SaffronPath.fromFile(f), f.getName(), null, f.getName(),
                                         Files.probeContentType(f.toPath()), new ArrayList<Author>(),
                                         new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
                             } catch (IOException ex) {
@@ -193,7 +194,7 @@ public class CorpusTools {
 
                                     fos2.getChannel().transferFrom(Channels.newChannel(is), 0, Long.MAX_VALUE);
 
-                                    return new Document(file, ze.getName(), null,
+                                    return new Document(SaffronPath.fromFile(file), ze.getName(), null,
                                             ze.getName(), Files.probeContentType(new File(ze.getName()).toPath()),
                                             new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
                                 } catch (IOException x) {
@@ -284,7 +285,7 @@ public class CorpusTools {
 
                                     fos2.getChannel().transferFrom(Channels.newChannel(tais), 0, Long.MAX_VALUE);
 
-                                    return new Document(file, tae.getName(), null,
+                                    return new Document(SaffronPath.fromFile(file), tae.getName(), null,
                                             tae.getName(), Files.probeContentType(new File(tae.getName()).toPath()),
                                             new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);                                    
                                 } catch (IOException x) {

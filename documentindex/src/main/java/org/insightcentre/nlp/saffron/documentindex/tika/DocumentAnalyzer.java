@@ -36,7 +36,7 @@ public class DocumentAnalyzer implements Document.Loader {
             Metadata metadata = new Metadata();
             final InputStream stream;
             if(d.file != null) {
-                stream = TikaInputStream.get(d.file.toPath());
+                stream = TikaInputStream.get(d.file.toFile().toPath());
             } else {
                 stream = TikaInputStream.get(d.url);
             }
@@ -75,7 +75,7 @@ public class DocumentAnalyzer implements Document.Loader {
             BodyContentHandler handler = new BodyContentHandler(-1);
             final InputStream stream;
             if(d.file != null) {
-                stream = TikaInputStream.get(d.file.toPath());
+                stream = TikaInputStream.get(d.file.toFile().toPath());
             } else {
                 System.err.println("Accessing remote URL " + d.url);
                 stream = TikaInputStream.get(d.url);

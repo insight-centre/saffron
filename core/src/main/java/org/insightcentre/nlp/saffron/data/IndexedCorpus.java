@@ -14,7 +14,7 @@ import java.util.Objects;
 public class IndexedCorpus implements Corpus {
 
     public final List<Document> documents;
-    public final File index;
+    public final SaffronPath index;
 
 
     /**
@@ -24,13 +24,13 @@ public class IndexedCorpus implements Corpus {
      */
     @JsonCreator
     public IndexedCorpus(@JsonProperty("documents") List<Document> documents,
-                  @JsonProperty("index") File index) {
+                  @JsonProperty("index") SaffronPath index) {
         this.documents = documents;
         this.index = index;
     }
     
     public File getIndex() {
-        return index;
+        return index == null ? null : index.toFile();
     }
 
     public List<Document> getDocuments() {

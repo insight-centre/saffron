@@ -43,7 +43,7 @@ public class DocumentTest {
         final Document document = mapper.readValue(data, Document.class);
         assertEquals("Test Document", document.name);
         assertEquals("test", document.id);
-        assertEquals(new File("test.txt"), document.file);
+        assertEquals(new SaffronPath("test.txt"), document.file);
         assertEquals(1, document.authors.size());
         assertEquals(new Author("Joe Bloggs"), document.authors.get(0));
         assertEquals(null, document.mimeType);

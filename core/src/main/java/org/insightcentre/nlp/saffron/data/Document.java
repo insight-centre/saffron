@@ -18,7 +18,7 @@ import java.util.Objects;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Document {
-    public final File file;
+    public final SaffronPath file;
     public final String id;
     public final URL url;
     public String name;
@@ -29,7 +29,7 @@ public class Document {
     public Map<String, String> metadata;
      
     @JsonCreator
-    public Document(@JsonProperty(value="file") File file, 
+    public Document(@JsonProperty(value="file") SaffronPath file, 
                     @JsonProperty(value="id", required=true) String id,
                     @JsonProperty(value="url") URL url,
                     @JsonProperty("name") String name,
@@ -85,7 +85,7 @@ public class Document {
         return id;
     }
 
-    public File getFile() {
+    public SaffronPath getFile() {
         return file;
     }
 

@@ -16,7 +16,7 @@ public class DocumentSearcherFactory {
     
     public static DocumentSearcher loadSearcher(IndexedCorpus corpus) {
         if(corpus.index == null) throw new IllegalArgumentException("Corpus has no index");
-        return loadSearcher(corpus, corpus.index, false);
+        return loadSearcher(corpus, corpus.index.toFile(), false);
     }
     /**
      * Create a document searcher

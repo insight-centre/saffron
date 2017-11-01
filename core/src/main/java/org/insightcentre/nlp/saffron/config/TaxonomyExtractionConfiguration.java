@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  * Configuration for supervised taxonomy extraction
@@ -17,15 +18,15 @@ public class TaxonomyExtractionConfiguration {
     /** Where to put the training data as an ARFF (for debugging with Weka),
      *  or null to not output training data.
      */
-    public File arffFile = null;
+    public SaffronPath arffFile = null;
     /** The file containing the GloVe vectors or null if not used */
-    public File gloveFile = null;
+    public SaffronPath gloveFile = null;
     /** The file containing the SVD matrix or null if not used */
-    public File svdAveFile = null;
+    public SaffronPath svdAveFile = null;
     /** the file containing the SVD matrix or null if not used */
-    public File svdMinMaxFile = null;
+    public SaffronPath svdMinMaxFile = null;
     /** The WEKA binary model */
-    public File modelFile = null;
+    public SaffronPath modelFile = null;
     /** The feature selection or null for all features*/
     public FeatureSelection features = null;
     /** The mode (algorithm) to use to derive the tree */
