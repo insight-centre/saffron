@@ -142,10 +142,11 @@ public class SaffronCrawler extends WebCrawler {
                 HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
                 String html = htmlParseData.getHtml();
                 File file = new File(saveFolder, key + ".html");
+                file.getParentFile().mkdirs();
                 try (PrintWriter out = new PrintWriter(file)) {
                     out.println(html);
                 } catch (IOException x) {
-                    System.err.println("Could not write html for " + page.getWebURL().getURL());
+                    System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
                 if (corpus.size() >= collectionLimit) {
@@ -159,7 +160,7 @@ public class SaffronCrawler extends WebCrawler {
                 try(FileOutputStream fos = new FileOutputStream(file)) {
                     fos.write(page.getContentData());
                 } catch(IOException x) {
-                    System.err.println("Could not write binary for " + url);
+                    System.err.println("Could not write binary for " + url + " due to " + x);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
                 if (corpus.size() >= collectionLimit) {

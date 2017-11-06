@@ -22,7 +22,18 @@ public class SaffronPath {
     }
     
     public File toFile() {
-        return new File(path);
+        return new File(resolve(path));
+    }
+    
+    public static String resolve(String path) {
+        String saffronPath = System.getenv("SAFFRON_HOME");
+        if(saffronPath == null) {
+            saffronPath = System.getProperty("saffron.home");
+        }
+        if(saffronPath == null) {
+            saffronPath = ".";
+        }
+        return path.replaceAll("\\$\\{saffron.home\\}", saffronPath);
     }
 
     @Override
