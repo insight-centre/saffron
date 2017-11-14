@@ -9,7 +9,14 @@ die() { echo "$@" 1>&2 ; exit 1; }
 
 if [ -z $1 ] || [ -z $2 ]
 then
-    die "Usage\n\t./saffron.sh corpus[.json] output/"
+    die "Usage\n\t./saffron.sh corpus[.json] output/ config.json"
+fi
+
+if [ -z $3 ]
+then
+    CONFIG=models/config.json
+else
+    CONFIG=$3
 fi
 
 OUTPUT=$2
@@ -90,7 +97,7 @@ $DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
 echo "########################################"
 echo "## Step 8: Taxonomy Extraction       ##"
 echo "########################################"
-$DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json
+$DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json -c $CONFIG
 
 echo "Creating taxonomy at" $OUTPUT/taxonomy.html
 python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

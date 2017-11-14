@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -46,7 +46,7 @@ public class Main {
             }
  
             final File configuration = (File)os.valueOf("c");
-            if(configuration != null && !configuration.exists()) {
+            if(configuration == null || !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
             final File docTopicFile = (File)os.valueOf("d");
@@ -65,16 +65,20 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             // Read configuration
-            TaxonomyExtractionConfiguration config = configuration == null ? new TaxonomyExtractionConfiguration() : mapper.readValue(configuration, TaxonomyExtractionConfiguration.class);
+            Configuration config = mapper.readValue(configuration, Configuration.class);
+            if(config.taxonomy == null || config.taxonomy.modelFile == null ||
+                    config.taxonomy.mode == null) {
+                badOptions(p, "Configuration does not have a model file");
+            }
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics   = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
             Map<String, Topic> topicMap = loadMap(topics, mapper);
             
-            SupervisedTaxo supTaxo = new SupervisedTaxo(config, docTopics, topicMap);
+            SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, docTopics, topicMap);
             final Taxonomy graph;
-            if(config.mode == Mode.greedy) {
-                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo, config.maxChildren);
+            if(config.taxonomy.mode == Mode.greedy) {
+                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
                 graph = extractor.extractTaxonomy(docTopics, topicMap);
             } else {
                 MSTTaxoExtract extractor = new MSTTaxoExtract(supTaxo);
