@@ -81,13 +81,14 @@ public class Executor extends AbstractHandler {
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
             HttpServletResponse response) throws IOException, ServletException {
+        try {
         if (isExecuting()) {
             if (corpus != null && config == null && (target == null || "".equals(target) || "/".equals(target))) {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
                 String page = FileUtils.readFileToString(new File("static/advanced.html"));
-                page = page.replaceAll("\\{\\{config\\}\\}", new ObjectMapper().writeValueAsString(defaultConfig));
+                page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
                 response.getWriter().print(page);
             } else if (corpus != null && config == null && ("/advanced".equals(target))) {
                 BufferedReader r = hsr.getReader();
@@ -132,6 +133,10 @@ public class Executor extends AbstractHandler {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.writeValue(response.getWriter(), status);
             }
+        }
+        } catch(Exception x) {
+            x.printStackTrace();
+            throw new ServletException(x);
         }
     }
 
