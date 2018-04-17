@@ -56,6 +56,10 @@ the models and run the command as follows
 
     ./saffron-web.sh output-folder/
 
+Then open the following url in a browser 
+    http://localhost:8080/
+
+
 Command Line Interface
 ======================
 
