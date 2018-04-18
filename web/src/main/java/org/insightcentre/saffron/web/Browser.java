@@ -18,10 +18,13 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
 
 /**
  * Handles the interface if there is a corpus loaded
@@ -64,6 +67,13 @@ public class Browser extends AbstractHandler {
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), saffron.getTaxonomy());
+                } else if (target.equals("/taxonomy_with_size")) {
+                    response.setContentType("application/json;charset=utf-8");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    Taxonomy taxonomy = saffron.getTaxonomy();
+                    TaxonomyWithSize tws = AddSizesToTaxonomy.addSizes(taxonomy, saffron.getDocTopics());
+                    mapper.writeValue(response.getWriter(), tws);
                 } else if ("/parents".equals(target)) {
                     final String topic = request.getParameter("topic");
                     if (topic != null) {
