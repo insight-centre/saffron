@@ -20,6 +20,8 @@ var treemap = d3.treemap()
 d3.json("/taxonomy_with_size", function(error, data) {
   if (error) throw error;
 
+    data.size = 0;
+
   var root = d3.hierarchy(data)
       .eachBefore(function(d) { d.data.id = (d.parent ? d.parent.data.id + "." : "") + d.data.root; })
       .sum(sumBySize)
