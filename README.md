@@ -8,21 +8,20 @@ distinct analysis of text. These modules are as follows
 
 1. *Corpus Indexing*: Analyses raw text documents in various formats and indexs
 them for later components
-2. *Domain Model*: Identifies the keywords that define the domain of the corpus
-3. *Topic Extraction*: Extracts keyphrase that are the topics of each single
+2. *Topic Extraction*: Extracts keyphrase that are the topics of each single
 document in a collection
-4. *Author Consolidation*: Detects and removes name variations from the list 
+3. *Author Consolidation*: Detects and removes name variations from the list 
 of authors of each document
-5. *DBpedia Lookup*: Links topics extracted from a document to URLs on the 
+4. *DBpedia Lookup*: Links topics extracted from a document to URLs on the 
 Semantic Web
-6. *Topic Statistics*: Analyses the topics of a document and finds the relative
+5. *Document-Topic Analysis*: Analyses the topics of a document and finds the relative
 importance of these topics
-7. *Connect Authors*: Associates authors with particular documents and 
+6. *Author-Topic Analysis*: Associates authors with particular documents and 
 identifies the importance of the document to each authro
-8. *Topic Similarity*: Measures the relevance of each topic to each other topic
-9. *Author Similarity*: Measures the relevance of each author to each other
+7. *Topic Similarity*: Measures the relevance of each topic to each other topic
+8. *Author Similarity*: Measures the relevance of each author to each other
 author
-10. *Taxonomy Extraction*: Organizes the topics into a single hierarchical 
+9. *Taxonomy Extraction*: Organizes the topics into a single hierarchical 
 graph that allows for easy browsing of the corpus and deep insights.
 
 ![Saffron Service Workflow](https://gitlab.insight-centre.org/johmcc/saffron/raw/master/docs/Saffron%20Services.png)
