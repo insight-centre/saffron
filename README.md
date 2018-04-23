@@ -6,7 +6,7 @@ of state-of-the-art natural language processing technology. Saffron consists of
 a set of self-contained and independent modules that individually provide 
 distinct analysis of text. These modules are as follows
 
-1. *Corpus Indexing*: Analyses raw text documents in various formats and indexs
+1. *Corpus Indexing*: Analyses raw text documents in various formats and indexes
 them for later components
 2. *Topic Extraction*: Extracts keyphrase that are the topics of each single
 document in a collection
@@ -17,7 +17,7 @@ Semantic Web
 5. *Document-Topic Analysis*: Analyses the topics of a document and finds the relative
 importance of these topics
 6. *Author-Topic Analysis*: Associates authors with particular documents and 
-identifies the importance of the document to each authro
+identifies the importance of the document to each author
 7. *Topic Similarity*: Measures the relevance of each topic to each other topic
 8. *Author Similarity*: Measures the relevance of each author to each other
 author
@@ -30,7 +30,7 @@ Installation
 ------------
 
 Saffron requires the use of [Maven](https://maven.apache.org/) to install and 
-can be built with the following commande
+can be built with the following command
 
     mvn install
 
@@ -50,7 +50,7 @@ Running
 Web Interface
 =============
 
-To start the Saffon Web server simply choose a directory for Saffron to create
+To start the Saffron Web server simply choose a directory for Saffron to create
 the models and run the command as follows
 
     ./saffron-web.sh output-folder/
