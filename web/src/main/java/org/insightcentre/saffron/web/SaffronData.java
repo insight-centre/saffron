@@ -198,7 +198,11 @@ public class SaffronData {
     }
 
     public Collection<String> getTopTopics(int from, int to) {
-        return topicsSorted.subList(from, to);
+        if(from < topicsSorted.size() && to <= topicsSorted.size()) {
+            return topicsSorted.subList(from, to);
+        } else {
+            return Collections.EMPTY_LIST;
+        }
     }
 
     public Topic getTopic(String topic) {
