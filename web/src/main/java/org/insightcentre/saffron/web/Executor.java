@@ -11,6 +11,7 @@ import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -67,11 +68,11 @@ public class Executor extends AbstractHandler {
         this.status = new Status();
         try {
             this.defaultConfig = new ObjectMapper().readValue(new File("../models/config.json"), Configuration.class);
-        } catch(IOException x) {
+        } catch (IOException x) {
             this.defaultConfig = new Configuration();
             System.err.println("Could not load config.json in models folder... using default configuration");
         }
-                
+
     }
 
     public boolean isExecuting() {
@@ -82,59 +83,59 @@ public class Executor extends AbstractHandler {
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
             HttpServletResponse response) throws IOException, ServletException {
         try {
-        if (isExecuting()) {
-            if (corpus != null && config == null && (target == null || "".equals(target) || "/".equals(target))) {
-                response.setContentType("text/html");
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-                String page = FileUtils.readFileToString(new File("static/advanced.html"));
-                page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
-                response.getWriter().print(page);
-            } else if (corpus != null && config == null && ("/advanced".equals(target))) {
-                BufferedReader r = hsr.getReader();
-                StringBuilder sb = new StringBuilder();
-                try {
-                    String line;
-                    while((line = r.readLine()) != null) {
-                        sb.append(line).append("\n");
-                    }
-                    this.config = new ObjectMapper().readValue(sb.toString(), Configuration.class);
-                } catch(Exception x) {
-                    x.printStackTrace();
-                    return;
-                }
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            execute(corpus, config);
-                        } catch(IOException x) {
-                            x.printStackTrace();
+            if (isExecuting()) {
+                if (corpus != null && config == null && (target == null || "".equals(target) || "/".equals(target))) {
+                    response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    String page = FileUtils.readFileToString(new File("static/advanced.html"));
+                    page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
+                    response.getWriter().print(page);
+                } else if (corpus != null && config == null && ("/advanced".equals(target))) {
+                    BufferedReader r = hsr.getReader();
+                    StringBuilder sb = new StringBuilder();
+                    try {
+                        String line;
+                        while ((line = r.readLine()) != null) {
+                            sb.append(line).append("\n");
                         }
+                        this.config = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+                    } catch (Exception x) {
+                        x.printStackTrace();
+                        return;
                     }
-                }).start();
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-            } else if (target == null || "".equals(target) || "/".equals(target)) {
-                response.setContentType("text/html");
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-                FileReader reader = new FileReader(new File("static/executing.html"));
-                Writer writer = response.getWriter();
-                char[] buf = new char[4096];
-                int i = 0;
-                while ((i = reader.read(buf)) >= 0) {
-                    writer.write(buf, 0, i);
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                execute(corpus, config);
+                            } catch (IOException x) {
+                                x.printStackTrace();
+                            }
+                        }
+                    }).start();
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                } else if (target == null || "".equals(target) || "/".equals(target)) {
+                    response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    FileReader reader = new FileReader(new File("static/executing.html"));
+                    Writer writer = response.getWriter();
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
+                    }
+                } else if ("/status".equals(target)) {
+                    response.setContentType("application/json");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    ObjectMapper mapper = new ObjectMapper();
+                    mapper.writeValue(response.getWriter(), status);
                 }
-            } else if ("/status".equals(target)) {
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-                ObjectMapper mapper = new ObjectMapper();
-                mapper.writeValue(response.getWriter(), status);
             }
-        }
-        } catch(Exception x) {
+        } catch (Exception x) {
             x.printStackTrace();
             throw new ServletException(x);
         }
@@ -153,13 +154,13 @@ public class Executor extends AbstractHandler {
                     } else {
                         corpus = CorpusTools.fromZIP(tmpFile);
                     }
-                    if(advanced) {
+                    if (advanced) {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
                         execute(corpus, defaultConfig);
                     }
-                } catch (Exception x) {
+                } catch (Throwable x) {
                     status.failed = true;
                     status.setStatusMessage("Failed: " + x.getMessage());
                     x.printStackTrace();
@@ -182,8 +183,7 @@ public class Executor extends AbstractHandler {
                     Corpus corpus = SaffronCrawler.crawl(crawlStorageFolder, directory,
                             null, maxPages, domain ? "\\w+://\\Q" + url2.getHost() + "\\E.*" : ".*",
                             url, 7);
-                    if(advanced) {
-                        System.err.println("Advanced");
+                    if (advanced) {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
@@ -197,7 +197,7 @@ public class Executor extends AbstractHandler {
             }
         }).start();
     }
-    
+
     void startWithJson(final File tmpFile, final boolean advanced) {
         new Thread(new Runnable() {
             @Override
@@ -207,7 +207,7 @@ public class Executor extends AbstractHandler {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     IndexedCorpus corpus = mapper.readValue(tmpFile, IndexedCorpus.class);
-                    if(advanced) {
+                    if (advanced) {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
@@ -221,13 +221,12 @@ public class Executor extends AbstractHandler {
             }
         }).start();
     }
-    
 
     void execute(Corpus corpus, Configuration config) throws IOException {
         status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
-        
+
         status.stage++;
         status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(directory, "index");
@@ -265,66 +264,69 @@ public class Executor extends AbstractHandler {
         status.setStatusMessage("Writing consolidated corpus");
         ow.writeValue(new File(directory, "corpus.json"), corpus2);
         data.setCorpus(corpus2);
-        
+
         status.stage++;
         status.setStatusMessage("Linking to DBpedia");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
         List<Topic> topics = new ArrayList<>(res.topics);
         data.setTopics(res.topics);
-                
+
         status.setStatusMessage("Saving linked topics");
         ow.writeValue(new File(directory, "topics.json"), topics);
-        
+
         status.stage++;
         status.setStatusMessage("Connecting authors to topics");
         ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
         Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, corpus2.documents);
-        
+
         status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(directory, "author-topics.json"), authorTopics);
         data.setAuthorTopics(authorTopics);
-        
+
         status.stage++;
         status.setStatusMessage("Connecting topics");
         TopicSimilarity ts = new TopicSimilarity(config.topicSim);
         final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics);
-            
+
         status.setStatusMessage("Saving topic connections");
         ow.writeValue(new File(directory, "topic-sim.json"), topicSimilarity);
         data.setTopicSim(topicSimilarity);
-        
+
         status.stage++;
         status.setStatusMessage("Connecting authors to authors");
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
         final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics);
-            
+
         status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(directory, "author-sim.json"), authorSim);
         data.setAuthorSim(authorSim);
-        
+
         status.stage++;
         status.setStatusMessage("Building topic map");
         Map<String, Topic> topicMap = loadMap(topics, mapper);
 
         status.setStatusMessage("Building taxonomy");
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
-        
-        if(config.taxonomy.modelFile == null)
+
+        if (config.taxonomy.modelFile == null) {
             config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/weka.bin");
+        }
         SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, res.docTopics, topicMap);
         final Taxonomy graph;
-        if(config.taxonomy.mode == greedy) {
+        if (topicMap.isEmpty()) {
+            graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
+        } else if (config.taxonomy.mode == greedy) {
             GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         } else {
             MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         }
-            
+
         status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(directory, "taxonomy.json"), graph);
         data.setTaxonomy(graph);
-        
+
         status.setStatusMessage("Done");
         status.completed = true;
     }
@@ -345,8 +347,7 @@ public class Executor extends AbstractHandler {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
             this.statusMessage2 = statusMessage;
         }
-        
-        
+
     }
 
 }
