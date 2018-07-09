@@ -71,6 +71,7 @@ public class Launcher {
             server.setHandler(handlers);
 
             server.start();
+            System.err.println(String.format("Started server at http://localhost:%d/", port));
             server.join();
         } catch (Exception x) {
             x.printStackTrace();

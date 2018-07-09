@@ -70,7 +70,7 @@ public class TopicExtraction {
             config.minTermFreq, TermOccurrencesCollectorConfig.make()).build();
         switch(config.method) {
             case one:
-                this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeat(config.baseFeature, config)).build();
+                this.candidatesWeighter = new OneFeatureTCWeighterConfig(mkFeat(config.baseFeature, config),3).build();
                 break;
             case voting:
                 this.candidatesWeighter = VotingTCWeighterConfig.make(mkFeats(config)).build();
@@ -199,7 +199,8 @@ public class TopicExtraction {
                 if(i < 10)
                     System.err.printf("%s %.4f\n", term._1, score);
                 if(score > threshold && i++ < maxTopics) {
-                    TermCandidate tc = candmap.get(term._1);
+                    String termStr = term._1.replaceAll("\\s*\\[.*\\]$", "");
+                    TermCandidate tc = candmap.get(termStr);
                     
                     //Seq<String> lemmas = tc.lemmas();
                     Set<String> lemmas = new HashSet<>();

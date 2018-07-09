@@ -239,9 +239,10 @@ public class Executor extends AbstractHandler {
         IndexedCorpus indexedCorpus = new IndexedCorpus(docs, SaffronPath.fromFile(indexFile));
 
         status.stage++;
-        status.setStatusMessage("Extracting Topics");
+        status.setStatusMessage("Initializing topic extractor");
         TopicExtraction extractor = new TopicExtraction(config.termExtraction);
-
+        
+        status.setStatusMessage("Extracting Topics");
         TopicExtraction.Result res = extractor.extractTopics(searcher);
 
         status.setStatusMessage("Writing extracted topics");
