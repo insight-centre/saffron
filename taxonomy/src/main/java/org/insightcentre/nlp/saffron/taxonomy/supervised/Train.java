@@ -25,15 +25,13 @@ import java.util.Random;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import libsvm.svm_model;
+import libsvm.svm_node;
+import libsvm.svm_parameter;
+import libsvm.svm_problem;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
-import weka.classifiers.Classifier;
-import weka.core.Attribute;
-import weka.core.DenseInstance;
-import weka.core.Instance;
-import weka.core.Instances;
-import weka.core.converters.ArffSaver;
 
 /**
  * Train the supervised model based on some existing settings and create a
@@ -70,24 +68,24 @@ public class Train {
             }
             final ObjectMapper mapper = new ObjectMapper();
 
-            final File topicsFile = (File)os.valueOf("p");
-            
+            final File topicsFile = (File) os.valueOf("p");
+
             final File docTopicsFile = (File) os.valueOf("d");
             final List<File> taxoFiles = (List<File>) os.valuesOf("t");
             if (taxoFiles == null) {
                 badOptions(p, "No taxonomy files provided");
                 return;
             }
-            
+
             final TaxonomyExtractionConfiguration config;
-            final File configFile = (File)os.valueOf("c");
-            if(configFile == null) {
+            final File configFile = (File) os.valueOf("c");
+            if (configFile == null) {
                 config = new TaxonomyExtractionConfiguration();
             } else {
                 config = mapper.readValue(configFile, TaxonomyExtractionConfiguration.class);
             }
-                              
-            if(config.verify() != null) {
+
+            if (config.verify() != null) {
                 badOptions(p, "Config invalid: " + config.verify());
             }
 
@@ -102,11 +100,11 @@ public class Train {
                 taxos.add(loadTaxoFile(taxoFile, mapper));
             }
 
-            final List<Topic> topics = topicsFile == null ? null :
-                    (List<Topic>)mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
-            
+            final List<Topic> topics = topicsFile == null ? null
+                    : (List<Topic>) mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+
             Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper);
-            
+
             train(docTopics, topicMap, taxos, config);
 
         } catch (Exception x) {
@@ -116,7 +114,7 @@ public class Train {
     }
 
     private static Map<String, double[]> loadGLoVE(File gloveFile) throws IOException {
-        if(!gloveFile.exists()) {
+        if (!gloveFile.exists()) {
             System.err.println("GloVe file does not exist. Not using GloVe");
             return null;
         }
@@ -161,29 +159,30 @@ public class Train {
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
-        
+
         Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
-        
+
         features = glove == null ? features : learnSVD(taxos, features, config);
-        
-        Instances instances = loadInstances(taxos, features, config.negSampling);
-        
-        
-        final Classifier classifier = loadClassifier(config);
-        if (config.arffFile != null) {
+
+        svm_problem instances = loadInstances(taxos, features, config.negSampling);
+        svm_parameter param = makeParameters();
+        //final Classifier classifier = loadClassifier(config);
+        /*if (config.arffFile != null) {
+            final File arffFile = new File(config.arffFile);
             final ArffSaver saver = new ArffSaver();
             saver.setInstances(instances);
             try {
-                //System.err.println(String.format("Saving features to %s", config.arffFile.getPath()));
-                saver.setFile(config.arffFile.toFile());
+                System.err.println(String.format("Saving features to %s", arffFile.getPath()));
+                saver.setFile(arffFile);
                 saver.writeBatch();
             } catch (IOException x) {
                 x.printStackTrace();
             }
-        }
-        
+        }*/
+
+        libsvm.svm_model model;
         try {
-            classifier.buildClassifier(instances);
+            model = libsvm.svm.svm_train(prob, param);
         } catch (Exception x) {
             throw new RuntimeException("Could not train classifier", x);
         }
@@ -191,19 +190,18 @@ public class Train {
         writeClassifier(config.modelFile.toFile(), classifier);
     }
 
-
     private static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
         Object2IntMap<String> docIds = new Object2IntOpenHashMap<>();
         HashMap<String, IntSet> index = new HashMap<>();
         int id = 0;
-        for(DocumentTopic dt : docTopics) {
+        for (DocumentTopic dt : docTopics) {
             final int id2;
-            if(!docIds.containsKey(dt.document_id)) {
+            if (!docIds.containsKey(dt.document_id)) {
                 docIds.put(dt.document_id, id2 = id++);
             } else {
                 id2 = id;
             }
-            if(!index.containsKey(dt.topic_string)) {
+            if (!index.containsKey(dt.topic_string)) {
                 index.put(dt.topic_string, new IntRBTreeSet());
             }
             index.get(dt.topic_string).add(id2);
@@ -211,55 +209,65 @@ public class Train {
         return index;
     }
 
-    private static Instances loadInstances(List<List<StringPair>> taxos, Features features, double negSampling) {
+    private static svm_problem loadInstances(List<List<StringPair>> taxos, Features features, double negSampling) {
         final Random random = new Random();
-        ArrayList<Attribute> attributes = buildAttributes(features.featureNames());
-        final Instances instances = new Instances("saffron", attributes, 100);
-        instances.setClassIndex(attributes.size() - 1);
-        for(List<StringPair> taxo : taxos) {
+        ArrayList<String> attributes = buildAttributes(features.featureNames());
+        final svm_problem instances = new svm_problem();
+        instances.l = attributes.size();
+        ArrayList<Instance> instanceList = new ArrayList<>();
+        for (List<StringPair> taxo : taxos) {
             List<String> topicsList = new ArrayList<>(buildTopics(taxo));
             Set<StringPair> taxoSet = new HashSet<>(taxo); // Faster but uses more memory
-            for(StringPair sp : taxo) {
+            for (StringPair sp : taxo) {
                 double[] d1 = features.buildFeatures(sp._1, sp._2);
-                instances.add(makeInstance(d1, +1));
+                instanceList.add(makeInstance(d1, +1));
                 double[] d2 = features.buildFeatures(sp._2, sp._1);
-                instances.add(makeInstance(d2, -1));
+                instanceList.add(makeInstance(d2, -1));
             }
-            for(int i = 0; i < negSampling * taxo.size(); i++) {
+            for (int i = 0; i < negSampling * taxo.size(); i++) {
                 int j = random.nextInt(topicsList.size());
                 int k = random.nextInt(topicsList.size());
-                if(j == k)
+                if (j == k) {
                     continue;
+                }
                 StringPair topicPair = new StringPair(topicsList.get(j), topicsList.get(k));
-                if(!taxoSet.contains(topicPair)) {
+                if (!taxoSet.contains(topicPair)) {
                     double[] d1 = features.buildFeatures(topicPair._1, topicPair._2);
-                    instances.add(makeInstance(d1, 0));
+                    instanceList.add(makeInstance(d1, 0));
                     double[] d2 = features.buildFeatures(topicPair._2, topicPair._1);
-                    instances.add(makeInstance(d2, 0));
+                    instanceList.add(makeInstance(d2, 0));
                 }
             }
+        }
+        instances.x = new svm_node[instanceList.size()][];
+        instances.y = new double[instanceList.size()];
+        int i = 0;
+        for(Instance instance : instanceList) {
+            instances.x[i] = instance.x;
+            instances.y[i++] = instance.y;
         }
         return instances;
     }
 
-    private static void writeClassifier(File file, Classifier classifier) throws IOException {
-        try(final ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+    private static void writeClassifier(File file, svm_model classifier) throws IOException {
+        // TODO: use built-in writer
+        try (final ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
             oos.writeObject(classifier);
         }
     }
 
-    static ArrayList<Attribute> buildAttributes(String[] featureNames) {
-        ArrayList<Attribute> attributes = new ArrayList<>();
+    static ArrayList<String> buildAttributes(String[] featureNames) {
+        ArrayList<String> attributes = new ArrayList<>();
         for (String name : featureNames) {
-            attributes.add(new Attribute(name));
+            attributes.add(name);
         }
-        attributes.add(new Attribute("score"));
+        //attributes.add(new Attribute("score"));
         return attributes;
     }
 
     private static Set<String> buildTopics(List<StringPair> taxo) {
         Set<String> s = new HashSet<>();
-        for(StringPair sp : taxo) {
+        for (StringPair sp : taxo) {
             s.add(sp._1);
             s.add(sp._2);
         }
@@ -267,10 +275,13 @@ public class Train {
     }
 
     static Instance makeInstance(double[] fss, int score) {
-        final double[] d = new double[fss.length + 1];
-        System.arraycopy(fss, 0, d, 0, fss.length);
-        d[fss.length] = score;
-        return new DenseInstance(1.0, d);
+        final svm_node[] d = new svm_node[fss.length];
+        for(int i = 0; i < fss.length; i++) {
+            d[i].index = i;
+            d[i].value = fss[i];
+        }
+        
+        return new Instance(d, score);
     }
 
     private static Features learnSVD(List<List<StringPair>> taxos, Features features, TaxonomyExtractionConfiguration config) {
@@ -280,62 +291,63 @@ public class Train {
         writeMatrix(minMax, config.svdMinMaxFile.toFile());
         return new Features(ave, minMax, features);
     }
-    
+
     private static Matrix learnSVD(List<List<StringPair>> taxos, SVD svd) {
         Matrix m = null;
-        for(List<StringPair> sps : taxos) {
-            for(StringPair sp : sps) {
+        for (List<StringPair> sps : taxos) {
+            for (StringPair sp : sps) {
                 svd.addExample(sp._1, sp._2, +1);
                 svd.addExample(sp._2, sp._1, -1);
             }
-            if(m == null) {
+            if (m == null) {
                 m = svd.solve();
             } else {
                 m.plusEquals(svd.solve());
             }
         }
-        if(m != null)
+        if (m != null) {
             m.timesEquals(1.0 / taxos.size());
+        }
         return m;
     }
 
     private static void writeMatrix(Matrix matrix, File file) {
-        try(ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
             oos.writeInt(matrix.getRowDimension());
             oos.writeInt(matrix.getColumnDimension());
-            for(int i = 0; i < matrix.getRowDimension(); i++) {
-                for(int j = 0; j < matrix.getColumnDimension(); j++) {
+            for (int i = 0; i < matrix.getRowDimension(); i++) {
+                for (int j = 0; j < matrix.getColumnDimension(); j++) {
                     oos.writeDouble(matrix.get(i, j));
                 }
             }
-        } catch(IOException x) {
+        } catch (IOException x) {
             throw new RuntimeException(x);
         }
     }
 
     public static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics, Map<String, Topic> topicMap) throws IOException {
-        Matrix svdAveMatrix = config.svdAveFile == null ? null :
-                readMatrix(config.svdAveFile.toFile());
-        Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null :
-                readMatrix(config.svdMinMaxFile.toFile());
+        Matrix svdAveMatrix = config.svdAveFile == null ? null
+                : readMatrix(config.svdAveFile.toFile());
+        Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null
+                : readMatrix(config.svdMinMaxFile.toFile());
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
         return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), glove, topicMap, config.features);
     }
 
     private static Matrix readMatrix(File svdAveFile) throws IOException {
-        try(ObjectInputStream ois = new ObjectInputStream(new FileInputStream(svdAveFile))) {
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(svdAveFile))) {
             int m = ois.readInt();
             int n = ois.readInt();
             Matrix matrix = new Matrix(m, n);
-            for(int i = 0; i < m; i++) {
-                for(int j = 0; j < n; j++) {
+            for (int i = 0; i < m; i++) {
+                for (int j = 0; j < n; j++) {
                     matrix.set(i, j, ois.readDouble());
                 }
             }
             return matrix;
         }
     }
-    
+
     public static class StringPair {
 
         public final String _1, _2;
@@ -375,8 +387,8 @@ public class Train {
         }
 
     }
-    
-    static Classifier loadClassifier(TaxonomyExtractionConfiguration config) {
+
+    static svm_model loadClassifier(TaxonomyExtractionConfiguration config) {
         final String className = config._class;
         final Class c;
         try {
@@ -390,10 +402,35 @@ public class Train {
         } catch (IllegalAccessException | InstantiationException x) {
             throw new RuntimeException(x);
         }
-        if (o instanceof Classifier) {
-            return (Classifier) o;
+        if (o instanceof svm_model) {
+            return (svm_model) o;
         } else {
             throw new RuntimeException(String.format("%s is not a weka.core.Classifier", className));
         }
+    }
+
+    private svm_parameter makeParameters() {
+        svm_parameter param = new svm_parameter();
+        param.probability = 1;
+        param.gamma = 0.5;
+        param.nu = 0.5;
+        param.C = 1;
+        param.svm_type = svm_parameter.C_SVC;
+        param.kernel_type = svm_parameter.LINEAR;
+        param.cache_size = 20000;
+        param.eps = 0.001;
+        return param;
+    }
+
+    static class Instance {
+
+        svm_node[] x;
+        double y;
+
+        public Instance(svm_node[] x, double y) {
+            this.x = x;
+            this.y = y;
+        }
+
     }
 }
