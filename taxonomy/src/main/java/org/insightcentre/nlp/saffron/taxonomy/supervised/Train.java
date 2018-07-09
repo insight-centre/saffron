@@ -164,7 +164,7 @@ public class Train {
 
         features = glove == null ? features : learnSVD(taxos, features, config);
 
-        svm_problem instances = loadInstances(taxos, features, config.negSampling);
+        svm_problem prob = loadInstances(taxos, features, config.negSampling);
         svm_parameter param = makeParameters();
         //final Classifier classifier = loadClassifier(config);
         /*if (config.arffFile != null) {
@@ -187,7 +187,7 @@ public class Train {
             throw new RuntimeException("Could not train classifier", x);
         }
         
-        writeClassifier(config.modelFile.toFile(), classifier);
+        writeClassifier(config.modelFile.toFile(), model);
     }
 
     private static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
@@ -250,10 +250,7 @@ public class Train {
     }
 
     private static void writeClassifier(File file, svm_model classifier) throws IOException {
-        // TODO: use built-in writer
-        try (final ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
-            oos.writeObject(classifier);
-        }
+        libsvm.svm.svm_save_model(file.getAbsolutePath(), classifier);
     }
 
     static ArrayList<String> buildAttributes(String[] featureNames) {
@@ -409,7 +406,7 @@ public class Train {
         }
     }
 
-    private svm_parameter makeParameters() {
+    private static svm_parameter makeParameters() {
         svm_parameter param = new svm_parameter();
         param.probability = 1;
         param.gamma = 0.5;
