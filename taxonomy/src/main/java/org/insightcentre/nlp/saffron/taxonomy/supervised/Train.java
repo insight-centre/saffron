@@ -29,6 +29,7 @@ import libsvm.svm_model;
 import libsvm.svm_node;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
@@ -82,7 +83,7 @@ public class Train {
             if (configFile == null) {
                 config = new TaxonomyExtractionConfiguration();
             } else {
-                config = mapper.readValue(configFile, TaxonomyExtractionConfiguration.class);
+                config = mapper.readValue(configFile, Configuration.class).taxonomy;
             }
 
             if (config.verify() != null) {

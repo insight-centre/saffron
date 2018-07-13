@@ -70,4 +70,11 @@ public class TaxonomyExtractionConfiguration {
     public enum Mode {
         greedy, mst
     }
+
+    @Override
+    public String toString() {
+        return "TaxonomyExtractionConfiguration{" + "negSampling=" + negSampling + ", _class=" + _class + ", arffFile=" + arffFile + ", gloveFile=" + gloveFile + ", svdAveFile=" + svdAveFile + ", svdMinMaxFile=" + svdMinMaxFile + ", modelFile=" + modelFile + ", features=" + features + ", mode=" + mode + ", maxChildren=" + maxChildren + ", simThreshold=" + simThreshold + '}';
+    }
+    
+    
 }
