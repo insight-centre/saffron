@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.config;
 
 import java.util.List;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  * Term extraction configuration
@@ -29,6 +30,12 @@ public class TermExtractionConfiguration {
     public String w2vmodelPath;
     /** The base feature to use */
     public Feature baseFeature = Feature.comboBasic;
+    /** The number of threads to use */
+    public int numThreads;
+    /** The path to the part-of-speech tagger's model */
+    public SaffronPath posModel;
+    /** The path to the tokenizer's model */
+    public SaffronPath tokenizerModel;
     
     /** The Weighting method to use */
     public enum WeightingMethod {
