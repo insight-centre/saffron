@@ -44,8 +44,9 @@ public class TermExtractionTest {
     public void tearDown() {
     }
 
+    static int docs = 0;
     private Document mkDoc(String contents) {
-        return new Document(null, null, null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
     }
     
     /**
@@ -54,7 +55,7 @@ public class TermExtractionTest {
     @Test
     public void testExtractStats() throws Exception {
         System.out.println("extractStats");
-        POSTagger tagger = new POSTagger() {
+        final POSTagger tagger = new POSTagger() {
             @Override
             public String[] tag(String[] strings) {
                 String[] x = new String[strings.length];
@@ -111,7 +112,13 @@ public class TermExtractionTest {
             public void close() throws IOException {
             }
         };
-        TermExtraction instance = new TermExtraction(10,tagger,tokenizer);
+        TermExtraction instance = new TermExtraction(10,new ThreadLocal<POSTagger>() {
+            @Override
+            protected POSTagger initialValue() {
+                return tagger;
+            }
+            
+        },tokenizer);
         FrequencyStats expResult = new FrequencyStats();
         FrequencyStats result = instance.extractStats(searcher);
         expResult.docFrequency.put("test", 4);

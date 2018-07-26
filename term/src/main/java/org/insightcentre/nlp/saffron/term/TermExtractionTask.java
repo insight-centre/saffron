@@ -13,10 +13,10 @@ import org.insightcentre.nlp.saffron.data.Document;
  *
  * @author John McCrae <john@mccr.ae>
  */
-public class TermExtractionTask implements Callable<FrequencyStats> {
+public class TermExtractionTask implements Runnable {
 
     private final Document doc;
-    private final POSTagger tagger;
+    private final ThreadLocal<POSTagger> tagger;
     private final Tokenizer tokenizer;
     private final Set<String> stopWords;
     private final int ngramMin;
@@ -24,6 +24,7 @@ public class TermExtractionTask implements Callable<FrequencyStats> {
     private final FrequencyStats stats = new FrequencyStats();
     private final Set<String> preceedingTokens;
     private final Set<String> endTokens;
+    private final FrequencyStats summary;
 
     private static final String[] ENGLISH_STOPWORDS = new String[]{"i",
         "me",
@@ -180,7 +181,10 @@ public class TermExtractionTask implements Callable<FrequencyStats> {
         "wouldn"
     };
 
-    public TermExtractionTask(Document doc, POSTagger tagger, Tokenizer tokenizer, Set<String> stopWords, int ngramMin, int ngramMax, Set<String> preceedingTokens, Set<String> endTokens) {
+    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer,
+            Set<String> stopWords, int ngramMin, int ngramMax,
+            Set<String> preceedingTokens, Set<String> endTokens,
+            FrequencyStats summary) {
         this.doc = doc;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -189,9 +193,10 @@ public class TermExtractionTask implements Callable<FrequencyStats> {
         this.ngramMax = ngramMax;
         this.preceedingTokens = preceedingTokens;
         this.endTokens = endTokens;
+        this.summary = summary;
     }
 
-    public TermExtractionTask(Document doc, POSTagger tagger, Tokenizer tokenizer) {
+    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer, FrequencyStats summary) {
         this.doc = doc;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -199,37 +204,51 @@ public class TermExtractionTask implements Callable<FrequencyStats> {
         this.ngramMax = 3;
         this.preceedingTokens = new HashSet<>(Arrays.asList("NN", "NNS", "JJ", "NNP", "IN"));
         this.endTokens = new HashSet<>(Arrays.asList("NN", "NNS"));
-        this.stopWords =  new HashSet<>(Arrays.asList(ENGLISH_STOPWORDS));
+        this.stopWords = new HashSet<>(Arrays.asList(ENGLISH_STOPWORDS));
+        this.summary = summary;
     }
 
     @Override
-    public FrequencyStats call() throws Exception {
-        String[] tokens = tokenizer.tokenize(doc.contents());
-        String[] tags = tagger.tag(tokens);
+    public void run() {
+        try {
+            String contents = doc.contents();
+            System.err.println(doc.id);
+            for (String sentence : contents.split("\n")) {
+                String[] tokens = tokenizer.tokenize(sentence);
+                if (tokens.length > 0) {
+                    String[] tags = new String[0];
+                    tags = tagger.get().tag(tokens);
 
-        if (tags.length != tokens.length) {
-            throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
-        }
+                    if (tags.length != tokens.length) {
+                        throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
+                    }
 
-        for (int i = 0; i < tokens.length; i++) {
-            boolean nonStop = false;
-            for (int j = i + ngramMin - 1; j < min(i + ngramMax, tokens.length); j++) {
-                if (!stopWords.contains(tokens[j])) {
-                    nonStop = true;
+                    for (int i = 0; i < tokens.length; i++) {
+                        boolean nonStop = false;
+                        for (int j = i + ngramMin - 1; j < min(i + ngramMax, tokens.length); j++) {
+                            if (!stopWords.contains(tokens[j])) {
+                                nonStop = true;
+                            }
+                            if (endTokens.contains(tags[j]) && nonStop) {
+                                processTerm(tokens, i, j);
+                            }
+                            if (!preceedingTokens.contains(tags[j])) {
+                                break;
+                            }
+                        }
+                    }
                 }
-                if (endTokens.contains(tags[j]) && nonStop) {
-                    processTerm(tokens, i, j);
-                }
-                if (!preceedingTokens.contains(tags[j])) {
-                    break;
-                }
+                stats.tokens += tokens.length;
             }
+
+            stats.documents = 1;
+
+            synchronized (summary) {
+                summary.add(stats);
+            }
+        } catch (Exception x) {
+            x.printStackTrace();
         }
-
-        stats.tokens = tokens.length;
-        stats.documents = 1;
-
-        return stats;
     }
 
     public static String join(String[] tokens, int i, int j) {
@@ -241,9 +260,9 @@ public class TermExtractionTask implements Callable<FrequencyStats> {
             term.append(tokens[x]);
         }
         return term.toString();
-        
+
     }
-    
+
     private void processTerm(String[] tokens, int i, int j) {
         String termStr = join(tokens, i, j);
         stats.docFrequency.put(termStr, 1);

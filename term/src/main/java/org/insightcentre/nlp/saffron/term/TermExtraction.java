@@ -1,15 +1,14 @@
 package org.insightcentre.nlp.saffron.term;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
@@ -29,22 +28,34 @@ import org.insightcentre.nlp.saffron.data.index.SearchException;
  * @author John McCrae <john@mccr.ae>
  */
 public class TermExtraction {
+
     private final int nThreads;
-    private final POSTagger tagger;
+    private final ThreadLocal<POSTagger> tagger;
     private final Tokenizer tokenizer;
 
-    public TermExtraction(int nThreads, POSTagger tagger, Tokenizer tokenizer) {
+    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
     }
-    
-    public TermExtraction(TermExtractionConfiguration config) throws IOException {
+
+    public TermExtraction(final TermExtractionConfiguration config) throws IOException {
         this.nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
-        if(config.posModel == null)
-                throw new RuntimeException("Tagger must be set");
-        this.tagger = new POSTaggerME(new POSModel(config.posModel.toFile()));
-        if(config.tokenizerModel == null) {
+        if (config.posModel == null) {
+            throw new RuntimeException("Tagger must be set");
+        }
+        this.tagger = new ThreadLocal<POSTagger>() {
+            @Override            
+            protected POSTagger initialValue() {
+                try {
+                    return new POSTaggerME(new POSModel(config.posModel.toFile()));
+                } catch(IOException x) {
+                    x.printStackTrace();
+                    return null;
+                }
+            }
+        };
+        if (config.tokenizerModel == null) {
             this.tokenizer = SimpleTokenizer.INSTANCE;
         } else {
             this.tokenizer = new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
@@ -52,28 +63,20 @@ public class TermExtraction {
     }
 
     public FrequencyStats extractStats(DocumentSearcher searcher) throws SearchException, InterruptedException, ExecutionException {
-        ExecutorService service = Executors.newFixedThreadPool(nThreads);
-        ArrayList<Future<FrequencyStats>> stats = new ArrayList<>();
-        for(Document doc : searcher.allDocuments()) {
-            stats.add(service.submit(new TermExtractionTask(doc, tagger, tokenizer)));
+        ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000));
+        final FrequencyStats summary = new FrequencyStats();
+
+        for (Document doc : searcher.allDocuments()) {
+            service.submit(new TermExtractionTask(doc, tagger, tokenizer, summary));
         }
-        FrequencyStats summary = new FrequencyStats();
-        while(!stats.isEmpty()) {
-            Iterator<Future<FrequencyStats>> i = stats.iterator();
-            while(i.hasNext()) {
-                Future<FrequencyStats> s = i.next();
-                if(s.isDone()) {
-                    summary.add(s.get());
-                    i.remove();
-                }
-            }
-        }
+
         service.shutdown();
+        service.awaitTermination(2, TimeUnit.DAYS);
         return summary;
     }
-    
+
     public Result extractTopics(DocumentSearcher searcher) throws SearchException, InterruptedException, ExecutionException {
-        
+
         throw new UnsupportedOperationException("TODO");
 
     }

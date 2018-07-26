@@ -1,6 +1,10 @@
 package org.insightcentre.nlp.saffron.term;
 
+import java.io.File;
+import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
+import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.junit.After;
@@ -48,17 +52,30 @@ public class TermExtractionTaskTest {
         Tokenizer tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[] {"this","is","a","test" };
         when(tokenizer.tokenize("this is a test")).thenReturn(tokens);
-        POSTagger tagger = mock(POSTagger.class);
+        final POSTagger tagger = mock(POSTagger.class);
         when(tagger.tag(tokens)).thenReturn(new String[] { "DT", "VBZ", "DT", "NN" });
-        
-        TermExtractionTask instance = new TermExtractionTask(doc, tagger, tokenizer);
+        FrequencyStats result = new FrequencyStats();
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+            
+        }, tokenizer, result);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
         expResult.tokens = 4;
         expResult.documents = 1;
-        FrequencyStats result = instance.call();
+        instance.run();
         assertEquals(expResult, result);
     }
     
+    //@Test
+    public void testOpenNlp() throws Exception {
+        String s = "The term anarchism is a compound word composed from the word anarchy and the suffix -ism, themselves derived respectively from the Greek , i.e. anarchy (from , anarchos, meaning \"one without rulers\"; from the privative prefix ἀν- (an-, i.e. \"without\") and , archos, i.e. \"leader\", \"ruler\"; (cf. archon or , arkhē, i.e. \"authority\", \"sovereignty\", \"realm\", \"magistracy\")) and the suffix  or  (-ismos, -isma, from the verbal infinitive suffix -ίζειν, -izein). The first known use of this word was in 1539. Various factions within the French Revolution labelled opponents as anarchists (as Robespierre did the Hébertists) although few shared many views of later anarchists.  There would be many revolutionaries of the early nineteenth century who contributed to the anarchist doctrines of the next generation, such as William Godwin and Wilhelm Weitling, but they did not use the word anarchist or anarchism in describing themselves or their beliefs.";
+        String[] tokens = SimpleTokenizer.INSTANCE.tokenize(s);
+        String[] tags = new POSTaggerME(new POSModel(new File("../models/en-pos-maxent.bin"))).tag(tokens);
+        
+    }
 }
