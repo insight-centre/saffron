@@ -1,11 +1,15 @@
 package org.insightcentre.nlp.saffron.term;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
+import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -51,9 +55,13 @@ public class TermExtractionTaskTest {
         when(doc.contents()).thenReturn("this is a test");
         Tokenizer tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[] {"this","is","a","test" };
+        String[] lemmas = new String[] {"this","be","a","test" };
+        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN" };
         when(tokenizer.tokenize("this is a test")).thenReturn(tokens);
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
         final POSTagger tagger = mock(POSTagger.class);
-        when(tagger.tag(tokens)).thenReturn(new String[] { "DT", "VBZ", "DT", "NN" });
+        when(tagger.tag(tokens)).thenReturn(tags);
         FrequencyStats result = new FrequencyStats();
         TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
             @Override
@@ -61,11 +69,65 @@ public class TermExtractionTaskTest {
                 return tagger;
             }
             
-        }, tokenizer, result);
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+            
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(), new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                true, result);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
         expResult.tokens = 4;
+        expResult.documents = 1;
+        instance.run();
+        assertEquals(expResult, result);
+    }
+    
+    
+    /**
+     * Test of call method, of class TermExtractionTask.
+     */
+    @Test
+    public void testCallHeadInitial() throws Exception {
+        System.out.println("call");
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("an fhaiche mhor");
+        Tokenizer tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[] {"an", "fhaiche", "mhor" };
+        String[] lemmas = new String[] {"an", "faiche", "mor" };
+        final String[] tags = new String[] { "DT", "NN", "JJ" };
+        when(tokenizer.tokenize("an fhaiche mhor")).thenReturn(tokens);
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        FrequencyStats result = new FrequencyStats();
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+            
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+            
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "JJ" })),
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                false, result);
+        FrequencyStats expResult = new FrequencyStats();
+        expResult.docFrequency.put("faiche mhor", 1);
+        expResult.termFrequency.put("faiche mhor", 1);
+        expResult.docFrequency.put("faiche", 1);
+        expResult.termFrequency.put("faiche", 1);
+        expResult.tokens = 3;
         expResult.documents = 1;
         instance.run();
         assertEquals(expResult, result);

@@ -1,6 +1,10 @@
 package org.insightcentre.nlp.saffron.term;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -9,6 +13,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import opennlp.tools.lemmatizer.DictionaryLemmatizer;
+import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
@@ -18,6 +24,7 @@ import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
@@ -32,11 +39,27 @@ public class TermExtraction {
     private final int nThreads;
     private final ThreadLocal<POSTagger> tagger;
     private final Tokenizer tokenizer;
+    private final int maxDocs;
+    private final int minTermFreq;
+    private final ThreadLocal<Lemmatizer> lemmatizer;
+    private final Set<String> stopWords, preceedingsTokens, endTokens;
+    private final int ngramMin, ngramMax;
+    private final boolean headTokenFinal;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
+        TermExtractionConfiguration config = new TermExtractionConfiguration();
+        this.stopWords = new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS));
+        this.maxDocs = config.maxDocs;
+        this.minTermFreq = config.minTermFreq;
+        this.lemmatizer = null;
+        this.preceedingsTokens = config.preceedingTokens;
+        this.endTokens = config.headTokens;
+        this.ngramMax = config.ngramMax;
+        this.ngramMin = config.ngramMin;
+        this.headTokenFinal = config.headTokenFinal;
     }
 
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
@@ -45,11 +68,11 @@ public class TermExtraction {
             throw new RuntimeException("Tagger must be set");
         }
         this.tagger = new ThreadLocal<POSTagger>() {
-            @Override            
+            @Override
             protected POSTagger initialValue() {
                 try {
                     return new POSTaggerME(new POSModel(config.posModel.toFile()));
-                } catch(IOException x) {
+                } catch (IOException x) {
                     x.printStackTrace();
                     return null;
                 }
@@ -60,18 +83,61 @@ public class TermExtraction {
         } else {
             this.tokenizer = new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
         }
+        this.maxDocs = config.maxDocs;
+        this.minTermFreq = config.minTermFreq;
+        if (config.lemmatizerModel == null) {
+            this.lemmatizer = null;
+        } else {
+            this.lemmatizer = new ThreadLocal<Lemmatizer>() {
+                @Override
+                protected Lemmatizer initialValue() {
+                    try {
+                        return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
+                    } catch (IOException x) {
+                        x.printStackTrace();
+                        return null;
+                    }
+                }
+            };
+        }
+        this.stopWords = config.stopWords == null
+                ? new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS))
+                : readLineByLine(config.stopWords);
+        this.preceedingsTokens = config.preceedingTokens;
+        this.endTokens = config.headTokens;
+        this.ngramMax = config.ngramMax;
+        this.ngramMin = config.ngramMin;
+        this.headTokenFinal = config.headTokenFinal;
+    }
+
+    private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
+        BufferedReader r = new BufferedReader(new FileReader(p.toFile()));
+        HashSet<String> set = new HashSet<>();
+        String s;
+        while ((s = r.readLine()) != null) {
+            set.add(s);
+        }
+        return set;
     }
 
     public FrequencyStats extractStats(DocumentSearcher searcher) throws SearchException, InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000));
         final FrequencyStats summary = new FrequencyStats();
 
+        int docCount = 0;
         for (Document doc : searcher.allDocuments()) {
-            service.submit(new TermExtractionTask(doc, tagger, tokenizer, summary));
+            service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
+                    stopWords, ngramMin, ngramMax, preceedingsTokens, endTokens,
+                    headTokenFinal,
+                    summary));
+            if (docCount++ > maxDocs) {
+                break;
+            }
         }
 
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
+        summary.filter(minTermFreq);
         return summary;
     }
 

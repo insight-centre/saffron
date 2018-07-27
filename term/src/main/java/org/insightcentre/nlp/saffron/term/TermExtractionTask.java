@@ -4,7 +4,7 @@ import static java.lang.Integer.min;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Callable;
+import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
@@ -17,6 +17,7 @@ public class TermExtractionTask implements Runnable {
 
     private final Document doc;
     private final ThreadLocal<POSTagger> tagger;
+    private final ThreadLocal<Lemmatizer> lemmatizer;
     private final Tokenizer tokenizer;
     private final Set<String> stopWords;
     private final int ngramMin;
@@ -25,168 +26,18 @@ public class TermExtractionTask implements Runnable {
     private final Set<String> preceedingTokens;
     private final Set<String> endTokens;
     private final FrequencyStats summary;
+    private final boolean headTokenFinal;
 
-    private static final String[] ENGLISH_STOPWORDS = new String[]{"i",
-        "me",
-        "my",
-        "myself",
-        "we",
-        "our",
-        "ours",
-        "ourselves",
-        "you",
-        "your",
-        "yours",
-        "yourself",
-        "yourselves",
-        "he",
-        "him",
-        "his",
-        "himself",
-        "she",
-        "her",
-        "hers",
-        "herself",
-        "it",
-        "its",
-        "itself",
-        "they",
-        "them",
-        "their",
-        "theirs",
-        "themselves",
-        "what",
-        "which",
-        "who",
-        "whom",
-        "this",
-        "that",
-        "these",
-        "those",
-        "am",
-        "is",
-        "are",
-        "was",
-        "were",
-        "be",
-        "been",
-        "being",
-        "have",
-        "has",
-        "had",
-        "having",
-        "do",
-        "does",
-        "did",
-        "doing",
-        "a",
-        "an",
-        "the",
-        "and",
-        "but",
-        "if",
-        "or",
-        "because",
-        "as",
-        "until",
-        "while",
-        "of",
-        "at",
-        "by",
-        "for",
-        "with",
-        "about",
-        "against",
-        "between",
-        "into",
-        "through",
-        "during",
-        "before",
-        "after",
-        "above",
-        "below",
-        "to",
-        "from",
-        "up",
-        "down",
-        "in",
-        "out",
-        "on",
-        "off",
-        "over",
-        "under",
-        "again",
-        "further",
-        "then",
-        "once",
-        "here",
-        "there",
-        "when",
-        "where",
-        "why",
-        "how",
-        "all",
-        "any",
-        "both",
-        "each",
-        "few",
-        "more",
-        "most",
-        "other",
-        "some",
-        "such",
-        "no",
-        "nor",
-        "not",
-        "only",
-        "own",
-        "same",
-        "so",
-        "than",
-        "too",
-        "very",
-        "s",
-        "t",
-        "can",
-        "will",
-        "just",
-        "don",
-        "should",
-        "now",
-        "d",
-        "ll",
-        "m",
-        "o",
-        "re",
-        "ve",
-        "y",
-        "ain",
-        "aren",
-        "couldn",
-        "didn",
-        "doesn",
-        "hadn",
-        "hasn",
-        "haven",
-        "isn",
-        "ma",
-        "mightn",
-        "mustn",
-        "needn",
-        "shan",
-        "shouldn",
-        "wasn",
-        "weren",
-        "won",
-        "wouldn"
-    };
-
-    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer,
+    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, 
+            ThreadLocal<Lemmatizer> lemmatizer,
+            Tokenizer tokenizer,
             Set<String> stopWords, int ngramMin, int ngramMax,
             Set<String> preceedingTokens, Set<String> endTokens,
+            boolean headTokenFinal,
             FrequencyStats summary) {
         this.doc = doc;
         this.tagger = tagger;
+        this.lemmatizer = lemmatizer;
         this.tokenizer = tokenizer;
         this.stopWords = stopWords;
         this.ngramMin = ngramMin;
@@ -194,20 +45,9 @@ public class TermExtractionTask implements Runnable {
         this.preceedingTokens = preceedingTokens;
         this.endTokens = endTokens;
         this.summary = summary;
+        this.headTokenFinal = headTokenFinal;
     }
-
-    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer, FrequencyStats summary) {
-        this.doc = doc;
-        this.tagger = tagger;
-        this.tokenizer = tokenizer;
-        this.ngramMin = 1;
-        this.ngramMax = 3;
-        this.preceedingTokens = new HashSet<>(Arrays.asList("NN", "NNS", "JJ", "NNP", "IN"));
-        this.endTokens = new HashSet<>(Arrays.asList("NN", "NNS"));
-        this.stopWords = new HashSet<>(Arrays.asList(ENGLISH_STOPWORDS));
-        this.summary = summary;
-    }
-
+    
     @Override
     public void run() {
         try {
@@ -225,15 +65,40 @@ public class TermExtractionTask implements Runnable {
 
                     for (int i = 0; i < tokens.length; i++) {
                         boolean nonStop = false;
+                        boolean headSeen = false;
                         for (int j = i + ngramMin - 1; j < min(i + ngramMax, tokens.length); j++) {
                             if (!stopWords.contains(tokens[j])) {
                                 nonStop = true;
                             }
-                            if (endTokens.contains(tags[j]) && nonStop) {
-                                processTerm(tokens, i, j);
-                            }
-                            if (!preceedingTokens.contains(tags[j])) {
-                                break;
+                            if(headTokenFinal) {
+                                if (endTokens.contains(tags[j]) && nonStop) {
+                                    if(lemmatizer != null && lemmatizer.get() != null) {
+                                        String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
+                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
+                                        tokens2[tokens2.length-1] = lemmas[j];
+                                        processTerm(tokens2, 0, j - i);
+                                    } else {
+                                        processTerm(tokens, i, j);
+                                    }
+                                }
+                                if (!preceedingTokens.contains(tags[j])) {
+                                    break;
+                                }
+                            } else {
+                                headSeen = headSeen || endTokens.contains(tags[j]);
+                                if (preceedingTokens.contains(tags[j]) && nonStop && headSeen) {
+                                    if(lemmatizer != null && lemmatizer.get() != null) {
+                                        String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
+                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
+                                        tokens2[0] = lemmas[i];
+                                        processTerm(tokens2, 0, j - i);
+                                    } else {
+                                        processTerm(tokens, i, j);
+                                    }
+                                }
+                                if(!endTokens.contains(tags[j])) {
+                                    break;
+                                }
                             }
                         }
                     }

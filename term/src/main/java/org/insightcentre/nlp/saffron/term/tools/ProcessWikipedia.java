@@ -7,7 +7,6 @@ import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -19,7 +18,6 @@ import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
@@ -120,11 +118,12 @@ public class ProcessWikipedia {
                         }
                     } else if (END_TEXT.matcher(line).matches()) {
                         sb.append(line);
+                        String contents = cleaner.clean(sb.toString());
                         //out.println(cleaner.clean(sb.toString()));
                         //out.close();
                         //out = null;
                         inArticle = false;
-                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, sb.toString());
+                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
                     } else {
                         sb.append(line).append("\n");
                     }
@@ -132,7 +131,8 @@ public class ProcessWikipedia {
                 return null;
 
             } catch (IOException x) {
-                throw new RuntimeException(x);
+                x.printStackTrace();
+                return null;
             }
         }
     }
