@@ -3,6 +3,8 @@ package org.insightcentre.nlp.saffron.taxonomy.supervised;
 import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import Jama.Matrix;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.CollectionType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import it.unimi.dsi.fastutil.ints.IntRBTreeSet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
@@ -23,11 +25,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.zip.GZIPInputStream;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
+import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
 import weka.core.DenseInstance;
@@ -84,7 +89,7 @@ public class Train {
             if(configFile == null) {
                 config = new TaxonomyExtractionConfiguration();
             } else {
-                config = mapper.readValue(configFile, TaxonomyExtractionConfiguration.class);
+                config = mapper.readValue(configFile, Configuration.class).taxonomy;
             }
                               
             if(config.verify() != null) {
@@ -161,8 +166,10 @@ public class Train {
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
+        final Set<Hypernym> hypernyms = config.hypernyms == null ? null : loadHypernyms(config.hypernyms.toFile());
         
-        Features features = new Features(null, null, indexDocTopics(docTopics), glove, topicMap, config.features);
+        Features features = new Features(null, null, indexDocTopics(docTopics), 
+                glove, topicMap, hypernyms, config.features);
         
         features = glove == null ? features : learnSVD(taxos, features, config);
         
@@ -319,7 +326,9 @@ public class Train {
         Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null :
                 readMatrix(config.svdMinMaxFile.toFile());
         final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
-        return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), glove, topicMap, config.features);
+        final Set<Hypernym> hypernyms = config.hypernyms == null ? null : loadHypernyms(config.hypernyms.toFile());
+        return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), 
+                glove, topicMap, hypernyms, config.features);
     }
 
     private static Matrix readMatrix(File svdAveFile) throws IOException {
@@ -333,6 +342,16 @@ public class Train {
                 }
             }
             return matrix;
+        }
+    }
+
+    private static Set<Hypernym> loadHypernyms(File file) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+            final CollectionType setOfHypernymType = TypeFactory.defaultInstance().constructCollectionType(HashSet.class, Hypernym.class);
+        if(file.getName().endsWith(".gz")) {
+            return mapper.readValue(new GZIPInputStream(new FileInputStream(file)), setOfHypernymType);
+        } else {
+            return mapper.readValue(file, setOfHypernymType);
         }
     }
     

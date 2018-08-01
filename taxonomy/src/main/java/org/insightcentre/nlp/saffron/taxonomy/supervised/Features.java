@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 
 /**
  * Provides supervised feature extraction for taxonomy learning
@@ -26,17 +27,20 @@ public class Features {
     private final Map<String, double[]> vectors;
     private final TaxonomyExtractionConfiguration.FeatureSelection selection;
     private final Map<String, Topic> topicMap;
+    private final Set<Hypernym> hypernyms;
 
     public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, 
             Map<String, IntSet> topicDocuments, 
             Map<String, double[]> vectors,
             Map<String, Topic> topicMap,
+            Set<Hypernym> hypernyms,
             TaxonomyExtractionConfiguration.FeatureSelection selection) {
         this.svdMatrixAve = svdMatrixAve;
         this.svdMatrixMinMax = svdMatrixMinMax;
         this.topicDocuments = topicDocuments;
         this.vectors = vectors;
         this.topicMap = topicMap;
+        this.hypernyms = hypernyms;
         this.selection = selection;
     }
     
@@ -47,7 +51,7 @@ public class Features {
         this.vectors = other.vectors;
         this.topicMap = other.topicMap;
         this.selection = other.selection;
-        
+        this.hypernyms = other.hypernyms;
     }
 
     /**
@@ -256,7 +260,26 @@ public class Features {
         return 0;
     }
     
-
+    public double wnDirect(String top, String bottom) {
+        return hypernyms.contains(new Hypernym(bottom, top)) ?
+                1.0 : hypernyms.contains(new Hypernym(top, bottom)) ?
+                -1.0 : 0.0;
+    }
+    
+    public double wnIndirect(String top, String bottom) {
+        String[] t1 = top.split(" ");
+        String[] t2 = bottom.split(" ");
+        int score = 0;
+        for(String s1 : t1) {
+            for(String s2 : t2) {
+                score += hypernyms.contains(new Hypernym(s2, s1)) ?
+                1 : hypernyms.contains(new Hypernym(s1, s2)) ?
+                -1 : 0;
+            }
+        }
+        return (double)score / t1.length / t2.length;
+    }
+    
     public double[] buildFeatures(String top, String bottom) {
         DoubleList v = new DoubleArrayList();
         if(selection == null || selection.inclusion)
@@ -273,6 +296,10 @@ public class Features {
             v.add(topicComplementDiff(top, bottom));
         if((selection == null || selection.relFreq) && topicMap != null)
             v.add(relFreq(top, bottom));
+        if((selection == null || selection.wnDirect) && hypernyms != null)
+            v.add(wnDirect(top, bottom));
+        if((selection == null || selection.wnIndirect) && hypernyms != null)
+            v.add(wnIndirect(top, bottom));
         return v.toDoubleArray();
     }
     
@@ -292,6 +319,10 @@ public class Features {
             v.add("topicComplementDiff");
         if((selection == null || selection.relFreq) && topicMap != null)
             v.add("relFreq");
+        if((selection == null || selection.wnDirect) && hypernyms != null)
+            v.add("wnDirect");
+        if((selection == null || selection.wnIndirect) && hypernyms != null)
+            v.add("wnIndirect");
         return v.toArray(new String[v.size()]);
     }
 }
