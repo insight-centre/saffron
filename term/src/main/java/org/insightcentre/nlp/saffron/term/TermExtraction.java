@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 import opennlp.tools.lemmatizer.DictionaryLemmatizer;
 import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSModel;
@@ -129,7 +131,7 @@ public class TermExtraction {
         this.headTokenFinal = config.headTokenFinal;
         this.method = config.method;
         this.features = config.features;
-        assert(!this.features.isEmpty());
+        assert (!this.features.isEmpty());
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
         this.maxTopics = config.maxTopics;
     }
@@ -144,10 +146,11 @@ public class TermExtraction {
         return set;
     }
 
-    public FrequencyStats extractStats(DocumentSearcher searcher, 
-            ConcurrentLinkedQueue<DocumentTopic> docTopics) 
+    public FrequencyStats extractStats(DocumentSearcher searcher,
+            ConcurrentLinkedQueue<DocumentTopic> docTopics,
+            CasingStats casing)
             throws SearchException, InterruptedException, ExecutionException {
-        ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0, 
+        ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000));
         final FrequencyStats summary = new FrequencyStats();
 
@@ -155,8 +158,8 @@ public class TermExtraction {
         for (Document doc : searcher.allDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
-                    headTokenFinal, 
-                    summary, docTopics));
+                    headTokenFinal,
+                    summary, docTopics, casing));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -169,17 +172,17 @@ public class TermExtraction {
     }
 
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
-            final FrequencyStats stats, final Lazy<FrequencyStats> ref, 
+            final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
-        for(String topic : topics) {
+        for (String topic : topics) {
             scores.put(topic,
                     Features.calcFeature(feature, topic, stats, ref, incl));
         }
         return scores;
-        
+
     }
-    
+
     private void rankTopicsByFeat(List<String> topics, final Object2DoubleMap<String> scores) {
         topics.sort(new Comparator<String>() {
             @Override
@@ -188,67 +191,95 @@ public class TermExtraction {
             }
         });
     }
-    
-    public Result extractTopics(DocumentSearcher searcher) throws SearchException, InterruptedException, ExecutionException {
-        final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
-        final FrequencyStats freqs = extractStats(searcher, dts);
-        Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
-            @Override
-            protected FrequencyStats init() {
-                ObjectMapper mapper = new ObjectMapper();
-                try {
-                    return mapper.readValue(refFile, FrequencyStats.class);
-                } catch(IOException x) {
-                    x.printStackTrace();
-                    return null;
-                }
-            }
-        };
-        Lazy<InclusionStats> incl = new Lazy<InclusionStats>() {
-            @Override
-            protected InclusionStats init() {
-                return new InclusionStats(freqs.docFrequency);
-            }
-        };
-        List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
-        switch(method) {
-            case one:
-                Object2DoubleMap<String> scores = scoreByFeat(topics, features.get(0), 
-                        freqs, ref, incl);
-                rankTopicsByFeat(topics, scores);
-                if(topics.size() > maxTopics) {
-                    topics = topics.subList(0, maxTopics);
-                }
-                return new Result(convertToTopics(topics, freqs, scores),
-                        new ArrayList<>(dts));
-            case voting:
-                Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
-                for(Feature feat : features) {
-                    Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat, 
-                            freqs, ref, incl);
-                    rankTopicsByFeat(topics, scores2);
-                    int i = 1;
-                    for(String topic : topics) {
-                        voting.put(topic, voting.getDouble(topic) + 1.0 / i++);
+
+    public Result extractTopics(DocumentSearcher searcher) {
+        try {
+            final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+            final CasingStats casing = new CasingStats();
+            final FrequencyStats freqs = extractStats(searcher, dts, casing);
+            Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
+                @Override
+                protected FrequencyStats init() {
+                    ObjectMapper mapper = new ObjectMapper();
+                    try {
+                        if(refFile.getName().endsWith(".gz")) {
+                            return mapper.readValue(
+                                    new GZIPInputStream(new FileInputStream(refFile)), 
+                                    FrequencyStats.class);
+                        } else {
+                            return mapper.readValue(refFile, FrequencyStats.class);
+                        }
+                    } catch (IOException x) {
+                        x.printStackTrace();
+                        return null;
                     }
                 }
-                rankTopicsByFeat(topics, voting);
-                if(topics.size() > maxTopics) {
-                    topics = topics.subList(0, maxTopics);
+            };
+            Lazy<InclusionStats> incl = new Lazy<InclusionStats>() {
+                @Override
+                protected InclusionStats init() {
+                    return new InclusionStats(freqs.docFrequency);
                 }
-                return new Result(convertToTopics(topics, freqs, voting),
-                        new ArrayList<>(dts));
-            default:
-                throw new UnsupportedOperationException("TODO");
+            };
+            List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
+            switch (method) {
+                case one:
+                    Object2DoubleMap<String> scores = scoreByFeat(topics, features.get(0),
+                            freqs, ref, incl);
+                    rankTopicsByFeat(topics, scores);
+                    if (topics.size() > maxTopics) {
+                        topics = topics.subList(0, maxTopics);
+                    }
+                    return new Result(convertToTopics(topics, freqs, scores, casing),
+                            filterTopics(topics, dts, casing));
+                case voting:
+                    Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
+                    for (Feature feat : features) {
+                        Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
+                                freqs, ref, incl);
+                        rankTopicsByFeat(topics, scores2);
+                        int i = 1;
+                        for (String topic : topics) {
+                            voting.put(topic, voting.getDouble(topic) + 1.0 / i++);
+                        }
+                        System.err.println(feat + " " + topics.indexOf("rebekah"));
+                    }
+                    rankTopicsByFeat(topics, voting);
+                    if (topics.size() > maxTopics) {
+                        topics = topics.subList(0, maxTopics);
+                    }
+                    return new Result(convertToTopics(topics, freqs, voting, casing),
+                            filterTopics(topics, dts, casing));
+                default:
+                    throw new UnsupportedOperationException("TODO");
+            }
+        } catch (SearchException | ExecutionException | InterruptedException x) {
+            throw new RuntimeException(x);
         }
+    }
+
+    private static List<DocumentTopic> filterTopics(List<String> ts, 
+            ConcurrentLinkedQueue<DocumentTopic> dts,
+            CasingStats casing) {
+        Set<String> ts2 = new HashSet<>(ts);
+        List<DocumentTopic> rval = new ArrayList<>();
+        for(DocumentTopic dt : dts) {
+            if(ts2.contains(dt.topic_string)) {
+                rval.add(new DocumentTopic(dt.document_id, 
+                        casing.trueCase(dt.topic_string),
+                        dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
+            }
+        }
+        return rval;
     }
     
     private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
-            Object2DoubleMap<String> scores) {
+            Object2DoubleMap<String> scores, CasingStats casing) {
         Set<Topic> topics = new HashSet<>();
-        for(String t : ts) {
-            topics.add(new Topic(t, stats.termFrequency.getInt(t), 
-                    stats.docFrequency.getInt(t), scores.getDouble(t), 
+        for (String t : ts) {
+            topics.add(new Topic(casing.trueCase(t), 
+                    stats.termFrequency.getInt(t),
+                    stats.docFrequency.getInt(t), scores.getDouble(t),
                     Collections.EMPTY_LIST));
         }
         return topics;
@@ -300,5 +331,4 @@ public class TermExtraction {
 
     }
 
-    
 }

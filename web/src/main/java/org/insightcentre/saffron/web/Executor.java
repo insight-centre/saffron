@@ -46,7 +46,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.topic.atr4s.TopicExtraction;
+import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
 /**
@@ -110,6 +110,8 @@ public class Executor extends AbstractHandler {
                             try {
                                 execute(corpus, config);
                             } catch (IOException x) {
+                                status.failed = true;
+                                status.setStatusMessage("Failed: " + x.getMessage());
                                 x.printStackTrace();
                             }
                         }
@@ -240,10 +242,11 @@ public class Executor extends AbstractHandler {
 
         status.stage++;
         status.setStatusMessage("Initializing topic extractor");
-        TopicExtraction extractor = new TopicExtraction(config.termExtraction);
-        
+        //TopicExtraction extractor = new TopicExtraction(config.termExtraction);
+        TermExtraction extractor = new TermExtraction(config.termExtraction);
+
         status.setStatusMessage("Extracting Topics");
-        TopicExtraction.Result res = extractor.extractTopics(searcher);
+        TermExtraction.Result res = extractor.extractTopics(searcher);
 
         status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(directory, "topics-extracted.json"), res.topics);

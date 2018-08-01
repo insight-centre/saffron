@@ -12,8 +12,8 @@ import java.util.Objects;
  * @author John McCrae <john@mccr.ae>
  */
 public class FrequencyStats {
-    public Object2IntMap<String> termFrequency = new Object2IntOpenHashMap<>();
-    public Object2IntMap<String> docFrequency = new Object2IntOpenHashMap<>();
+    public Object2IntOpenHashMap<String> termFrequency = new Object2IntOpenHashMap<>();
+    public Object2IntOpenHashMap<String> docFrequency = new Object2IntOpenHashMap<>();
     public long tokens = 0;
     public long documents = 0;
         

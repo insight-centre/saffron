@@ -118,7 +118,7 @@ public class FeaturesTest {
         System.out.println("residualIDF");
         String term = "this test";
         FrequencyStats stats = stats();
-        double expResult = 0.2235399;
+        double expResult = 5.1*0.2235399;
         double result = Features.residualIDF(term, stats);
         assertEquals(expResult, result, 0.0001);
     }

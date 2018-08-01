@@ -66,7 +66,7 @@ public class ProcessWikipedia {
             @Override
             public void close() throws IOException {
             }
-        }, null);
+        }, null, null);
 
         mapper.writerWithDefaultPrettyPrinter().writeValue(new File(args[2]), stats);
     }
