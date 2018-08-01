@@ -25,6 +25,8 @@ public class TaxonomyExtractionConfiguration {
     public SaffronPath svdAveFile = null;
     /** the file containing the SVD matrix or null if not used */
     public SaffronPath svdMinMaxFile = null;
+    /** the file containin the Hypernyms */
+    public SaffronPath hypernyms = null;
     /** The WEKA binary model */
     public SaffronPath modelFile = null;
     /** The feature selection or null for all features*/
@@ -65,6 +67,10 @@ public class TaxonomyExtractionConfiguration {
         public boolean topicDiff = false;
         /** Use the relative frequency feature */
         public boolean relFreq = false;
+        /** Use direct wordnet */
+        public boolean wnDirect = false;
+        /** Use indirect wordnet */
+        public boolean wnIndirect = false;
     }
     
     public enum Mode {
