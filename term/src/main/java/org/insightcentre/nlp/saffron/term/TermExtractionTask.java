@@ -2,12 +2,14 @@ package org.insightcentre.nlp.saffron.term;
 
 import static java.lang.Integer.min;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
  *
@@ -28,6 +30,7 @@ public class TermExtractionTask implements Runnable {
     private final Set<String> endTokens;
     private final FrequencyStats summary;
     private final boolean headTokenFinal;
+    private final ConcurrentLinkedQueue<DocumentTopic> docTopics;
 
     public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, 
             ThreadLocal<Lemmatizer> lemmatizer,
@@ -36,7 +39,8 @@ public class TermExtractionTask implements Runnable {
             Set<String> preceedingTokens, Set<String> middleTokens,
             Set<String> endTokens,
             boolean headTokenFinal,
-            FrequencyStats summary) {
+            FrequencyStats summary,
+            ConcurrentLinkedQueue<DocumentTopic> docTopics) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
@@ -49,11 +53,15 @@ public class TermExtractionTask implements Runnable {
         this.endTokens = endTokens;
         this.summary = summary;
         this.headTokenFinal = headTokenFinal;
+        this.docTopics = docTopics;
     }
     
     @Override
     public void run() {
         try {
+            final HashMap<String, DocumentTopic> docTopicMap = docTopics != null 
+                    ? new HashMap<String, DocumentTopic>() 
+                    : null;
             String contents = doc.contents();
             System.err.println(doc.id);
             for (String sentence : contents.split("\n")) {
@@ -78,9 +86,9 @@ public class TermExtractionTask implements Runnable {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
                                         tokens2[tokens2.length-1] = lemmas[j];
-                                        processTerm(tokens2, 0, j - i);
+                                        processTerm(tokens2, 0, j - i, docTopicMap);
                                     } else {
-                                        processTerm(tokens, i, j);
+                                        processTerm(tokens, i, j, docTopicMap);
                                     }
                                 }
                                 if (!preceedingTokens.contains(tags[j]) && (i == j || !middleTokens.contains(tags[j]))) {
@@ -95,9 +103,9 @@ public class TermExtractionTask implements Runnable {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
                                         tokens2[0] = lemmas[i];
-                                        processTerm(tokens2, 0, j - i);
+                                        processTerm(tokens2, 0, j - i, docTopicMap);
                                     } else {
-                                        processTerm(tokens, i, j);
+                                        processTerm(tokens, i, j, docTopicMap);
                                     }
                                 }
                                 if(!preceedingTokens.contains(tags[j]) 
@@ -116,6 +124,8 @@ public class TermExtractionTask implements Runnable {
             synchronized (summary) {
                 summary.add(stats);
             }
+            if(docTopicMap != null)
+                docTopics.addAll(docTopicMap.values());
         } catch (Exception x) {
             x.printStackTrace();
         }
@@ -133,10 +143,14 @@ public class TermExtractionTask implements Runnable {
 
     }
 
-    private void processTerm(String[] tokens, int i, int j) {
+    private void processTerm(String[] tokens, int i, int j, HashMap<String, DocumentTopic> dts) {
         String termStr = join(tokens, i, j);
         stats.docFrequency.put(termStr, 1);
         stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
+        if(dts != null) {
+            dts.put(termStr, new DocumentTopic(doc.id, termStr, 
+                    stats.termFrequency.getInt(termStr), null, null, null));
+        }
     }
 
 }

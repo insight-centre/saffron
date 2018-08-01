@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.term;
 import java.io.File;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
@@ -11,6 +12,7 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -63,6 +65,7 @@ public class TermExtractionTaskTest {
         final POSTagger tagger = mock(POSTagger.class);
         when(tagger.tag(tokens)).thenReturn(tags);
         FrequencyStats result = new FrequencyStats();
+        ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
         TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
             @Override
             public POSTagger get() {
@@ -79,7 +82,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(), 
                 new HashSet<String>(), 
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                true, result);
+                true, result, dts);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -87,6 +90,7 @@ public class TermExtractionTaskTest {
         expResult.documents = 1;
         instance.run();
         assertEquals(expResult, result);
+        assertEquals(1, dts.size());
     }
     
     /**
@@ -123,7 +127,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
                 new HashSet<String>(Arrays.asList(new String[] { "IN" })),
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                true, result);
+                true, result, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -171,7 +175,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
                 new HashSet<String>(Arrays.asList(new String[] { "IN" })),
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                true, result);
+                true, result, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -218,7 +222,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "JJ" })),
                 new HashSet<String>(Arrays.asList(new String[] { "IN" })),
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                false, result);
+                false, result, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("faiche mhor", 1);
         expResult.termFrequency.put("faiche mhor", 1);

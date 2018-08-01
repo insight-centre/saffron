@@ -10,21 +10,21 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 public class Features {
     public static double calcFeature(
             TermExtractionConfiguration.Feature feat,
-            String term, FrequencyStats stats, FrequencyStats ref,
-            InclusionStats incl) {
+            String term, FrequencyStats stats, Lazy<FrequencyStats> ref,
+            Lazy<InclusionStats> incl) {
         switch(feat) {
             case weirdness:
-                return weirdness(term, stats, ref);
+                return weirdness(term, stats, ref.get());
             case avgTermFreq:
                 return aveTermFreq(term, stats);
             case basic:
-                return basic(term, 0.75, stats, incl);
+                return basic(term, 0.75, stats, incl.get());
             case comboBasic:
-                return basicCombo(term, 0.75, 0.1, stats, incl);
+                return basicCombo(term, 0.75, 0.1, stats, incl.get());
             case cValue:
-                return cValue(term, stats, incl);
+                return cValue(term, stats, incl.get());
             case relevance:
-                return relevance(term, stats, ref);
+                return relevance(term, stats, ref.get());
             case residualIdf:
                 return residualIDF(term, stats);
             case totalTfIdf:

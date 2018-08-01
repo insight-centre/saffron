@@ -13,22 +13,22 @@ import static org.junit.Assert.*;
  * @author John McCrae
  */
 public class FeaturesTest {
-    
+
     public FeaturesTest() {
     }
-    
+
     @BeforeClass
     public static void setUpClass() {
     }
-    
+
     @AfterClass
     public static void tearDownClass() {
     }
-    
+
     @Before
     public void setUp() {
     }
-    
+
     @After
     public void tearDown() {
     }
@@ -45,7 +45,7 @@ public class FeaturesTest {
         stats.documents = 3;
         return stats;
     }
-    
+
     public FrequencyStats ref() {
         FrequencyStats stats = new FrequencyStats();
         stats.docFrequency.put("this test", 20);
@@ -56,7 +56,7 @@ public class FeaturesTest {
         stats.documents = 50;
         return stats;
     }
-    
+
     /**
      * Test of calcFeature method, of class Features.
      */
@@ -65,9 +65,19 @@ public class FeaturesTest {
         System.out.println("calcFeature");
         TermExtractionConfiguration.Feature feat = TermExtractionConfiguration.Feature.weirdness;
         String term = "this test";
-        FrequencyStats stats = stats();
-        FrequencyStats ref = ref();
-        InclusionStats incl =  new InclusionStats(stats.termFrequency);
+        final FrequencyStats stats = stats();
+        Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
+            @Override
+            protected FrequencyStats init() {
+                return ref();
+            }
+        };
+        Lazy<InclusionStats> incl = new Lazy<InclusionStats>() {
+            @Override
+            public InclusionStats init() {
+                return new InclusionStats(stats.termFrequency);
+            }
+        };
         double expResult = 1.017049;
         double result = Features.calcFeature(feat, term, stats, ref, incl);
         assertEquals(expResult, result, 0.00001);
@@ -98,8 +108,8 @@ public class FeaturesTest {
         double expResult = 2.5;
         double result = Features.aveTermFreq(term, stats);
         assertEquals(expResult, result, 0.0001);
-    }    
-    
+    }
+
     /**
      * Test of residualIDF method, of class Features.
      */
@@ -184,5 +194,5 @@ public class FeaturesTest {
         double result = Features.relevance(term, freq, ref);
         assertEquals(expResult, result, 0.0001);
     }
-    
+
 }

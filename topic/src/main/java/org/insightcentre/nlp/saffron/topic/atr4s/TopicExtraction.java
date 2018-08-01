@@ -88,7 +88,7 @@ public class TopicExtraction {
     private static FeatureConfig mkFeat(Feature name, TermExtractionConfiguration config) {
         switch(name) {
                 case weirdness: 
-                    return new Weirdness(ReferenceCorpusConfig.apply(config.corpus, 1e-3));
+                    return new Weirdness(ReferenceCorpusConfig.apply(config.corpus.toString(), 1e-3));
                 case avgTermFreq:
                     return new AvgTermFrequency();
                 case residualIdf:
@@ -104,9 +104,9 @@ public class TopicExtraction {
                 case postRankDC:
                     return PostRankDC.make();
                 case relevance:
-                    return new Relevance(ReferenceCorpusConfig.apply(config.corpus, 1e-3));
+                    return new Relevance(ReferenceCorpusConfig.apply(config.corpus.toString(), 1e-3));
                 case domainPertinence:
-                    return new DomainPertinence(ReferenceCorpusConfig.apply(config.corpus, 1e-3), 0.1);
+                    return new DomainPertinence(ReferenceCorpusConfig.apply(config.corpus.toString(), 1e-3), 0.1);
                 case domainCoherence:
                     return DomainCoherence.make();
                 case novelTopicModel:

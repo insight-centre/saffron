@@ -28,7 +28,7 @@ public class TermExtractionConfiguration {
     /** The features to use */
     public List<Feature> features = java.util.Arrays.asList(Feature.novelTopicModel, Feature.cValue, Feature.relevance, Feature.linkProbability, Feature.domainCoherence, Feature.keyConceptRelatedness);
     /** The corpus  to use (path to this file) */
-    public String corpus;
+    public SaffronPath corpus;
     /** The info measure to use */
     public String infoMeasure;
     /** The path to the word2vec model */

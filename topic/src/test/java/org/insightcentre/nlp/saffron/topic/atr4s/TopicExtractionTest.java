@@ -12,6 +12,7 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.WeightingMethod;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -61,7 +62,7 @@ public class TopicExtractionTest {
         config.features = Arrays.asList(Feature.weirdness);
         File f = new File("src/test/resources/termoccs.txt");
         if(f.exists()) {
-            config.corpus = f.getAbsolutePath();
+            config.corpus = SaffronPath.fromFile(f);
             TopicExtraction instance = new TopicExtraction(config);
             TopicExtraction.Result expResult = new TopicExtraction.Result();
             expResult.topics = new HashSet<>();
