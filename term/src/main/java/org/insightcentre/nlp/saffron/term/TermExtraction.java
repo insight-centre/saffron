@@ -42,7 +42,7 @@ public class TermExtraction {
     private final int maxDocs;
     private final int minTermFreq;
     private final ThreadLocal<Lemmatizer> lemmatizer;
-    private final Set<String> stopWords, preceedingsTokens, endTokens;
+    private final Set<String> stopWords, preceedingsTokens, endTokens, middleTokens;
     private final int ngramMin, ngramMax;
     private final boolean headTokenFinal;
 
@@ -56,6 +56,7 @@ public class TermExtraction {
         this.minTermFreq = config.minTermFreq;
         this.lemmatizer = null;
         this.preceedingsTokens = config.preceedingTokens;
+        this.middleTokens = config.middleTokens;
         this.endTokens = config.headTokens;
         this.ngramMax = config.ngramMax;
         this.ngramMin = config.ngramMin;
@@ -104,6 +105,7 @@ public class TermExtraction {
                 ? new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS))
                 : readLineByLine(config.stopWords);
         this.preceedingsTokens = config.preceedingTokens;
+        this.middleTokens = config.middleTokens;
         this.endTokens = config.headTokens;
         this.ngramMax = config.ngramMax;
         this.ngramMin = config.ngramMin;
@@ -127,7 +129,7 @@ public class TermExtraction {
         int docCount = 0;
         for (Document doc : searcher.allDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
-                    stopWords, ngramMin, ngramMax, preceedingsTokens, endTokens,
+                    stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
                     summary));
             if (docCount++ > maxDocs) {

@@ -76,12 +76,108 @@ public class TermExtractionTaskTest {
             }
             
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
-                new HashSet<String>(), new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(), 
+                new HashSet<String>(), 
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
                 true, result);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
         expResult.tokens = 4;
+        expResult.documents = 1;
+        instance.run();
+        assertEquals(expResult, result);
+    }
+    
+    /**
+     * Test of call method, of class TermExtractionTask.
+     */
+    @Test
+    public void testCallMiddle() throws Exception {
+        System.out.println("call");
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("this is a test of steel");
+        Tokenizer tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[] {"this","is","a","test","of","steel" };
+        String[] lemmas = new String[] {"this","be","a","test","of","steel" };
+        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN","IN","NN" };
+        when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        FrequencyStats result = new FrequencyStats();
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+            
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+            
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                true, result);
+        FrequencyStats expResult = new FrequencyStats();
+        expResult.docFrequency.put("test", 1);
+        expResult.termFrequency.put("test", 1);
+        expResult.docFrequency.put("test of steel", 1);
+        expResult.termFrequency.put("test of steel", 1);
+        expResult.docFrequency.put("steel", 1);
+        expResult.termFrequency.put("steel", 1);
+        expResult.tokens = 6;
+        expResult.documents = 1;
+        instance.run();
+        assertEquals(expResult, result);
+    }
+    
+    /**
+     * Test of call method, of class TermExtractionTask.
+     */
+    @Test
+    public void testCallNgramMax() throws Exception {
+        System.out.println("call");
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("this is a test of steel");
+        Tokenizer tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[] {"this","is","a","test","of","steel" };
+        String[] lemmas = new String[] {"this","be","a","test","of","steel" };
+        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN","IN","NN" };
+        when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        FrequencyStats result = new FrequencyStats();
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+            
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+            
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 2,
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
+                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                true, result);
+        FrequencyStats expResult = new FrequencyStats();
+        expResult.docFrequency.put("test", 1);
+        expResult.termFrequency.put("test", 1);
+        expResult.docFrequency.put("steel", 1);
+        expResult.termFrequency.put("steel", 1);
+        expResult.tokens = 6;
         expResult.documents = 1;
         instance.run();
         assertEquals(expResult, result);
@@ -120,6 +216,7 @@ public class TermExtractionTaskTest {
             
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "JJ" })),
+                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
                 new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
                 false, result);
         FrequencyStats expResult = new FrequencyStats();

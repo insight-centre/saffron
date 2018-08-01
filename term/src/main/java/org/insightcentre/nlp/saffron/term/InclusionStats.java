@@ -13,30 +13,29 @@ import static org.insightcentre.nlp.saffron.term.TermExtractionTask.join;
  * @author John McCrae <john@mccr.ae>
  */
 public class InclusionStats {
-    public final Map<String, Set<String>> subTerms = new HashMap<>();
-    public final Object2IntMap<String> superTerms = new Object2IntOpenHashMap<>();
-    
+
+    public final Map<String, Set<String>> superTerms = new HashMap<>();
+    public final Object2IntMap<String> subTerms = new Object2IntOpenHashMap<>();
+
     public InclusionStats(Object2IntMap<String> freqs) {
         calcInclusions(freqs);
     }
 
     private void calcInclusions(Object2IntMap<String> freqs) {
-        for(String term : freqs.keySet()) {
+        for (String term : freqs.keySet()) {
             String[] tokens = term.split(" ");
-            for(int i = 0; i < tokens.length; i++) {
-                for(int j = i + 1; j <= tokens.length; j++) {
-                    String t = join(tokens, i, j+1);
-                    if(freqs.containsKey(t)) {
-                        if(!subTerms.containsKey(term)) {
-                            subTerms.put(term, new HashSet<String>());
+            for (int i = 0; i < tokens.length; i++) {
+                for (int j = i + 1; j <= tokens.length; j++) {
+                    if (j - i != tokens.length) {
+                        String t = join(tokens, i, j - 1);
+                        if (freqs.containsKey(t)) {
+                            if (!superTerms.containsKey(t)) {
+                                superTerms.put(t, new HashSet<String>());
+                            }
+                            subTerms.put(term, subTerms.getInt(term) + 1);
+                            superTerms.get(t).add(term);
                         }
-                        subTerms.get(term).add(t);
-//                        if(!superTerms.containsKey(t)) {
-//                            superTerms.put(term, new HashSet<String>());
-//                        }
-//                        superTerms.get(t).add(term);
-                        superTerms.put(t, superTerms.getInt(t) + 1);
-                    } 
+                    }
                 }
             }
         }

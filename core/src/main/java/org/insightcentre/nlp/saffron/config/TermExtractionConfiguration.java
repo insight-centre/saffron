@@ -46,7 +46,9 @@ public class TermExtractionConfiguration {
     /** The path to the list of stop words (one per line) */
     public SaffronPath stopWords;
     /** The set of tags allowed in non-final position in a noun phrase */
-    public Set<String> preceedingTokens = new HashSet<>(Arrays.asList("NN", "NNS", "JJ", "NNP", "IN"));
+    public Set<String> preceedingTokens = new HashSet<>(Arrays.asList("NN", "NNS", "JJ", "NNP"));
+    /** The set of tags allowed in non-final position, but not completing */
+    public Set<String> middleTokens = new HashSet<>(Arrays.asList("IN"));
     /** The set of final tags allows in a noun phrase */
     public Set<String> headTokens = new HashSet<>(Arrays.asList("NN", "NNS"));
     /** The position of the head of a noun phrase (true=final) */

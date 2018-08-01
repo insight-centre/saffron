@@ -24,6 +24,7 @@ public class TermExtractionTask implements Runnable {
     private final int ngramMax;
     private final FrequencyStats stats = new FrequencyStats();
     private final Set<String> preceedingTokens;
+    private final Set<String> middleTokens;
     private final Set<String> endTokens;
     private final FrequencyStats summary;
     private final boolean headTokenFinal;
@@ -32,7 +33,8 @@ public class TermExtractionTask implements Runnable {
             ThreadLocal<Lemmatizer> lemmatizer,
             Tokenizer tokenizer,
             Set<String> stopWords, int ngramMin, int ngramMax,
-            Set<String> preceedingTokens, Set<String> endTokens,
+            Set<String> preceedingTokens, Set<String> middleTokens,
+            Set<String> endTokens,
             boolean headTokenFinal,
             FrequencyStats summary) {
         this.doc = doc;
@@ -43,6 +45,7 @@ public class TermExtractionTask implements Runnable {
         this.ngramMin = ngramMin;
         this.ngramMax = ngramMax;
         this.preceedingTokens = preceedingTokens;
+        this.middleTokens = middleTokens;
         this.endTokens = endTokens;
         this.summary = summary;
         this.headTokenFinal = headTokenFinal;
@@ -65,14 +68,13 @@ public class TermExtractionTask implements Runnable {
 
                     for (int i = 0; i < tokens.length; i++) {
                         boolean nonStop = false;
-                        boolean headSeen = false;
-                        for (int j = i + ngramMin - 1; j < min(i + ngramMax, tokens.length); j++) {
+                        for (int j = i; j < min(i + ngramMax, tokens.length); j++) {
                             if (!stopWords.contains(tokens[j])) {
                                 nonStop = true;
                             }
                             if(headTokenFinal) {
                                 if (endTokens.contains(tags[j]) && nonStop) {
-                                    if(lemmatizer != null && lemmatizer.get() != null) {
+                                    if(lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
                                         tokens2[tokens2.length-1] = lemmas[j];
@@ -81,12 +83,14 @@ public class TermExtractionTask implements Runnable {
                                         processTerm(tokens, i, j);
                                     }
                                 }
-                                if (!preceedingTokens.contains(tags[j])) {
+                                if (!preceedingTokens.contains(tags[j]) && (i == j || !middleTokens.contains(tags[j]))) {
                                     break;
                                 }
                             } else {
-                                headSeen = headSeen || endTokens.contains(tags[j]);
-                                if (preceedingTokens.contains(tags[j]) && nonStop && headSeen) {
+                                if(!endTokens.contains(tags[i])) {
+                                    break;
+                                }
+                                if (preceedingTokens.contains(tags[j]) && nonStop && j - i + 1 >= ngramMin) {
                                     if(lemmatizer != null && lemmatizer.get() != null) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
@@ -96,7 +100,8 @@ public class TermExtractionTask implements Runnable {
                                         processTerm(tokens, i, j);
                                     }
                                 }
-                                if(!endTokens.contains(tags[j])) {
+                                if(!preceedingTokens.contains(tags[j]) 
+                                        && (i == j || !middleTokens.contains(tags[j]))) {
                                     break;
                                 }
                             }
