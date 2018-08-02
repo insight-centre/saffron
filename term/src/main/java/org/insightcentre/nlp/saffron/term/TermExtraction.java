@@ -242,7 +242,6 @@ public class TermExtraction {
                         for (String topic : topics) {
                             voting.put(topic, voting.getDouble(topic) + 1.0 / i++);
                         }
-                        System.err.println(feat + " " + topics.indexOf("rebekah"));
                     }
                     rankTopicsByFeat(topics, voting);
                     if (topics.size() > maxTopics) {

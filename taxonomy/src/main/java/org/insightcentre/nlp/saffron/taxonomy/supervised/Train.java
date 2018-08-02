@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +34,7 @@ import libsvm.svm_node;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
 import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
@@ -42,6 +44,13 @@ import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
  * Train the supervised model based on some existing settings and create a
  * model.
  *
+ * Typically train command
+ * 
+ *     SAFFRON_HOME=.. ./train -c ../models/config.json \
+ *        -d ../benchmarks/data/texeval/food_en-doc-topics.json \
+ *        -p ../benchmarks/data/texeval/food_en-topics.json \
+ *        -t ../benchmarks/data/texeval/food_en.taxo
+ * 
  * @author John McCrae <john@mccr.ae>
  */
 public class Train {
@@ -53,6 +62,8 @@ public class Train {
     }
 
     public static void main(String[] args) {
+        args = "-c ../models/config.json -d ../benchmarks/data/texeval/food_en-doc-topics.json -p ../benchmarks/data/texeval/food_en-topics.json -t ../benchmarks/data/texeval/food_en.taxo".split(" ");
+        System.setProperty("saffron.home", "..");
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
@@ -220,7 +231,6 @@ public class Train {
         final Random random = new Random();
         ArrayList<String> attributes = buildAttributes(features.featureNames());
         final svm_problem instances = new svm_problem();
-        instances.l = attributes.size();
         ArrayList<Instance> instanceList = new ArrayList<>();
         for (List<StringPair> taxo : taxos) {
             List<String> topicsList = new ArrayList<>(buildTopics(taxo));
@@ -228,9 +238,8 @@ public class Train {
             for (StringPair sp : taxo) {
                 double[] d1 = features.buildFeatures(sp._1, sp._2);
                 instanceList.add(makeInstance(d1, +1));
-                double[] d2 = features.buildFeatures(sp._2, sp._1);
-                instanceList.add(makeInstance(d2, -1));
             }
+            System.err.println("positive:" + instanceList.size());
             for (int i = 0; i < negSampling * taxo.size(); i++) {
                 int j = random.nextInt(topicsList.size());
                 int k = random.nextInt(topicsList.size());
@@ -241,10 +250,9 @@ public class Train {
                 if (!taxoSet.contains(topicPair)) {
                     double[] d1 = features.buildFeatures(topicPair._1, topicPair._2);
                     instanceList.add(makeInstance(d1, 0));
-                    double[] d2 = features.buildFeatures(topicPair._2, topicPair._1);
-                    instanceList.add(makeInstance(d2, 0));
                 }
             }
+            System.err.println("total:" + instanceList.size());
         }
         instances.x = new svm_node[instanceList.size()][];
         instances.y = new double[instanceList.size()];
@@ -253,6 +261,7 @@ public class Train {
             instances.x[i] = instance.x;
             instances.y[i++] = instance.y;
         }
+        instances.l = instanceList.size();
         return instances;
     }
 
@@ -281,6 +290,7 @@ public class Train {
     static Instance makeInstance(double[] fss, int score) {
         final svm_node[] d = new svm_node[fss.length];
         for(int i = 0; i < fss.length; i++) {
+            d[i] = new svm_node();
             d[i].index = i;
             d[i].value = fss[i];
         }
@@ -401,6 +411,13 @@ public class Train {
             }
             return true;
         }
+
+        @Override
+        public String toString() {
+            return "StringPair{" + _1 + ", " + _2 + '}';
+        }
+        
+        
 
     }
 

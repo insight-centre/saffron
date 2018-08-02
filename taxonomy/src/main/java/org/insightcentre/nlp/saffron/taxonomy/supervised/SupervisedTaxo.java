@@ -29,6 +29,14 @@ public class SupervisedTaxo {
         this.attributes = Train.buildAttributes(features.featureNames());
     }
 
+    protected SupervisedTaxo(Features features, svm_model classifier, ArrayList<String> attributes) {
+        this.features = features;
+        this.classifier = classifier;
+        this.attributes = attributes;
+    }
+    
+    
+
     public double predict(String top, String bottom) {
 
         final Train.Instance instance = Train.makeInstance(features.buildFeatures(top, bottom), 0);
