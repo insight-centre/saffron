@@ -48,6 +48,7 @@ import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfigurati
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.HeadAndBag;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.TransTaxoExtract;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -322,6 +323,8 @@ public class Executor extends AbstractHandler {
         if (topicMap.isEmpty()) {
             graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
         } else if (config.taxonomy.mode == greedy) {
+            //TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
+            //graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
             GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         } else if(config.taxonomy.mode == headAndBag) {
