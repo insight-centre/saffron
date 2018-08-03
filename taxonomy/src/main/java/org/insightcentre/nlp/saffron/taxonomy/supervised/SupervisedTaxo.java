@@ -1,12 +1,15 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
+import java.io.BufferedReader;
 import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import libsvm.svm;
 import libsvm.svm_model;
+import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
@@ -22,10 +25,10 @@ public class SupervisedTaxo {
     private final svm_model classifier;
     private final ArrayList<String> attributes;
 
-    public SupervisedTaxo(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics,
-            Map<String, Topic> topicMap) throws IOException {
-        this.features = Train.makeFeatures(config, docTopics, topicMap);
-        this.classifier = readClassifier(config);
+    public SupervisedTaxo(List<DocumentTopic> docTopics,
+            Map<String, Topic> topicMap, Model model) throws IOException {
+        this.features = Train.makeFeatures(docTopics, topicMap, model);
+        this.classifier = readClassifier(model);
         this.attributes = Train.buildAttributes(features.featureNames());
     }
 
@@ -62,7 +65,8 @@ public class SupervisedTaxo {
         }
     }
 
-    private static svm_model readClassifier(TaxonomyExtractionConfiguration config) throws IOException {
-        return libsvm.svm.svm_load_model(config.modelFile.toFile().getAbsolutePath());
+    private static svm_model readClassifier(Model model) throws IOException {
+        BufferedReader reader = new BufferedReader(new StringReader(model.classifierData));
+        return libsvm.svm.svm_load_model(reader);
     }
 }

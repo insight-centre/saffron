@@ -47,6 +47,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedyTrans;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
+import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.HeadAndBag;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.TransTaxoExtract;
@@ -140,7 +141,7 @@ public class Executor extends AbstractHandler {
                     ObjectMapper mapper = new ObjectMapper();
                     mapper.writeValue(response.getWriter(), status);
                 }
-            }
+            } 
         } catch (Exception x) {
             x.printStackTrace();
             throw new ServletException(x);
@@ -313,13 +314,16 @@ public class Executor extends AbstractHandler {
         status.setStatusMessage("Building topic map");
         Map<String, Topic> topicMap = loadMap(topics, mapper);
 
-        status.setStatusMessage("Building taxonomy");
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
 
+        status.setStatusMessage("Reading model");
         if (config.taxonomy.modelFile == null) {
-            config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/weka.bin");
+            config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/default.json");
         }
-        SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, res.docTopics, topicMap);
+        Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
+        
+        SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
+        status.setStatusMessage("Building taxonomy");
         final Taxonomy graph;
         if (topicMap.isEmpty()) {
             graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);

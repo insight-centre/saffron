@@ -12,13 +12,10 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,7 +31,7 @@ import libsvm.svm_node;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
+import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
@@ -129,7 +126,7 @@ public class Train {
         }
     }
 
-    private static Map<String, double[]> loadGLoVE(File gloveFile) throws IOException {
+    public static Map<String, double[]> loadGLoVE(File gloveFile) throws IOException {
         if (!gloveFile.exists()) {
             System.err.println("GloVe file does not exist. Not using GloVe");
             return null;
@@ -174,41 +171,30 @@ public class Train {
 
     private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
-        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
-        final Set<Hypernym> hypernyms = config.hypernyms == null ? null : loadHypernyms(config.hypernyms.toFile());
+        final Model model = new Model();
+        model.features = config.features;
+        final Map<String, double[]> glove = config.features.gloveFile == null ? null : loadGLoVE(config.features.gloveFile.toFile());
+        final Set<Hypernym> hypernyms = config.features.hypernyms == null ? null : loadHypernyms(config.features.hypernyms.toFile());
         
         Features features = new Features(null, null, indexDocTopics(docTopics), 
-                glove, topicMap, hypernyms, config.features);
+                glove, topicMap, hypernyms, config.features.featureSelection);
         
-        features = glove == null ? features : learnSVD(taxos, features, config);
+        features = glove == null ? features : learnSVD(taxos, features, config, model);
 
         svm_problem prob = loadInstances(taxos, features, config.negSampling);
         svm_parameter param = makeParameters();
-        //final Classifier classifier = loadClassifier(config);
-        /*if (config.arffFile != null) {
-            final File arffFile = new File(config.arffFile);
-            final ArffSaver saver = new ArffSaver();
-            saver.setInstances(instances);
-            try {
-                System.err.println(String.format("Saving features to %s", arffFile.getPath()));
-                saver.setFile(arffFile);
-                saver.writeBatch();
-            } catch (IOException x) {
-                x.printStackTrace();
-            }
-        }*/
 
-        libsvm.svm_model model;
+        libsvm.svm_model svmModel;
         try {
-            model = libsvm.svm.svm_train(prob, param);
+            svmModel = libsvm.svm.svm_train(prob, param);
         } catch (Exception x) {
             throw new RuntimeException("Could not train classifier", x);
         }
         
-        writeClassifier(config.modelFile.toFile(), model);
+        writeClassifier(model, svmModel);
     }
 
-    private static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
+    public static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
         Object2IntMap<String> docIds = new Object2IntOpenHashMap<>();
         HashMap<String, IntSet> index = new HashMap<>();
         int id = 0;
@@ -227,7 +213,7 @@ public class Train {
         return index;
     }
 
-    private static svm_problem loadInstances(List<List<StringPair>> taxos, Features features, double negSampling) {
+    public static svm_problem loadInstances(List<List<StringPair>> taxos, Features features, double negSampling) {
         final Random random = new Random();
         ArrayList<String> attributes = buildAttributes(features.featureNames());
         final svm_problem instances = new svm_problem();
@@ -265,8 +251,23 @@ public class Train {
         return instances;
     }
 
-    private static void writeClassifier(File file, svm_model classifier) throws IOException {
+    /*private static void writeClassifier(File file, svm_model classifier) throws IOException {
         libsvm.svm.svm_save_model(file.getAbsolutePath(), classifier);
+    }*/
+    public static void writeClassifier(Model model, svm_model classifier) throws IOException {
+        File tmpFile = File.createTempFile("svm", ".data");
+        libsvm.svm.svm_save_model(tmpFile.getAbsolutePath(), classifier);
+        try (BufferedReader reader = new BufferedReader(new FileReader(tmpFile))) {
+            StringBuilder sb = new StringBuilder();
+            char[] buf = new char[4096];
+            int read = 0;
+            while((read = reader.read(buf)) >= 0) {
+                sb.append(buf, 0, read);
+            }
+            model.classifierData = sb.toString();
+        } finally {
+            tmpFile.delete();
+        }
     }
 
     static ArrayList<String> buildAttributes(String[] featureNames) {
@@ -298,11 +299,12 @@ public class Train {
         return new Instance(d, score);
     }
 
-    private static Features learnSVD(List<List<StringPair>> taxos, Features features, TaxonomyExtractionConfiguration config) {
+    public static Features learnSVD(List<List<StringPair>> taxos, Features features, 
+            TaxonomyExtractionConfiguration config, Model model) {
         Matrix ave = learnSVD(taxos, features.svdByAve);
-        writeMatrix(ave, config.svdAveFile.toFile());
+        model.svdAve = ave.getArray();
         Matrix minMax = learnSVD(taxos, features.svdByMinMax);
-        writeMatrix(minMax, config.svdMinMaxFile.toFile());
+        model.svdMinMax = minMax.getArray();
         return new Features(ave, minMax, features);
     }
 
@@ -325,7 +327,7 @@ public class Train {
         return m;
     }
 
-    private static void writeMatrix(Matrix matrix, File file) {
+    /*private static void writeMatrix(Matrix matrix, File file) {
         try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(file))) {
             oos.writeInt(matrix.getRowDimension());
             oos.writeInt(matrix.getColumnDimension());
@@ -337,17 +339,18 @@ public class Train {
         } catch (IOException x) {
             throw new RuntimeException(x);
         }
-    }
+    }*/
 
-    public static Features makeFeatures(TaxonomyExtractionConfiguration config, List<DocumentTopic> docTopics, Map<String, Topic> topicMap) throws IOException {
-        Matrix svdAveMatrix = config.svdAveFile == null ? null
-                : readMatrix(config.svdAveFile.toFile());
-        Matrix svdMinMaxMatrix = config.svdMinMaxFile == null ? null
-                : readMatrix(config.svdMinMaxFile.toFile());
-        final Map<String, double[]> glove = config.gloveFile == null ? null : loadGLoVE(config.gloveFile.toFile());
-        final Set<Hypernym> hypernyms = config.hypernyms == null ? null : loadHypernyms(config.hypernyms.toFile());
+    public static Features makeFeatures(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
+            Model model) throws IOException {
+        Matrix svdAveMatrix = model.svdAve == null ? null 
+                : new Matrix(model.svdAve);
+        Matrix svdMinMaxMatrix = model.svdMinMax == null ? null
+                : new Matrix(model.svdMinMax);
+        final Map<String, double[]> glove = model.features.gloveFile == null ? null : loadGLoVE(model.features.gloveFile.toFile());
+        final Set<Hypernym> hypernyms = model.features.hypernyms == null ? null : loadHypernyms(model.features.hypernyms.toFile());
         return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), 
-                glove, topicMap, hypernyms, config.features);
+                glove, topicMap, hypernyms, model.features.featureSelection);
     }
 
     private static Matrix readMatrix(File svdAveFile) throws IOException {
@@ -364,7 +367,7 @@ public class Train {
         }
     }
 
-    private static Set<Hypernym> loadHypernyms(File file) throws IOException {
+    public static Set<Hypernym> loadHypernyms(File file) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
             final CollectionType setOfHypernymType = TypeFactory.defaultInstance().constructCollectionType(HashSet.class, Hypernym.class);
         if(file.getName().endsWith(".gz")) {
@@ -420,29 +423,29 @@ public class Train {
         
 
     }
+//
+//    static svm_model loadClassifier(TaxonomyExtractionConfiguration config) {
+//        final String className = config._class;
+//        final Class c;
+//        try {
+//            c = Class.forName(className);
+//        } catch (ClassNotFoundException x) {
+//            throw new RuntimeException(String.format("%s is not a valid class name", className), x);
+//        }
+//        final Object o;
+//        try {
+//            o = c.newInstance();
+//        } catch (IllegalAccessException | InstantiationException x) {
+//            throw new RuntimeException(x);
+//        }
+//        if (o instanceof svm_model) {
+//            return (svm_model) o;
+//        } else {
+//            throw new RuntimeException(String.format("%s is not a weka.core.Classifier", className));
+//        }
+//    }
 
-    static svm_model loadClassifier(TaxonomyExtractionConfiguration config) {
-        final String className = config._class;
-        final Class c;
-        try {
-            c = Class.forName(className);
-        } catch (ClassNotFoundException x) {
-            throw new RuntimeException(String.format("%s is not a valid class name", className), x);
-        }
-        final Object o;
-        try {
-            o = c.newInstance();
-        } catch (IllegalAccessException | InstantiationException x) {
-            throw new RuntimeException(x);
-        }
-        if (o instanceof svm_model) {
-            return (svm_model) o;
-        } else {
-            throw new RuntimeException(String.format("%s is not a weka.core.Classifier", className));
-        }
-    }
-
-    private static svm_parameter makeParameters() {
+    public static svm_parameter makeParameters() {
         svm_parameter param = new svm_parameter();
         param.probability = 1;
         param.gamma = 0.5;

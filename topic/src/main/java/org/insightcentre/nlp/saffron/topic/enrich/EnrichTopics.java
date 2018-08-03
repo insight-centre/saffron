@@ -49,7 +49,7 @@ public class EnrichTopics {
         return n;
     }
 
-    private static Result enrich(Set<String> topicStrings, IndexedCorpus corpus) {
+    public static Result enrich(Set<String> topicStrings, IndexedCorpus corpus) {
         List<DocumentTopic> docTopics = new ArrayList<>();
         List<Topic> topics = new ArrayList<>();
         Object2IntMap<String> topicFreq = new Object2IntOpenHashMap<>();
@@ -78,7 +78,7 @@ public class EnrichTopics {
         return new Result(docTopics, topics);
     }
 
-    private static class Result {
+    public static class Result {
 
         public final List<DocumentTopic> docTopics;
         public final List<Topic> topics;

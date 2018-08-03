@@ -14,6 +14,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
+import org.insightcentre.nlp.saffron.data.Model;
 
 /**
  * Create a taxonomy based on a supervised model
@@ -77,8 +78,10 @@ public class Main {
             List<Topic> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
             Map<String, Topic> topicMap = loadMap(topics, mapper);
+            
+            Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
-            SupervisedTaxo supTaxo = new SupervisedTaxo(config.taxonomy, docTopics, topicMap);
+            SupervisedTaxo supTaxo = new SupervisedTaxo(docTopics, topicMap, model);
             final Taxonomy graph;
             if (config.taxonomy.mode == Mode.greedy) {
                 GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
