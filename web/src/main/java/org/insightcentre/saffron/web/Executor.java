@@ -45,6 +45,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
+import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedyTrans;
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.HeadAndBag;
