@@ -30,9 +30,8 @@ public class TransTaxoExtract {
         for (String topic1 : topics) {
             for (String topic2 : topics) {
                 if (!topic1.equals(topic2)) {
-                    scores.put(
-                            new StringPair(topic1, topic2),
-                            classifier.predict(topic1, topic2) - discount);
+                    double score = classifier.predict(topic1, topic2) - discount;
+                    scores.put(new StringPair(topic1, topic2), score);
 
                 }
             }
@@ -45,21 +44,11 @@ public class TransTaxoExtract {
             if (best == null || Double.isInfinite(scores.getDouble(best))) {
                 break;
             }
-            Set<String> parents = new HashSet<>();
-            Set<String> children = new HashSet<>();
-            taxo.parents(best.top, parents);
-            taxo.children(best.bottom, children);
-            System.err.println(String.format("best: %s (%d parents, %d children)",
-                    best, parents.size(), children.size()));
             if (taxo.add(best)) {
-                System.err.println("Adding");
                 rescore(scores, best, taxo);
-            } else {
-                System.err.println("Rejecting");
-            }
+            } 
             scores.remove(best);
         }
-
         return taxo.toTaxo();
     }
 
@@ -76,9 +65,9 @@ public class TransTaxoExtract {
     }
 
     private void rescore(Object2DoubleMap<StringPair> scores, StringPair best, TaxoBuilder taxo) {
-        double parentCost = taxo.parentCost(best.top, scores);
-        double thisCost = scores.getDouble(best);
-        double childCost = taxo.childCost(best.bottom, scores);
+        //double parentCost = taxo.parentCost(best.top, scores);
+        //double thisCost = scores.getDouble(best);
+        //double childCost = taxo.childCost(best.bottom, scores);
         Set<String> parents = new HashSet<>();
         Set<String> children = new HashSet<>();
         taxo.parents(best.top, parents);
@@ -89,9 +78,13 @@ public class TransTaxoExtract {
                 if (parents.contains(s.getKey().bottom) && children.contains(s.getKey().top)) {
                     s.setValue(Double.NEGATIVE_INFINITY);
                 } else if (parents.contains(s.getKey().bottom)) {
-                    s.setValue(s.getDoubleValue() + thisCost + childCost);
+                    double d = s.getDoubleValue();
+                    d += scores.getDouble(new StringPair(s.getKey().top, best.bottom));
+                    s.setValue(d);
                 } else if (children.contains(s.getKey().top)) {
-                    s.setValue(s.getDoubleValue() + thisCost + parentCost);
+                    double d = s.getDoubleValue();
+                    d += scores.getDouble(new StringPair(best.top, s.getKey().bottom));
+                    s.setValue(d);
                 }
             }
         }
@@ -104,6 +97,8 @@ public class TransTaxoExtract {
         List<Set<String>> cliques = new ArrayList<>();
 
         public boolean add(StringPair s) {
+            if(parents.containsKey(s.bottom))
+                return false;
             Set<String> bottomClique = null;
             Set<String> topClique = null;
             for (Set<String> clique : cliques) {

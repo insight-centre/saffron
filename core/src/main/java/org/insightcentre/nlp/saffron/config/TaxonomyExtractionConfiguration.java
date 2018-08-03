@@ -74,7 +74,7 @@ public class TaxonomyExtractionConfiguration {
     }
     
     public enum Mode {
-        greedy, mst, headAndBag
+        greedy, mst, headAndBag, greedyTrans
     }
 
     @Override

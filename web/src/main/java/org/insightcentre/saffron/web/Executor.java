@@ -322,9 +322,10 @@ public class Executor extends AbstractHandler {
         final Taxonomy graph;
         if (topicMap.isEmpty()) {
             graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
+        } else if (config.taxonomy.mode == greedyTrans) {
+            TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
+            graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
         } else if (config.taxonomy.mode == greedy) {
-            //TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
-            //graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
             GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
         } else if(config.taxonomy.mode == headAndBag) {
