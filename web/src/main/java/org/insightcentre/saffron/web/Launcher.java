@@ -45,7 +45,7 @@ public class Launcher {
             File directory = (File) os.valueOf("d");
             if (directory == null) {
                 // TODO: Change this
-                directory = new File("../tmp");
+                directory = new File(".");
                 //badOptions(p, "The directory was not specified");
                 //return;
             } else if (directory.exists() && !directory.isDirectory()) {
@@ -64,10 +64,11 @@ public class Launcher {
             resourceHandler.setResourceBase("static");
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
+            Home home = new Home();
             Browser browser = new Browser(directory);
             Executor executor = new Executor(browser.saffron, directory);
-            Welcome welcome = new Welcome(browser.saffron, executor);
-            handlers.setHandlers(new Handler[]{welcome, executor, browser, resourceHandler});
+            Welcome welcome = new Welcome( executor);
+            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);
 
             server.start();

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -22,91 +23,105 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
  */
 public class Welcome extends AbstractHandler {
 
-    private final SaffronData data;
     private final Executor executor;
 
-    public Welcome(SaffronData data, Executor executor) {
-        this.data = data;
+    public Welcome(Executor executor) {
         this.executor = executor;
     }
-    
+
     private static boolean advanced(HttpServletRequest request) {
         String paramString = request.getParameter("advanced");
         System.err.println(paramString);
         return paramString != null;
     }
-    
+
     private static boolean advanced(List<FileItem> items) {
         return items.size() > 1 && items.get(1).isFormField() && items.get(1).getString() != null;
     }
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        if (!data.isLoaded() && !executor.isExecuting()) {
-            try {
-                if (target == null || "/".equals(target) || "".equals(target)) {
-                    response.setContentType("text/html");
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/welcome.html"));
-                    Writer writer = response.getWriter();
-                    char[] buf = new char[4096];
-                    int i = 0;
-                    while ((i = reader.read(buf)) >= 0) {
-                        writer.write(buf, 0, i);
-                    }
-                } else if ("/zip".equals(target)) {
-                    DiskFileItemFactory factory = new DiskFileItemFactory();
-                    ServletFileUpload upload = new ServletFileUpload(factory);
-                    List<FileItem> items = upload.parseRequest(request);
-                    if(items.size() >= 1) {
-                        File tmpFile = File.createTempFile("corpus", items.get(0).getName());
-                        tmpFile.deleteOnExit();
-                        byte[] buf = new byte[4096];
-                        try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
-                            int i = 0;
-                            while((i = is.read(buf)) >= 0) {
-                                fos.write(buf, 0, i);
-                            }
+        
+        try {
+            if (target == null || "/".equals(target) || "".equals(target)) {
+                response.setContentType("text/html");
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+                FileReader reader = new FileReader(new File("static/welcome.html"));
+                Writer writer = response.getWriter();
+                char[] buf = new char[4096];
+                int i = 0;
+                while ((i = reader.read(buf)) >= 0) {
+                    writer.write(buf, 0, i);
+                }
+            } else if ("/zip".equals(target)) {
+                DiskFileItemFactory factory = new DiskFileItemFactory();
+                ServletFileUpload upload = new ServletFileUpload(factory);
+                List<FileItem> items = upload.parseRequest(request);
+                if (items.size() >= 1) {
+                    File tmpFile = File.createTempFile("corpus", items.get(0).getName());
+                    tmpFile.deleteOnExit();
+                    byte[] buf = new byte[4096];
+                    try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                        int i = 0;
+                        while ((i = is.read(buf)) >= 0) {
+                            fos.write(buf, 0, i);
                         }
+                    }
+                    if(setDatasetName(baseRequest, request, response)) {
                         executor.startWithZip(tmpFile, advanced(items));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
-                } else if("/crawl".equals(target)) {
-                    String url = request.getParameter("url");
-                    Integer maxPages = request.getParameter("max_pages") == null ? null :
-                            Integer.parseInt(request.getParameter("max_pages"));
-                    boolean domain = request.getParameter("domain") != null;
-                    if(url != null && maxPages != null) {
+                }
+            } else if ("/crawl".equals(target)) {
+                String url = request.getParameter("url");
+                Integer maxPages = request.getParameter("max_pages") == null ? null
+                        : Integer.parseInt(request.getParameter("max_pages"));
+                boolean domain = request.getParameter("domain") != null;
+                if (url != null && maxPages != null) {
+                    if(setDatasetName(baseRequest, request, response)) {
                         executor.startWithCrawl(url, maxPages, domain, advanced(request));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
-                } else if("/json".equals(target)) {
-                    DiskFileItemFactory factory = new DiskFileItemFactory();
-                    ServletFileUpload upload = new ServletFileUpload(factory);
-                    List<FileItem> items = upload.parseRequest(request);
-                    if(items.size() >= 1) {
-                        File tmpFile = File.createTempFile("corpus", ".json");
-                        tmpFile.deleteOnExit();
-                        byte[] buf = new byte[4096];
-                        try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
-                            int i = 0;
-                            while((i = is.read(buf)) >= 0) {
-                                fos.write(buf, 0, i);
-                            }
+                }
+            } else if ("/json".equals(target)) {
+                DiskFileItemFactory factory = new DiskFileItemFactory();
+                ServletFileUpload upload = new ServletFileUpload(factory);
+                List<FileItem> items = upload.parseRequest(request);
+                if (items.size() >= 1) {
+                    File tmpFile = File.createTempFile("corpus", ".json");
+                    tmpFile.deleteOnExit();
+                    byte[] buf = new byte[4096];
+                    try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                        int i = 0;
+                        while ((i = is.read(buf)) >= 0) {
+                            fos.write(buf, 0, i);
                         }
+                    }
+                    if(setDatasetName(baseRequest, request, response)) {
                         executor.startWithJson(tmpFile, advanced(items));
                         baseRequest.setHandled(true);
                         response.sendRedirect("/");
                     }
                 }
-            } catch (Exception x) {
-                x.printStackTrace();
-                throw new ServletException(x);
             }
+        } catch (Exception x) {
+            x.printStackTrace();
+            throw new ServletException(x);
         }
     }
 
+    private boolean setDatasetName(Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        String datasetName = request.getParameter("name");
+        if(datasetName != null && !"train".equals(datasetName) && !"execute".equals(datasetName) && datasetName.matches("[A-Za-z0-9_-]+")) {
+            executor.saffronDatasetName = datasetName;
+            return true;
+        } else {
+            baseRequest.setHandled(true);
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "name is missing or bad");
+            return false;
+        }
+    }
 }

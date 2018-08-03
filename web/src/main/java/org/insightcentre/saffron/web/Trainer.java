@@ -67,7 +67,7 @@ public class Trainer extends AbstractHandler {
             HttpServletResponse response) throws IOException, ServletException {
         try {
             if (isExecuting()) {
-                if (target == null || "".equals(target) || "/".equals(target)) {
+                if (target == null || "/train".equals(target)) {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -78,7 +78,7 @@ public class Trainer extends AbstractHandler {
                     while ((i = reader.read(buf)) >= 0) {
                         writer.write(buf, 0, i);
                     }
-                } else if ("/status".equals(target)) {
+                } else if ("/train/status".equals(target)) {
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);

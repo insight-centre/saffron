@@ -12,6 +12,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,14 +61,15 @@ import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
  */
 public class Executor extends AbstractHandler {
 
-    private final SaffronData data;
+    private final Map<String, SaffronData> data;
     private final File directory;
     private final Status status;
     private Corpus corpus;
     private Configuration defaultConfig;
     private Configuration config;
+    public String saffronDatasetName;
 
-    public Executor(SaffronData data, File directory) {
+    public Executor(Map<String,SaffronData> data, File directory) {
         this.data = data;
         this.directory = directory;
         this.status = new Status();
@@ -89,14 +91,14 @@ public class Executor extends AbstractHandler {
             HttpServletResponse response) throws IOException, ServletException {
         try {
             if (isExecuting()) {
-                if (corpus != null && config == null && (target == null || "".equals(target) || "/".equals(target))) {
+                if (corpus != null && config == null && "/execute".equals(target)) {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     String page = FileUtils.readFileToString(new File("static/advanced.html"));
                     page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
                     response.getWriter().print(page);
-                } else if (corpus != null && config == null && ("/advanced".equals(target))) {
+                } else if (corpus != null && config == null && ("/execute/advanced".equals(target))) {
                     BufferedReader r = hsr.getReader();
                     StringBuilder sb = new StringBuilder();
                     try {
@@ -113,7 +115,7 @@ public class Executor extends AbstractHandler {
                         @Override
                         public void run() {
                             try {
-                                execute(corpus, config);
+                                execute(corpus, config, data.get(saffronDatasetName));
                             } catch (IOException x) {
                                 status.failed = true;
                                 status.setStatusMessage("Failed: " + x.getMessage());
@@ -123,7 +125,7 @@ public class Executor extends AbstractHandler {
                     }).start();
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                } else if (target == null || "".equals(target) || "/".equals(target)) {
+                } else if (target == null || "/execute".equals(target)) {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -134,7 +136,7 @@ public class Executor extends AbstractHandler {
                     while ((i = reader.read(buf)) >= 0) {
                         writer.write(buf, 0, i);
                     }
-                } else if ("/status".equals(target)) {
+                } else if ("/execute/status".equals(target)) {
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -165,7 +167,7 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig);
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
                     }
                 } catch (Throwable x) {
                     status.failed = true;
@@ -194,7 +196,7 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig);
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
                     }
                 } catch (Exception x) {
                     status.failed = true;
@@ -218,7 +220,7 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig);
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
                     }
                 } catch (Exception x) {
                     status.failed = true;
@@ -229,7 +231,7 @@ public class Executor extends AbstractHandler {
         }).start();
     }
 
-    void execute(Corpus corpus, Configuration config) throws IOException {
+    void execute(Corpus corpus, Configuration config, SaffronData data) throws IOException {
         status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();

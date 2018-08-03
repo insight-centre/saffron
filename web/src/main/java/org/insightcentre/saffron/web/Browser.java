@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -33,21 +35,22 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
  */
 public class Browser extends AbstractHandler {
 
-    final SaffronData saffron;
+    final Map<String, SaffronData> saffron = new HashMap<String, SaffronData>();
 
     public Browser(File dir) throws IOException {
         if (dir.exists()) {
-            SaffronData s2;
-            try {
-                s2 = SaffronData.fromDirectory(dir);
-            } catch (Exception x) {
-                x.printStackTrace();
-                System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-                s2 = new SaffronData();
+            for (File subdir : dir.listFiles()) {
+                if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
+                    try {
+                        SaffronData s2;
+                        s2 = SaffronData.fromDirectory(dir);
+                        saffron.put(subdir.getName(), s2);
+                    } catch (Exception x) {
+                        x.printStackTrace();
+                        System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+                    }
+                }
             }
-            saffron = s2;
-        } else {
-            saffron = new SaffronData();
         }
     }
 
@@ -56,6 +59,21 @@ public class Browser extends AbstractHandler {
             Request baseRequest,
             HttpServletRequest request,
             HttpServletResponse response)
+            throws IOException, ServletException {
+        if(target != null && target.startsWith("/") && target.lastIndexOf("/") != 0) {
+            String name = target.substring(1,target.indexOf("/", 1));
+            if(saffron.containsKey(name)) {
+                handle2(target.substring(target.indexOf("/",1) + 1),
+                        baseRequest, request, response, saffron.get(name));
+            }
+        }
+    }
+    
+    public void handle2(String target,
+            Request baseRequest,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            SaffronData saffron)
             throws IOException, ServletException {
         try {
             // Exposing an existing directory
@@ -152,7 +170,7 @@ public class Browser extends AbstractHandler {
                     final String topic = request.getParameter("topic");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
-                    if(author != null) {
+                    if (author != null) {
                         final List<AuthorTopic> ats = saffron.getTopicByAuthor(author);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -216,7 +234,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.equals("/author-docs")) {
                     final String authorId = request.getParameter("author");
-                    if(authorId != null) {
+                    if (authorId != null) {
                         List<Document> docs = saffron.getDocsByAuthor(authorId);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -278,8 +296,8 @@ public class Browser extends AbstractHandler {
                         response.setContentType(Files.probeContentType(f.toPath()));
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        try(InputStream reader = new FileInputStream(f)) {
-                            try(OutputStream writer = response.getOutputStream()) {
+                        try (InputStream reader = new FileInputStream(f)) {
+                            try (OutputStream writer = response.getOutputStream()) {
                                 byte[] buf = new byte[4096];
                                 int i = 0;
                                 while ((i = reader.read(buf)) >= 0) {
@@ -319,12 +337,12 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        if(tts.size() < offset) {
+        if (tts.size() < offset) {
             return Collections.EMPTY_LIST;
-        } else if(tts.size() < offset + n) {
+        } else if (tts.size() < offset + n) {
             return tts.subList(offset, tts.size());
         } else {
-            return tts.subList(offset, offset+n);
+            return tts.subList(offset, offset + n);
         }
     }
 
@@ -343,12 +361,12 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        if(tts.size() < offset) {
+        if (tts.size() < offset) {
             return Collections.EMPTY_LIST;
-        } else if(tts.size() < offset + n) {
+        } else if (tts.size() < offset + n) {
             return tts.subList(offset, tts.size());
         } else {
-            return tts.subList(offset, offset+n);
+            return tts.subList(offset, offset + n);
         }
     }
 
@@ -367,12 +385,12 @@ public class Browser extends AbstractHandler {
                 }
             }
         });
-        if(tts.size() < offset) {
+        if (tts.size() < offset) {
             return Collections.EMPTY_LIST;
-        } else if(tts.size() < offset + n) {
+        } else if (tts.size() < offset + n) {
             return tts.subList(offset, tts.size());
         } else {
-            return tts.subList(offset, offset+n);
+            return tts.subList(offset, offset + n);
         }
     }
 }
