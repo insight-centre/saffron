@@ -59,8 +59,8 @@ public class Train {
     }
 
     public static void main(String[] args) {
-        args = "-c ../models/config.json -d ../benchmarks/data/texeval/food_en-doc-topics.json -p ../benchmarks/data/texeval/food_en-topics.json -t ../benchmarks/data/texeval/food_en.taxo".split(" ");
-        System.setProperty("saffron.home", "..");
+        //args = "-c ../models/config.json -d ../benchmarks/data/texeval/food_en-doc-topics.json -p ../benchmarks/data/texeval/food_en-topics.json -t ../benchmarks/data/texeval/food_en.taxo".split(" ");
+        //System.setProperty("saffron.home", "..");
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
@@ -192,6 +192,8 @@ public class Train {
         }
         
         writeClassifier(model, svmModel);
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.writerWithDefaultPrettyPrinter().writeValue(config.modelFile.toFile(), model);
     }
 
     public static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {

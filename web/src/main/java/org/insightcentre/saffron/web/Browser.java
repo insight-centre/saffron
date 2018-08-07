@@ -3,9 +3,12 @@ package org.insightcentre.saffron.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -43,7 +46,7 @@ public class Browser extends AbstractHandler {
                 if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
                     try {
                         SaffronData s2;
-                        s2 = SaffronData.fromDirectory(dir);
+                        s2 = SaffronData.fromDirectory(subdir);
                         saffron.put(subdir.getName(), s2);
                     } catch (Exception x) {
                         x.printStackTrace();
@@ -60,20 +63,21 @@ public class Browser extends AbstractHandler {
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException, ServletException {
-        if(target != null && target.startsWith("/") && target.lastIndexOf("/") != 0) {
-            String name = target.substring(1,target.indexOf("/", 1));
-            if(saffron.containsKey(name)) {
-                handle2(target.substring(target.indexOf("/",1) + 1),
-                        baseRequest, request, response, saffron.get(name));
+        if (target != null && target.startsWith("/") && target.lastIndexOf("/") != 0) {
+            String name = target.substring(1, target.indexOf("/", 1));
+            if (saffron.containsKey(name)) {
+                handle2(target.substring(target.indexOf("/", 1)),
+                        baseRequest, request, response, saffron.get(name), name);
             }
         }
     }
-    
+
     public void handle2(String target,
             Request baseRequest,
             HttpServletRequest request,
             HttpServletResponse response,
-            SaffronData saffron)
+            SaffronData saffron,
+            String saffronDatasetName)
             throws IOException, ServletException {
         try {
             // Exposing an existing directory
@@ -264,6 +268,7 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         String data = new String(Files.readAllBytes(Paths.get("static/topic.html")));
                         data = data.replaceAll("\\{\\{topic\\}\\}", mapper.writeValueAsString(topic));
+                        data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/author/")) {
@@ -275,6 +280,7 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         String data = new String(Files.readAllBytes(Paths.get("static/author.html")));
                         data = data.replaceAll("\\{\\{author\\}\\}", mapper.writeValueAsString(author));
+                        data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/doc/")) {
@@ -286,6 +292,7 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         String data = new String(Files.readAllBytes(Paths.get("static/doc.html")));
                         data = data.replaceAll("\\{\\{doc\\}\\}", mapper.writeValueAsString(doc));
+                        data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/doc_content/")) {
@@ -313,6 +320,46 @@ public class Browser extends AbstractHandler {
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), status);
+                } else if ("/".equals(target)) {
+
+                    response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    FileReader reader = new FileReader(new File("static/index.html"));
+                    Writer writer = new StringWriter();
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
+                    }
+                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+                       
+                } else if ("/treemap.html".equals(target)) {
+
+                    response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    FileReader reader = new FileReader(new File("static/treemap.html"));
+                    Writer writer = new StringWriter();
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
+                    }
+                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));                 
+                } else if ("/graph.html".equals(target)) {
+
+                    response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    FileReader reader = new FileReader(new File("static/graph.html"));
+                    Writer writer = new StringWriter();
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
+                    }
+                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
                 }
 
             }

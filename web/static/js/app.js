@@ -7,7 +7,7 @@ angular.module('app').component('toptopics', {
         ctrl.n = 0;
         ctrl.n2 = 0;
         this.loadTopics = function () {
-            $http.get("/top-topics?n=" + ctrl.n2 + "&offset=30").then(
+            $http.get('/' + saffronDatasetName + "/top-topics?n=" + ctrl.n2 + "&offset=30").then(
                     function (response) {
                         ctrl.topics = [];
                         for (t = 0; t < response.data.length; t++) {
@@ -59,7 +59,7 @@ angular.module('app').component('relatedtopics', {
         this.loadTopics = function() {
             if(ctrl.topic) {
                 ctrl.title = "Related topics";
-                $http.get('/topic-sim?n=20&offset=' + ctrl.n2 + '&topic1=' + ctrl.topic).then(function (response) {
+                $http.get('/' + saffronDatasetName + '/topic-sim?n=20&offset=' + ctrl.n2 + '&topic1=' + ctrl.topic).then(function (response) {
                     ctrl.topics = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
@@ -73,7 +73,7 @@ angular.module('app').component('relatedtopics', {
                 });
             } else if(ctrl.doc) {
                 ctrl.title = "Main topics";
-                $http.get('/doc-topics?n=20&offset=' + ctrl.n2 + '&doc=' + ctrl.doc).then(function(response) {
+                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&doc=' + ctrl.doc).then(function(response) {
                     ctrl.topics = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
@@ -87,7 +87,7 @@ angular.module('app').component('relatedtopics', {
                 });
             } else if(ctrl.author) {
                 ctrl.title = "Main topics";
-                $http.get('/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                $http.get('/' + saffronDatasetName + '/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
                     ctrl.topics = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
@@ -124,7 +124,7 @@ angular.module('app').component('relatedauthors', {
         var ctrl = this;
         if(ctrl.topic) {
             ctrl.title = "Major authors on this topic";
-            $http.get('/author-topics?topic=' + ctrl.topic).then(function (response) {
+            $http.get('/' + saffronDatasetName + '/author-topics?topic=' + ctrl.topic).then(function (response) {
                 ctrl.authors = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
@@ -138,7 +138,7 @@ angular.module('app').component('relatedauthors', {
             });
         } else if(ctrl.author) {
             ctrl.title = "Similar authors"
-            $http.get('/author-sim?author1=' + ctrl.author).then(function (response) {
+            $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function (response) {
                 ctrl.authors = [];
                 for(t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
@@ -164,7 +164,7 @@ angular.module('app').component('relateddocuments', {
     controller: function ($http) {
         var ctrl = this;
         if(ctrl.topic) {
-            $http.get('/doc-topics?topic=' + ctrl.topic).then(function (response) {
+            $http.get('/' + saffronDatasetName + '/doc-topics?topic=' + ctrl.topic).then(function (response) {
                 ctrl.docs = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.docs.push({
@@ -174,7 +174,7 @@ angular.module('app').component('relateddocuments', {
                 }
             });
         } else if(ctrl.author) {
-            $http.get('/author-docs?author=' + ctrl.author).then(function (response) {
+            $http.get('/' + saffronDatasetName + '/author-docs?author=' + ctrl.author).then(function (response) {
                 ctrl.docs = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.docs.push({
@@ -224,7 +224,7 @@ angular.module('app').component('childtopics', {
     controller: function ($http) {
         var ctrl = this;
         ctrl.title = "Child topics";
-        $http.get('/children?topic=' + ctrl.topic).then(function (response) {
+        $http.get('/' + saffronDatasetName + '/children?topic=' + ctrl.topic).then(function (response) {
             ctrl.topics = [];
             for (t = 0; t < response.data.length; t++) {
                 ctrl.topics.push({

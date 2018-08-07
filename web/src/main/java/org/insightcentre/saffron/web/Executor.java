@@ -62,16 +62,15 @@ import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 public class Executor extends AbstractHandler {
 
     private final Map<String, SaffronData> data;
-    private final File directory;
+    private final File parentDirectory;
     private final Status status;
     private Corpus corpus;
     private Configuration defaultConfig;
     private Configuration config;
-    public String saffronDatasetName;
 
-    public Executor(Map<String,SaffronData> data, File directory) {
+    public Executor(Map<String, SaffronData> data, File directory) {
         this.data = data;
-        this.directory = directory;
+        this.parentDirectory = directory;
         this.status = new Status();
         try {
             this.defaultConfig = new ObjectMapper().readValue(new File("../models/config.json"), Configuration.class);
@@ -80,6 +79,20 @@ public class Executor extends AbstractHandler {
             System.err.println("Could not load config.json in models folder... using default configuration");
         }
 
+    }
+
+    /**
+     * Initialize a new Saffron Dataset
+     * @param name The name
+     * @return True if a new dataset was created
+     */
+    public boolean newDataSet(String name) {
+        if (data.containsKey(name)) {
+            return false;
+        } else {
+            data.put(name, new SaffronData());
+            return true;
+        }
     }
 
     public boolean isExecuting() {
@@ -97,8 +110,10 @@ public class Executor extends AbstractHandler {
                     baseRequest.setHandled(true);
                     String page = FileUtils.readFileToString(new File("static/advanced.html"));
                     page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
+                    page = page.replace("{{name}}", hsr.getParameter("name"));
                     response.getWriter().print(page);
                 } else if (corpus != null && config == null && ("/execute/advanced".equals(target))) {
+                    final String saffronDatasetName = hsr.getParameter("saffronDatasetName");
                     BufferedReader r = hsr.getReader();
                     StringBuilder sb = new StringBuilder();
                     try {
@@ -115,7 +130,7 @@ public class Executor extends AbstractHandler {
                         @Override
                         public void run() {
                             try {
-                                execute(corpus, config, data.get(saffronDatasetName));
+                                execute(corpus, config, data.get(saffronDatasetName), saffronDatasetName);
                             } catch (IOException x) {
                                 status.failed = true;
                                 status.setStatusMessage("Failed: " + x.getMessage());
@@ -143,14 +158,14 @@ public class Executor extends AbstractHandler {
                     ObjectMapper mapper = new ObjectMapper();
                     mapper.writeValue(response.getWriter(), status);
                 }
-            } 
+            }
         } catch (Exception x) {
             x.printStackTrace();
             throw new ServletException(x);
         }
     }
 
-    void startWithZip(final File tmpFile, final boolean advanced) {
+    void startWithZip(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -167,7 +182,7 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Throwable x) {
                     status.failed = true;
@@ -179,7 +194,7 @@ public class Executor extends AbstractHandler {
     }
 
     void startWithCrawl(final String url, final int maxPages, final boolean domain,
-            final boolean advanced) {
+            final boolean advanced, final String saffronDatasetName) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -189,14 +204,14 @@ public class Executor extends AbstractHandler {
                     URL url2 = new URL(url);
                     File f = Files.createTempDir();
                     String crawlStorageFolder = f.getAbsolutePath();
-                    Corpus corpus = SaffronCrawler.crawl(crawlStorageFolder, directory,
+                    Corpus corpus = SaffronCrawler.crawl(crawlStorageFolder, new File(parentDirectory, saffronDatasetName),
                             null, maxPages, domain ? "\\w+://\\Q" + url2.getHost() + "\\E.*" : ".*",
                             url, 7);
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
                     status.failed = true;
@@ -207,7 +222,7 @@ public class Executor extends AbstractHandler {
         }).start();
     }
 
-    void startWithJson(final File tmpFile, final boolean advanced) {
+    void startWithJson(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -220,7 +235,7 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         Executor.this.status.advanced = true;
                     } else {
-                        execute(corpus, defaultConfig, data.get(saffronDatasetName));
+                        execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
                     status.failed = true;
@@ -231,14 +246,14 @@ public class Executor extends AbstractHandler {
         }).start();
     }
 
-    void execute(Corpus corpus, Configuration config, SaffronData data) throws IOException {
+    void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName) throws IOException {
         status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
         status.stage++;
         status.setStatusMessage("Indexing Corpus");
-        final File indexFile = new File(directory, "index");
+        final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
         DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus, indexFile, true);
         status.setStatusMessage("Loading index");
         ArrayList<Document> docs = new ArrayList<>();
@@ -256,10 +271,10 @@ public class Executor extends AbstractHandler {
         TermExtraction.Result res = extractor.extractTopics(searcher);
 
         status.setStatusMessage("Writing extracted topics");
-        ow.writeValue(new File(directory, "topics-extracted.json"), res.topics);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
 
         status.setStatusMessage("Writing document topic correspondence");
-        ow.writeValue(new File(directory, "doc-topics.json"), res.docTopics);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
         data.setDocTopics(res.docTopics);
 
         status.stage++;
@@ -273,7 +288,7 @@ public class Executor extends AbstractHandler {
         IndexedCorpus corpus2 = applyConsolidation(indexedCorpus, consolidation);
 
         status.setStatusMessage("Writing consolidated corpus");
-        ow.writeValue(new File(directory, "corpus.json"), corpus2);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "corpus.json"), corpus2);
         data.setCorpus(corpus2);
 
         status.stage++;
@@ -283,7 +298,7 @@ public class Executor extends AbstractHandler {
         data.setTopics(res.topics);
 
         status.setStatusMessage("Saving linked topics");
-        ow.writeValue(new File(directory, "topics.json"), topics);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
 
         status.stage++;
         status.setStatusMessage("Connecting authors to topics");
@@ -291,7 +306,7 @@ public class Executor extends AbstractHandler {
         Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, corpus2.documents);
 
         status.setStatusMessage("Saving author connections");
-        ow.writeValue(new File(directory, "author-topics.json"), authorTopics);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
         data.setAuthorTopics(authorTopics);
 
         status.stage++;
@@ -300,7 +315,7 @@ public class Executor extends AbstractHandler {
         final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics);
 
         status.setStatusMessage("Saving topic connections");
-        ow.writeValue(new File(directory, "topic-sim.json"), topicSimilarity);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
         data.setTopicSim(topicSimilarity);
 
         status.stage++;
@@ -309,7 +324,7 @@ public class Executor extends AbstractHandler {
         final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics);
 
         status.setStatusMessage("Saving author connections");
-        ow.writeValue(new File(directory, "author-sim.json"), authorSim);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
         data.setAuthorSim(authorSim);
 
         status.stage++;
@@ -317,13 +332,12 @@ public class Executor extends AbstractHandler {
         Map<String, Topic> topicMap = loadMap(topics, mapper);
 
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
-
         status.setStatusMessage("Reading model");
         if (config.taxonomy.modelFile == null) {
             config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/default.json");
         }
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
-        
+
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
         status.setStatusMessage("Building taxonomy");
         final Taxonomy graph;
@@ -335,7 +349,7 @@ public class Executor extends AbstractHandler {
         } else if (config.taxonomy.mode == greedy) {
             GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
-        } else if(config.taxonomy.mode == headAndBag) {
+        } else if (config.taxonomy.mode == headAndBag) {
             HeadAndBag taxoExtractor = new HeadAndBag(supTaxo, 0.5);
             graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
         } else {
@@ -344,7 +358,7 @@ public class Executor extends AbstractHandler {
         }
 
         status.setStatusMessage("Saving taxonomy");
-        ow.writeValue(new File(directory, "taxonomy.json"), graph);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
         data.setTaxonomy(graph);
 
         status.setStatusMessage("Done");

@@ -55,19 +55,16 @@ public class Launcher {
 
             Server server = new Server(8080);
             ResourceHandler resourceHandler = new ResourceHandler();
-            //resourceHandler.setDirectoriesListed(true);
-            resourceHandler.setWelcomeFiles(new String[]{"index.html"});
 
             // This is the path on the server
-            //ContextHandler contextHandler = new ContextHandler("/static");
             // This is the local directory that is used to 
             resourceHandler.setResourceBase("static");
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
-            Home home = new Home();
             Browser browser = new Browser(directory);
             Executor executor = new Executor(browser.saffron, directory);
             Welcome welcome = new Welcome( executor);
+            Home home = new Home(browser.saffron);
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);
 

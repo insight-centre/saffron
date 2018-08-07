@@ -5,9 +5,8 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Writer;
+import java.io.StringWriter;
 import java.util.List;
-import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -39,89 +38,123 @@ public class Welcome extends AbstractHandler {
         return items.size() > 1 && items.get(1).isFormField() && items.get(1).getString() != null;
     }
 
+    private String saffronDatasetName(String saffronDatasetName,
+            Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
+        if (saffronDatasetName != null && !"".equals(saffronDatasetName)
+                && !"train".equals(saffronDatasetName)
+                && !"execute".equals(saffronDatasetName)
+                && !"new".equals(saffronDatasetName)
+                && !"static".equals(saffronDatasetName)
+                && saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*")) {
+            if (executor.newDataSet(saffronDatasetName)) {
+                return saffronDatasetName;
+            } else {
+                baseRequest.setHandled(true);
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+
+            }
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No or Bad Dataset Name (Must be non-empty string matching [A-Za-z][A-Za-z0-9_-]* and not 'train', 'execute', 'static' or 'new' but was " + saffronDatasetName + ")");
+        }
+        return null;
+    }
+
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-        
+
         try {
-            if (target == null || "/".equals(target) || "".equals(target)) {
+            if ("/new".equals(target)) {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
                 FileReader reader = new FileReader(new File("static/welcome.html"));
-                Writer writer = response.getWriter();
+                StringWriter writer = new StringWriter();
                 char[] buf = new char[4096];
                 int i = 0;
                 while ((i = reader.read(buf)) >= 0) {
                     writer.write(buf, 0, i);
                 }
-            } else if ("/zip".equals(target)) {
+                String content = writer.toString().replaceAll("\\{\\{name\\}\\}", request.getParameter("name"));
+                response.getWriter().write(content);
+            } else if ("/new/zip".equals(target)) {
                 DiskFileItemFactory factory = new DiskFileItemFactory();
                 ServletFileUpload upload = new ServletFileUpload(factory);
                 List<FileItem> items = upload.parseRequest(request);
-                if (items.size() >= 1) {
-                    File tmpFile = File.createTempFile("corpus", items.get(0).getName());
-                    tmpFile.deleteOnExit();
-                    byte[] buf = new byte[4096];
-                    try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
-                        int i = 0;
-                        while ((i = is.read(buf)) >= 0) {
-                            fos.write(buf, 0, i);
-                        }
-                    }
-                    if(setDatasetName(baseRequest, request, response)) {
-                        executor.startWithZip(tmpFile, advanced(items));
-                        baseRequest.setHandled(true);
-                        response.sendRedirect("/");
+                String saffronDatasetName = null;
+                for (FileItem fi : items) {
+                    System.err.println(fi);
+                    if (fi.isFormField() && "saffronDatasetName".equals(fi.getFieldName())) {
+                        saffronDatasetName = saffronDatasetName(fi.getString(), baseRequest, request, response);
                     }
                 }
-            } else if ("/crawl".equals(target)) {
-                String url = request.getParameter("url");
-                Integer maxPages = request.getParameter("max_pages") == null ? null
-                        : Integer.parseInt(request.getParameter("max_pages"));
-                boolean domain = request.getParameter("domain") != null;
-                if (url != null && maxPages != null) {
-                    if(setDatasetName(baseRequest, request, response)) {
-                        executor.startWithCrawl(url, maxPages, domain, advanced(request));
+                if (saffronDatasetName == null) {
+                    return;
+                }
+                for (FileItem fi : items) {
+                    if (!fi.isFormField()) {
+                        File tmpFile = File.createTempFile("corpus", items.get(0).getName());
+                        tmpFile.deleteOnExit();
+                        byte[] buf = new byte[4096];
+                        try (InputStream is = fi.getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                            int i = 0;
+                            while ((i = is.read(buf)) >= 0) {
+                                fos.write(buf, 0, i);
+                            }
+                        }
+                        executor.startWithZip(tmpFile, advanced(items), saffronDatasetName);
                         baseRequest.setHandled(true);
-                        response.sendRedirect("/");
+                        response.sendRedirect("/execute?name=" + saffronDatasetName);
+                        return;
                     }
                 }
-            } else if ("/json".equals(target)) {
-                DiskFileItemFactory factory = new DiskFileItemFactory();
-                ServletFileUpload upload = new ServletFileUpload(factory);
-                List<FileItem> items = upload.parseRequest(request);
-                if (items.size() >= 1) {
-                    File tmpFile = File.createTempFile("corpus", ".json");
-                    tmpFile.deleteOnExit();
-                    byte[] buf = new byte[4096];
-                    try (InputStream is = items.get(0).getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
-                        int i = 0;
-                        while ((i = is.read(buf)) >= 0) {
-                            fos.write(buf, 0, i);
-                        }
-                    }
-                    if(setDatasetName(baseRequest, request, response)) {
-                        executor.startWithJson(tmpFile, advanced(items));
+            } else if ("/new/crawl".equals(target)) {
+                String saffronDatasetName = saffronDatasetName(request.getParameter("saffronDatasetName"), baseRequest, request, response);
+                if (saffronDatasetName != null) {
+                    String url = request.getParameter("url");
+                    Integer maxPages = request.getParameter("max_pages") == null ? null
+                            : Integer.parseInt(request.getParameter("max_pages"));
+                    boolean domain = request.getParameter("domain") != null;
+                    if (url != null && maxPages != null) {
+                        executor.startWithCrawl(url, maxPages, domain, advanced(request), saffronDatasetName);
                         baseRequest.setHandled(true);
-                        response.sendRedirect("/");
+                        response.sendRedirect("/execute?name=" + saffronDatasetName);
+                    }
+                }
+            } else if ("/new/json".equals(target)) {
+
+                    DiskFileItemFactory factory = new DiskFileItemFactory();
+                    ServletFileUpload upload = new ServletFileUpload(factory);
+                    List<FileItem> items = upload.parseRequest(request);
+                    
+                String saffronDatasetName = null;
+                for (FileItem fi : items) {
+                    if (fi.isFormField()  && "saffronDatasetName".equals(fi.getFieldName())) {
+                        saffronDatasetName = saffronDatasetName(fi.getString(), baseRequest, request, response);
+                    }
+                }
+                if (saffronDatasetName == null) {
+                    return;
+                }
+                for (FileItem fi : items) {
+                    if (!fi.isFormField()) {
+                        File tmpFile = File.createTempFile("corpus", ".json");
+                        tmpFile.deleteOnExit();
+                        byte[] buf = new byte[4096];
+                        try (InputStream is = fi.getInputStream(); FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                            int i = 0;
+                            while ((i = is.read(buf)) >= 0) {
+                                fos.write(buf, 0, i);
+                            }
+                        }
+                        executor.startWithJson(tmpFile, advanced(items), saffronDatasetName);
+                        baseRequest.setHandled(true);
+                        response.sendRedirect("/execute?name=" + saffronDatasetName);
                     }
                 }
             }
         } catch (Exception x) {
             x.printStackTrace();
             throw new ServletException(x);
-        }
-    }
-
-    private boolean setDatasetName(Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        String datasetName = request.getParameter("name");
-        if(datasetName != null && !"train".equals(datasetName) && !"execute".equals(datasetName) && datasetName.matches("[A-Za-z0-9_-]+")) {
-            executor.saffronDatasetName = datasetName;
-            return true;
-        } else {
-            baseRequest.setHandled(true);
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "name is missing or bad");
-            return false;
         }
     }
 }
