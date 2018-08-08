@@ -35,7 +35,11 @@ public class Welcome extends AbstractHandler {
     }
 
     private static boolean advanced(List<FileItem> items) {
-        return items.size() > 1 && items.get(1).isFormField() && items.get(1).getString() != null;
+        for(FileItem item : items) {
+            if(item.isFormField() && item.getFieldName().equals("advanced"))
+                return true;
+        }
+        return false;
     }
 
     private String saffronDatasetName(String saffronDatasetName,

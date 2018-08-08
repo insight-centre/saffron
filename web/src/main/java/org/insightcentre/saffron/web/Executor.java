@@ -7,12 +7,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,6 +83,7 @@ public class Executor extends AbstractHandler {
 
     /**
      * Initialize a new Saffron Dataset
+     *
      * @param name The name
      * @return True if a new dataset was created
      */
@@ -103,7 +104,7 @@ public class Executor extends AbstractHandler {
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
             HttpServletResponse response) throws IOException, ServletException {
         try {
-            if (isExecuting()) {
+            if (status.advanced) {
                 if (corpus != null && config == null && "/execute".equals(target)) {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
@@ -112,8 +113,8 @@ public class Executor extends AbstractHandler {
                     page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
                     page = page.replace("{{name}}", hsr.getParameter("name"));
                     response.getWriter().print(page);
-                } else if (corpus != null && config == null && ("/execute/advanced".equals(target))) {
-                    final String saffronDatasetName = hsr.getParameter("saffronDatasetName");
+                } else if (corpus != null && config == null && (target.startsWith("/execute/advanced/"))) {
+                    final String saffronDatasetName = target.substring("/execute/advanced/".length());
                     BufferedReader r = hsr.getReader();
                     StringBuilder sb = new StringBuilder();
                     try {
@@ -140,24 +141,28 @@ public class Executor extends AbstractHandler {
                     }).start();
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                } else if (target == null || "/execute".equals(target)) {
-                    response.setContentType("text/html");
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/executing.html"));
-                    Writer writer = response.getWriter();
-                    char[] buf = new char[4096];
-                    int i = 0;
-                    while ((i = reader.read(buf)) >= 0) {
-                        writer.write(buf, 0, i);
-                    }
-                } else if ("/execute/status".equals(target)) {
-                    response.setContentType("application/json");
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    baseRequest.setHandled(true);
-                    ObjectMapper mapper = new ObjectMapper();
-                    mapper.writeValue(response.getWriter(), status);
+
                 }
+            } else if (target == null || "/execute".equals(target)) {
+                final String saffronDatasetName = hsr.getParameter("name");
+                response.setContentType("text/html");
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+                FileReader reader = new FileReader(new File("static/executing.html"));
+                Writer writer = new StringWriter();
+                char[] buf = new char[4096];
+                int i = 0;
+                while ((i = reader.read(buf)) >= 0) {
+                    writer.write(buf, 0, i);
+                }
+                response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+            } 
+            if ("/execute/status".equals(target)) {
+                response.setContentType("application/json");
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+                ObjectMapper mapper = new ObjectMapper();
+                mapper.writeValue(response.getWriter(), status);
             }
         } catch (Exception x) {
             x.printStackTrace();
