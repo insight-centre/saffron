@@ -210,7 +210,7 @@ angular.module('app').component('doc', {
 angular.module('app').controller('Breadcrumbs', function($scope,$http) {
    if(topic) {
        $scope.parents = [];
-       $http.get('/parents?topic=' + topic.topic_string).then(function(response) {
+       $http.get('/' + saffronDatasetName + '/parents?topic=' + topic.topic_string).then(function(response) {
            $scope.parents = response.data;
        })
    } 
