@@ -59,6 +59,10 @@ public class Launcher {
             // This is the path on the server
             // This is the local directory that is used to 
             resourceHandler.setResourceBase("static");
+            if(!new File("static/index.html").exists()) {
+                System.err.println("No static folder, please run the command in the right folder.");
+                System.exit(-1);
+            }
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory);
