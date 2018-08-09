@@ -30,7 +30,6 @@ public class Welcome extends AbstractHandler {
 
     private static boolean advanced(HttpServletRequest request) {
         String paramString = request.getParameter("advanced");
-        System.err.println(paramString);
         return paramString != null;
     }
 
@@ -86,7 +85,6 @@ public class Welcome extends AbstractHandler {
                 List<FileItem> items = upload.parseRequest(request);
                 String saffronDatasetName = null;
                 for (FileItem fi : items) {
-                    System.err.println(fi);
                     if (fi.isFormField() && "saffronDatasetName".equals(fi.getFieldName())) {
                         saffronDatasetName = saffronDatasetName(fi.getString(), baseRequest, request, response);
                     }
