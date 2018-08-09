@@ -1,7 +1,5 @@
 package org.insightcentre.nlp.saffron.config;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.io.File;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**

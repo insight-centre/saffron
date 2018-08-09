@@ -30,9 +30,9 @@ public class TermExtractionConfiguration {
     /** The corpus  to use (path to this file) */
     public SaffronPath corpus;
     /** The info measure to use */
-    public String infoMeasure;
+    //public String infoMeasure;
     /** The path to the word2vec model */
-    public String w2vmodelPath;
+    //public String w2vmodelPath;
     /** The base feature to use */
     public Feature baseFeature = Feature.comboBasic;
     /** The number of threads to use */
