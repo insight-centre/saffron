@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -211,4 +212,25 @@ public class Document {
 
     }
 
+    /**
+     * Return a copy of this document focusing only on a single term
+     *
+     * @param term
+     * @param contextSize
+     * @return
+     */
+    public Document reduceContext(String term, int contextSize) {
+        ArrayList<String> words = new ArrayList<>(Arrays.asList(contents().toLowerCase().split("\\b")));
+        int index = words.indexOf(term);
+        if (index >= 0) {
+            List<String> context = words.subList(Math.max(0, index - contextSize), Math.min(words.size(), index + contextSize));
+            StringBuilder sb = new StringBuilder();
+            for (String c : context) {
+                sb.append(c);
+            }
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, sb.toString());
+        } else {
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, "");
+        }
+    }
 }

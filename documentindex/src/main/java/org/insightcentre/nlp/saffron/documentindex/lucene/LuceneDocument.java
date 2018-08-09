@@ -25,7 +25,7 @@ public class LuceneDocument {
 	public static final String UID_NAME = "uid";
 	public static final String URL = "url";
 	public static final String CONTENTS_NAME = "contents";
-	public static final String SOURCE_FILE = "contents";
+	public static final String SOURCE_FILE = "source_file";
 	public static final String AUTHORS_NAME = "authors";
 	public static final String FULL_NAME = "full_name";
 	public static final String MIME_TYPE = "mime";

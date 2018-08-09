@@ -12,6 +12,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -362,16 +363,30 @@ public class Browser extends AbstractHandler {
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
                 } else if("/search/".equals(target)) {
+                     response.setContentType("text/html");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    FileReader reader = new FileReader(new File("static/search.html"));
+                    Writer writer = new StringWriter();
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
+                    }
+                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+                } else if("/search_results".equals(target)) {
                     String queryTerm = request.getParameter("query");
                     if(queryTerm != null) {
                         try {
-                            Iterable<Document> docs = saffron.getSearcher().search(queryTerm);
-                            response.setContentType("text/plain");
+                            Iterable<Document> docIterable = saffron.getSearcher().search(queryTerm);
+                            ArrayList<Document> docs = new ArrayList<>();
+                            for(Document doc : docIterable) {
+                                docs.add(doc.reduceContext(queryTerm, 20));
+                            }
+                            response.setContentType("application/json");
                             response.setStatus(HttpServletResponse.SC_OK);
                             PrintWriter out = response.getWriter();
-                            for(Document doc : docs) {
-                                out.println(doc.id);
-                            }
+                            mapper.writeValue(out, docs);
                             baseRequest.setHandled(true);
                         } catch(IOException x) {
                             x.printStackTrace();

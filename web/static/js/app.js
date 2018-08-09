@@ -237,3 +237,17 @@ angular.module('app').component('childtopics', {
         });
     }
 });
+
+angular.module('app').component('searchresults', {
+    templateUrl: '/search-results.html',
+    controller: function ($http,$sce) {
+        var ctrl = this;
+        ctrl.title = "Child topics";
+        $http.get('/' + saffronDatasetName + '/search_results?query=' + searchQuery).then(function (response) {
+            ctrl.results = response.data;
+            for(i in ctrl.results) {
+                ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
+            }
+        });
+    }
+});
