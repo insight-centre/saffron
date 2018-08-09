@@ -9,11 +9,6 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Function to quit on error
 die() { echo "$@" 1>&2 ; exit 1; }
 
-if [ -z $1 ]
-then
-    die "Usage\n\t./saffron-web.sh data-dir/"
-fi
-
 cd $DIR/web
 export SAFFRON_HOME=$DIR
-mvn -q exec:java -f pom.xml -Dexec.args="-d $1"
+mvn -q exec:java -f pom.xml -Dexec.args="-d $@"
