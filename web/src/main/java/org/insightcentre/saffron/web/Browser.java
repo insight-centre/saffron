@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.nio.file.Files;
@@ -360,6 +361,22 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+                } else if("/search/".equals(target)) {
+                    String queryTerm = request.getParameter("query");
+                    if(queryTerm != null) {
+                        try {
+                            Iterable<Document> docs = saffron.getSearcher().search(queryTerm);
+                            response.setContentType("text/plain");
+                            response.setStatus(HttpServletResponse.SC_OK);
+                            PrintWriter out = response.getWriter();
+                            for(Document doc : docs) {
+                                out.println(doc.id);
+                            }
+                            baseRequest.setHandled(true);
+                        } catch(IOException x) {
+                            x.printStackTrace();
+                        }
+                    }
                 }
 
             }

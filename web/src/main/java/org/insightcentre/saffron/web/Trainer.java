@@ -51,10 +51,10 @@ public class Trainer extends AbstractHandler {
         this.directory = directory;
         this.status = new Executor.Status();
         try {
-            this.defaultConfig = new ObjectMapper().readValue(new File("../models/config.json"), Configuration.class);
+            this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
         } catch (IOException x) {
             this.defaultConfig = new Configuration();
-            System.err.println("Could not load config.json in models folder... using default configuration");
+            System.err.println("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");
         }
     }
 

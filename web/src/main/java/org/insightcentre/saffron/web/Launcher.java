@@ -45,7 +45,7 @@ public class Launcher {
             File directory = (File) os.valueOf("d");
             if (directory == null) {
                 // TODO: Change this
-                directory = new File(".");
+                directory = new File("data");
                 //badOptions(p, "The directory was not specified");
                 //return;
             } else if (directory.exists() && !directory.isDirectory()) {

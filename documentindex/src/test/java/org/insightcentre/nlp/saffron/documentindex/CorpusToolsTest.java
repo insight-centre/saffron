@@ -84,7 +84,7 @@ public class CorpusToolsTest {
      * Test of fromZIP method, of class CorpusTools.
      */
     @Test
-    public void testFromZIP() {
+    public void testFromZIP() throws IOException {
         System.out.println("fromZIP");
         File folder = new File("src/test/resources/corpus.zip");
         Corpus result = CorpusTools.fromZIP(folder);
@@ -103,7 +103,7 @@ public class CorpusToolsTest {
      * Test of fromTarball method, of class CorpusTools.
      */
     @Test
-    public void testFromTarball() {
+    public void testFromTarball() throws IOException {
         System.out.println("fromTarball");
         File folder = new File("src/test/resources/corpus.tar.gz");
         Corpus result = CorpusTools.fromTarball(folder);

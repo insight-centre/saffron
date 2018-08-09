@@ -109,6 +109,11 @@ public class TermExtractionTest {
             }
 
             @Override
+            public Iterable<Document> search(String searchTerm) throws SearchException {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
             public void close() throws IOException {
             }
         };

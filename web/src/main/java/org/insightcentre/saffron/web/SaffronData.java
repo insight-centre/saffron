@@ -23,6 +23,8 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web
@@ -47,6 +49,7 @@ public class SaffronData {
     private HashMap<String, List<Document>> corpusByAuthor;
     private HashMap<String, Author> authors;
     private HashMap<String, IntList> taxoMap;
+    private DocumentSearcher searcher;
 
     public Taxonomy getTaxonomy() {
         return taxonomy;
@@ -340,12 +343,12 @@ public class SaffronData {
             throw new FileNotFoundException("Could not find corpus.json");
         }
 
-        saffron.setCorpus((Corpus) mapper.readValue(corpusFile, IndexedCorpus.class));
+        saffron.setCorpus(mapper.readValue(corpusFile, IndexedCorpus.class));
 
         return saffron;
     }
 
-    public void setCorpus(Corpus corpus) {
+    public void setCorpus(IndexedCorpus corpus) {
         this.corpus = new HashMap<>();
         this.corpusByAuthor = new HashMap<>();
         this.authors = new HashMap<>();
@@ -361,7 +364,18 @@ public class SaffronData {
                 }
             }
         }
+        try {
+            this.searcher = DocumentSearcherFactory.loadSearcher(corpus, corpus.getIndex());
+        } catch(IOException x) {
+            System.err.println("Failed to load Lucene interface: " + x.getMessage());
+        }
     }
+
+    public DocumentSearcher getSearcher() {
+        return searcher;
+    }
+    
+    
 
     public List<Document> getDocsByAuthor(String authorId) {
         List<Document> docs = corpusByAuthor.get(authorId);

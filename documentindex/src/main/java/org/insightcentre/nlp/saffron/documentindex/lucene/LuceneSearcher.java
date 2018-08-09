@@ -5,19 +5,25 @@ import org.insightcentre.nlp.saffron.data.index.SearchException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.Version;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 
@@ -28,11 +34,12 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.saffron.data.Document.Loader {
 
     private final IndexSearcher occurrence_searcher;
+    private final Analyzer analyzer;
 
     public LuceneSearcher(Directory directory, Analyzer analyzer) throws IOException {
         DirectoryReader reader = DirectoryReader.open(directory);
         occurrence_searcher = new IndexSearcher(reader);
-
+        this.analyzer = analyzer;
     }
 
     @Override
@@ -87,15 +94,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
                     throw new RuntimeException(ex);
                 }
                 if (d != null) {
-                    data = new org.insightcentre.nlp.saffron.data.Document(new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
-                            d.get(LuceneDocument.UID_NAME),
-                            docURL(d),
-                            d.get(LuceneDocument.FULL_NAME),
-                            d.get(LuceneDocument.MIME_TYPE),
-                            LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)),
-                            LuceneDocument.unmkMetadata(d.get(LuceneDocument.METADATA)),
-                            d.get(LuceneDocument.CONTENTS_NAME)
-                    );
+                    data = fromLucene(d);
                     i++;
                     return;
                 }
@@ -104,14 +103,6 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
             data = null;
         }
 
-        private static URL docURL(Document d) {
-            try {
-                String url = d.get(LuceneDocument.URL);
-                return url == null || url.equals("") ? null : new URL(url);
-            } catch(MalformedURLException x) {
-                throw new RuntimeException(x);
-            }
-        }
 
         @Override
         public boolean hasNext() {
@@ -143,4 +134,39 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
         };
     }
 
+    @Override
+    public Iterable<org.insightcentre.nlp.saffron.data.Document> search(String searchTerm) throws SearchException {
+        try {        
+            Query query = new QueryParser(Version.LUCENE_44, LuceneDocument.CONTENTS_NAME, analyzer).parse(searchTerm);
+            TopDocs td = occurrence_searcher.search(query, 100);
+            List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<>();
+            for(int i = 0; i < td.totalHits; i++) {
+                Document doc = occurrence_searcher.getIndexReader().document(td.scoreDocs[i].doc);
+                docs.add(fromLucene(doc));
+            }
+            return docs;
+        } catch(IOException|ParseException x) {
+            throw new RuntimeException(x);
+        }
+    }
+    
+    private static org.insightcentre.nlp.saffron.data.Document fromLucene(Document d) {
+         return new org.insightcentre.nlp.saffron.data.Document(new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
+                            d.get(LuceneDocument.UID_NAME),
+                            docURL(d),
+                            d.get(LuceneDocument.FULL_NAME),
+                            d.get(LuceneDocument.MIME_TYPE),
+                            LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)),
+                            LuceneDocument.unmkMetadata(d.get(LuceneDocument.METADATA)),
+                            d.get(LuceneDocument.CONTENTS_NAME));
+    }
+    
+        private static URL docURL(Document d) {
+            try {
+                String url = d.get(LuceneDocument.URL);
+                return url == null || url.equals("") ? null : new URL(url);
+            } catch(MalformedURLException x) {
+                throw new RuntimeException(x);
+            }
+        }
 }

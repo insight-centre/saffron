@@ -73,10 +73,10 @@ public class Executor extends AbstractHandler {
         this.parentDirectory = directory;
         this.status = new Status();
         try {
-            this.defaultConfig = new ObjectMapper().readValue(new File("../models/config.json"), Configuration.class);
+            this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
         } catch (IOException x) {
             this.defaultConfig = new Configuration();
-            System.err.println("Could not load config.json in models folder... using default configuration");
+            System.err.println("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");
         }
 
     }
@@ -179,9 +179,9 @@ public class Executor extends AbstractHandler {
                 try {
                     final Corpus corpus;
                     if (tmpFile.getName().endsWith(".tgz") || tmpFile.getName().endsWith(".tar.gz")) {
-                        corpus = CorpusTools.fromTarball(tmpFile);
+                        corpus = CorpusTools.fromTarball(tmpFile, new File(new File(parentDirectory, saffronDatasetName), "docs"));
                     } else {
-                        corpus = CorpusTools.fromZIP(tmpFile);
+                        corpus = CorpusTools.fromZIP(tmpFile, new File(new File(parentDirectory, saffronDatasetName), "docs"));
                     }
                     if (advanced) {
                         Executor.this.corpus = corpus;

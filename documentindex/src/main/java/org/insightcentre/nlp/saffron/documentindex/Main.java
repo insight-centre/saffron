@@ -68,7 +68,7 @@ public class Main {
                 if(outputFile == null) {
                     badOptions(p, "Corpus file is a ZIP but output file not specified");
                 }
-                corpus = CorpusTools.fromZIP(corpusFile);
+                corpus = CorpusTools.fromZIP(corpusFile, new File(outputFile.getParent(), "docs"));
                 mapper.writeValue(outputFile, toIndexed(corpus, SaffronPath.fromFile(indexFile)));
              } else if(corpusFile.getName().endsWith(".tar.gz") || corpusFile.getName().endsWith(".tgz")) {
                 if(indexFile == null) {
@@ -77,7 +77,7 @@ public class Main {
                 if(outputFile == null) {
                     badOptions(p, "Corpus file is a ZIP but output file not specified");
                 }
-                corpus = CorpusTools.fromTarball(corpusFile);
+                corpus = CorpusTools.fromTarball(corpusFile, new File(outputFile.getParent(), "docs"));
                 mapper.writeValue(outputFile, toIndexed(corpus, SaffronPath.fromFile(indexFile)));
                  
              } else {

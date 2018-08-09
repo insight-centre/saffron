@@ -89,5 +89,13 @@ public interface DocumentSearcher extends Closeable {
      * @throws SearchException  If an error occurs when searching
      */
     public Iterable<Document> allDocuments() throws SearchException;
+    
+    /**
+     * Search document for a given term
+     * @param searchTerm The term to search
+     * @return An iterable covering all documents containing the term
+     * @throws SearchException If an error occurs when searching
+     */
+    public Iterable<Document> search(String searchTerm) throws SearchException;
 
 }

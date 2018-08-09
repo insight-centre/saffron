@@ -12,6 +12,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  * A utility for making Lucene Documents.
@@ -75,6 +76,7 @@ public class LuceneDocument {
             throw new RuntimeException(ex);
         }
     }
+
 
 
 
