@@ -73,6 +73,9 @@ public class Launcher {
             server.setHandler(handlers);
 
             server.start();
+            // Get current size of heap in bytes
+            long heapSize = Runtime.getRuntime().maxMemory(); 
+            System.err.println(String.format("System memory %d MB", heapSize / 1024 / 1024));
             System.err.println(String.format("Started server at http://localhost:%d/", port));
             server.join();
         } catch (Exception x) {
