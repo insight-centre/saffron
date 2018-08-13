@@ -261,7 +261,19 @@ public class Executor extends AbstractHandler {
         }).start();
     }
 
+    private void scaleThreads(Configuration config) {
+            long heapSize = Runtime.getRuntime().maxMemory(); 
+        if((long)config.termExtraction.numThreads * 1024 * 1024 * 400 >  heapSize) {
+            int numThreads = (int)Math.ceil((double)heapSize / 1024 / 1024 / 400);
+            System.err.println(String.format("System memory %d MB", heapSize / 1024 / 1024));
+            System.err.println(String.format("Insufficient memory for %d threads, reducing to %d", config.termExtraction.numThreads, numThreads));
+            System.err.println("Try setting the -Xmx flag to the Java Runtime to improve performance");
+            config.termExtraction.numThreads = numThreads;
+        }
+    }
+    
     void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName) throws IOException {
+        scaleThreads(config);
         Status _status = statuses.get(saffronDatasetName);
         _status.advanced = false;
         ObjectMapper mapper = new ObjectMapper();

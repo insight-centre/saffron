@@ -2,6 +2,7 @@ package org.insightcentre.saffron.web;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.eclipse.jetty.server.Handler;
@@ -74,9 +75,11 @@ public class Launcher {
 
             server.start();
             // Get current size of heap in bytes
-            long heapSize = Runtime.getRuntime().maxMemory(); 
-            System.err.println(String.format("System memory %d MB", heapSize / 1024 / 1024));
-            System.err.println(String.format("Started server at http://localhost:%d/", port));
+            String hostname = InetAddress.getLocalHost().getHostName();
+            if(hostname == null) {
+                hostname = "localhost";
+            }
+            System.err.println(String.format("Started server at http://%s:%d/", hostname, port));
             server.join();
         } catch (Exception x) {
             x.printStackTrace();

@@ -165,7 +165,7 @@ public class CorpusTools {
         if (!zipFile.exists() && zipFile.isDirectory()) {
             throw new IllegalArgumentException(zipFile.getName() + " does not exist or is a folder");
         }
-        if (targetDir != null && !targetDir.mkdirs()) {
+        if (targetDir != null && !targetDir.mkdirs() && !targetDir.isDirectory()) {
             throw new IllegalArgumentException(targetDir.getName() + " could not be created as a file");
         }
         return new ZIPCorpus(zipFile, targetDir);
@@ -214,6 +214,9 @@ public class CorpusTools {
                                         while (file.exists()) {
                                             file = new File(targetDir, ze.getName() + new Random().nextInt(10000));
                                         }
+                                        if(file.getParentFile() != null) {
+                                            file.getParentFile().mkdirs();
+                                        } 
                                     } else {
                                         file = File.createTempFile(ze.getName(), "");
                                         file.deleteOnExit();
@@ -271,7 +274,7 @@ public class CorpusTools {
         if (!zipFile.exists() && zipFile.isDirectory()) {
             throw new IllegalArgumentException(zipFile.getName() + " does not exist or is a folder");
         }
-        if (targetDir != null && !targetDir.mkdirs()) {
+        if (targetDir != null && !targetDir.mkdirs() && !targetDir.isDirectory()) {
             throw new IllegalArgumentException(targetDir.getName() + " could not be created as a file");
         }
         return new TarballCorpus(zipFile, targetDir);
@@ -334,6 +337,9 @@ public class CorpusTools {
                                         while (file.exists()) {
                                             file = new File(targetDir, tae.getName() + new Random().nextInt(10000));
                                         }
+                                        if(file.getParentFile() != null) {
+                                            file.getParentFile().mkdirs();
+                                        } 
                                     } else {
                                         file = File.createTempFile(tae.getName(), "");
                                         file.deleteOnExit();
