@@ -162,11 +162,16 @@ public class Executor extends AbstractHandler {
             }
             if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
-                response.setContentType("application/json");
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-                ObjectMapper mapper = new ObjectMapper();
-                mapper.writeValue(response.getWriter(), statuses.get(saffronDatasetName));
+                if(statuses.containsKey(saffronDatasetName)) {
+                    response.setContentType("application/json");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    ObjectMapper mapper = new ObjectMapper();
+                    mapper.writeValue(response.getWriter(), statuses.get(saffronDatasetName));
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND, "No executing run: " + saffronDatasetName);
+                    baseRequest.setHandled(true);
+                }
             }
         } catch (Exception x) {
             x.printStackTrace();
