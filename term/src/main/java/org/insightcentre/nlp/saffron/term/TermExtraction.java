@@ -151,7 +151,8 @@ public class TermExtraction {
             CasingStats casing)
             throws SearchException, InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
-                TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000));
+                TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
+                new ThreadPoolExecutor.CallerRunsPolicy());
         final FrequencyStats summary = new FrequencyStats();
 
         int docCount = 0;
