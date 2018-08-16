@@ -40,6 +40,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 
 /**
  *
@@ -174,11 +175,11 @@ public class TermExtraction {
 
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
-            final Lazy<InclusionStats> incl) {
+            final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
             scores.put(topic,
-                    Features.calcFeature(feature, topic, stats, ref, incl));
+                    Features.calcFeature(feature, topic, stats, ref, incl, ntm));
         }
         return scores;
 
@@ -193,7 +194,7 @@ public class TermExtraction {
         });
     }
 
-    public Result extractTopics(DocumentSearcher searcher) {
+    public Result extractTopics(final DocumentSearcher searcher) {
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
@@ -222,11 +223,23 @@ public class TermExtraction {
                     return new InclusionStats(freqs.docFrequency);
                 }
             };
+            Lazy<NovelTopicModel> ntm = new Lazy<NovelTopicModel>() {
+
+                @Override
+                protected NovelTopicModel init() {
+                    try {
+                        return NovelTopicModel.initialize(searcher, tokenizer);
+                    } catch(IOException|SearchException x) {
+                        x.printStackTrace();
+                        return null;
+                    }
+                }
+            };
             List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
             switch (method) {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(topics, features.get(0),
-                            freqs, ref, incl);
+                            freqs, ref, incl, ntm);
                     rankTopicsByFeat(topics, scores);
                     if (topics.size() > maxTopics) {
                         topics = topics.subList(0, maxTopics);
@@ -237,7 +250,7 @@ public class TermExtraction {
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
-                                freqs, ref, incl);
+                                freqs, ref, incl, ntm);
                         rankTopicsByFeat(topics, scores2);
                         int i = 1;
                         for (String topic : topics) {
