@@ -67,7 +67,7 @@ public class Executor extends AbstractHandler {
     private final Map<String, Status> statuses;
     private Corpus corpus;
     private Configuration defaultConfig;
-    private Configuration config;
+    //private Configuration config;
 
     public Executor(Map<String, SaffronData> data, File directory) {
         this.data = data;
@@ -107,7 +107,7 @@ public class Executor extends AbstractHandler {
         try {
             if ("/execute".equals(target)) {
                 String name = hsr.getParameter("name");
-                if (corpus != null && config == null && statuses.containsKey(name) && statuses.get(name).advanced) {
+                if (corpus != null && statuses.containsKey(name) && statuses.get(name).advanced) {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -129,16 +129,17 @@ public class Executor extends AbstractHandler {
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
                 }
-            } else if (corpus != null && config == null && (target.startsWith("/execute/advanced/"))) {
+            } else if (corpus != null && (target.startsWith("/execute/advanced/"))) {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
                 BufferedReader r = hsr.getReader();
                 StringBuilder sb = new StringBuilder();
+                final Configuration newConfig;
                 try {
                     String line;
                     while ((line = r.readLine()) != null) {
                         sb.append(line).append("\n");
                     }
-                    this.config = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+                    newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
                 } catch (Exception x) {
                     x.printStackTrace();
                     return;
@@ -147,7 +148,7 @@ public class Executor extends AbstractHandler {
                     @Override
                     public void run() {
                         try {
-                            execute(corpus, config, data.get(saffronDatasetName), saffronDatasetName);
+                            execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName);
                         } catch (IOException x) {
                             Status _status = statuses.get(saffronDatasetName);
                             _status.failed = true;

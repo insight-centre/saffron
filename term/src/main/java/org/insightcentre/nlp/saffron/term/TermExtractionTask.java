@@ -33,7 +33,7 @@ public class TermExtractionTask implements Runnable {
     private final ConcurrentLinkedQueue<DocumentTopic> docTopics;
     private final CasingStats casing;
 
-    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger, 
+    public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger,
             ThreadLocal<Lemmatizer> lemmatizer,
             Tokenizer tokenizer,
             Set<String> stopWords, int ngramMin, int ngramMax,
@@ -58,12 +58,12 @@ public class TermExtractionTask implements Runnable {
         this.docTopics = docTopics;
         this.casing = casing;
     }
-    
+
     @Override
     public void run() {
         try {
-            final HashMap<String, DocumentTopic> docTopicMap = docTopics != null 
-                    ? new HashMap<String, DocumentTopic>() 
+            final HashMap<String, DocumentTopic> docTopicMap = docTopics != null
+                    ? new HashMap<String, DocumentTopic>()
                     : null;
             String contents = doc.contents();
             System.err.println(doc.id);
@@ -84,13 +84,13 @@ public class TermExtractionTask implements Runnable {
                             if (!stopWords.contains(tokens[j])) {
                                 nonStop = true;
                             }
-                            if(headTokenFinal) {
+                            if (headTokenFinal) {
                                 if (endTokens.contains(tags[j]) && nonStop) {
-                                    if(lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
+                                    if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
-                                        if(!lemmas[j].equals("O")) {
-                                            tokens2[tokens2.length-1] = lemmas[j];
+                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
+                                        if (!lemmas[j].equals("O")) {
+                                            tokens2[tokens2.length - 1] = lemmas[j];
                                         }
                                         processTerm(tokens2, 0, j - i, docTopicMap,
                                                 localCasing);
@@ -103,14 +103,14 @@ public class TermExtractionTask implements Runnable {
                                     break;
                                 }
                             } else {
-                                if(!endTokens.contains(tags[i])) {
+                                if (!endTokens.contains(tags[i])) {
                                     break;
                                 }
                                 if (preceedingTokens.contains(tags[j]) && nonStop && j - i + 1 >= ngramMin) {
-                                    if(lemmatizer != null && lemmatizer.get() != null) {
+                                    if (lemmatizer != null && lemmatizer.get() != null) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j+1);
-                                        if(!lemmas[i].equals("O")) {
+                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
+                                        if (!lemmas[i].equals("O")) {
                                             tokens2[0] = lemmas[i];
                                         }
                                         processTerm(tokens2, 0, j - i, docTopicMap,
@@ -120,7 +120,7 @@ public class TermExtractionTask implements Runnable {
                                                 localCasing);
                                     }
                                 }
-                                if(!preceedingTokens.contains(tags[j]) 
+                                if (!preceedingTokens.contains(tags[j])
                                         && (i == j || !middleTokens.contains(tags[j]))) {
                                     break;
                                 }
@@ -136,13 +136,14 @@ public class TermExtractionTask implements Runnable {
             synchronized (summary) {
                 summary.add(stats);
             }
-            if(casing != null) {
-                synchronized(casing) {
+            if (casing != null) {
+                synchronized (casing) {
                     casing.add(localCasing);
                 }
             }
-            if(docTopicMap != null)
+            if (docTopicMap != null) {
                 docTopics.addAll(docTopicMap.values());
+            }
         } catch (Exception x) {
             x.printStackTrace();
         }
@@ -163,24 +164,26 @@ public class TermExtractionTask implements Runnable {
     private boolean isValidTerm(String term) {
         return term.matches("\\p{Alpha}.*\\p{Alpha}.*\\p{Alpha}");
     }
-    
-    private void processTerm(String[] tokens, int i, int j, 
+
+    private void processTerm(String[] tokens, int i, int j,
             HashMap<String, DocumentTopic> dts,
             CasingStats localCasing) {
-        String termStrOrig = join(tokens, i, j);
-        String termStr = termStrOrig.toLowerCase();
-        if(isValidTerm(termStr)) {
-            stats.docFrequency.put(termStr, 1);
-            stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
-            if(dts != null) {
-                dts.put(termStr, new DocumentTopic(doc.id, termStr, 
-                        stats.termFrequency.getInt(termStr), null, null, null));
-            }
-            if(j - i == 0) {
-                localCasing.addCasing(termStrOrig);
+        if (j - i >= this.ngramMin - 1) {
+            String termStrOrig = join(tokens, i, j);
+            String termStr = termStrOrig.toLowerCase();
+            if (isValidTerm(termStr)) {
+                stats.docFrequency.put(termStr, 1);
+                stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
+                if (dts != null) {
+                    dts.put(termStr, new DocumentTopic(doc.id, termStr,
+                            stats.termFrequency.getInt(termStr), null, null, null));
+                }
+                if (j - i == 0) {
+                    localCasing.addCasing(termStrOrig);
+                }
             }
         }
-        
+
     }
 
 }
