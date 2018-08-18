@@ -26,7 +26,7 @@ public class TermExtractionConfiguration {
     /** The Weighting Method to use */
     public WeightingMethod method = WeightingMethod.one;
     /** The features to use */
-    public List<Feature> features = java.util.Arrays.asList(Feature.novelTopicModel, Feature.cValue, Feature.relevance, Feature.linkProbability, Feature.domainCoherence, Feature.keyConceptRelatedness);
+    public List<Feature> features = java.util.Arrays.asList(Feature.comboBasic, Feature.weirdness, Feature.totalTfIdf, Feature.cValue, Feature.residualIdf);
     /** The corpus  to use (path to this file) */
     public SaffronPath corpus;
     /** The info measure to use */
@@ -61,7 +61,7 @@ public class TermExtractionConfiguration {
     
     /** The features for topic extraction */
     public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, domainCoherence, domainPertinence, novelTopicModel, linkProbability, keyConceptRelatedness
+        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ novelTopicModel, /*linkProbability, keyConceptRelatedness*/
     };
     
     /** The default English list of stopwords */
