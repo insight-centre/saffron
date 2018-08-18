@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.term;
 
 import java.util.Set;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.term.domain.DomainStats;
 import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 
 /**
@@ -13,7 +14,8 @@ public class Features {
     public static double calcFeature(
             TermExtractionConfiguration.Feature feat,
             String term, FrequencyStats stats, Lazy<FrequencyStats> ref,
-            Lazy<InclusionStats> incl, Lazy<NovelTopicModel> topicModel) {
+            Lazy<InclusionStats> incl, Lazy<NovelTopicModel> topicModel,
+            Lazy<DomainStats> domain) {
         switch (feat) {
             case weirdness:
                 return weirdness(term, stats, ref.get());
@@ -33,6 +35,8 @@ public class Features {
                 return totalTFIDF(term, stats);
             case novelTopicModel:
                 return topicModel.get().novelTopicModel(term, stats);
+            case postRankDC:
+                return domain.get().score(term);
             default:
                 throw new UnsupportedOperationException("Feature not supported: " + feat);
         }

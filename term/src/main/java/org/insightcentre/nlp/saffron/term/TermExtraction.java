@@ -40,6 +40,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.term.domain.DomainStats;
 import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 
 /**
@@ -61,6 +62,7 @@ public class TermExtraction {
     private final List<TermExtractionConfiguration.Feature> features;
     private final File refFile;
     private final int maxTopics;
+    private final Feature keyFeature;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer) {
         this.nThreads = nThreads;
@@ -81,6 +83,7 @@ public class TermExtraction {
         this.features = Arrays.asList(TermExtractionConfiguration.Feature.weirdness);
         this.refFile = null;
         this.maxTopics = 100;
+        this.keyFeature = Feature.comboBasic;
     }
 
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
@@ -135,6 +138,7 @@ public class TermExtraction {
         assert (!this.features.isEmpty());
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
         this.maxTopics = config.maxTopics;
+        this.keyFeature = config.baseFeature;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
@@ -175,11 +179,12 @@ public class TermExtraction {
 
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
-            final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm) {
+            final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
+            final Lazy<DomainStats> domain) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
             scores.put(topic,
-                    Features.calcFeature(feature, topic, stats, ref, incl, ntm));
+                    Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
         }
         return scores;
 
@@ -217,7 +222,7 @@ public class TermExtraction {
                     }
                 }
             };
-            Lazy<InclusionStats> incl = new Lazy<InclusionStats>() {
+            final Lazy<InclusionStats> incl = new Lazy<InclusionStats>() {
                 @Override
                 protected InclusionStats init() {
                     return new InclusionStats(freqs.docFrequency);
@@ -235,11 +240,23 @@ public class TermExtraction {
                     }
                 }
             };
+            Lazy<DomainStats> domain = new Lazy<DomainStats>() {
+
+                @Override
+                protected DomainStats init() {
+                    try {
+                        return DomainStats.initialize(searcher, nThreads, tokenizer, ngramMax, maxDocs, freqs, incl.get());
+                    } catch(SearchException x) {
+                        x.printStackTrace();
+                        return null;
+                    }
+                }
+            };
             List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
             switch (method) {
                 case one:
-                    Object2DoubleMap<String> scores = scoreByFeat(topics, features.get(0),
-                            freqs, ref, incl, ntm);
+                    Object2DoubleMap<String> scores = scoreByFeat(topics, keyFeature,
+                            freqs, ref, incl, ntm, domain);
                     rankTopicsByFeat(topics, scores);
                     if (topics.size() > maxTopics) {
                         topics = topics.subList(0, maxTopics);
@@ -250,7 +267,7 @@ public class TermExtraction {
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
-                                freqs, ref, incl, ntm);
+                                freqs, ref, incl, ntm, domain);
                         rankTopicsByFeat(topics, scores2);
                         int i = 1;
                         for (String topic : topics) {

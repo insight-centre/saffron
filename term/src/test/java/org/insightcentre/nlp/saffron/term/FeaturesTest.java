@@ -80,7 +80,7 @@ public class FeaturesTest {
             }
         };
         double expResult = 1.017049;
-        double result = Features.calcFeature(feat, term, stats, ref, incl, null);
+        double result = Features.calcFeature(feat, term, stats, ref, incl, null, null);
         assertEquals(expResult, result, 0.00001);
     }
 

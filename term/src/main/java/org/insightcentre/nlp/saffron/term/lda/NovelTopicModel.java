@@ -1,5 +1,8 @@
 package org.insightcentre.nlp.saffron.term.lda;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.io.IOException;
 import opennlp.tools.tokenize.Tokenizer;
@@ -19,10 +22,11 @@ public class NovelTopicModel {
     public static final int K = 20;
     public static final double alpha = 0.1, beta = 0.1;
     public static final int iterations = 100;
-    
+
     private final double[][] P_wk;
     private final Object2IntMap<String> dictionary;
     private double minTopicFreq;
+    private static boolean verbose = false;
 
     public NovelTopicModel(double[][] P_wk, Object2IntMap<String> dictionary, double maxTopicFreq) {
         this.P_wk = P_wk;
@@ -33,7 +37,10 @@ public class NovelTopicModel {
    public static NovelTopicModel initialize(DocumentSearcher searcher, Tokenizer tokenizer) throws IOException, SearchException {
        CorpusProcessor.Result r = CorpusProcessor.convert(searcher, tokenizer);
        LDA lda = new LDA(r.buffer, K, r.docCount, r.dictionary.size(), alpha, beta);
-       lda.train(iterations);
+       lda.train(iterations, verbose);
+       if(verbose) {
+            lda.printAssignment(reverseDictionary(r.dictionary));
+       }
        final double[][] P_wk = new double[r.dictionary.size()][K];
        for(int w = 0; w < r.dictionary.size(); w++) {
            for(int k = 0; k < K; k++) {
@@ -66,4 +73,14 @@ public class NovelTopicModel {
        
        return tf * score;
    }
+   
+   
+    private static Int2ObjectMap<String> reverseDictionary(Object2IntMap<String> dictionary) {
+        Int2ObjectMap<String> revDic = new Int2ObjectArrayMap<>();
+        for(Object2IntMap.Entry<String> e : dictionary.object2IntEntrySet()) {
+            revDic.put(e.getIntValue(), e.getKey());
+        }
+        return revDic;
+    }
+    
 }

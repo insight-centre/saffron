@@ -133,7 +133,7 @@ public class DomainStatsTest {
         FrequencyStats stats = stats();
         InclusionStats incl = new InclusionStats(stats.termFrequency);
         DomainStats instance = DomainStats.initialize(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl);
-        double expResult = 0.3023;
+        double expResult = -0.628;
         double result = instance.score(term);
         assertEquals(expResult, result, 0.001);
     }

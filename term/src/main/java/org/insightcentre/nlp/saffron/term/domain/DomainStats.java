@@ -54,6 +54,7 @@ public class DomainStats {
             FrequencyStats stats, InclusionStats incl) throws SearchException {
         Map<String, Object2IntMap<String>> totalFreqs = totalFreqs(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl);
         Set<String> words = topWords(stats, totalFreqs);
+        System.err.println(words);
         filterByWords(words, totalFreqs);
         Object2IntMap<String> wordFreq = new Object2IntLinkedOpenHashMap<>();
         long N = 0;
@@ -145,7 +146,8 @@ public class DomainStats {
         return pmis;
     }
 
-    public double score(String term) {
+    public double score(String _term) {
+        String term = _term.toLowerCase();
         double pmi = 0.0;
         if (totalFreqs.containsKey(term)) {
             for (Object2IntMap.Entry<String> e2 : totalFreqs.get(term).object2IntEntrySet()) {
@@ -153,8 +155,12 @@ public class DomainStats {
                 double ftw = (double) e2.getIntValue();
                 double fw = (double) wordFreq.getInt(word);
                 double ft = (double) freqs.termFrequency.getInt(term);
-                pmi += (Math.log(ftw / ft / fw) + Math.log(N)) / (Math.log(ftw) - Math.log(N));
+                pmi = (Math.log(ftw / ft / fw) + Math.log(N));// / (Math.log(ftw) - Math.log(N));
+                //System.err.println(String.format("%s (near %s) %.4f %.4f %.4f", word, term, ftw, fw, ft));
             }
+            System.err.println(String.format("%s: %.4f", term, pmi));
+        } else {
+            System.err.println("Term not found: " + term);
         }
 
         // We should divide by the size of the term set, however this is not 
@@ -214,7 +220,7 @@ public class DomainStats {
             final Map<String, Object2IntMap<String>> freq = new HashMap<>();
             String contents = doc.contents();
             for (String sentence : contents.split("\n")) {
-                String[] tokens = tokenizer.tokenize(sentence);
+                String[] tokens = tokenizer.tokenize(sentence.toLowerCase());
                 if (tokens.length > 0) {
                     for (int i = 0; i <= tokens.length - maxLength; i++) {
                         for (int j = i + 1; j <= i + maxLength; j++) {

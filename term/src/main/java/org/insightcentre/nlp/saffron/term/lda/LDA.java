@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.term.lda;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -49,7 +50,7 @@ public class LDA {
 
     private static DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
-    public void train(int iterations) {
+    public void train(int iterations, boolean verbose) {
         try {
             System.err.println("Initializing");
             initialize();
@@ -59,6 +60,7 @@ public class LDA {
                 iterate();
                 final long time = System.currentTimeMillis() - begin;
                 final long eta = time * (iterations - i - 1) / 1000;
+                if(verbose)
                 System.err.println("Iteration " + (i + 1) + " ETA " + String.format("%dh%02dm%02ds", eta / 3600, (eta % 3600) / 60, (eta % 60)));
             }
             //System.err.println();
@@ -101,6 +103,21 @@ public class LDA {
             }
         }
     }
+    
+    public void printAssignment(Int2ObjectMap<String> dictionary) throws IOException {
+        corpus.reset();
+        System.out.println("Assignment:");
+        while (corpus.hasNext()) {
+            int w = corpus.getNext();
+            int k = corpus.getNext();
+            if (w == -1) {
+                System.out.println();
+            } else {
+                System.out.print(String.format("%s=%d ", dictionary.getOrDefault(w, "???"), k));
+            }
+        }
+    }
+    
     private final Random random = new Random();
 
     private int sample(int w, int j, int prevK) {
