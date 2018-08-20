@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.data;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -24,7 +25,7 @@ public class Taxonomy {
                     @JsonProperty("children") List<Taxonomy> children) {
         this.root = root;
         this.score = score;
-        this.children = children == null ? new ArrayList<Taxonomy>() : children;
+        this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
 
     public String getRoot() {
@@ -51,6 +52,37 @@ public class Taxonomy {
     } 
     
     /**
+     * Search this taxonomy for a taxonomy with a given root
+     * @param name The name to search for
+     * @return A taxonomy whose root is name or null if no taxonomy is found
+     */
+    public Taxonomy descendent(String name) {
+        if(this.root.equals(name))
+            return this;
+        for(Taxonomy child : children) {
+            Taxonomy d = child.descendent(name);
+            if(d != null)
+                return d;
+        }
+        return null;
+    } 
+    
+ 
+    
+    /**
+     * The size of the taxonomy (number of topics). Note this calculates the size 
+     * and so takes O(N) time!
+     * @return The number of topics in the taxonomy
+     */
+    public int size() {
+        int size = 1;
+        for(Taxonomy t : children) {
+            size += t.size();
+        }
+        return size;
+    }
+    
+    /**
      * Verify if there are no loops in this taxonomy
      * @return true if there are no loops
      */
@@ -73,6 +105,18 @@ public class Taxonomy {
             terms.remove(root);
             return true;
         }
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopy() {
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+            newChildren.add(t.deepCopy());
+        }
+        return new Taxonomy(this.root, this.score, newChildren);
     }
 
     @Override
@@ -108,6 +152,8 @@ public class Taxonomy {
         return true;
     }
 
-    
-
+    @Override
+    public String toString() {
+        return String.format("%s (%.4f) { %s }", root, score, children.toString());
+    }
 }
