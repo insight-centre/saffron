@@ -25,7 +25,8 @@ public class Taxonomy {
                     @JsonProperty("children") List<Taxonomy> children) {
         this.root = root;
         this.score = score;
-        this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
+        this.children = children == null ? new ArrayList<Taxonomy>() : children;
+        //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
 
     public String getRoot() {
