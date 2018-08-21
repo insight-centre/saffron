@@ -7,9 +7,9 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
  */
 public interface TaxonomyScore {
     /**
-     * The score for a given solution
+     * The link scorer for a given solution
      * @param solution The solution
-     * @return 
+     * @return The object that can calculate the change in score
      */
-    double score(Solution solution);
+    TaxonomyLinkScore score(Solution solution);
 }

@@ -18,24 +18,21 @@ public class SumScore implements TaxonomyScore {
     }
     
     @Override
-    public double score(Solution solution) {
-        double score = 0.0;
-        for(Taxonomy t : solution.heads.values()) {
-            score += scoreTaxo(t);
-        }
-        return score;
+    public TaxonomyLinkScore score(Solution solution) {
+        return new SumLinkScore();
     }
     
-    private double scoreTaxo(Taxonomy taxo) {
-        double score = 0.0;
-        for(Taxonomy t2 : taxo.children) {
-            final TaxoLink tl = new TaxoLink(taxo.root, t2.root);
+    private class SumLinkScore implements TaxonomyLinkScore {
+
+        @Override
+        public double deltaScore(TaxoLink tl) {
             if(!scores.containsKey(tl))
-                scores.put(tl, classifier.predict(taxo.root, t2.root));
-            score += scores.getDouble(tl);
-            score += scoreTaxo(t2);
+                scores.put(tl, classifier.predict(tl.top, tl.bottom));
+            return scores.getDouble(tl);
         }
-        return score;
+        
     }
+    
+    
 
 }

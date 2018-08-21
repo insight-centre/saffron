@@ -11,36 +11,34 @@ import org.insightcentre.nlp.saffron.data.Topic;
 
 /**
  * Implements a simple greedy search for the best taxonomy
+ *
  * @author John McCrae
  */
 public class Greedy {
-    
+
     private final TaxonomyScore score;
 
     public Greedy(TaxonomyScore score) {
         this.score = score;
     }
 
-        
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         ArrayList<TaxoLink> candidates = new ArrayList<>();
-        for(String t1 : topicMap.keySet()) {
-            for(String t2 : topicMap.keySet()) {
-                if(!t1.equals(t2))
+        for (String t1 : topicMap.keySet()) {
+            for (String t2 : topicMap.keySet()) {
+                if (!t1.equals(t2)) {
                     candidates.add(new TaxoLink(t1, t2));
-            }       
-        }
-        
-        Solution soln = Solution.empty(topicMap.keySet());
-        while(!soln.isComplete()) {
-            final Object2DoubleMap<TaxoLink> scores = new Object2DoubleOpenHashMap<>();
-            for(TaxoLink candidate : candidates) {
-                Solution soln2 = soln.add(candidate.top, candidate.bottom, 
-                    topicMap.get(candidate.top).score,
-                    topicMap.get(candidate.bottom).score);
-                if(soln2 != null) {
-                    scores.put(candidate, score.score(soln2));
                 }
+            }
+        }
+
+        Solution soln = Solution.empty(topicMap.keySet());
+        SOLN_LOOP:
+        while (!soln.isComplete()) {
+            final Object2DoubleMap<TaxoLink> scores = new Object2DoubleOpenHashMap<>();
+            final TaxonomyLinkScore tls = score.score(soln);
+            for (TaxoLink candidate : candidates) {
+                scores.put(candidate, tls.deltaScore(candidate));
             }
             candidates.sort(new Comparator<TaxoLink>() {
                 @Override
@@ -51,16 +49,20 @@ public class Greedy {
                     return c == 0 ? o1.compareTo(o2) : -c;
                 }
             });
-            TaxoLink candidate = candidates.remove(0);
-            System.err.println(candidate);
-            System.err.println(soln);
-            soln = soln.add(candidate.top, candidate.bottom, 
-                    topicMap.get(candidate.top).score,
-                    topicMap.get(candidate.bottom).score);
-            if(soln == null)
-                throw new RuntimeException("Failed to find solution");
+            while (!candidates.isEmpty()) {
+                TaxoLink candidate = candidates.remove(0);
+                Solution soln2 = soln.add(candidate.top, candidate.bottom,
+                        topicMap.get(candidate.top).score,
+                        topicMap.get(candidate.bottom).score);
+                // soln2 = null means adding this link would create an invalid taxonomy
+                if (soln2 != null) {
+                    soln = soln2;
+                    continue SOLN_LOOP;
+                }
+            }
+            throw new RuntimeException("Failed to find solution");
         }
         return soln.toTaxonomy();
     }
-    
+
 }
