@@ -139,7 +139,7 @@ public class TaxonomyExtractionBenchmark {
             System.err.printf("| F-Measure | %.4f |\n", 
                     s.precision == 0.0 && s.recall == 0.0 ? 0.0 :
                     2.0 * s.recall * s.precision / (s.precision + s.recall));
-            System.err.printf("| F&M       | %.4f |\n", Math.sqrt(s.recall * s.precision));
+            //System.err.printf("| F&M       | %.4f |\n", Math.sqrt(s.recall * s.precision));
         } catch (Exception x) {
             x.printStackTrace();
             System.exit(-1);

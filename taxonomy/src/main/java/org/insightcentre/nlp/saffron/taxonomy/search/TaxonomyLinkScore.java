@@ -6,11 +6,6 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
  * @author John McCrae <john@mccr.ae>
  */
 public interface TaxonomyLinkScore {
-    /**
-     * Calculate the chagne in score of adding a single link
-     * @param taxoLink The taxonomy link to add
-     * @return The change in score
-     */
-    double deltaScore(TaxoLink taxoLink);
+
     
 }

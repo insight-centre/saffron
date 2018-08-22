@@ -23,6 +23,7 @@ public class Greedy {
     }
 
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+        TaxonomyScore score = this.score;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         for (String t1 : topicMap.keySet()) {
             for (String t2 : topicMap.keySet()) {
@@ -36,9 +37,8 @@ public class Greedy {
         SOLN_LOOP:
         while (!soln.isComplete()) {
             final Object2DoubleMap<TaxoLink> scores = new Object2DoubleOpenHashMap<>();
-            final TaxonomyLinkScore tls = score.score(soln);
             for (TaxoLink candidate : candidates) {
-                scores.put(candidate, tls.deltaScore(candidate));
+                scores.put(candidate, score.deltaScore(candidate));
             }
             candidates.sort(new Comparator<TaxoLink>() {
                 @Override
@@ -57,6 +57,7 @@ public class Greedy {
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;
+                    score = score.next(candidate.top, candidate.bottom, soln);
                     continue SOLN_LOOP;
                 }
             }

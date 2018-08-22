@@ -83,7 +83,7 @@ public class TopicExtractionBenchmark {
                 {
                     accepts("o", "The output topic file").withRequiredArg().ofType(File.class);
                     accepts("g", "The gold topic file").withRequiredArg().ofType(File.class);
-                    accepts("r", "Do not limit the system to only the reference translations");
+                    accepts("r", "Do not limit the system to only the reference topics (topics also in gold standard)");
                 }
             };
             final OptionSet os;
