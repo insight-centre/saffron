@@ -5,6 +5,7 @@
  */
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import org.insightcentre.nlp.saffron.taxonomy.metrics.SumScore;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;

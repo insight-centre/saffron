@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;

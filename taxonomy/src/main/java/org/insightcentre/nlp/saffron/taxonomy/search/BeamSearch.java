@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.ArrayList;
 import java.util.Map;
 import org.insightcentre.nlp.saffron.data.Taxonomy;

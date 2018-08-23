@@ -1,8 +1,10 @@
-package org.insightcentre.nlp.saffron.taxonomy.search;
+package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 
 /**
