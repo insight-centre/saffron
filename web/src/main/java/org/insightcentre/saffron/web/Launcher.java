@@ -54,7 +54,7 @@ public class Launcher {
                 return;
             }
 
-            Server server = new Server(8080);
+            Server server = new Server(port);
             ResourceHandler resourceHandler = new ResourceHandler();
 
             // This is the path on the server
