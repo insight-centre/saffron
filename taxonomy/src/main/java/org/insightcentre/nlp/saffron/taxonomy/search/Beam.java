@@ -8,8 +8,8 @@ import java.util.Comparator;
 import java.util.NoSuchElementException;
 
 /**
- * A beam is a heap which will reject values that are over a certain score
- * threshold. This beam is sorted in descending order
+ * A beam is a heap which will reject values when it is full. 
+ * This beam is sorted in descending order
  *
  * @author John McCrae
  * @param <K> The type of object stored in the beam
