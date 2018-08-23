@@ -16,14 +16,14 @@ import org.insightcentre.nlp.saffron.data.Topic;
  */
 public class Greedy {
 
-    private final TaxonomyScore score;
+    private final TaxonomyScore emptyScore;
 
     public Greedy(TaxonomyScore score) {
-        this.score = score;
+        this.emptyScore = score;
     }
 
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
-        TaxonomyScore score = this.score;
+        TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         for (String t1 : topicMap.keySet()) {
             for (String t2 : topicMap.keySet()) {

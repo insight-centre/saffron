@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrays;
 import it.unimi.dsi.fastutil.objects.ObjectHeaps;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 /**
@@ -14,20 +15,20 @@ import java.util.NoSuchElementException;
  * @author John McCrae
  * @param <K> The type of object stored in the beam
  */
-public class Beam<K extends Comparable<K>> {
+public class Beam<K extends Comparable<K>> implements Iterable<K> {
 
     private final int maxSize;
 
     @SuppressWarnings("unchecked")
-    protected transient K[] heap = (K[]) new Comparable[0];
+    private transient K[] heap = (K[]) new Comparable[0];
     /**
      * The number of elements in this queue.
      */
-    protected int size;
+    private int size;
     /**
      * The type-specific comparator used in this queue.
      */
-    protected final Comparator<? super K> c;
+    private final Comparator<? super K> c;
     private final Object2DoubleMap<K> scores;
 
     /**
@@ -66,6 +67,15 @@ public class Beam<K extends Comparable<K>> {
     }
 
     /**
+     * Returns the same value as push() without changing the heap
+     * @param score The score to test
+     * @return True if a value with this score would be added to the heap
+     */
+    public boolean canPush(double score) {
+        return size < maxSize || score > scores.getDouble(last());
+    }
+    
+    /**
      * Is this queue empty
      *
      * @return True if the queue is empty
@@ -93,6 +103,11 @@ public class Beam<K extends Comparable<K>> {
         return result;
     }
 
+    @Override
+    public Iterator<K> iterator() {
+        return new BeamIterator();
+    }
+
     private class BeamComparator implements Comparator<K> {
 
         @Override
@@ -116,5 +131,19 @@ public class Beam<K extends Comparable<K>> {
         }
         heap[size++] = x;
         ObjectHeaps.upHeap(heap, size, size - 1, c);
+    }
+    
+    private class BeamIterator implements Iterator<K> {
+        int i = 0;
+        @Override
+        public boolean hasNext() {
+            return i < size;
+        }
+
+        @Override
+        public K next() {
+            return heap[i++];
+        }
+        
     }
 }

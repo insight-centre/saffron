@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import java.util.Iterator;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -88,4 +89,23 @@ public class BeamTest {
         assertEquals("b", instance.pop());
     }
     
+    @Test
+    public void testIterator() {
+        System.out.println("iterator");        
+        String[] k = new String[] { "a", "b", "c", "d", "e" };
+        double[] score = new double[] { 1 , 2, 0, -1, 3 };
+        Beam instance = new Beam(2);
+        instance.push(k[0], score[0]);
+        instance.push(k[1], score[1]);
+        instance.push(k[2], score[2]);
+        instance.push(k[3], score[3]);
+        instance.push(k[4], score[4]);
+        Iterator<String> iter = instance.iterator();
+        assertEquals(true, iter.hasNext());
+        assertEquals("e", iter.next());
+        assertEquals(true, iter.hasNext());
+        assertEquals("b", iter.next());
+        assertEquals(false, iter.hasNext());
+        
+    }
 }
