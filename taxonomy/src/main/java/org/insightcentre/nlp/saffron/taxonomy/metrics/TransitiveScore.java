@@ -18,17 +18,20 @@ public class TransitiveScore implements TaxonomyScore {
     private final SupervisedTaxo classifier;
     private final Object2DoubleMap<TaxoLink> scores;
     private final HashMap<String, Set<String>> parents;
+    private final HashMap<String, Set<String>> children;
 
     public TransitiveScore(SupervisedTaxo classifier) {
         this.classifier = classifier;
         this.parents = new HashMap<>();
+        this.children = new HashMap<>();
         this.scores = new Object2DoubleOpenHashMap<>();
     }
 
-    private TransitiveScore(SupervisedTaxo classifier, Object2DoubleMap<TaxoLink> scores, HashMap<String, Set<String>> parents) {
+    public TransitiveScore(SupervisedTaxo classifier, Object2DoubleMap<TaxoLink> scores, HashMap<String, Set<String>> parents, HashMap<String, Set<String>> children) {
         this.classifier = classifier;
         this.scores = scores;
         this.parents = parents;
+        this.children = children;
     }
 
     @Override
@@ -39,9 +42,18 @@ public class TransitiveScore implements TaxonomyScore {
         double s = scores.getDouble(tl);
         if(parents.containsKey(tl.top)) {
             for(String p : parents.get(tl.top)) {
-                TaxoLink tl2 = new TaxoLink(p, tl.top);
+                TaxoLink tl2 = new TaxoLink(p, tl.bottom);
                 if (!scores.containsKey(tl2)) {
-                    scores.put(tl2, classifier.predict(tl.top, tl.bottom));
+                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom));
+                }
+                s += scores.getDouble(tl2);
+            }
+        }
+        if(children.containsKey(tl.bottom)) {
+            for(String c : children.get(tl.bottom)) {
+                TaxoLink tl2 = new TaxoLink(tl.top, c);
+                if (!scores.containsKey(tl2)) {
+                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom));
                 }
                 s += scores.getDouble(tl2);
             }
@@ -53,12 +65,39 @@ public class TransitiveScore implements TaxonomyScore {
     public TaxonomyScore next(String top, String bottom, Solution soln) {
         HashMap<String, Set<String>> newParents = new HashMap<>(parents);
         Set<String> p = new HashSet<>();
+        
+        HashMap<String, Set<String>> newChildren = new HashMap<>(children);
+        Set<String> c = new HashSet<>();
+        
         if(newParents.containsKey(top)) {
             p.addAll(newParents.get(top));
         }
+        
+        if(newChildren.containsKey(bottom)) {
+            c.addAll(newChildren.get(bottom));
+        }
+        
+        for(String parent : p) {
+            if(!newChildren.containsKey(parent)) {
+                newChildren.put(parent, new HashSet<String>());
+            }
+            newChildren.get(parent).addAll(c);
+        }
+        
+        for(String child : c) {
+            if(!newParents.containsKey(child)) {
+                newParents.put(child, new HashSet<String>());
+            }
+            newParents.get(child).addAll(p);
+        }
+        
         p.add(top);
         newParents.put(bottom, p);
-        return new TransitiveScore(classifier, scores, newParents);
+        
+        c.add(bottom);
+        newChildren.put(top, c);
+        
+        return new TransitiveScore(classifier, scores, newParents, newChildren);
     }
 
 }
