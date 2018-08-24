@@ -77,9 +77,9 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     }
 
     private static double[] dpois(double lambda, int N) {
-        double[] d = new double[N];
+        double[] d = new double[N+1];
         double el = exp(-lambda);
-        for(int i = 0; i < N; i++) {
+        for(int i = 0; i < N+1; i++) {
             d[i] = el * poisson(i, lambda);
         }
         return d;
