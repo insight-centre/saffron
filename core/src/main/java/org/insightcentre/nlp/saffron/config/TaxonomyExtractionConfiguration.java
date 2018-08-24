@@ -24,7 +24,7 @@ public class TaxonomyExtractionConfiguration {
     /**
      * The mode (algorithm) to use to derive the tree
      */
-    public Mode mode = Mode.greedy;
+    public TaxonomySearchConfiguration search = new TaxonomySearchConfiguration();
     /**
      * A limit on the number of children to be added under one node (does not
      * work in MST mode)
@@ -90,13 +90,9 @@ public class TaxonomyExtractionConfiguration {
         public boolean wnIndirect = false;
     }
 
-    public enum Mode {
-        greedy, mst, headAndBag, greedyTrans
-    }
-
     @Override
     public String toString() {
-        return "TaxonomyExtractionConfiguration{" + "negSampling=" + negSampling + ", features=" + features + ", modelFile=" + modelFile + ", mode=" + mode + ", maxChildren=" + maxChildren + ", simThreshold=" + simThreshold + '}';
+        return "TaxonomyExtractionConfiguration{" + "negSampling=" + negSampling + ", features=" + features + ", modelFile=" + modelFile + ", search=" + search + ", maxChildren=" + maxChildren + ", simThreshold=" + simThreshold + '}';
     }
 
     public static class FeatureConfiguration {

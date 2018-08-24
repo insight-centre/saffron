@@ -12,9 +12,8 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode;
-import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
 import org.insightcentre.nlp.saffron.data.Model;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 
 /**
  * Create a taxonomy based on a supervised model
@@ -71,7 +70,7 @@ public class Main {
             // Read configuration
             Configuration config = mapper.readValue(configuration, Configuration.class);
             if (config.taxonomy == null || config.taxonomy.modelFile == null
-                    || config.taxonomy.mode == null) {
+                    || config.taxonomy.search == null) {
                 badOptions(p, "Configuration does not have a model file");
             }
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
@@ -82,17 +81,8 @@ public class Main {
             Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
             SupervisedTaxo supTaxo = new SupervisedTaxo(docTopics, topicMap, model);
-            final Taxonomy graph;
-            if (config.taxonomy.mode == Mode.greedy) {
-                GreedyTaxoExtract extractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
-                graph = extractor.extractTaxonomy(docTopics, topicMap);
-            } else if (config.taxonomy.mode == headAndBag) {
-                HeadAndBag taxoExtractor = new HeadAndBag(supTaxo, 0.5);
-                graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
-            } else {
-                MSTTaxoExtract extractor = new MSTTaxoExtract(supTaxo);
-                graph = extractor.extractTaxonomy(docTopics, topicMap);
-            }
+            TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
+            final Taxonomy graph = search.extractTaxonomy(topicMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
 

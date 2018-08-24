@@ -6,7 +6,6 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
-import java.util.Objects;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 
@@ -15,7 +14,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
  *
  * @author John McCrae
  */
-public class Greedy {
+public class Greedy implements TaxonomySearch{
 
     private final TaxonomyScore emptyScore;
 
@@ -23,6 +22,7 @@ public class Greedy {
         this.emptyScore = score;
     }
 
+    @Override
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();

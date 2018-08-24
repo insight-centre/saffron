@@ -1,7 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
-import java.util.ArrayList;
 import java.util.Map;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -10,7 +9,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
  *
  * @author John McCrae
  */
-public class BeamSearch {
+public class BeamSearch implements TaxonomySearch {
 
     private final TaxonomyScore emptyScore;
     private final int beamSize;
@@ -22,6 +21,7 @@ public class BeamSearch {
     }
 
 
+    @Override
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         Beam<Soln> previous = new Beam<>(beamSize);
         previous.push(new Soln(Solution.empty(topicMap.keySet()), emptyScore, 0.0, false), 0.0);

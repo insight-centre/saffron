@@ -12,7 +12,6 @@ import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,18 +41,11 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
-import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedy;
-import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.greedyTrans;
-import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.SumScore;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TransitiveScore;
-import org.insightcentre.nlp.saffron.taxonomy.search.BeamSearch;
-import org.insightcentre.nlp.saffron.taxonomy.search.Greedy;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -163,7 +155,7 @@ public class Executor extends AbstractHandler {
             }
             if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
-                if(statuses.containsKey(saffronDatasetName)) {
+                if (statuses.containsKey(saffronDatasetName)) {
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -268,16 +260,16 @@ public class Executor extends AbstractHandler {
     }
 
     private void scaleThreads(Configuration config) {
-            long heapSize = Runtime.getRuntime().maxMemory(); 
-        if((long)config.termExtraction.numThreads * 1024 * 1024 * 400 >  heapSize) {
-            int numThreads = (int)Math.ceil((double)heapSize / 1024 / 1024 / 400);
+        long heapSize = Runtime.getRuntime().maxMemory();
+        if ((long) config.termExtraction.numThreads * 1024 * 1024 * 400 > heapSize) {
+            int numThreads = (int) Math.ceil((double) heapSize / 1024 / 1024 / 400);
             System.err.println(String.format("System memory %d MB", heapSize / 1024 / 1024));
             System.err.println(String.format("Insufficient memory for %d threads, reducing to %d", config.termExtraction.numThreads, numThreads));
             System.err.println("Try setting the -Xmx flag to the Java Runtime to improve performance");
             config.termExtraction.numThreads = numThreads;
         }
     }
-    
+
     void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName) throws IOException {
         scaleThreads(config);
         Status _status = statuses.get(saffronDatasetName);
@@ -374,24 +366,8 @@ public class Executor extends AbstractHandler {
 
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
         _status.setStatusMessage("Building taxonomy");
-        final Taxonomy graph;
-        if (topicMap.isEmpty()) {
-            graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
-        } else if (config.taxonomy.mode == greedyTrans) {
-            Greedy taxoExtractor = new Greedy(new SumScore(supTaxo));
-            graph = taxoExtractor.extractTaxonomy(topicMap);
-            //TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
-            //graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
-        } else if (config.taxonomy.mode == greedy) {
-            Greedy taxoExtractor = new Greedy(new TransitiveScore(supTaxo));
-            graph = taxoExtractor.extractTaxonomy(topicMap);
-        } else if (config.taxonomy.mode == headAndBag) {
-            BeamSearch taxoExtractor = new BeamSearch(new TransitiveScore(supTaxo), 20);
-            graph = taxoExtractor.extractTaxonomy(topicMap);
-        } else {
-            MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);
-            graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
-        }
+        TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
+        final Taxonomy graph = search.extractTaxonomy(topicMap);
 
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
@@ -418,7 +394,7 @@ public class Executor extends AbstractHandler {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
             this.statusMessage2 = statusMessage;
         }
-        
+
         public void fail(String message) {
             this.failed = true;
             setStatusMessage("Failed: " + message);
