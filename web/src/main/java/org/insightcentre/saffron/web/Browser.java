@@ -315,13 +315,11 @@ public class Browser extends AbstractHandler {
                             }
                         }
                     }
-                } else if (target.equals("/status")) {
-                    final Executor.Status status = new Executor.Status();
-                    status.completed = true;
+                } else if(target.equals("/status")) {
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    mapper.writeValue(response.getWriter(), status);
+                    response.getWriter().print("{\"completed\":true}");
                 } else if ("/".equals(target)) {
 
                     response.setContentType("text/html");

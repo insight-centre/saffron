@@ -42,7 +42,6 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.GreedyTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
@@ -51,8 +50,10 @@ import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfigurati
 import static org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration.Mode.headAndBag;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.HeadAndBag;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.TransTaxoExtract;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.SumScore;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.TransitiveScore;
+import org.insightcentre.nlp.saffron.taxonomy.search.BeamSearch;
+import org.insightcentre.nlp.saffron.taxonomy.search.Greedy;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
@@ -151,8 +152,7 @@ public class Executor extends AbstractHandler {
                             execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName);
                         } catch (IOException x) {
                             Status _status = statuses.get(saffronDatasetName);
-                            _status.failed = true;
-                            _status.setStatusMessage("Failed: " + x.getMessage());
+                            _status.fail(x.getMessage());
                             x.printStackTrace();
                         }
                     }
@@ -182,6 +182,7 @@ public class Executor extends AbstractHandler {
 
     void startWithZip(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         final Status _status = new Status();
+        _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
             @Override
@@ -202,8 +203,7 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Throwable x) {
-                    _status.failed = true;
-                    _status.setStatusMessage("Failed: " + x.getMessage());
+                    _status.fail(x.getMessage());
                     x.printStackTrace();
                 }
             }
@@ -213,6 +213,7 @@ public class Executor extends AbstractHandler {
     void startWithCrawl(final String url, final int maxPages, final boolean domain,
             final boolean advanced, final String saffronDatasetName) {
         final Status _status = new Status();
+        _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
             @Override
@@ -233,8 +234,7 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
-                    _status.failed = true;
-                    _status.setStatusMessage("Failed: " + x.getMessage());
+                    _status.fail(x.getMessage());
                     x.printStackTrace();
                 }
             }
@@ -243,6 +243,7 @@ public class Executor extends AbstractHandler {
 
     void startWithJson(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         final Status _status = new Status();
+        _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
             @Override
@@ -259,8 +260,7 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
-                    _status.failed = true;
-                    _status.setStatusMessage("Failed: " + x.getMessage());
+                    _status.fail(x.getMessage());
                     x.printStackTrace();
                 }
             }
@@ -378,14 +378,16 @@ public class Executor extends AbstractHandler {
         if (topicMap.isEmpty()) {
             graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
         } else if (config.taxonomy.mode == greedyTrans) {
-            TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
-            graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
+            Greedy taxoExtractor = new Greedy(new SumScore(supTaxo));
+            graph = taxoExtractor.extractTaxonomy(topicMap);
+            //TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
+            //graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
         } else if (config.taxonomy.mode == greedy) {
-            GreedyTaxoExtract taxoExtractor = new GreedyTaxoExtract(supTaxo, config.taxonomy.maxChildren);
-            graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
+            Greedy taxoExtractor = new Greedy(new TransitiveScore(supTaxo));
+            graph = taxoExtractor.extractTaxonomy(topicMap);
         } else if (config.taxonomy.mode == headAndBag) {
-            HeadAndBag taxoExtractor = new HeadAndBag(supTaxo, 0.5);
-            graph = taxoExtractor.extractTaxonomy(topicMap.keySet());
+            BeamSearch taxoExtractor = new BeamSearch(new TransitiveScore(supTaxo), 20);
+            graph = taxoExtractor.extractTaxonomy(topicMap);
         } else {
             MSTTaxoExtract taxoExtractor = new MSTTaxoExtract(supTaxo);
             graph = taxoExtractor.extractTaxonomy(res.docTopics, topicMap);
@@ -399,13 +401,14 @@ public class Executor extends AbstractHandler {
         _status.completed = true;
     }
 
-    public static class Status {
+    public class Status {
 
         public int stage = 0;
         public boolean failed = false;
         public boolean completed = false;
         public boolean advanced = false;
         private String statusMessage2 = "";
+        public String name;
 
         public String getStatusMessage() {
             return statusMessage2;
@@ -414,6 +417,12 @@ public class Executor extends AbstractHandler {
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
             this.statusMessage2 = statusMessage;
+        }
+        
+        public void fail(String message) {
+            this.failed = true;
+            setStatusMessage("Failed: " + message);
+            data.remove(name);
         }
 
     }

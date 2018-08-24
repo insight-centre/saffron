@@ -45,11 +45,11 @@ public class Trainer extends AbstractHandler {
 
     private Configuration defaultConfig;
     private final File directory;
-    private final Executor.Status status;
+    private final Status status;
 
     public Trainer(File directory) {
         this.directory = directory;
-        this.status = new Executor.Status();
+        this.status = new Status();
         try {
             this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
         } catch (IOException x) {
@@ -173,8 +173,7 @@ public class Trainer extends AbstractHandler {
             status.setStatusMessage("Saving model");
             mapper.writerWithDefaultPrettyPrinter().writeValue(config.taxonomy.modelFile.toFile(), model);
         } catch (Exception x) {
-            status.failed = true;
-            status.setStatusMessage("FAILED:" + x.getMessage());
+            status.fail(x.getMessage());
         }
 
     }
@@ -199,5 +198,30 @@ public class Trainer extends AbstractHandler {
         for(Taxonomy c : child.children) {
             _analyzeTaxonomy(c, child.root, taxos);
         }
+    }
+    
+    public class Status {
+
+        public int stage = 0;
+        public boolean failed = false;
+        public boolean completed = false;
+        public boolean advanced = false;
+        private String statusMessage2 = "";
+
+
+        public String getStatusMessage() {
+            return statusMessage2;
+        }
+
+        public void setStatusMessage(String statusMessage) {
+            System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
+            this.statusMessage2 = statusMessage;
+        }
+        
+        public void fail(String message) {
+            this.failed = true;
+            setStatusMessage("Failed: " + message);
+        }
+
     }
 }
