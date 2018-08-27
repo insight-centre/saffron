@@ -2,6 +2,7 @@ package org.insightcentre.saffron.web;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.BindException;
 import java.net.InetAddress;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
@@ -15,8 +16,6 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
  * @author John McCrae <john@mccr.ae>
  */
 public class Launcher {
-
-    
 
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
@@ -42,7 +41,7 @@ public class Launcher {
                 return;
             }
 
-            final int port = os.valueOf("p") == null ? 8080 : (Integer) os.valueOf("p");
+            int port = os.valueOf("p") == null ? 8080 : (Integer) os.valueOf("p");
             File directory = (File) os.valueOf("d");
             if (directory == null) {
                 // TODO: Change this
@@ -60,7 +59,7 @@ public class Launcher {
             // This is the path on the server
             // This is the local directory that is used to 
             resourceHandler.setResourceBase("static");
-            if(!new File("static/index.html").exists()) {
+            if (!new File("static/index.html").exists()) {
                 System.err.println("No static folder, please run the command in the right folder.");
                 System.exit(-1);
             }
@@ -68,12 +67,28 @@ public class Launcher {
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory);
             Executor executor = new Executor(browser.saffron, directory);
-            Welcome welcome = new Welcome( executor);
+            Welcome welcome = new Welcome(executor);
             Home home = new Home(browser.saffron);
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);
 
-            server.start();
+            try {
+                server.start();
+            } catch(BindException x) {
+                for(int i = port + 1; i < port + 20; i++) {
+                    try {
+                        server.stop();
+                        System.err.println(String.format("##### WARNING: Could not bind at port %d, incrementing to %d #####", port, i));
+                        server = new Server(i);
+                        server.setHandler(handlers);
+                        server.start();
+                        port = i;
+                        break;
+                    } catch(BindException x2) {
+                    }
+                    
+                }
+            }
             // Get current size of heap in bytes
             String hostname = InetAddress.getLocalHost().getHostAddress();
             System.err.println(String.format("Started server at http://localhost:%d/ (or http://%s:%d/)", port, hostname, port));
