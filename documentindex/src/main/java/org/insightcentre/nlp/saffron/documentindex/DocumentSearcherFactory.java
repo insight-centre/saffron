@@ -58,7 +58,7 @@ public class DocumentSearcherFactory {
         final Directory dir;
         if (corpus instanceof IndexedCorpus) {
             IndexedCorpus ic = (IndexedCorpus) corpus;
-            if (ic.index != null && !ic.index.equals(index)) {
+            if (ic.index != null && !ic.index.toFile().equals(index)) {
                 System.err.println("Corpus location does not match supplied index");
             }
         }

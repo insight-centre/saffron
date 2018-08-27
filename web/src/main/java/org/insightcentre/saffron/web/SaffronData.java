@@ -367,7 +367,8 @@ public class SaffronData {
         try {
             this.searcher = DocumentSearcherFactory.loadSearcher(corpus, corpus.getIndex());
         } catch(IOException x) {
-            System.err.println("Failed to load Lucene interface: " + x.getMessage());
+            System.err.println("Failed to load Lucene interface: (" + x.getClass().getName() + ") " + x.getMessage());
+            x.printStackTrace();
         }
     }
 
