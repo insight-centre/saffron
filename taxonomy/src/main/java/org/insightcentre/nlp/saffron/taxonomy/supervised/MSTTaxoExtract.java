@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Map;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
  * Extract a taxonomy by using a MST
  * @author John McCrae <john@mccr.ae>
  */
-public class MSTTaxoExtract {
+public class MSTTaxoExtract implements TaxonomySearch {
     
     
     private final SupervisedTaxo classifier;
@@ -25,9 +25,9 @@ public class MSTTaxoExtract {
     public MSTTaxoExtract(SupervisedTaxo classifier) {
         this.classifier = classifier;
     }
-    
-    
-    public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {
+
+    @Override
+    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         final ArrayList<String> topics = new ArrayList<>(topicMap.keySet());
         final double[][] matrix = new double[topics.size()][topics.size()];
         String topNode = null;

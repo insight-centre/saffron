@@ -6,6 +6,7 @@ import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 
 /**
@@ -25,6 +26,8 @@ public interface TaxonomySearch {
                 return new Greedy(score);
             case beam:
                 return new BeamSearch(score, config.beamSize);
+            case mst:
+                return new MSTTaxoExtract(classifier);
         }
         throw new IllegalArgumentException("Unknown algorithm");
     }

@@ -26,6 +26,7 @@ public class BeamSearch implements TaxonomySearch {
         Beam<Soln> previous = new Beam<>(beamSize);
         previous.push(new Soln(Solution.empty(topicMap.keySet()), emptyScore, 0.0, false), 0.0);
         for (String t1 : topicMap.keySet()) {
+            System.err.println(t1);
             Beam<Soln> next = new Beam<>(beamSize);
             // We are looking for t1's parent
             for (String t2 : topicMap.keySet()) {

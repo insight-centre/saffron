@@ -29,9 +29,9 @@ public class TaxonomySearchConfiguration {
     /**
      * (Bhattacharrya-Poisson only) The weighting to give to BP (against the base algorithm)
      */
-    public double alpha = 1.0;
+    public double alpha = 0.01;
     
-    public enum Algorithm { greedy, beam };
+    public enum Algorithm { greedy, beam, mst };
     
     public enum Score { simple, transitive, bhattacharryaPoisson };
 
