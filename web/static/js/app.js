@@ -251,3 +251,23 @@ angular.module('app').component('searchresults', {
         });
     }
 });
+
+angular.module('app').component('metadata', {
+    templateUrl: '/metadata.html',
+    bindings: {
+        doc: '<'
+    },
+    controller: function ($http) {
+        var ctrl = this;
+        ctrl.title = "Metadata";
+        if (doc) {
+            ctrl.doc = doc;
+        }
+        this.hasMetadata = function() {
+            return Object.keys(ctrl.doc.metadata).length > 0;
+        };
+        this.hasNoMetadata = function() {
+            return Object.keys(ctrl.doc.metadata).length === 0;
+        };
+    }
+});

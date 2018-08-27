@@ -293,7 +293,7 @@ public class Browser extends AbstractHandler {
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
                         String data = new String(Files.readAllBytes(Paths.get("static/doc.html")));
-                        data = data.replaceAll("\\{\\{doc\\}\\}", mapper.writeValueAsString(doc));
+                        data = data.replace("{{doc}}", mapper.writeValueAsString(doc));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                     }
