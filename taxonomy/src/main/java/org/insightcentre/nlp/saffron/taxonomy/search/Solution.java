@@ -53,10 +53,11 @@ public class Solution {
      * @param bottom The bottom (narrower) topic
      * @param topScore The score of the top topic
      * @param bottomScore The score of the bottom topic
+     * @param linkScore The link score
      * @return
      */
     public Solution add(final String top, final String bottom,
-            final double topScore, final double bottomScore) {
+            final double topScore, final double bottomScore, final double linkScore) {
         if (heads.containsKey(bottom)) {
             for (Map.Entry<String, Taxonomy> e : heads.entrySet()) {
                 if (e.getValue().hasDescendent(top)) {
@@ -71,9 +72,9 @@ public class Solution {
                     return new Solution(newHeads, topics, size);
                 }
             }
-            // bottom is not yet in taxonomy
+            // top is not yet in taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t2 = new Taxonomy(top, topScore, new ArrayList<>(Arrays.asList(newHeads.get(bottom))));
+            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom))));
             newHeads.remove(bottom);
             newHeads.put(top, t2);
             return new Solution(newHeads, topics, size + 1);
@@ -90,15 +91,15 @@ public class Solution {
                     Map<String, Taxonomy> newHeads = new HashMap<>(heads);
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top,
-                                    new Taxonomy(bottom, bottomScore, new ArrayList<Taxonomy>())));
+                                    new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>())));
                     return new Solution(newHeads, topics, size + 1);
                 }
             }
             // top and bottom are not in the taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t = new Taxonomy(top, topScore, new ArrayList<Taxonomy>() {
+            Taxonomy t = new Taxonomy(top, topScore, Double.NaN, new ArrayList<Taxonomy>() {
                 {
-                    add(new Taxonomy(bottom, bottomScore, new ArrayList<Taxonomy>()));
+                    add(new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>()));
                 }
             });
             newHeads.put(top, t);
@@ -142,7 +143,7 @@ public class Solution {
                 newChildren.add(insertIntoTaxo(t, top, bottom));
             }
         }
-        return new Taxonomy(taxo.root, taxo.score, newChildren);
+        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, newChildren);
     }
 
     /**

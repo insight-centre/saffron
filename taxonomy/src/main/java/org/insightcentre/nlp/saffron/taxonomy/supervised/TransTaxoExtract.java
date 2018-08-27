@@ -49,7 +49,7 @@ public class TransTaxoExtract {
             } 
             scores.remove(best);
         }
-        return taxo.toTaxo();
+        return taxo.toTaxo(scores);
     }
 
     private StringPair findBest(Object2DoubleMap<StringPair> scores) {
@@ -179,23 +179,24 @@ public class TransTaxoExtract {
             }
         }
 
-        public Taxonomy toTaxo() {
+        public Taxonomy toTaxo(Object2DoubleMap<StringPair> scores) {
             String root = parents.keySet().iterator().next();
             while (parents.containsKey(root)) {
                 root = parents.get(root);
             }
-            return _buildTaxonomy(root);
+            return _buildTaxonomy(root, null, scores);
         }
 
-        private Taxonomy _buildTaxonomy(String root) {
+        private Taxonomy _buildTaxonomy(String root, String parent, Object2DoubleMap<StringPair> scores) {
             List<Taxonomy> childrenTaxos = new ArrayList<>();
             Set<String> childTopics = children.get(root);
             if (childTopics != null) {
                 for (String childTopic : childTopics) {
-                    childrenTaxos.add(_buildTaxonomy(childTopic));
+                    childrenTaxos.add(_buildTaxonomy(childTopic, parent, scores));
                 }
             }
-            return new Taxonomy(root, 0.0, childrenTaxos);
+            double linkScore = parent == null ? Double.NaN : scores.getDouble(new StringPair(parent, root));
+            return new Taxonomy(root, 0.0, linkScore, childrenTaxos);
         }
     }
 

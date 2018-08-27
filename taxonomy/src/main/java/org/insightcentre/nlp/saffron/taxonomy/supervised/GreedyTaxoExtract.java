@@ -93,17 +93,17 @@ public class GreedyTaxoExtract {
             Taxonomy pTaxo = taxos.get(parent);
             Taxonomy cTaxo = taxos.get(child);
             if(pTaxo == null && cTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, new ArrayList<Taxonomy>());
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, new ArrayList<Taxonomy>());
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN, new ArrayList<Taxonomy>());
+                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, new ArrayList<Taxonomy>());
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
             } else if(cTaxo == null && pTaxo.children.size() < maxChildren) {
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, new ArrayList<Taxonomy>());
+                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, new ArrayList<Taxonomy>());
                 pTaxo.children.add(cTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo.children.size() < maxChildren) {
@@ -139,7 +139,7 @@ public class GreedyTaxoExtract {
 
     private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Topic> topicMap) {
         for(String orphan : orphans) {
-            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, new ArrayList<Taxonomy>()));
+            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, Double.NaN, new ArrayList<Taxonomy>()));
         }
         return t;
     }

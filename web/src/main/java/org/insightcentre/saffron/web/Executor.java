@@ -376,7 +376,7 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Building taxonomy");
         final Taxonomy graph;
         if (topicMap.isEmpty()) {
-            graph = new Taxonomy("<EMPTY>", 0, Collections.EMPTY_LIST);
+            graph = new Taxonomy("<EMPTY>", 0, Double.NaN, Collections.EMPTY_LIST);
         } else if (config.taxonomy.mode == greedyTrans) {
             TransTaxoExtract taxoExtractor = new TransTaxoExtract(supTaxo, 0.5);
             graph = taxoExtractor.extractTaxonomy(topicMap.keySet());

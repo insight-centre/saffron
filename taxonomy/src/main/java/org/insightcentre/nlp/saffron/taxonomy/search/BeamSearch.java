@@ -31,12 +31,13 @@ public class BeamSearch {
             for (String t2 : topicMap.keySet()) {
                 if(!t1.equals(t2)) {
                     for(Soln prevSoln : previous) {
+                        final double linkScore = prevSoln.score.deltaScore(new TaxoLink(t2, t1));
                         double totalScore = prevSoln.totalScore +
-                                prevSoln.score.deltaScore(new TaxoLink(t2, t1));
+                                linkScore;
                         if(next.canPush(totalScore)) {
                             Solution s = prevSoln.soln.add(t2, t1, 
                                     topicMap.get(t2).score, 
-                                    topicMap.get(t1).score);
+                                    topicMap.get(t1).score,linkScore);
                             if(s != null) {
                                 Soln candidate = new Soln(s, 
                                     prevSoln.score.next(t2, t1, s),
