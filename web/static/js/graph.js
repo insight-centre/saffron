@@ -80,6 +80,7 @@ function update() {
   link.exit().remove();
 
   link.enter().insert("line", ".node")
+      .style("stroke-width", function(d) { if(d.target.linkScore && !isNaN(d.target.linkScore)) { return d.target.linkScore * 2 + 1; } else { return 1; } })
       .attr("class", "link");
 
   // Update nodes.

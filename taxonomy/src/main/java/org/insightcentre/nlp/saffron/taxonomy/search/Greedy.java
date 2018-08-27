@@ -54,7 +54,8 @@ public class Greedy implements TaxonomySearch{
                 TaxoLink candidate = candidates.remove(0);
                 Solution soln2 = soln.add(candidate.top, candidate.bottom,
                         topicMap.get(candidate.top).score,
-                        topicMap.get(candidate.bottom).score);
+                        topicMap.get(candidate.bottom).score,
+                        scores.getDouble(candidate));
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;

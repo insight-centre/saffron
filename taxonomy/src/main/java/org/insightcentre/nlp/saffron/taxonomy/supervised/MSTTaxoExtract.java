@@ -54,11 +54,12 @@ public class MSTTaxoExtract {
         System.err.println("Starting Chu-Liu Edmonds");
         final Weighted<Arborescence<String>> arbor = ChuLiuEdmonds.getMaxArborescence(graph, topNode);
         System.err.println("Finished... building taxonomy");
-        return buildTaxo(topNode, arbor, topicMap);        
+        return buildTaxo(topNode, arbor, topicMap, null, topics, matrix);        
     }
 
     private Taxonomy buildTaxo(String node, Weighted<Arborescence<String>> arbor,
-            Map<String, Topic> topicMap) {
+            Map<String, Topic> topicMap, String parent,
+            ArrayList<String> topic, double[][] matrix) {
         Map<String,List<String>> invertedArbor = new HashMap<>();
         for(ImmutableMap.Entry<String,String> e : arbor.val.parents.entrySet()) {
             if(!invertedArbor.containsKey(e.getValue())) {
@@ -66,19 +67,22 @@ public class MSTTaxoExtract {
             }
             invertedArbor.get(e.getValue()).add(e.getKey());
         }
-        return buildTaxo(node, invertedArbor, topicMap);
+        
+        return buildTaxo(node, invertedArbor, topicMap, parent, topic, matrix);
     }
     
     private Taxonomy buildTaxo(String node, Map<String, List<String>> tree,
-            Map<String, Topic> topicMap) {
+            Map<String, Topic> topicMap, String parent,
+            ArrayList<String> topic, double[][] matrix) {
         List<Taxonomy> children = new ArrayList<>();
         List<String> edges = tree.get(node);
         if(edges != null) {
             for(String s : edges) {
-                children.add(buildTaxo(s, tree, topicMap));
+                children.add(buildTaxo(s, tree, topicMap, parent, topic, matrix));
             }
         }
-        return new Taxonomy(node, topicMap.get(node).score, children);
+        double linkScore = parent == null ? Double.NaN : matrix[topic.indexOf(parent)][topic.indexOf(node)];
+        return new Taxonomy(node, topicMap.get(node).score, linkScore, children);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

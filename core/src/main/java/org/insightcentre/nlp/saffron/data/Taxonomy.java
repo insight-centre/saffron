@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.data;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -14,16 +15,23 @@ import java.util.Set;
  * @author John McCrae <john@mccr.ae>
  */
 public class Taxonomy {
+    /** The topic string of this node in the taxonomy */
     public final String root;
+    /** The score associated with this topic (its importance) */
     public final double score;
+    /** The score relating this node to its parent (NaN if there is no parent) */
+    public final double linkScore;
+    /** The list of child nodes */
     public final List<Taxonomy> children;
 
     @JsonCreator
     public Taxonomy(@JsonProperty("root") String root, 
                     @JsonProperty("score") double score,
+                    @JsonProperty("linkScore") double linkScore,
                     @JsonProperty("children") List<Taxonomy> children) {
         this.root = root;
         this.score = score;
+        this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
@@ -116,7 +124,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             newChildren.add(t.deepCopy());
         }
-        return new Taxonomy(this.root, this.score, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
     }
 
     @Override
