@@ -36,10 +36,18 @@ public class Taxonomy {
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
 
+    /**
+     * Get the string for the root topic
+     * @return 
+     */
     public String getRoot() {
         return root;
     }
 
+    /**
+     * Get the list of children nodes
+     * @return A list of taxonomy nodes
+     */
     public List<Taxonomy> getChildren() {
         return children;
     }
@@ -115,6 +123,15 @@ public class Taxonomy {
         }
     }
 
+    /**
+     * Create a copy of this with a new link score
+     * @param linkScore The new link score
+     * @return A new taxonomy instance
+     */
+    public Taxonomy withLinkScore(double linkScore) {
+        return new Taxonomy(this.root, this.score, linkScore, this.children);
+    }
+    
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy

@@ -59,6 +59,11 @@ public class Solution {
     public Solution add(final String top, final String bottom,
             final double topScore, final double bottomScore, final double linkScore) {
         if (heads.containsKey(bottom)) {
+            if(Double.isNaN(heads.get(bottom).linkScore)) {
+                heads.put(bottom, heads.get(bottom).withLinkScore(linkScore));
+            } else {
+                assert(heads.get(bottom).linkScore == linkScore);
+            }
             for (Map.Entry<String, Taxonomy> e : heads.entrySet()) {
                 if (e.getValue().hasDescendent(top)) {
                     if (e.getKey().equals(bottom)) {
