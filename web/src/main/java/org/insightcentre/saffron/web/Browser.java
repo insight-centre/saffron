@@ -21,6 +21,7 @@ import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.jena.rdf.model.Model;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.data.Author;
@@ -32,6 +33,7 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
+import org.insightcentre.saffron.web.rdf.RDFConversion;
 
 /**
  * Handles the interface if there is a corpus loaded
@@ -389,6 +391,66 @@ public class Browser extends AbstractHandler {
                         } catch(IOException x) {
                             x.printStackTrace();
                         }
+                    }
+                } else if(target.startsWith("/ttl/doc/")) {
+                    final String docId = target.substring(9);
+                    final Document doc = saffron.getDoc(docId);
+                    if (doc != null) {
+                        response.setContentType("text/turtle");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.documentToRDF(doc, saffron);
+                        model.write(response.getWriter(), "TURTLE");
+                    }
+                } else if(target.startsWith("/ttl/author/")) {
+                    final String authorId = target.substring(12);
+                    final Author author = saffron.getAuthor(authorId);
+                    if (author != null) {
+                        response.setContentType("text/turtle");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.authorToRdf(author, saffron);
+                        model.write(response.getWriter(), "TURTLE");
+                    }
+                } else if(target.startsWith("/ttl/topic/")) {
+                    final String topicId = target.substring(11);
+                    final Topic topic = saffron.getTopic(topicId);
+                    if (topic != null) {
+                        response.setContentType("text/turtle");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.topicToRDF(topic, saffron);
+                        model.write(response.getWriter(), "TURTLE");
+                    }
+                } else if(target.startsWith("/rdf/doc/")) {
+                    final String docId = target.substring(9);
+                    final Document doc = saffron.getDoc(docId);
+                    if (doc != null) {
+                        response.setContentType("application/rdf+xml");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.documentToRDF(doc, saffron);
+                        model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
+                    }
+                } else if(target.startsWith("/rdf/author/")) {
+                    final String authorId = target.substring(12);
+                    final Author author = saffron.getAuthor(authorId);
+                    if (author != null) {
+                        response.setContentType("application/rdf+xml");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.authorToRdf(author, saffron);
+                        model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
+                    }
+                } else if(target.startsWith("/rdf/topic/")) {
+                    final String topicId = target.substring(11);
+                    final Topic topic = saffron.getTopic(topicId);
+                    if (topic != null) {
+                        response.setContentType("application/rdf+xml");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        Model model = RDFConversion.topicToRDF(topic, saffron);
+                        model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
                 }
 
