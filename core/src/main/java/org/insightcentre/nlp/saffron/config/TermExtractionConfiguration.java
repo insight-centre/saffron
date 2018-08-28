@@ -50,7 +50,7 @@ public class TermExtractionConfiguration {
     /** The set of tags allowed in non-final position, but not completing */
     public Set<String> middleTokens = new HashSet<>(Arrays.asList("IN"));
     /** The set of final tags allows in a noun phrase */
-    public Set<String> headTokens = new HashSet<>(Arrays.asList("NN", "NNS"));
+    public Set<String> headTokens = new HashSet<>(Arrays.asList("NN", "NNS", "CD"));
     /** The position of the head of a noun phrase (true=final) */
     public boolean headTokenFinal = true;
     

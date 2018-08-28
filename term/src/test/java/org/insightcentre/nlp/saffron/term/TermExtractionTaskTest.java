@@ -10,6 +10,8 @@ import opennlp.tools.postag.POSTagger;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
+import opennlp.tools.tokenize.TokenizerME;
+import opennlp.tools.tokenize.TokenizerModel;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -27,22 +29,22 @@ import static org.mockito.Mockito.when;
  * @author John McCrae <john@mccr.ae>
  */
 public class TermExtractionTaskTest {
-    
+
     public TermExtractionTaskTest() {
     }
-    
+
     @BeforeClass
     public static void setUpClass() {
     }
-    
+
     @AfterClass
     public static void tearDownClass() {
     }
-    
+
     @Before
     public void setUp() {
     }
-    
+
     @After
     public void tearDown() {
     }
@@ -56,9 +58,9 @@ public class TermExtractionTaskTest {
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test");
         Tokenizer tokenizer = mock(Tokenizer.class);
-        String[] tokens = new String[] {"this","is","a","test" };
-        String[] lemmas = new String[] {"this","be","a","test" };
-        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN" };
+        String[] tokens = new String[]{"this", "is", "a", "test"};
+        String[] lemmas = new String[]{"this", "be", "a", "test"};
+        final String[] tags = new String[]{"DT", "VBZ", "DT", "NN"};
         when(tokenizer.tokenize("this is a test")).thenReturn(tokens);
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -72,17 +74,17 @@ public class TermExtractionTaskTest {
             public POSTagger get() {
                 return tagger;
             }
-            
+
         }, new ThreadLocal<Lemmatizer>() {
             @Override
             protected Lemmatizer initialValue() {
                 return lemmatizer;
             }
-            
+
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
-                new HashSet<String>(), 
-                new HashSet<String>(), 
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(),
+                new HashSet<String>(),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 true, result, dts, casing);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
@@ -96,7 +98,7 @@ public class TermExtractionTaskTest {
         assertEquals(1, dts.size());
         assertEquals(expCasing, casing);
     }
-    
+
     /**
      * Test of call method, of class TermExtractionTask.
      */
@@ -106,9 +108,9 @@ public class TermExtractionTaskTest {
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test of steel");
         Tokenizer tokenizer = mock(Tokenizer.class);
-        String[] tokens = new String[] {"this","is","a","test","of","steel" };
-        String[] lemmas = new String[] {"this","be","a","test","of","steel" };
-        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN","IN","NN" };
+        String[] tokens = new String[]{"this", "is", "a", "test", "of", "steel"};
+        String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
+        final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
         when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -120,17 +122,17 @@ public class TermExtractionTaskTest {
             public POSTagger get() {
                 return tagger;
             }
-            
+
         }, new ThreadLocal<Lemmatizer>() {
             @Override
             protected Lemmatizer initialValue() {
                 return lemmatizer;
             }
-            
+
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                new HashSet<String>(Arrays.asList(new String[]{"IN"})),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 true, result, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
@@ -144,7 +146,7 @@ public class TermExtractionTaskTest {
         instance.run();
         assertEquals(expResult, result);
     }
-    
+
     /**
      * Test of call method, of class TermExtractionTask.
      */
@@ -154,9 +156,9 @@ public class TermExtractionTaskTest {
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test of steel");
         Tokenizer tokenizer = mock(Tokenizer.class);
-        String[] tokens = new String[] {"this","is","a","test","of","steel" };
-        String[] lemmas = new String[] {"this","be","a","test","of","steel" };
-        final String[] tags = new String[] { "DT", "VBZ", "DT", "NN","IN","NN" };
+        String[] tokens = new String[]{"this", "is", "a", "test", "of", "steel"};
+        String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
+        final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
         when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -168,17 +170,17 @@ public class TermExtractionTaskTest {
             public POSTagger get() {
                 return tagger;
             }
-            
+
         }, new ThreadLocal<Lemmatizer>() {
             @Override
             protected Lemmatizer initialValue() {
                 return lemmatizer;
             }
-            
+
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 2,
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
-                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                new HashSet<String>(Arrays.asList(new String[]{"IN"})),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 true, result, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
@@ -190,8 +192,7 @@ public class TermExtractionTaskTest {
         instance.run();
         assertEquals(expResult, result);
     }
-    
-    
+
     /**
      * Test of call method, of class TermExtractionTask.
      */
@@ -201,9 +202,9 @@ public class TermExtractionTaskTest {
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("an fhaiche mhor");
         Tokenizer tokenizer = mock(Tokenizer.class);
-        String[] tokens = new String[] {"an", "fhaiche", "mhor" };
-        String[] lemmas = new String[] {"an", "faiche", "mor" };
-        final String[] tags = new String[] { "DT", "NN", "JJ" };
+        String[] tokens = new String[]{"an", "fhaiche", "mhor"};
+        String[] lemmas = new String[]{"an", "faiche", "mor"};
+        final String[] tags = new String[]{"DT", "NN", "JJ"};
         when(tokenizer.tokenize("an fhaiche mhor")).thenReturn(tokens);
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -215,17 +216,17 @@ public class TermExtractionTaskTest {
             public POSTagger get() {
                 return tagger;
             }
-            
+
         }, new ThreadLocal<Lemmatizer>() {
             @Override
             protected Lemmatizer initialValue() {
                 return lemmatizer;
             }
-            
+
         }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "JJ" })),
-                new HashSet<String>(Arrays.asList(new String[] { "IN" })),
-                new HashSet<String>(Arrays.asList(new String[] { "NN", "NNS" })),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "JJ"})),
+                new HashSet<String>(Arrays.asList(new String[]{"IN"})),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 false, result, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("faiche mhor", 1);
@@ -237,12 +238,31 @@ public class TermExtractionTaskTest {
         instance.run();
         assertEquals(expResult, result);
     }
-    
+
     //@Test
     public void testOpenNlp() throws Exception {
         String s = "The term anarchism is a compound word composed from the word anarchy and the suffix -ism, themselves derived respectively from the Greek , i.e. anarchy (from , anarchos, meaning \"one without rulers\"; from the privative prefix ἀν- (an-, i.e. \"without\") and , archos, i.e. \"leader\", \"ruler\"; (cf. archon or , arkhē, i.e. \"authority\", \"sovereignty\", \"realm\", \"magistracy\")) and the suffix  or  (-ismos, -isma, from the verbal infinitive suffix -ίζειν, -izein). The first known use of this word was in 1539. Various factions within the French Revolution labelled opponents as anarchists (as Robespierre did the Hébertists) although few shared many views of later anarchists.  There would be many revolutionaries of the early nineteenth century who contributed to the anarchist doctrines of the next generation, such as William Godwin and Wilhelm Weitling, but they did not use the word anarchist or anarchism in describing themselves or their beliefs.";
         String[] tokens = SimpleTokenizer.INSTANCE.tokenize(s);
         String[] tags = new POSTaggerME(new POSModel(new File("../models/en-pos-maxent.bin"))).tag(tokens);
-        
+
+    }
+
+    @Test
+    public void testExtraction() throws Exception {
+        String s = "We don't want any bugs in Saffron 3.1";
+        final File file = new File("../models/en-token.bin");
+        if (file.exists()) {
+            //String[] tokens = SimpleTokenizer.INSTANCE.tokenize(s);
+            String[] tokens = new TokenizerME(new TokenizerModel(file)).tokenize(s);
+
+            assertArrayEquals(new String[]{"We", "do", "n't", "want", "any", "bugs", "in", "Saffron", "3.1"}, tokens);
+            final File file1 = new File("../models/en-pos-maxent.bin");
+            if (file1.exists()) {
+
+                String[] tags = new POSTaggerME(new POSModel(file1)).tag(tokens);
+
+                assertArrayEquals(new String[]{"PRP", "VBP", "RB", "VB", "DT", "NNS", "IN", "NNP", "CD"}, tags);
+            }
+        }
     }
 }
