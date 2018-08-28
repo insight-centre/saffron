@@ -90,3 +90,9 @@ The following results are generated
 * `topic-sim.json`: The topic-topic similarity graph
 * `author-sim.json`: The author-author similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
+ 
+
+To create a .dot file, use the command line:
+
+    python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
+
