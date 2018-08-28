@@ -198,6 +198,7 @@ public class BenchmarkFromWikipedia {
                         sb.append(line);
                         try {
                             String contents = cleaner.clean(sb.toString());
+                            inArticle = false;
                             if (docTitles.contains(title.toLowerCase())) {
                                 return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
                             }
@@ -205,9 +206,6 @@ public class BenchmarkFromWikipedia {
                             x.printStackTrace();
 
                         }
-                        //out.println(cleaner.clean(sb.toString()));
-                        //out.close();
-                        //out = null;
                         inArticle = false;
                     } else {
                         sb.append(line).append("\n");

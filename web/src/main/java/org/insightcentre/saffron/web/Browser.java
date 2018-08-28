@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import static java.lang.Integer.min;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -242,12 +243,20 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.equals("/author-docs")) {
                     final String authorId = request.getParameter("author");
+                    final int n = request.getParameter("n") == null ? 1000 : Integer.parseInt(request.getParameter("n"));
+                    final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (authorId != null) {
                         List<Document> docs = saffron.getDocsByAuthor(authorId);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), docs);
+                        if (offset < docs.size()) {
+                            mapper.writeValue(response.getWriter(), docs.subList(offset, min(docs.size(), n + offset)));
+                        } else {
+                            try (Writer w = response.getWriter()) {
+                                w.write("[]");
+                            }
+                        }
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -317,7 +326,7 @@ public class Browser extends AbstractHandler {
                             }
                         }
                     }
-                } else if(target.equals("/status")) {
+                } else if (target.equals("/status")) {
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -335,7 +344,7 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                       
+
                 } else if ("/treemap.html".equals(target)) {
 
                     response.setContentType("text/html");
@@ -348,7 +357,7 @@ public class Browser extends AbstractHandler {
                     while ((i = reader.read(buf)) >= 0) {
                         writer.write(buf, 0, i);
                     }
-                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));                 
+                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
                 } else if ("/graph.html".equals(target)) {
 
                     response.setContentType("text/html");
@@ -362,8 +371,8 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                } else if("/search/".equals(target)) {
-                     response.setContentType("text/html");
+                } else if ("/search/".equals(target)) {
+                    response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     FileReader reader = new FileReader(new File("static/search.html"));
@@ -374,13 +383,13 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                } else if("/search_results".equals(target)) {
+                } else if ("/search_results".equals(target)) {
                     String queryTerm = request.getParameter("query");
-                    if(queryTerm != null) {
+                    if (queryTerm != null) {
                         try {
                             Iterable<Document> docIterable = saffron.getSearcher().search(queryTerm);
                             ArrayList<Document> docs = new ArrayList<>();
-                            for(Document doc : docIterable) {
+                            for (Document doc : docIterable) {
                                 docs.add(doc.reduceContext(queryTerm, 20));
                             }
                             response.setContentType("application/json");
@@ -388,11 +397,11 @@ public class Browser extends AbstractHandler {
                             PrintWriter out = response.getWriter();
                             mapper.writeValue(out, docs);
                             baseRequest.setHandled(true);
-                        } catch(IOException x) {
+                        } catch (IOException x) {
                             x.printStackTrace();
                         }
                     }
-                } else if(target.startsWith("/ttl/doc/")) {
+                } else if (target.startsWith("/ttl/doc/")) {
                     final String docId = target.substring(9);
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null) {
@@ -402,7 +411,7 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.documentToRDF(doc, saffron);
                         model.write(response.getWriter(), "TURTLE");
                     }
-                } else if(target.startsWith("/ttl/author/")) {
+                } else if (target.startsWith("/ttl/author/")) {
                     final String authorId = target.substring(12);
                     final Author author = saffron.getAuthor(authorId);
                     if (author != null) {
@@ -412,7 +421,7 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.authorToRdf(author, saffron);
                         model.write(response.getWriter(), "TURTLE");
                     }
-                } else if(target.startsWith("/ttl/topic/")) {
+                } else if (target.startsWith("/ttl/topic/")) {
                     final String topicId = target.substring(11);
                     final Topic topic = saffron.getTopic(topicId);
                     if (topic != null) {
@@ -422,7 +431,7 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.topicToRDF(topic, saffron);
                         model.write(response.getWriter(), "TURTLE");
                     }
-                } else if(target.startsWith("/rdf/doc/")) {
+                } else if (target.startsWith("/rdf/doc/")) {
                     final String docId = target.substring(9);
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null) {
@@ -432,7 +441,7 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.documentToRDF(doc, saffron);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
-                } else if(target.startsWith("/rdf/author/")) {
+                } else if (target.startsWith("/rdf/author/")) {
                     final String authorId = target.substring(12);
                     final Author author = saffron.getAuthor(authorId);
                     if (author != null) {
@@ -442,7 +451,7 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.authorToRdf(author, saffron);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
-                } else if(target.startsWith("/rdf/topic/")) {
+                } else if (target.startsWith("/rdf/topic/")) {
                     final String topicId = target.substring(11);
                     final Topic topic = saffron.getTopic(topicId);
                     if (topic != null) {
