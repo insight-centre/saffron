@@ -5,7 +5,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import joptsimple.OptionParser;
@@ -117,14 +120,18 @@ public class TaxonomyExtractionBenchmark {
             final Taxonomy taxo = mapper.readValue(taxoFile, Taxonomy.class);
             
             final Set<StringPair> gold;
+            final Taxonomy goldTaxo;
             if(goldFile.getName().endsWith(".json")) {
-                gold = linksFromTaxo(mapper.readValue(taxoFile, Taxonomy.class));
+                goldTaxo = mapper.readValue(taxoFile, Taxonomy.class);
+                gold = linksFromTaxo(goldTaxo);
             } else {
                 gold = readTExEval(goldFile);
+                goldTaxo = taxoFromLinks(gold);
             }
             
             final Scores s = evalTaxo(taxo, gold);
             final Stats stats = stats(taxo);
+            final double modFM = FowlkesMallows.fowlkesMallows(taxo, goldTaxo);
             
             
             System.err.printf("|-----------|--------|\n");
@@ -139,7 +146,7 @@ public class TaxonomyExtractionBenchmark {
             System.err.printf("| F-Measure | %.4f |\n", 
                     s.precision == 0.0 && s.recall == 0.0 ? 0.0 :
                     2.0 * s.recall * s.precision / (s.precision + s.recall));
-            //System.err.printf("| F&M       | %.4f |\n", Math.sqrt(s.recall * s.precision));
+            System.err.printf("| F&M       | %.4f |\n", modFM);
         } catch (Exception x) {
             x.printStackTrace();
             System.exit(-1);
@@ -151,6 +158,42 @@ public class TaxonomyExtractionBenchmark {
         HashSet<StringPair> links = new HashSet<>();
         _linksFromTaxo(taxo, links);
         return links;        
+    }
+    
+    
+    private static Taxonomy taxoFromLinks(Set<StringPair> gold) {
+        Map<String, Taxonomy> taxos = new HashMap<>();
+        Set<String> nonRoots = new HashSet<>();
+        for(StringPair sp : gold) {
+            final ArrayList<Taxonomy> children;
+            if(taxos.containsKey(sp._1)) {
+                children = new ArrayList<>(taxos.get(sp._1).children);
+            } else {
+                children = new ArrayList<>();
+            }
+            final Taxonomy child;
+            if(taxos.containsKey(sp._2)) {
+                child = taxos.get(sp._2);
+            } else {
+                child = new Taxonomy(sp._2, 0, 0, new ArrayList<>());
+            }
+            children.add(child);
+            taxos.put(sp._1, new Taxonomy(sp._1, 0, 0, children));
+            nonRoots.add(sp._2);
+        }
+        Set<String> roots = new HashSet<>(taxos.keySet());
+        roots.removeAll(nonRoots);
+        if(roots.size() == 1) {
+            return taxos.get(roots.iterator().next());
+        } else if(roots.size() == 0) {
+            throw new RuntimeException("Taxo file contains loops");
+        } else {
+            final ArrayList<Taxonomy> children = new ArrayList<>();
+            for(String root : roots) {
+                children.add(taxos.get(root));
+            }
+            return new Taxonomy("", 0, 0, children);
+        }
     }
 
     private static Set<StringPair> readTExEval(File goldFile) throws IOException {

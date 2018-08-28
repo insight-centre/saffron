@@ -99,6 +99,18 @@ public class Taxonomy {
     }
     
     /**
+     * The maximum depth of the taxonomy
+     * @return The maximum depth of the taxonomy
+     */
+    public int depth(){
+        int depth = 0;
+        for(Taxonomy t : children) {
+            depth = Math.max(depth, t.depth() + 1);
+        }
+        return depth;
+    }
+    
+    /**
      * Verify if there are no loops in this taxonomy
      * @return true if there are no loops
      */
