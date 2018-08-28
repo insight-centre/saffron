@@ -22,7 +22,6 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import static org.insightcentre.nlp.saffron.benchmarks.TaxonomyExtractionBenchmark.readTExEval;
-import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
@@ -197,14 +196,19 @@ public class BenchmarkFromWikipedia {
                         }
                     } else if (END_TEXT.matcher(line).matches()) {
                         sb.append(line);
-                        String contents = cleaner.clean(sb.toString());
+                        try {
+                            String contents = cleaner.clean(sb.toString());
+                            if (docTitles.contains(title.toLowerCase())) {
+                                return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                            }
+                        } catch (Exception x) {
+                            x.printStackTrace();
+
+                        }
                         //out.println(cleaner.clean(sb.toString()));
                         //out.close();
                         //out = null;
                         inArticle = false;
-                        if (docTitles.contains(title.toLowerCase())) {
-                            return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
-                        }
                     } else {
                         sb.append(line).append("\n");
                     }
