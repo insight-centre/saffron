@@ -196,17 +196,15 @@ public class BenchmarkFromWikipedia {
                         }
                     } else if (END_TEXT.matcher(line).matches()) {
                         sb.append(line);
+                        inArticle = false;
                         try {
-                            String contents = cleaner.clean(sb.toString());
-                            inArticle = false;
                             if (docTitles.contains(title.toLowerCase())) {
+                                String contents = cleaner.clean(sb.toString());
                                 return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
-                            }
+                            } 
                         } catch (Exception x) {
                             x.printStackTrace();
-
                         }
-                        inArticle = false;
                     } else {
                         sb.append(line).append("\n");
                     }
