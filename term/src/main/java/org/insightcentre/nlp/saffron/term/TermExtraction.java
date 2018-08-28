@@ -38,8 +38,10 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.index.CorpusAsDocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.domain.DomainStats;
 import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 
@@ -209,14 +211,20 @@ public class TermExtraction {
                 protected FrequencyStats init() {
                     ObjectMapper mapper = new ObjectMapper();
                     try {
-                        if(refFile.getName().endsWith(".gz")) {
+                        if(refFile.getName().endsWith("json.gz")) {
                             return mapper.readValue(
                                     new GZIPInputStream(new FileInputStream(refFile)), 
                                     FrequencyStats.class);
-                        } else {
+                        } else if(refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
+                        } else if(refFile.getName().endsWith(".zip")) {
+                            return extractStats(new CorpusAsDocumentSearcher(CorpusTools.fromZIP(refFile)), null, null);
+                        } else if(refFile.getName().endsWith(".tar.gz")) {
+                            return extractStats(new CorpusAsDocumentSearcher(CorpusTools.fromTarball(refFile)), null, null);
+                        } else {
+                            throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
-                    } catch (IOException x) {
+                    } catch (IOException|SearchException|InterruptedException|ExecutionException x) {
                         x.printStackTrace();
                         return null;
                     }
