@@ -196,7 +196,7 @@ public class TaxonomyExtractionBenchmark {
         }
     }
 
-    private static Set<StringPair> readTExEval(File goldFile) throws IOException {
+    static Set<StringPair> readTExEval(File goldFile) throws IOException {
         HashSet<StringPair> links = new HashSet<>();
         String line;
         try(BufferedReader reader = new BufferedReader(new FileReader(goldFile))) {
@@ -220,7 +220,7 @@ public class TaxonomyExtractionBenchmark {
         }
     }
     
-    private static class StringPair {
+    static class StringPair {
         public final String _1, _2;
 
         public StringPair(String _1, String _2) {
