@@ -60,6 +60,8 @@
 //}
 
 
+var $container = $('#treemap');
+
 window.addEventListener('message', function(e) {
     var opts = e.data.opts,
         data = e.data.data;
@@ -72,7 +74,7 @@ var defaults = {
     rootname: "TOP",
     format: ",d",
     title: "",
-    width: 960,
+    width: $container.width(),
     height: 500
 };
 
