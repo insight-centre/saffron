@@ -90,13 +90,15 @@ function update() {
 
   var nodeEnter = node.enter().append("g")
       .attr("class", nodeClass)
-      .on("click", click)
       .call(force.drag);
 
   nodeEnter.append("circle")
+      .on("click", click)
       .attr("r", function(d) { return Math.max(Math.sqrt(d.score / ave * 15 || 4.5),5); });
 
-  nodeEnter.append("text")
+  nodeEnter.append("a")
+      .attr("href", function(d) { return "topic/" + d.root; })
+      .append("text")
       .attr("dy", ".35em")
       .text(function(d) { return "\u00a0\u00a0\u00a0" + d.root; });
 

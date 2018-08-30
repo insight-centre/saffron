@@ -156,7 +156,7 @@ public class Browser extends AbstractHandler {
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     final List<TopicTopic> tts;
                     if (topic1 != null) {
-                        tts = saffron.getTopicByTopic1(topic1);
+                        tts = saffron.getTopicByTopic1(topic1, saffron.getTaxoChildren(topic1));
                     } else if (topic2 != null) {
                         tts = saffron.getTopicByTopic2(topic2);
                     } else {

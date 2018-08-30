@@ -12,9 +12,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
@@ -256,9 +258,19 @@ public class SaffronData {
         this.topicSim = topicSim;
     }
 
-    public List<TopicTopic> getTopicByTopic1(String topic1) {
+    public List<TopicTopic> getTopicByTopic1(String topic1, List<String> _ignore) {
+        Set<String> ignore = new HashSet<>(_ignore);
         List<TopicTopic> tt = topicByTopic1.get(topic1);
-        return tt == null ? Collections.EMPTY_LIST : tt;
+        if(tt != null) {
+            Iterator<TopicTopic> itt = tt.iterator();
+            while(itt.hasNext()) {
+                if(ignore.contains(itt.next().topic2))
+                    itt.remove();
+            }
+            return tt;
+        } else {
+            return Collections.EMPTY_LIST;
+        }
     }
 
     public List<TopicTopic> getTopicByTopic2(String topic2) {
