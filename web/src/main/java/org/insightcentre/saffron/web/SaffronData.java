@@ -259,7 +259,7 @@ public class SaffronData {
     }
 
     public List<TopicTopic> getTopicByTopic1(String topic1, List<String> _ignore) {
-        Set<String> ignore = new HashSet<>(_ignore);
+        Set<String> ignore = _ignore == null ? new HashSet<>() : new HashSet<>(_ignore);
         List<TopicTopic> tt = topicByTopic1.get(topic1);
         if(tt != null) {
             Iterator<TopicTopic> itt = tt.iterator();

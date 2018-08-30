@@ -84,7 +84,7 @@ public class RDFConversion {
                     model.createResource("../author/" + encode(at.author_id)));
         }
         
-        for(TopicTopic tt : data.getTopicByTopic1(t.topicString)) {
+        for(TopicTopic tt : data.getTopicByTopic1(t.topicString, null)) {
             res.addProperty(SKOS.related,
                     model.createResource(encode(tt.topic2)));
         }
