@@ -20,11 +20,11 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
  *
  * @author John McCrae <john@mccr.ae>
  */
-public class Welcome extends AbstractHandler {
+public class NewRun extends AbstractHandler {
 
     private final Executor executor;
 
-    public Welcome(Executor executor) {
+    public NewRun(Executor executor) {
         this.executor = executor;
     }
 
@@ -70,7 +70,7 @@ public class Welcome extends AbstractHandler {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
-                FileReader reader = new FileReader(new File("static/welcome.html"));
+                FileReader reader = new FileReader(new File("static/new.html"));
                 StringWriter writer = new StringWriter();
                 char[] buf = new char[4096];
                 int i = 0;
