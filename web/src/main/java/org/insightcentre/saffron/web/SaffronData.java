@@ -454,4 +454,30 @@ public class SaffronData {
             return Collections.EMPTY_LIST;
         }
     }
+    
+    public List<TopicAndScore> getTaxoChildrenScored(String topic_string) {
+        IntList il = taxoMap.get(topic_string);
+        if (il != null) {
+            Taxonomy t = taxoNavigate(taxonomy, il);
+            List<TopicAndScore> children = new ArrayList<>();
+            for (Taxonomy t2 : t.children) {
+                children.add(new TopicAndScore(t2.root, t2.linkScore));
+            }
+            return children;
+        } else {
+            return Collections.EMPTY_LIST;
+        }
+    }
+    
+    public static class TopicAndScore {
+        public final String topic;
+        public final double score;
+
+        public TopicAndScore(String topic, double score) {
+            this.topic = topic;
+            this.score = score;
+        }
+        
+        
+    }
 }

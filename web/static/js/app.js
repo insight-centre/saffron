@@ -64,6 +64,7 @@ angular.module('app').component('relatedtopics', {
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
                             "topic_string": response.data[t].topic2_id,
+                            "score": Math.round(response.data[t].similarity * 100) + "%",
                             "pos": (t + 1 + ctrl.n2),
                             "left": t < response.data.length / 2,
                             "right": t >= response.data.length / 2
@@ -161,7 +162,7 @@ angular.module('app').component('relateddocuments', {
         topic: '<',
         author: '<'
     },
-    controller: function ($http) {
+    controller: function ($http,$sce) {
         var ctrl = this;
         if(ctrl.topic) {
             $http.get('/' + saffronDatasetName + '/doc-topics?topic=' + ctrl.topic).then(function (response) {
@@ -169,6 +170,7 @@ angular.module('app').component('relateddocuments', {
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.docs.push({
                         "doc": response.data[t],
+                        "contents_highlighted" : $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
                         "pos": (t + 1)
                     });
                 }
@@ -228,7 +230,8 @@ angular.module('app').component('childtopics', {
             ctrl.topics = [];
             for (t = 0; t < response.data.length; t++) {
                 ctrl.topics.push({
-                    "topic_string": response.data[t],
+                    "topic_string": response.data[t].topic,
+                    "score": Math.round(response.data[t].score * 100) + "%",
                     "pos": (t + 1),
                     "left": t < response.data.length / 2,
                     "right": t >= response.data.length / 2

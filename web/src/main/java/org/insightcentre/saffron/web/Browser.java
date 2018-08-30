@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import static java.lang.Integer.min;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -120,7 +122,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), saffron.getTaxoChildren(topic));
+                        mapper.writeValue(response.getWriter(), saffron.getTaxoChildrenScored(topic));
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -210,7 +212,11 @@ public class Browser extends AbstractHandler {
                         mapper.writeValue(response.getWriter(), getTopNDocTopics(dts, n, offset));
 
                     } else if (topic != null) {
-                        final List<Document> docs = saffron.getDocByTopic(topic);
+                        final List<Document> _docs = saffron.getDocByTopic(topic);
+                        final List<Document> docs = new ArrayList<>();
+                        for(Document d : _docs) {
+                            docs.add(d.reduceContext(topic, 20));
+                        }
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
