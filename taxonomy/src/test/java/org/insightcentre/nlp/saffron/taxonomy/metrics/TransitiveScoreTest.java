@@ -69,7 +69,7 @@ public class TransitiveScoreTest {
         TaxonomyScore instance = new TransitiveScore(new TestSupervisedTaxo());
         instance = instance.next("", "a", soln.add("", "a", 0, 0, 0));
         instance = instance.next("ab", "abc", soln.add("ab", "abc", 0, 0, 0));
-        double expResult = 2.0 / 3.0 + 1.0 / 3.0 + 2.0 / 4.0 + 1.0/4.0;
+        double expResult = 2.0 / 3.0 + 1.0 / 3.0 + 2.0 / 4.0 + 1.0/4.0 - 0.5 * 4;
         double result = instance.deltaScore(tl);
         assertEquals(expResult, result, 0.000001);
     }
@@ -92,7 +92,7 @@ public class TransitiveScoreTest {
             new TaxoLink("cb", "cba"), // 3/4 + 2/4 + 1/4
             new TaxoLink("cbc", "cbcd") // 4/5 + 3/5 + 2/5 + 1/5
         };
-        double expSolution = (1.0/2.0) * 3 + (1.0) * 5 + 6.0/4.0 * 3 + 2.0 * 3;
+        double expSolution = 0.0; //(1.0/2.0) * 3 + (1.0) * 5 + 6.0/4.0 * 3 + 2.0 * 3 - 34 * 0.5
         for (int i = 0; i < 5; i++) {
             shuffleArray(tls);
             Solution soln = Solution.empty(new HashSet<String>());

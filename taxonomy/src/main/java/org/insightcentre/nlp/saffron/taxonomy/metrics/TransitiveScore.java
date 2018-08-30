@@ -37,21 +37,21 @@ public class TransitiveScore implements TaxonomyScore {
     @Override
     public double deltaScore(TaxoLink tl) {
         if (!scores.containsKey(tl)) {
-            scores.put(tl, classifier.predict(tl.top, tl.bottom));
+            scores.put(tl, classifier.predict(tl.top, tl.bottom) - 0.5);
         }
         double s = scores.getDouble(tl);
         if (parents.containsKey(tl.top)) {
             for (String p : parents.get(tl.top)) {
                 TaxoLink tl2 = new TaxoLink(p, tl.bottom);
                 if (!scores.containsKey(tl2)) {
-                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom));
+                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom) - 0.5);
                 }
                 s += scores.getDouble(tl2);
                 if (children.containsKey(tl.bottom)) {
                     for (String c : children.get(tl.bottom)) {
                         TaxoLink tl3 = new TaxoLink(p, c);
                         if (!scores.containsKey(tl3)) {
-                            scores.put(tl3, classifier.predict(tl3.top, tl3.bottom));
+                            scores.put(tl3, classifier.predict(tl3.top, tl3.bottom) - 0.5);
                         }
                         s += scores.getDouble(tl3);
 
@@ -63,7 +63,7 @@ public class TransitiveScore implements TaxonomyScore {
             for (String c : children.get(tl.bottom)) {
                 TaxoLink tl2 = new TaxoLink(tl.top, c);
                 if (!scores.containsKey(tl2)) {
-                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom));
+                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom) - 0.5);
                 }
                 s += scores.getDouble(tl2);
             }
