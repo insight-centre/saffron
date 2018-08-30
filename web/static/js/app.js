@@ -56,8 +56,8 @@ angular.module('app').component('relatedtopics', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadTopics = function() {
-            if(ctrl.topic) {
+        this.loadTopics = function () {
+            if (ctrl.topic) {
                 ctrl.title = "Related topics";
                 $http.get('/' + saffronDatasetName + '/topic-sim?n=20&offset=' + ctrl.n2 + '&topic1=' + ctrl.topic).then(function (response) {
                     ctrl.topics = [];
@@ -72,9 +72,9 @@ angular.module('app').component('relatedtopics', {
                     }
                     ctrl.n = ctrl.n2;
                 });
-            } else if(ctrl.doc) {
+            } else if (ctrl.doc) {
                 ctrl.title = "Main topics";
-                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&doc=' + ctrl.doc).then(function(response) {
+                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&doc=' + ctrl.doc).then(function (response) {
                     ctrl.topics = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
@@ -86,9 +86,9 @@ angular.module('app').component('relatedtopics', {
                     }
                     ctrl.n = ctrl.n2;
                 });
-            } else if(ctrl.author) {
+            } else if (ctrl.author) {
                 ctrl.title = "Main topics";
-                $http.get('/' + saffronDatasetName + '/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                $http.get('/' + saffronDatasetName + '/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
                     ctrl.topics = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.topics.push({
@@ -111,7 +111,7 @@ angular.module('app').component('relatedtopics', {
             this.loadTopics();
         }
         this.loadTopics();
-        
+
     }
 });
 
@@ -123,7 +123,7 @@ angular.module('app').component('relatedauthors', {
     },
     controller: function ($http) {
         var ctrl = this;
-        if(ctrl.topic) {
+        if (ctrl.topic) {
             ctrl.title = "Major authors on this topic";
             $http.get('/' + saffronDatasetName + '/author-topics?topic=' + ctrl.topic).then(function (response) {
                 ctrl.authors = [];
@@ -137,18 +137,18 @@ angular.module('app').component('relatedauthors', {
                     });
                 }
             });
-        } else if(ctrl.author) {
+        } else if (ctrl.author) {
             ctrl.title = "Similar authors"
             $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function (response) {
                 ctrl.authors = [];
-                for(t = 0; t < response.data.length; t++) {
+                for (t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
                         "id": response.data[t].id,
                         "name": response.data[t].name,
                         "pos": (t + 1),
                         "left": t < response.data.length / 2,
                         "right": t >= response.data.length / 2
-                        
+
                     });
                 }
             });
@@ -162,30 +162,46 @@ angular.module('app').component('relateddocuments', {
         topic: '<',
         author: '<'
     },
-    controller: function ($http,$sce) {
+    controller: function ($http, $sce) {
         var ctrl = this;
-        if(ctrl.topic) {
-            $http.get('/' + saffronDatasetName + '/doc-topics?topic=' + ctrl.topic).then(function (response) {
-                ctrl.docs = [];
-                for (t = 0; t < response.data.length; t++) {
-                    ctrl.docs.push({
-                        "doc": response.data[t],
-                        "contents_highlighted" : $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
-                        "pos": (t + 1)
-                    });
-                }
-            });
-        } else if(ctrl.author) {
-            $http.get('/' + saffronDatasetName + '/author-docs?author=' + ctrl.author).then(function (response) {
-                ctrl.docs = [];
-                for (t = 0; t < response.data.length; t++) {
-                    ctrl.docs.push({
-                        "doc": response.data[t],
-                        "pos": (t + 1)
-                    });
-                }
-            })
-        }
+        ctrl.n = 0;
+        ctrl.n2 = 0;
+        this.loadTopics = function () {
+            if (ctrl.topic) {
+                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&topic=' + ctrl.topic).then(function (response) {
+                    ctrl.docs = [];
+                    console.log(response.data.length);
+                    for (t = 0; t < response.data.length; t++) {
+                        ctrl.docs.push({
+                            "doc": response.data[t],
+                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
+                            "pos": (t + 1)
+                        });
+                    }
+                    ctrl.n = ctrl.n2;
+                });
+            } else if (ctrl.author) {
+                $http.get('/' + saffronDatasetName + '/author-docs?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
+                    ctrl.docs = [];
+                    for (t = 0; t < response.data.length; t++) {
+                        ctrl.docs.push({
+                            "doc": response.data[t],
+                            "pos": (t + 1)
+                        });
+                    }
+                    ctrl.n = ctrl.n2;
+                })
+            }
+        };
+        this.docForward = function () {
+            ctrl.n2 += 20;
+            this.loadTopics();
+        };
+        this.docBackward = function () {
+            ctrl.n2 -= 20;
+            this.loadTopics();
+        };
+        this.loadTopics();
     }
 });
 
@@ -209,13 +225,13 @@ angular.module('app').component('doc', {
     }
 });
 
-angular.module('app').controller('Breadcrumbs', function($scope,$http) {
-   if(topic) {
-       $scope.parents = [];
-       $http.get('/' + saffronDatasetName + '/parents?topic=' + topic.topic_string).then(function(response) {
-           $scope.parents = response.data;
-       })
-   } 
+angular.module('app').controller('Breadcrumbs', function ($scope, $http) {
+    if (topic) {
+        $scope.parents = [];
+        $http.get('/' + saffronDatasetName + '/parents?topic=' + topic.topic_string).then(function (response) {
+            $scope.parents = response.data;
+        })
+    }
 });
 
 angular.module('app').component('childtopics', {
@@ -243,12 +259,12 @@ angular.module('app').component('childtopics', {
 
 angular.module('app').component('searchresults', {
     templateUrl: '/search-results.html',
-    controller: function ($http,$sce) {
+    controller: function ($http, $sce) {
         var ctrl = this;
         ctrl.title = "Topics";
         $http.get('/' + saffronDatasetName + '/search_results?query=' + searchQuery).then(function (response) {
             ctrl.results = response.data;
-            for(i in ctrl.results) {
+            for (i in ctrl.results) {
                 ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
             }
         });
@@ -266,10 +282,10 @@ angular.module('app').component('metadata', {
         if (doc) {
             ctrl.doc = doc;
         }
-        this.hasMetadata = function() {
+        this.hasMetadata = function () {
             return Object.keys(ctrl.doc.metadata).length > 0;
         };
-        this.hasNoMetadata = function() {
+        this.hasNoMetadata = function () {
             return Object.keys(ctrl.doc.metadata).length === 0;
         };
     }

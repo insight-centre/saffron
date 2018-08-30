@@ -214,8 +214,11 @@ public class Browser extends AbstractHandler {
                     } else if (topic != null) {
                         final List<Document> _docs = saffron.getDocByTopic(topic);
                         final List<Document> docs = new ArrayList<>();
+                        int i = 0;
                         for(Document d : _docs) {
-                            docs.add(d.reduceContext(topic, 20));
+                            if(i >= offset && i < offset + n)
+                                docs.add(d.reduceContext(topic, 20));
+                            i++;
                         }
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
