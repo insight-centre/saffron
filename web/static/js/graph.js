@@ -1,6 +1,6 @@
 
-var width = Math.min(1200,Math.max(document.getElementById('graph').offsetWidth,500)),
-    height = Math.min(800,Math.max(document.getElementById('graph').offsetWidth * .6,500)),
+var width = $("#graph").width(),
+    height = Math.min(800,Math.max(document.getElementById('graph').offsetWidth * .6,800)),
     root;
 
 var force = d3.layout.force()

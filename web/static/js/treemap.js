@@ -3,7 +3,7 @@
 //    height = 500,
 //    root;
 //
-//var svg = d3.select("#graph").append("svg")
+//var svg = d3.select("#treemap").append("svg")
 //    .attr("width", width)
 //    .attr("height", height);
 //
@@ -60,6 +60,8 @@
 //}
 
 
+var $container = $('#treemap');
+
 window.addEventListener('message', function(e) {
     var opts = e.data.opts,
         data = e.data.data;
@@ -72,7 +74,7 @@ var defaults = {
     rootname: "TOP",
     format: ",d",
     title: "",
-    width: 960,
+    width: $container.width(),
     height: 500
 };
 
@@ -84,7 +86,7 @@ function main(o, data) {
       margin = opts.margin,
       theight = 36 + 16;
 
-  $('#graph').width(opts.width).height(opts.height);
+  $('#treemap').width(opts.width).height(opts.height);
   var width = opts.width - margin.left - margin.right,
       height = opts.height - margin.top - margin.bottom - theight,
       transitioning;
@@ -105,7 +107,7 @@ function main(o, data) {
       .ratio(height / width * 0.5 * (1 + Math.sqrt(5)))
       .round(false);
   
-  var svg = d3.select("#graph").append("svg")
+  var svg = d3.select("#treemap").append("svg")
       .attr("width", width + margin.left + margin.right)
       .attr("height", height + margin.bottom + margin.top)
       .style("margin-left", -margin.left + "px")
@@ -128,7 +130,7 @@ function main(o, data) {
       .attr("dy", ".75em");
 
   if (opts.title) {
-    $("#graph").prepend("<p class='title'>" + opts.title + "</p>");
+    $("#treemap").prepend("<h4 class='card-title'>" + opts.title + "</h4>");
   }
   if (data instanceof Array) {
     root = { key: rname, values: data };

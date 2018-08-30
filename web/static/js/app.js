@@ -242,7 +242,7 @@ angular.module('app').component('searchresults', {
     templateUrl: '/search-results.html',
     controller: function ($http,$sce) {
         var ctrl = this;
-        ctrl.title = "Child topics";
+        ctrl.title = "Topics";
         $http.get('/' + saffronDatasetName + '/search_results?query=' + searchQuery).then(function (response) {
             ctrl.results = response.data;
             for(i in ctrl.results) {
