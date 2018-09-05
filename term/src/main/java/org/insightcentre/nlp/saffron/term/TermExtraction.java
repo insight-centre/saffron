@@ -188,7 +188,7 @@ public class TermExtraction {
             final Lazy<DomainStats> domain) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
-            if (!blacklist.contains(topic)) {
+            if (!blacklist.contains(topic.toLowerCase())) {
                 scores.put(topic,
                         Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
             }
