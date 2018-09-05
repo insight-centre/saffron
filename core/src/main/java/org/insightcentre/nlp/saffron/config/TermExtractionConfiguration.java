@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.config;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -53,6 +54,10 @@ public class TermExtractionConfiguration {
     public Set<String> headTokens = new HashSet<>(Arrays.asList("NN", "NNS", "CD"));
     /** The position of the head of a noun phrase (true=final) */
     public boolean headTokenFinal = true;
+    /**
+     * A list of topics that should never be generated
+     */
+    public Set<String> blacklist = Collections.EMPTY_SET;
     
     /** The Weighting method to use */
     public enum WeightingMethod {

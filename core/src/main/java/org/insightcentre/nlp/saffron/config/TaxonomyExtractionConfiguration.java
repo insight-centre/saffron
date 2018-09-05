@@ -1,5 +1,7 @@
 package org.insightcentre.nlp.saffron.config;
 
+import java.util.Collections;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
