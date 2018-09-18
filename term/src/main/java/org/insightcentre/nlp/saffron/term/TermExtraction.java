@@ -23,6 +23,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
 import opennlp.tools.lemmatizer.DictionaryLemmatizer;
 import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSModel;
@@ -32,14 +34,14 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.index.CorpusAsDocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.domain.DomainStats;
@@ -374,4 +376,66 @@ public class TermExtraction {
         
     }
     
+    private static void badOptions(OptionParser p, String message) throws IOException {
+        System.err.println("Error: " + message);
+        p.printHelpOn(System.err);
+        System.exit(-1);
+    }
+
+    public static void main(String[] args) {
+        try {
+            // Parse command line arguments
+            final OptionParser p = new OptionParser() {
+                {
+                    accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
+                    accepts("x", "The corpus to write to").withRequiredArg().ofType(File.class);
+                    accepts("t", "The topics to write").withRequiredArg().ofType(File.class);
+                    accepts("o", "The doc-topic corespondences to write").withRequiredArg().ofType(File.class);
+                }
+            };
+            final OptionSet os;
+
+            try {
+                os = p.parse(args);
+            } catch (Exception x) {
+                badOptions(p, x.getMessage());
+                return;
+            }
+            
+            ObjectMapper mapper = new ObjectMapper();
+            
+            if(os.valueOf("c") == null) {
+                badOptions(p, "Configuration is required");
+                return;
+            }
+            if(os.valueOf("x") == null) {
+                badOptions(p, "Corpus is required");
+                return;
+            }
+            if(os.valueOf("t") == null) {
+                badOptions(p, "Output for Topics is required");
+                return;
+            }
+            if(os.valueOf("o") == null) {
+                badOptions(p, "Output for Doc-Topics is required");
+                return;
+            }
+            Configuration c = mapper.readValue((File)os.valueOf("c"), Configuration.class);
+            File corpusFile = (File)os.valueOf("x");
+            final IndexedCorpus corpus= mapper.readValue(corpusFile, IndexedCorpus.class);
+            final DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
+
+            final TermExtraction te = new TermExtraction(c.termExtraction);
+
+            final Result r = te.extractTopics(searcher);
+
+            mapper.writeValue((File)os.valueOf("t"), r.topics);
+            mapper.writeValue((File)os.valueOf("o"), r.docTopics);
+
+        } catch(Exception x) {
+            x.printStackTrace();
+            System.exit(-1);
+        }
+
+    }
 }

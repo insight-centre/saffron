@@ -23,26 +23,14 @@ OUTPUT=$2
 mkdir -p $OUTPUT
 
 # Step 0: Create configurations
-if [ ! -f $DIR/models/COHA_term_cooccurrences.txt ] || [ ! -f $DIR/models/info_measure.txt ] || [ ! -f $DIR/models/w2vConcepts.model ]
+if [ -f $DIR/models/dbpedia.db ]
 then
-    die "ATR4S data not installed"
-fi
-if [ ! -f $DIR/models/dbpedia.db ]
-then
-    die "DBpedia Index not built"
-fi
-cat > $OUTPUT/dbpedia.config << DBP_CONFIG
+    cat > $OUTPUT/dbpedia.config << DBP_CONFIG
 {
     "database": "$DIR/models/dbpedia.db"
 }
 DBP_CONFIG
-cat > $OUTPUT/atr4s.config << ATR4S_CONFIG
-{
-    "corpus": "$DIR/models/COHA_term_cooccurrences.txt",
-    "infoMeasure": "$DIR/models/info_measure.txt",
-    "w2vmodelPath": "$DIR/models/w2vConcepts.model"
-}
-ATR4S_CONFIG
+fi
 
 echo "########################################"
 echo "## Step 1:Indexing corpus             ##"
@@ -63,7 +51,7 @@ fi
 echo "########################################"
 echo "## Step 2: Topic Extraction           ##"
 echo "########################################"
-$DIR/extract-topics -c $OUTPUT/atr4s.config \
+$DIR/extract-topics -c $CONFIG \
     -x $CORPUS -t $OUTPUT/topics-extracted.json \
     -o $OUTPUT/doc-topics.json
 
@@ -76,8 +64,13 @@ CORPUS=$OUTPUT/corpus.json
 echo "########################################"
 echo "## Step 4: DBpedia Lookup             ##"
 echo "########################################"
-$DIR/dbpedia-lookup -c $OUTPUT/dbpedia.config -t $OUTPUT/topics-extracted.json \
+if [ -z $DBP_CONFIG ]
+then
+    echo "Skipping"
+else
+$DIR/dbpedia-lookup -c $DBP_CONFIG -t $OUTPUT/topics-extracted.json \
     -o $OUTPUT/topics.json
+fi
 
 echo "########################################"
 echo "## Step 5: Connect Authors            ##"
