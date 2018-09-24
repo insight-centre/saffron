@@ -223,7 +223,11 @@ public class TermExtractionConfiguration {
         "wasn",
         "weren",
         "won",
-        "wouldn"
+        "wouldn",
+        "com", // for URLs and other common junk
+        "http",
+        "www",
+        "nbsp"
     };
 
 }
