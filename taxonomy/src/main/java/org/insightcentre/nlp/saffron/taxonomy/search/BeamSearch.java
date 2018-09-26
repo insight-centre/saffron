@@ -24,6 +24,7 @@ public class BeamSearch implements TaxonomySearch {
     @Override
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         Beam<Soln> previous = new Beam<>(beamSize);
+        Beam<Soln> complete = new Beam<>(beamSize);
         previous.push(new Soln(Solution.empty(topicMap.keySet()), emptyScore, 0.0, false), 0.0);
         for (String t1 : topicMap.keySet()) {
             Beam<Soln> next = new Beam<>(beamSize);
@@ -44,6 +45,9 @@ public class BeamSearch implements TaxonomySearch {
                                     totalScore,
                                     prevSoln.rooted);
                                 next.push(candidate, totalScore);
+                                if(candidate.soln.isComplete()) {
+                                    complete.push(candidate, totalScore);
+                                }
                             }
                         }
                     }
@@ -60,7 +64,7 @@ public class BeamSearch implements TaxonomySearch {
             }
             previous = next;
         }
-        return previous.pop().soln.toTaxonomy();
+        return complete.pop().soln.toTaxonomy();
     }
     
     private static class Soln implements Comparable<Soln> {
