@@ -277,6 +277,8 @@ public class Executor extends AbstractHandler {
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "config.json"), config);
+
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");

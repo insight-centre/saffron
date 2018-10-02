@@ -41,7 +41,10 @@ public class Home extends AbstractHandler {
                 String content = writer.toString();
                 StringBuilder sitesTxt = new StringBuilder();
                 for(String s : sites.keySet()) {
-                    sitesTxt.append("<a href=\"/").append(s).append("/\"><li class=\"list-group-item\">").append(s).append("</li></a>");
+                    if(sitesTxt.length() != 0) {
+                        sitesTxt.append(",");
+                    }
+                    sitesTxt.append("\"").append(s).append("\"");
                 }
                 if(sites.isEmpty()) {
                     sitesTxt.append("<p>No previous analyses</p>");
