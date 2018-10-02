@@ -18,9 +18,11 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
  */
 public class Home extends AbstractHandler {
     private final Map<String, SaffronData> sites;
+    private final File parentDirectory;
 
-    public Home(Map<String, SaffronData> sites) {
+    public Home(Map<String, SaffronData> sites, File parentDirectory) {
         this.sites = sites;
+        this.parentDirectory = parentDirectory;
     }
     
     
@@ -52,7 +54,32 @@ public class Home extends AbstractHandler {
                 content = content.replaceAll("\\{\\{sites\\}\\}", sitesTxt.toString());
                 Writer out = response.getWriter();
                 out.write(content);
+        } else if("/delete".equals(target)) {
+            final String site = request.getQueryString();
+            if(site != null && site.matches("[A-Za-z][A-Za-z0-9_-]*")) {
+                deleteSite(site);
+                response.setContentType("text/plain");
+                response.setStatus(HttpServletResponse.SC_OK);
+                baseRequest.setHandled(true);
+                response.getWriter().println("OK");
+            }
         }
     }
 
+    public void deleteSite(String site) {
+        File f = new File(parentDirectory, site);
+        if(f.exists()) {
+            delRecursive(f);
+        }
+        sites.remove(site);
+    }
+
+    private static void delRecursive(File f) {
+        if(f.isDirectory()) {
+            for(File f2 : f.listFiles()) {
+                delRecursive(f2);
+            }
+        }
+        f.delete();
+    }
 }

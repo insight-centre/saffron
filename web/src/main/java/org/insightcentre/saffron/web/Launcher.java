@@ -68,7 +68,7 @@ public class Launcher {
             Browser browser = new Browser(directory);
             Executor executor = new Executor(browser.saffron, directory);
             NewRun welcome = new NewRun(executor);
-            Home home = new Home(browser.saffron);
+            Home home = new Home(browser.saffron, directory);
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);
 
