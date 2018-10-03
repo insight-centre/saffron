@@ -48,9 +48,6 @@ public class Home extends AbstractHandler {
                     }
                     sitesTxt.append("\"").append(s).append("\"");
                 }
-                if(sites.isEmpty()) {
-                    sitesTxt.append("<p>No previous analyses</p>");
-                }
                 content = content.replaceAll("\\{\\{sites\\}\\}", sitesTxt.toString());
                 Writer out = response.getWriter();
                 out.write(content);
