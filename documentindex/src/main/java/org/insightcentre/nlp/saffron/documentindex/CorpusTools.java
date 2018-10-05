@@ -128,7 +128,7 @@ public class CorpusTools {
                         public Document next() {
                             File f = iter.next();
                             try {
-                                return new Document(SaffronPath.fromFile(f), f.getName(), null, f.getName(),
+                                return new Document(SaffronPath.fromFile(f), f.getName().replaceAll(File.separator, "_"), null, f.getName().replaceAll(File.separator, "_"),
                                         Files.probeContentType(f.toPath()), new ArrayList<Author>(),
                                         new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
                             } catch (IOException ex) {
@@ -226,8 +226,8 @@ public class CorpusTools {
 
                                     fos2.getChannel().transferFrom(Channels.newChannel(is), 0, Long.MAX_VALUE);
 
-                                    return new Document(SaffronPath.fromFile(file), ze.getName(), null,
-                                            ze.getName(), Files.probeContentType(new File(ze.getName()).toPath()),
+                                    return new Document(SaffronPath.fromFile(file), ze.getName().replaceAll(File.separator, "_"), null,
+                                            ze.getName().replaceAll(File.separator, "_"), Files.probeContentType(new File(ze.getName()).toPath()),
                                             new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);
@@ -348,8 +348,8 @@ public class CorpusTools {
 
                                     fos2.getChannel().transferFrom(Channels.newChannel(tais), 0, Long.MAX_VALUE);
 
-                                    return new Document(SaffronPath.fromFile(file), tae.getName(), null,
-                                            tae.getName(), Files.probeContentType(new File(tae.getName()).toPath()),
+                                    return new Document(SaffronPath.fromFile(file), tae.getName().replaceAll(File.separator, "_"), null,
+                                            tae.getName().replaceAll(File.separator, "_"), Files.probeContentType(new File(tae.getName()).toPath()),
                                             new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);

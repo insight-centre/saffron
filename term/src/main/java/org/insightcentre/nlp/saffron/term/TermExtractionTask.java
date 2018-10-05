@@ -89,7 +89,7 @@ public class TermExtractionTask implements Runnable {
                                     if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
-                                        if (!lemmas[j].equals("O")) {
+                                        if (!lemmas[j].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
                                             tokens2[tokens2.length - 1] = lemmas[j];
                                         }
                                         processTerm(tokens2, 0, j - i, docTopicMap,
@@ -110,7 +110,7 @@ public class TermExtractionTask implements Runnable {
                                     if (lemmatizer != null && lemmatizer.get() != null) {
                                         String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                                         String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
-                                        if (!lemmas[i].equals("O")) {
+                                        if (!lemmas[i].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
                                             tokens2[0] = lemmas[i];
                                         }
                                         processTerm(tokens2, 0, j - i, docTopicMap,

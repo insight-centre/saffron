@@ -188,6 +188,7 @@ public class Executor extends AbstractHandler {
                     } else {
                         corpus = CorpusTools.fromZIP(tmpFile, new File(new File(parentDirectory, saffronDatasetName), "docs"));
                     }
+                    System.err.println(corpus.getDocuments().iterator().next().name);
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
