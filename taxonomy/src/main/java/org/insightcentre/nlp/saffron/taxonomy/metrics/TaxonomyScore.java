@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 public interface TaxonomyScore {
 
     /**
-     * Calculate the chagne in score of adding a single link
+     * Calculate the change in score of adding a single link
      *
      * @param taxoLink The taxonomy link to add
      * @return The change in score
