@@ -81,7 +81,7 @@ public class TermExtractionTask implements Runnable {
                     for (int i = 0; i < tokens.length; i++) {
                         boolean nonStop = false;
                         for (int j = i; j < min(i + ngramMax, tokens.length); j++) {
-                            if (!stopWords.contains(tokens[j])) {
+                            if (!stopWords.contains(tokens[j].toLowerCase()) && !stopWords.contains(tokens[j])) {
                                 nonStop = true;
                             }
                             if (headTokenFinal) {
