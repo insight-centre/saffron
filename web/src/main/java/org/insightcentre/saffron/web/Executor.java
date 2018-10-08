@@ -278,7 +278,12 @@ public class Executor extends AbstractHandler {
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "config.json"), config);
+        final File datasetFolder = new File(parentDirectory, saffronDatasetName);
+        if(!datasetFolder.exists()) {
+            if(!datasetFolder.mkdirs())
+                System.err.println("Could not make dataset folder, this run is likely to fail!");
+        }
+        ow.writeValue(new File(datasetFolder, "config.json"), config);
 
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
