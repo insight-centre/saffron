@@ -288,7 +288,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
-        DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus, indexFile, true);
+        DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus, indexFile, false);
         _status.setStatusMessage("Loading index");
         ArrayList<Document> docs = new ArrayList<>();
         for (Document d : corpus.getDocuments()) {
