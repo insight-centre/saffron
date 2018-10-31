@@ -39,11 +39,6 @@ following script
 
     ./install.sh
 
-Alternatively Saffron can be used in a Docker image as follows
-
-    docker pull insightcentre/saffron
-    docker run -it insightcentre/saffron bash
-
 Running
 -------
 

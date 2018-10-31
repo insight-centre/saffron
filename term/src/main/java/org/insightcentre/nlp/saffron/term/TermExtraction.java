@@ -52,7 +52,7 @@ import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
  * @author John McCrae <john@mccr.ae>
  */
 public class TermExtraction {
-    
+
     private final int nThreads;
     private final ThreadLocal<POSTagger> tagger;
     private final Tokenizer tokenizer;
@@ -68,7 +68,7 @@ public class TermExtraction {
     private final int maxTopics;
     private final Feature keyFeature;
     private final Set<String> blacklist;
-    
+
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer) {
         this.nThreads = nThreads;
         this.tagger = tagger;
@@ -91,7 +91,7 @@ public class TermExtraction {
         this.keyFeature = Feature.comboBasic;
         this.blacklist = Collections.EMPTY_SET;
     }
-    
+
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
         this.nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
         if (config.posModel == null) {
@@ -147,7 +147,7 @@ public class TermExtraction {
         this.keyFeature = config.baseFeature;
         this.blacklist = config.blacklist;
     }
-    
+
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
         BufferedReader r = new BufferedReader(new FileReader(p.toFile()));
         HashSet<String> set = new HashSet<>();
@@ -157,7 +157,7 @@ public class TermExtraction {
         }
         return set;
     }
-    
+
     public FrequencyStats extractStats(DocumentSearcher searcher,
             ConcurrentLinkedQueue<DocumentTopic> docTopics,
             CasingStats casing)
@@ -166,7 +166,7 @@ public class TermExtraction {
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());
         final FrequencyStats summary = new FrequencyStats();
-        
+
         int docCount = 0;
         for (Document doc : searcher.allDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
@@ -177,13 +177,13 @@ public class TermExtraction {
                 break;
             }
         }
-        
+
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
         summary.filter(minTermFreq);
         return summary;
     }
-    
+
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
@@ -196,9 +196,9 @@ public class TermExtraction {
             }
         }
         return scores;
-        
+
     }
-    
+
     private void rankTopicsByFeat(List<String> topics, final Object2DoubleMap<String> scores) {
         topics.sort(new Comparator<String>() {
             @Override
@@ -207,7 +207,7 @@ public class TermExtraction {
             }
         });
     }
-    
+
     public Result extractTopics(final DocumentSearcher searcher) {
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
@@ -244,7 +244,7 @@ public class TermExtraction {
                 }
             };
             Lazy<NovelTopicModel> ntm = new Lazy<NovelTopicModel>() {
-                
+
                 @Override
                 protected NovelTopicModel init() {
                     try {
@@ -256,7 +256,7 @@ public class TermExtraction {
                 }
             };
             Lazy<DomainStats> domain = new Lazy<DomainStats>() {
-                
+
                 @Override
                 protected DomainStats init() {
                     try {
@@ -277,7 +277,7 @@ public class TermExtraction {
                         topics = topics.subList(0, maxTopics);
                     }
                     return new Result(convertToTopics(topics, freqs, scores, casing),
-                            filterTopics(topics, dts, casing));
+                            filterTopics(topics, dts, casing, stopWords));
                 case voting:
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
@@ -294,7 +294,7 @@ public class TermExtraction {
                         topics = topics.subList(0, maxTopics);
                     }
                     return new Result(convertToTopics(topics, freqs, voting, casing),
-                            filterTopics(topics, dts, casing));
+                            filterTopics(topics, dts, casing, stopWords));
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
@@ -302,20 +302,96 @@ public class TermExtraction {
             throw new RuntimeException(x);
         }
     }
-    
+
     private static List<DocumentTopic> filterTopics(List<String> ts,
             ConcurrentLinkedQueue<DocumentTopic> dts,
-            CasingStats casing) {
+            CasingStats casing, Set<String> stopWords) {
         Set<String> ts2 = new HashSet<>(ts);
         List<DocumentTopic> rval = new ArrayList<>();
         for (DocumentTopic dt : dts) {
-            if (ts2.contains(dt.topic_string)) {
+            if (ts2.contains(dt.topic_string) && isProperTopic(dt.topic_string, stopWords)) {
                 rval.add(new DocumentTopic(dt.document_id,
                         casing.trueCase(dt.topic_string),
                         dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
             }
         }
         return rval;
+    }
+
+    private static boolean isProperTopic(String rootSequence, Set<String> stopWords) {
+        String s = rootSequence;
+
+        if (s.length() < 2) {
+            return false;
+        }
+        // all words need to have at least 2 characters
+        String[] words = s.split(" ");
+        if (minimumWordLength(words) < 2) {
+            return false;
+        }
+
+        if (s.contains("- ") || s.contains(" -")) {
+            return false;
+        }
+        final char[] chars = s.toCharArray();
+
+        // first character must be alphabetic
+        if (!isAlpha(chars[0])) {
+            return false;
+        }
+        if (!isAlphaNumeric(chars[chars.length - 1])) {
+            return false;
+        }
+
+        // first or last word not in stopwords
+        String firstWord = decapitalize(words[0]);
+        String lastWord = decapitalize(words[words.length - 1]);
+        if (stopWords.contains(firstWord) || stopWords.contains(lastWord)) {
+            return false;
+        }
+
+        // is alpha numeric
+        for (int x = 0; x < chars.length; x++) {
+            final char c = chars[x];
+            if (!isAlphaNumeric(c) && c != '-' && c != ' ') {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+ 
+    private static int minimumWordLength(String[] words) {
+        Integer minLength = Integer.MAX_VALUE;
+
+        for (String word : words) {
+            if (minLength > word.length()) {
+                minLength = word.length();
+            }
+        }
+        return minLength;
+    }
+
+    private static boolean isAlpha(final char c) {
+    	return Character.isLetter(c);
+    }
+
+    private static boolean isAlphaNumeric(final char c) {
+        return Character.isLetterOrDigit(c);
+    }
+    
+    private static String decapitalize(String s) {
+        if(s.length() <= 1) {
+            return s.toLowerCase();
+        } else {
+            if(Character.isUpperCase(s.charAt(0)) && Character.isUpperCase(s.charAt(1))) {
+                return s;
+            } else {
+                char[] c = s.toCharArray();
+                c[0] = Character.toLowerCase(c[0]);
+                return new String(c);
+            }
+        }
     }
     
     private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
@@ -329,22 +405,22 @@ public class TermExtraction {
         }
         return topics;
     }
-    
+
     public static class Result {
-        
+
         public Set<Topic> topics;
         public List<DocumentTopic> docTopics;
-        
+
         public Result(Set<Topic> topics, List<DocumentTopic> docTopics) {
             this.topics = topics;
             this.docTopics = docTopics;
         }
-        
+
         @Override
         public String toString() {
             return "Result{" + "topics=" + topics + ", docTopics=" + docTopics + '}';
         }
-        
+
         @Override
         public int hashCode() {
             int hash = 7;
@@ -352,7 +428,7 @@ public class TermExtraction {
             hash = 53 * hash + Objects.hashCode(this.docTopics);
             return hash;
         }
-        
+
         @Override
         public boolean equals(Object obj) {
             if (this == obj) {
@@ -373,9 +449,9 @@ public class TermExtraction {
             }
             return true;
         }
-        
+
     }
-    
+
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
         p.printHelpOn(System.err);
@@ -401,38 +477,38 @@ public class TermExtraction {
                 badOptions(p, x.getMessage());
                 return;
             }
-            
+
             ObjectMapper mapper = new ObjectMapper();
-            
-            if(os.valueOf("c") == null) {
+
+            if (os.valueOf("c") == null) {
                 badOptions(p, "Configuration is required");
                 return;
             }
-            if(os.valueOf("x") == null) {
+            if (os.valueOf("x") == null) {
                 badOptions(p, "Corpus is required");
                 return;
             }
-            if(os.valueOf("t") == null) {
+            if (os.valueOf("t") == null) {
                 badOptions(p, "Output for Topics is required");
                 return;
             }
-            if(os.valueOf("o") == null) {
+            if (os.valueOf("o") == null) {
                 badOptions(p, "Output for Doc-Topics is required");
                 return;
             }
-            Configuration c = mapper.readValue((File)os.valueOf("c"), Configuration.class);
-            File corpusFile = (File)os.valueOf("x");
-            final IndexedCorpus corpus= mapper.readValue(corpusFile, IndexedCorpus.class);
+            Configuration c = mapper.readValue((File) os.valueOf("c"), Configuration.class);
+            File corpusFile = (File) os.valueOf("x");
+            final IndexedCorpus corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
             final DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
 
             final TermExtraction te = new TermExtraction(c.termExtraction);
 
             final Result r = te.extractTopics(searcher);
 
-            mapper.writeValue((File)os.valueOf("t"), r.topics);
-            mapper.writeValue((File)os.valueOf("o"), r.docTopics);
+            mapper.writeValue((File) os.valueOf("t"), r.topics);
+            mapper.writeValue((File) os.valueOf("o"), r.docTopics);
 
-        } catch(Exception x) {
+        } catch (Exception x) {
             x.printStackTrace();
             System.exit(-1);
         }
