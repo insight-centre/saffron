@@ -3,8 +3,10 @@ package org.insightcentre.nlp.saffron.term.domain;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.WhitespaceTokenizer;
+import opennlp.tools.util.Sequence;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -46,6 +48,37 @@ public class DomainStatsTest {
 
     private Document mkDoc(String contents) {
         return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+    }
+    
+    private ThreadLocal<POSTagger> mkTagger() { 
+        return new ThreadLocal<POSTagger>() {
+            @Override            
+            protected POSTagger initialValue() {
+        return new POSTagger() {
+            @Override
+            public String[] tag(String[] sentence) {
+                String[] arr = new String[sentence.length];
+                Arrays.fill(arr, "S");
+                return arr;
+            }
+
+            @Override
+            public String[] tag(String[] sentence, Object[] additionaContext) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] sentence) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] sentence, Object[] additionaContext) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+                }
+        };
     }
 
     
@@ -95,7 +128,8 @@ public class DomainStatsTest {
         int maxDocs = 10000;
         FrequencyStats stats = stats();
         InclusionStats incl = new InclusionStats(stats.termFrequency);
-        DomainStats result = DomainStats.initialize(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl);
+        DomainStats result = DomainStats.initialize(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl, Collections.EMPTY_SET,
+                mkTagger(), Collections.singleton("S"), Collections.singleton("S"), Collections.singleton("S"), true);
     }
 
     /**
@@ -132,7 +166,8 @@ public class DomainStatsTest {
         int maxDocs = 10000;
         FrequencyStats stats = stats();
         InclusionStats incl = new InclusionStats(stats.termFrequency);
-        DomainStats instance = DomainStats.initialize(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl);
+        DomainStats instance = DomainStats.initialize(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl, Collections.EMPTY_SET,
+                mkTagger(), Collections.singleton("S"), Collections.singleton("S"), Collections.singleton("S"), true);
         double expResult = -0.628;
         double result = instance.score(term);
         assertEquals(expResult, result, 0.001);

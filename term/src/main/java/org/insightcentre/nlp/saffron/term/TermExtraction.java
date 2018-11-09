@@ -260,7 +260,7 @@ public class TermExtraction {
                 @Override
                 protected DomainStats init() {
                     try {
-                        return DomainStats.initialize(searcher, nThreads, tokenizer, ngramMax, maxDocs, freqs, incl.get());
+                        return DomainStats.initialize(searcher, nThreads, tokenizer, ngramMax, maxDocs, freqs, incl.get(), stopWords, tagger, preceedingsTokens, middleTokens, endTokens, headTokenFinal);
                     } catch (SearchException x) {
                         x.printStackTrace();
                         return null;

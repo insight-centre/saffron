@@ -5,7 +5,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.ObjectArrayPriorityQueue;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -18,6 +18,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
@@ -51,10 +52,10 @@ public class DomainStats {
 
     public static DomainStats initialize(DocumentSearcher searcher, int nThreads,
             Tokenizer tokenizer, int maxLength, int maxDocs,
-            FrequencyStats stats, InclusionStats incl) throws SearchException {
-        Map<String, Object2IntMap<String>> totalFreqs = totalFreqs(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl);
-        Set<String> words = topWords(stats, totalFreqs);
-        System.err.println(words);
+            FrequencyStats stats, InclusionStats incl, Set<String> stopWords,
+            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
+        Map<String, Object2IntMap<String>> totalFreqs = totalFreqs(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl, tagger, preceedingTokens, middleTokens, endTokens, headTokenFinal);
+        Set<String> words = topWords(stats, totalFreqs, stopWords);
         filterByWords(words, totalFreqs);
         Object2IntMap<String> wordFreq = new Object2IntLinkedOpenHashMap<>();
         long N = 0;
@@ -86,7 +87,8 @@ public class DomainStats {
 
     private static Map<String, Object2IntMap<String>> totalFreqs(DocumentSearcher searcher, int nThreads,
             Tokenizer tokenizer, int maxLength, int maxDocs,
-            FrequencyStats stats, InclusionStats incl) throws SearchException {
+            FrequencyStats stats, InclusionStats incl, 
+            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());
@@ -96,7 +98,7 @@ public class DomainStats {
 
         int docCount = 0;
         for (Document doc : searcher.allDocuments()) {
-            service.submit(new TopWordsTask(doc, tokenizer, maxLength, topTerms, totalFreqs));
+            service.submit(new TopWordsTask(doc, tokenizer, maxLength, topTerms, totalFreqs, tagger, preceedingTokens, middleTokens, endTokens, headTokenFinal));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -113,8 +115,15 @@ public class DomainStats {
         }
     }
 
-    private static Set<String> topWords(FrequencyStats stats, Map<String, Object2IntMap<String>> totalFreqs) {
+    private static Set<String> topWords(FrequencyStats stats, Map<String, Object2IntMap<String>> totalFreqs, Set<String> stopWords) {
         Object2DoubleMap<String> pmis = calcPMI(totalFreqs, stats);
+        final ObjectIterator<Map.Entry<String, Double>> iterator = pmis.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Double> e = iterator.next();
+            if (stopWords.contains(e.getKey()) || e.getKey().matches("\\W*")) {
+                iterator.remove();
+            }
+        }
         return topN(pmis, WORDS);
     }
 
@@ -136,7 +145,7 @@ public class DomainStats {
                 double ftw = (double) e2.getIntValue();
                 double fw = (double) wordFreq.getInt(word);
                 double ft = (double) freqs.termFrequency.getInt(term);
-                double pmi = (Math.log(ftw / ft / fw) + Math.log(N)) / (Math.log(ftw) - Math.log(N));
+                double pmi = (Math.log(ftw / ft / fw) + Math.log(N));// / (Math.log(ftw) - Math.log(N));
                 pmis.put(word, pmis.getDouble(word) + pmi);
             }
         }
@@ -155,12 +164,11 @@ public class DomainStats {
                 double ftw = (double) e2.getIntValue();
                 double fw = (double) wordFreq.getInt(word);
                 double ft = (double) freqs.termFrequency.getInt(term);
-                pmi = (Math.log(ftw / ft / fw) + Math.log(N));// / (Math.log(ftw) - Math.log(N));
+                pmi += (Math.log(ftw / ft / fw) + Math.log(N));// / (Math.log(ftw) - Math.log(N));
                 //System.err.println(String.format("%s (near %s) %.4f %.4f %.4f", word, term, ftw, fw, ft));
             }
-            System.err.println(String.format("%s: %.4f", term, pmi));
         } else {
-            System.err.println("Term not found: " + term);
+            //System.err.println("Term not found: " + term);
         }
 
         // We should divide by the size of the term set, however this is not 
@@ -169,7 +177,8 @@ public class DomainStats {
     }
 
     private static Set<String> topN(final Object2DoubleMap<String> map, int n) {
-        ObjectArrayPriorityQueue<String> queue = new ObjectArrayPriorityQueue<>(n, new Comparator<String>() {
+        ArrayList<String> values = new ArrayList<>(map.keySet());
+        values.sort(new Comparator<String>() {
 
             @Override
             public int compare(String o1, String o2) {
@@ -177,15 +186,10 @@ public class DomainStats {
                 return c == 0 ? o1.compareTo(o2) : -c;
             }
         });
-        for (String s : map.keySet()) {
-            queue.enqueue(s);
-            queue.trim();
-        }
-        Set<String> l = new HashSet<>();
-        while (!queue.isEmpty()) {
-            l.add(queue.dequeue());
-        }
-        return l;
+        //for (int i = 0; i < n && i < values.size(); i++) {
+        //    System.err.println(String.format("%s %.4f", values.get(i), map.getDouble(values.get(i))));
+        //}
+        return new HashSet<>(values.subList(0, Math.min(n, values.size())));
     }
 
     private static void filterByWords(Set<String> words, Map<String, Object2IntMap<String>> totalFreqs) {
@@ -206,13 +210,23 @@ public class DomainStats {
         private final int maxLength;
         private final Set<String> topTerms;
         private final Map<String, Object2IntMap<String>> totalFreqs;
+        private final ThreadLocal<POSTagger> tagger;
+        private final Set<String> preceedingTokens;
+        private final Set<String> middleTokens;
+        private final Set<String> endTokens;
+        private final boolean headTokenFinal;
 
-        public TopWordsTask(Document doc, Tokenizer tokenizer, int maxLength, Set<String> topTerms, Map<String, Object2IntMap<String>> totalFreqs) {
+        public TopWordsTask(Document doc, Tokenizer tokenizer, int maxLength, Set<String> topTerms, Map<String, Object2IntMap<String>> totalFreqs, ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) {
             this.doc = doc;
             this.tokenizer = tokenizer;
             this.maxLength = maxLength;
             this.topTerms = topTerms;
             this.totalFreqs = totalFreqs;
+            this.tagger = tagger;
+            this.preceedingTokens = preceedingTokens;
+            this.middleTokens = middleTokens;
+            this.endTokens = endTokens;
+            this.headTokenFinal = headTokenFinal;
         }
 
         @Override
@@ -221,11 +235,12 @@ public class DomainStats {
             String contents = doc.contents();
             for (String sentence : contents.split("\n")) {
                 String[] tokens = tokenizer.tokenize(sentence.toLowerCase());
+                String[] tags = tagger.get().tag(tokens);
                 if (tokens.length > 0) {
                     for (int i = 0; i <= tokens.length - maxLength; i++) {
                         for (int j = i + 1; j <= i + maxLength; j++) {
                             String term = join(tokens, i, j);
-                            if (topTerms.contains(term)) {
+                            if (topTerms.contains(term) && isTerm(tags, i, j)) {
                                 if (!freq.containsKey(term)) {
                                     freq.put(term, new Object2IntOpenHashMap<String>());
                                 }
@@ -251,6 +266,25 @@ public class DomainStats {
                         }
                     }
                 }
+            }
+        }
+
+        private boolean isTerm(String[] tags, int i, int j) {
+            if (headTokenFinal) {
+                if(!preceedingTokens.contains(tags[i]) && i - j > 1) return false;
+                for(int k = i + 1; k < j-1; k++) {
+                    if(!preceedingTokens.contains(tags[k]) && !middleTokens.contains(tags[k])) return false;
+                }
+                if(!endTokens.contains(tags[j-1])) return false;
+                return true;
+            } else {
+                if(!endTokens.contains(tags[i])) return false;
+                for(int k = i + 1; k < j-1; k++) {
+                    if(!preceedingTokens.contains(tags[k]) && !middleTokens.contains(tags[k])) return false;
+                }
+                if(!preceedingTokens.contains(tags[j-1]) && i - j > 1) return false;
+                return true;
+                
             }
         }
     }
