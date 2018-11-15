@@ -4,6 +4,7 @@ import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
@@ -26,6 +27,12 @@ public class Greedy implements TaxonomySearch{
     public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
+        if(topicMap.size() == 0) {
+            return new Taxonomy("NO TOPICS", 0, 0, Collections.EMPTY_LIST);
+        } else if(topicMap.size() == 1) {
+            // It is not possible to construct a taxonomy from 1 topic
+            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, Collections.EMPTY_LIST);
+        }
         for (String t1 : topicMap.keySet()) {
             for (String t2 : topicMap.keySet()) {
                 if (!t1.equals(t2)) {
@@ -62,6 +69,10 @@ public class Greedy implements TaxonomySearch{
                     score = score.next(candidate.top, candidate.bottom, soln);
                     continue SOLN_LOOP;
                 }
+            }
+            System.err.println(soln);
+            for(TaxoLink candidate : candidates) {
+                System.err.println(candidate);
             }
             throw new RuntimeException("Failed to find solution");
         }

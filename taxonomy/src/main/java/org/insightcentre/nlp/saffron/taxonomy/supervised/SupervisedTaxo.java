@@ -59,6 +59,7 @@ public class SupervisedTaxo {
             double[] prob_estimates = new double[2];
             svm.svm_predict_probability(classifier, instance.x, prob_estimates);
             double sim = prob_estimates[0];
+            assert(sim >= 0 && sim <= 1);
             return sim;
         } catch (Exception x) {
             throw new RuntimeException(x);

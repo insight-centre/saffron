@@ -215,9 +215,10 @@ public class Browser extends AbstractHandler {
                         final List<Document> _docs = saffron.getDocByTopic(topic);
                         final List<Document> docs = new ArrayList<>();
                         int i = 0;
-                        for(Document d : _docs) {
-                            if(i >= offset && i < offset + n)
+                        for (Document d : _docs) {
+                            if (i >= offset && i < offset + n) {
                                 docs.add(d.reduceContext(topic, 20));
+                            }
                             i++;
                         }
                         response.setContentType("application/json;charset=utf-8");
@@ -320,6 +321,7 @@ public class Browser extends AbstractHandler {
                 } else if (target.startsWith("/doc_content/")) {
                     final String docId = target.substring(13);
                     final Document doc = saffron.getDoc(docId);
+                    System.err.println(doc);
                     if (doc != null && doc.file != null) {
                         File f = doc.file.toFile();
                         response.setContentType(Files.probeContentType(f.toPath()));
@@ -333,6 +335,14 @@ public class Browser extends AbstractHandler {
                                     writer.write(buf, 0, i);
                                 }
                             }
+                        }
+                    } else if (doc != null) {
+                        String contents = doc.contents();
+                        response.setContentType("text/plain");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        try (Writer writer = response.getWriter()) {
+                            writer.write(contents);
                         }
                     }
                 } else if (target.equals("/status")) {
