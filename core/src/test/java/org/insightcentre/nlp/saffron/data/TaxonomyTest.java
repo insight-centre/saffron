@@ -1,22 +1,115 @@
 
 package org.insightcentre.nlp.saffron.data;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.IOException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
+
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *
  * @author jmccrae
+ * @author biaper
  */
 public class TaxonomyTest {
 
+	private static final String SAMPLE_TAXONOMY = "{"
+			+ "\"root\": \"root node\","
+			+ "\"score\": 210.12345,"
+			+ "\"linkScore\": 0.98765,"
+			+ "\"children\": ["
+			+ "{"
+				+ "\"root\": \"node 10\","
+				+ "\"score\": 210.12345,"
+				+ "\"linkScore\": 0.98765,"
+				+ "\"children\": []"
+			+ "},{"
+				+ "\"root\": \"node 11\","
+				+ "\"score\": 210.12345,"
+				+ "\"linkScore\": 0.98765,"
+				+ "\"children\": ["
+					+ "{"
+						+ "\"root\": \"node 11-1\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": []"
+					+ "}"
+				+ "]"
+			+ "},{"
+				+ "\"root\": \"node 12\","
+				+ "\"score\": 210.12345,"
+				+ "\"linkScore\": 0.98765,"
+				+ "\"children\": ["
+					+ "{"
+						+ "\"root\": \"node 12-1\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": []"
+					+ "},{"
+						+ "\"root\": \"node 12-2\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": []"
+					+ "}"
+				+ "]"
+			+ "},{"
+				+ "\"root\": \"node 13\","
+				+ "\"score\": 210.12345,"
+				+ "\"linkScore\": 0.98765,"
+				+ "\"children\": ["
+					+ "{"
+						+ "\"root\": \"node 13-1\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": ["
+							+ "{"
+								+ "\"root\": \"node 13-1-1\","
+								+ "\"score\": 210.12345,"
+								+ "\"linkScore\": 0.98765,"
+								+ "\"children\": []"
+							+ "},{"
+								+ "\"root\": \"node 13-1-2\","
+								+ "\"score\": 210.12345,"
+								+ "\"linkScore\": 0.98765,"
+								+ "\"children\": ["
+									+ "{"
+										+ "\"root\": \"node 13-1-2-1\","
+										+ "\"score\": 210.12345,"
+										+ "\"linkScore\": 0.98765,"
+										+ "\"children\": []"
+									+ "}"
+								+ "]"
+							+ "}"
+						+ "]"
+					+ "},{"
+						+ "\"root\": \"node 13-2\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": []"
+					+ "},{"
+						+ "\"root\": \"node 13-3\","
+						+ "\"score\": 210.12345,"
+						+ "\"linkScore\": 0.98765,"
+						+ "\"children\": []"
+					+ "}"
+				+ "]"
+			+ "}"
+		+ "]"
+	+ "}";
+	
     public TaxonomyTest() {
     }
 
@@ -46,5 +139,67 @@ public class TaxonomyTest {
         assertEquals(0, taxonomy.children.get(0).children.size());
         final String json = mapper.writeValueAsString(taxonomy);
         assertEquals(taxonomy, mapper.readValue(json, Taxonomy.class));
+    }
+    
+    @Test
+    public void testMinDepth() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The minimum depth is incorrect", 1,taxonomy.minDepth());
+    }
+    
+    @Test
+    public void testMinDepth2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, null));
+    	
+    	assertEquals("The minimum depth is incorrect", 2,taxonomy.minDepth());
+    }
+    
+    @Test
+    public void testMedianDepth() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals(2.0, taxonomy.medianDepth(), 0.000001);
+    }
+    
+    @Test
+    public void testMedianDepth2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	taxonomy.children.remove(2);
+    	taxonomy.children.remove(2);
+    	
+    	assertEquals(1.5, taxonomy.medianDepth(), 0.000001);
+    }
+    
+    @Test
+    public void testLeavesDepths() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	Map<String, Integer> expected = new HashMap<String, Integer>();
+    	expected.put("node 10", 1);
+    	expected.put("node 11-1", 2);
+    	expected.put("node 12-1", 2);
+    	expected.put("node 12-2", 2);
+    	expected.put("node 13-1-1", 3);
+    	expected.put("node 13-1-2-1", 4);
+    	expected.put("node 13-2", 2);
+    	expected.put("node 13-3", 2);
+    	
+    	Map<String, Integer> actual = taxonomy.leavesDepths(0);
+    	
+    	assertEquals("The number of leaves returned is incorrect", expected.size(), actual.size());
+    	for(Entry<String, Integer> entry: actual.entrySet()) {
+    		if(!expected.containsKey(entry.getKey())) {
+    			fail("The key " + entry.getKey() + " is not expected in the result");
+    		} else {
+    			assertEquals("The depth of the node '" + entry.getKey() + "' is incorrect",expected.get(entry.getKey()),entry.getValue());
+    		}
+    	}    	
     }
 }

@@ -1,13 +1,21 @@
 package org.insightcentre.nlp.saffron.data;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A taxonomy of topics
@@ -34,6 +42,20 @@ public class Taxonomy {
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
+    }
+    
+    /**
+     * Build a Taxonomy object from a JSON file
+     * @param file The json file to read from
+     * @return a Taxonomy object
+     * 
+     * @throws JsonParseException
+     * @throws JsonMappingException
+     * @throws IOException
+     */
+    public static Taxonomy fromJsonFile(File file) throws JsonParseException, JsonMappingException, IOException{
+    	ObjectMapper objectMapper = new ObjectMapper();
+    	return objectMapper.readValue(file, Taxonomy.class);
     }
 
     /**
@@ -108,6 +130,73 @@ public class Taxonomy {
             depth = Math.max(depth, t.depth() + 1);
         }
         return depth;
+    }
+    
+    /**
+     * The minimum depth in the taxonomy
+     * @return The minimum depth in the taxonomy
+     */
+    public int minDepth() {
+    	int minDepth = 0;
+    	
+    	boolean firstChild = true;
+    	for(Taxonomy t: children) {
+    		if (firstChild) {
+    			minDepth = t.minDepth() + 1;
+    			firstChild = false;
+    		} else {
+    			minDepth = Math.min(minDepth, t.minDepth() + 1);
+    		}
+    		
+    		if (minDepth == 1) {
+    			return minDepth;
+    		}
+    	}
+    	
+    	return minDepth;
+    }
+    
+    /**
+     * The median depth of the taxonomy
+     * @return The median depth of the taxonomy
+     */
+    public double medianDepth() {
+    	//Calculate the depth to each leaf node (i.e. each node without children)
+    	Map<String, Integer> leafDepths = this.leavesDepths(0);
+    	
+    	//Calculate the median depth
+    	Integer[] depthArray = new Integer[leafDepths.values().size()]; 
+    	depthArray = leafDepths.values().toArray(depthArray);    	
+    	Arrays.sort(depthArray);
+    	
+    	double median;
+    	if (depthArray.length % 2 == 0)
+    	    median = ((double)depthArray[depthArray.length/2] + (double)depthArray[depthArray.length/2 - 1])/2;
+    	else
+    	    median = (double) depthArray[depthArray.length/2];
+    	
+    	return median;
+    }
+    
+    /**
+     * Return all leaf nodes and their correspondent depths
+     * 
+     * @param currentDepth The depth of the parent node
+     * @return A map with 
+     * 		'key': the label(root) of each leaf node, and 
+     * 		'value': the depth of each leaf node.
+     */
+    protected Map<String, Integer> leavesDepths(Integer currentDepth) {
+    	Map<String, Integer> leafDepths = new HashMap<String, Integer>();
+    	
+    	for(Taxonomy child: children) {
+    		leafDepths.putAll(child.leavesDepths(currentDepth+1));
+    	}
+    	if(children.isEmpty()) {
+    		leafDepths.put(root, currentDepth);
+    	}
+    	
+		return leafDepths;
     }
     
     /**
