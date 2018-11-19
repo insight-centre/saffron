@@ -6,9 +6,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -181,7 +183,7 @@ public class Taxonomy {
     /**
      * Return all leaf nodes and their correspondent depths
      * 
-     * @param currentDepth The depth of the parent node
+     * @param currentDepth The depth of the current node
      * @return A map with 
      * 		'key': the label(root) of each leaf node, and 
      * 		'value': the depth of each leaf node.
@@ -197,6 +199,42 @@ public class Taxonomy {
     	}
     	
 		return leafDepths;
+    }
+
+    /**
+     * Maximum degree of a node in the taxonomy
+     * @return The maximum degree of a node in the taxonomy
+     */
+    public int maxDegree() {
+    	int maximumDegree = children.size();
+    	
+    	for(Taxonomy child: children){
+    		maximumDegree = Math.max(maximumDegree, child.maxDegree() + 1);
+    	}
+    	
+    	return maximumDegree;
+    }
+    
+    /**
+     * Average degree of a node in the taxonomy
+     * @return The average degree of a node in the taxonomy
+     */
+    public double avgDegree() {
+    	int agg = children.size();
+    	Queue<Taxonomy> nodesToVisit = new LinkedList<Taxonomy>();
+    	nodesToVisit.addAll(children);
+    	
+    	do {
+    		Taxonomy visitedNode = nodesToVisit.poll();
+    		if (!visitedNode.children.isEmpty()) {
+    			nodesToVisit.addAll(visitedNode.children);
+    			agg+= visitedNode.children.size() +1;
+    		} else {
+    			agg+=1;
+    		}
+    	} while (!nodesToVisit.isEmpty());
+    	
+    	return ((double) agg)/size();
     }
     
     /**

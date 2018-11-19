@@ -202,4 +202,38 @@ public class TaxonomyTest {
     		}
     	}    	
     }
+    
+    @Test
+    public void testMaxDegree() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The maximum node degree is different from expected", 4,taxonomy.maxDegree());
+    }
+    
+    @Test
+    public void testMaxDegree2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, null));
+    	
+    	assertEquals("The maximum node degree is different from expected", 5,taxonomy.maxDegree());
+    }
+    
+    @Test
+    public void testAvgDegree() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The average node degree is different from expected", 26.0/14, taxonomy.avgDegree(), 0.00001);
+    }
+    
+    @Test
+    public void testAvgDegree2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, null));
+    	
+    	assertEquals("The average node degree is different from expected", 28.0/15, taxonomy.avgDegree(), 0.00001);
+    }
 }
