@@ -55,7 +55,7 @@ public class TermExtraction {
 
     private final int nThreads;
     private final ThreadLocal<POSTagger> tagger;
-    private final Tokenizer tokenizer;
+    private final ThreadLocal<Tokenizer> tokenizer;
     private final int maxDocs;
     private final int minTermFreq;
     private final ThreadLocal<Lemmatizer> lemmatizer;
@@ -69,7 +69,7 @@ public class TermExtraction {
     private final Feature keyFeature;
     private final Set<String> blacklist;
 
-    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, Tokenizer tokenizer) {
+    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -108,11 +108,21 @@ public class TermExtraction {
                 }
             }
         };
-        if (config.tokenizerModel == null) {
-            this.tokenizer = SimpleTokenizer.INSTANCE;
-        } else {
-            this.tokenizer = new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-        }
+        this.tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+
+                if (config.tokenizerModel == null) {
+                    return SimpleTokenizer.INSTANCE;
+                } else {
+                    try{
+                        return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
+                    } catch(IOException x) {
+                        throw new RuntimeException(x);
+                    }
+                }
+            }
+        };
         this.maxDocs = config.maxDocs;
         this.minTermFreq = config.minTermFreq;
         if (config.lemmatizerModel == null) {
@@ -359,8 +369,7 @@ public class TermExtraction {
         }
         return true;
     }
-    
- 
+
     private static int minimumWordLength(String[] words) {
         Integer minLength = Integer.MAX_VALUE;
 
@@ -373,18 +382,18 @@ public class TermExtraction {
     }
 
     private static boolean isAlpha(final char c) {
-    	return Character.isLetter(c);
+        return Character.isLetter(c);
     }
 
     private static boolean isAlphaNumeric(final char c) {
         return Character.isLetterOrDigit(c);
     }
-    
+
     private static String decapitalize(String s) {
-        if(s.length() <= 1) {
+        if (s.length() <= 1) {
             return s.toLowerCase();
         } else {
-            if(Character.isUpperCase(s.charAt(0)) && Character.isUpperCase(s.charAt(1))) {
+            if (Character.isUpperCase(s.charAt(0)) && Character.isUpperCase(s.charAt(1))) {
                 return s;
             } else {
                 char[] c = s.toCharArray();
@@ -393,7 +402,7 @@ public class TermExtraction {
             }
         }
     }
-    
+
     private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
             Object2DoubleMap<String> scores, CasingStats casing) {
         Set<Topic> topics = new HashSet<>();

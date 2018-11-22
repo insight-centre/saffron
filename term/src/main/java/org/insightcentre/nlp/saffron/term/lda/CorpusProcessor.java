@@ -19,7 +19,7 @@ import org.insightcentre.nlp.saffron.data.index.SearchException;
  */
 public class CorpusProcessor {
 
-    public static Result convert(DocumentSearcher searcher, Tokenizer tokenizer) throws IOException, SearchException {
+    public static Result convert(DocumentSearcher searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
         final Object2IntMap<String> dictionary = new Object2IntOpenHashMap<>();
         final File tmpFile = File.createTempFile("assign", ".buf");
         tmpFile.deleteOnExit();
@@ -30,7 +30,7 @@ public class CorpusProcessor {
                 String contents = doc.contents();
                 for (String sentence : contents.split("\n")) {
 
-                    String[] tokens = tokenizer.tokenize(sentence.toLowerCase());
+                    String[] tokens = tokenizer.get().tokenize(sentence.toLowerCase());
                     for (String token : tokens) {
                         final int i;
                         if (dictionary.containsKey(token)) {

@@ -34,7 +34,7 @@ public class NovelTopicModel {
         this.minTopicFreq = maxTopicFreq;
     }
     
-   public static NovelTopicModel initialize(DocumentSearcher searcher, Tokenizer tokenizer) throws IOException, SearchException {
+   public static NovelTopicModel initialize(DocumentSearcher searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
        CorpusProcessor.Result r = CorpusProcessor.convert(searcher, tokenizer);
        LDA lda = new LDA(r.buffer, K, r.docCount, r.dictionary.size(), alpha, beta);
        lda.train(iterations, verbose);

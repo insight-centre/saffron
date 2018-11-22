@@ -86,7 +86,7 @@ public class TermExtractionTest {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
         };
-        Tokenizer tokenizer = new Tokenizer() {
+        Tokenizer _tokenizer = new Tokenizer() {
             @Override
             public String[] tokenize(String string) {
                 return string.split(" ");
@@ -96,6 +96,14 @@ public class TermExtractionTest {
             public Span[] tokenizePos(String string) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
+        };
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
         };
         DocumentSearcher searcher = new DocumentSearcher() {
             @Override

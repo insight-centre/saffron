@@ -93,7 +93,15 @@ public class NovelTopicModelTest {
             public void close() throws IOException {
             }
         };
-        Tokenizer tokenizer = WhitespaceTokenizer.INSTANCE;
+        Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         NovelTopicModel result = NovelTopicModel.initialize(searcher, tokenizer);
 
     }
@@ -125,7 +133,15 @@ public class NovelTopicModelTest {
             public void close() throws IOException {
             }
         };
-        Tokenizer tokenizer = WhitespaceTokenizer.INSTANCE;
+        Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         NovelTopicModel instance = NovelTopicModel.initialize(searcher, tokenizer);
 
         String term = "this test";

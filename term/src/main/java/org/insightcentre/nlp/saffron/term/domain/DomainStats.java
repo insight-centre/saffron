@@ -51,7 +51,7 @@ public class DomainStats {
     }
 
     public static DomainStats initialize(DocumentSearcher searcher, int nThreads,
-            Tokenizer tokenizer, int maxLength, int maxDocs,
+            ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, Set<String> stopWords,
             ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
         Map<String, Object2IntMap<String>> totalFreqs = totalFreqs(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl, tagger, preceedingTokens, middleTokens, endTokens, headTokenFinal);
@@ -86,7 +86,7 @@ public class DomainStats {
     }
 
     private static Map<String, Object2IntMap<String>> totalFreqs(DocumentSearcher searcher, int nThreads,
-            Tokenizer tokenizer, int maxLength, int maxDocs,
+            ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, 
             ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
@@ -206,7 +206,7 @@ public class DomainStats {
     private static class TopWordsTask implements Runnable {
 
         private final Document doc;
-        private final Tokenizer tokenizer;
+        private final ThreadLocal<Tokenizer> tokenizer;
         private final int maxLength;
         private final Set<String> topTerms;
         private final Map<String, Object2IntMap<String>> totalFreqs;
@@ -216,7 +216,7 @@ public class DomainStats {
         private final Set<String> endTokens;
         private final boolean headTokenFinal;
 
-        public TopWordsTask(Document doc, Tokenizer tokenizer, int maxLength, Set<String> topTerms, Map<String, Object2IntMap<String>> totalFreqs, ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) {
+        public TopWordsTask(Document doc, ThreadLocal<Tokenizer> tokenizer, int maxLength, Set<String> topTerms, Map<String, Object2IntMap<String>> totalFreqs, ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) {
             this.doc = doc;
             this.tokenizer = tokenizer;
             this.maxLength = maxLength;
@@ -234,7 +234,7 @@ public class DomainStats {
             final Map<String, Object2IntMap<String>> freq = new HashMap<>();
             String contents = doc.contents();
             for (String sentence : contents.split("\n")) {
-                String[] tokens = tokenizer.tokenize(sentence.toLowerCase());
+                String[] tokens = tokenizer.get().tokenize(sentence.toLowerCase());
                 String[] tags = tagger.get().tag(tokens);
                 if (tokens.length > 0) {
                     for (int i = 0; i <= tokens.length - maxLength; i++) {

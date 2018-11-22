@@ -57,11 +57,11 @@ public class TermExtractionTaskTest {
         System.out.println("call");
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test");
-        Tokenizer tokenizer = mock(Tokenizer.class);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[]{"this", "is", "a", "test"};
         String[] lemmas = new String[]{"this", "be", "a", "test"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN"};
-        when(tokenizer.tokenize("this is a test")).thenReturn(tokens);
+        when(_tokenizer.tokenize("this is a test")).thenReturn(tokens);
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
         final POSTagger tagger = mock(POSTagger.class);
@@ -69,6 +69,13 @@ public class TermExtractionTaskTest {
         FrequencyStats result = new FrequencyStats();
         ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
         CasingStats casing = new CasingStats();
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
             @Override
             public POSTagger get() {
@@ -107,11 +114,19 @@ public class TermExtractionTaskTest {
         System.out.println("call");
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test of steel");
-        Tokenizer tokenizer = mock(Tokenizer.class);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[]{"this", "is", "a", "test", "of", "steel"};
         String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
-        when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        when(_tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
         final POSTagger tagger = mock(POSTagger.class);
@@ -155,11 +170,19 @@ public class TermExtractionTaskTest {
         System.out.println("call");
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("this is a test of steel");
-        Tokenizer tokenizer = mock(Tokenizer.class);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[]{"this", "is", "a", "test", "of", "steel"};
         String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
-        when(tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        when(_tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
         final POSTagger tagger = mock(POSTagger.class);
@@ -201,11 +224,19 @@ public class TermExtractionTaskTest {
         System.out.println("call");
         Document doc = mock(Document.class);
         when(doc.contents()).thenReturn("an fhaiche mhor");
-        Tokenizer tokenizer = mock(Tokenizer.class);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
         String[] tokens = new String[]{"an", "fhaiche", "mhor"};
         String[] lemmas = new String[]{"an", "faiche", "mor"};
         final String[] tags = new String[]{"DT", "NN", "JJ"};
-        when(tokenizer.tokenize("an fhaiche mhor")).thenReturn(tokens);
+        when(_tokenizer.tokenize("an fhaiche mhor")).thenReturn(tokens);
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
         final POSTagger tagger = mock(POSTagger.class);

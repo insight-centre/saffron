@@ -123,7 +123,15 @@ public class DomainStatsTest {
             }
         };
         int nThreads = 2;
-        Tokenizer tokenizer = WhitespaceTokenizer.INSTANCE;
+        Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         int maxLength = 2;
         int maxDocs = 10000;
         FrequencyStats stats = stats();
@@ -161,7 +169,15 @@ public class DomainStatsTest {
             }
         };
         int nThreads = 2;
-        Tokenizer tokenizer = WhitespaceTokenizer.INSTANCE;
+        Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
+        
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+          
+        };
         int maxLength = 2;
         int maxDocs = 10000;
         FrequencyStats stats = stats();

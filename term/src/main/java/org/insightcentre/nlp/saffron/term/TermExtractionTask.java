@@ -20,7 +20,7 @@ public class TermExtractionTask implements Runnable {
     private final Document doc;
     private final ThreadLocal<POSTagger> tagger;
     private final ThreadLocal<Lemmatizer> lemmatizer;
-    private final Tokenizer tokenizer;
+    private final ThreadLocal<Tokenizer> tokenizer;
     private final Set<String> stopWords;
     private final int ngramMin;
     private final int ngramMax;
@@ -35,7 +35,7 @@ public class TermExtractionTask implements Runnable {
 
     public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger,
             ThreadLocal<Lemmatizer> lemmatizer,
-            Tokenizer tokenizer,
+            ThreadLocal<Tokenizer> tokenizer,
             Set<String> stopWords, int ngramMin, int ngramMax,
             Set<String> preceedingTokens, Set<String> middleTokens,
             Set<String> endTokens,
@@ -69,7 +69,13 @@ public class TermExtractionTask implements Runnable {
             System.err.println(doc.id);
             CasingStats localCasing = new CasingStats();
             for (String sentence : contents.split("\n")) {
-                String[] tokens = tokenizer.tokenize(sentence);
+                String[] tokens;
+                try {
+                    tokens = tokenizer.get().tokenize(sentence);
+                } catch(Exception x) {
+                    System.err.println(sentence);
+                    throw x;
+                }
                 if (tokens.length > 0) {
                     String[] tags = new String[0];
                     tags = tagger.get().tag(tokens);
