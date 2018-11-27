@@ -277,6 +277,17 @@ public class TermExtractionTaskTest {
         String[] tags = new POSTaggerME(new POSModel(new File("../models/en-pos-maxent.bin"))).tag(tokens);
 
     }
+    
+    @Test
+    public void testOpenNLPTokenizer() throws Exception {
+        File f = new File("../models/en-token.bin");
+        if(f.exists()) {
+            Tokenizer tokenizer = new TokenizerME(new TokenizerModel(f));
+            //Tokenizer tokenizer = SimpleTokenizer.INSTANCE;
+            String[] tokens = tokenizer.tokenize("401k account");
+            assertArrayEquals(new String[] { "401k", "account"}, tokens);
+        }
+    }
 
     @Test
     public void testExtraction() throws Exception {
