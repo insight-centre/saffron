@@ -54,7 +54,8 @@ public class DocumentSearcherFactory {
      * @return A document searcher
      * @throws IOException If a disk error occurs
      */
-    public static DocumentSearcher loadSearcher(Corpus corpus, File index, boolean rebuild) throws IOException {
+    // This is called by reflection in DocumentSearchFactory so do not change the signature!
+    public static DocumentSearcher loadSearcher(Corpus corpus, File index, Boolean rebuild) throws IOException {
         final Directory dir;
         if (corpus instanceof IndexedCorpus) {
             IndexedCorpus ic = (IndexedCorpus) corpus;

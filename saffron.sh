@@ -92,5 +92,5 @@ echo "## Step 8: Taxonomy Extraction       ##"
 echo "########################################"
 $DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json -c $CONFIG
 
-echo "Creating taxonomy at" $OUTPUT/taxonomy.html
-python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy
+#echo "Creating taxonomy at" $OUTPUT/taxonomy.html
+#python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy
