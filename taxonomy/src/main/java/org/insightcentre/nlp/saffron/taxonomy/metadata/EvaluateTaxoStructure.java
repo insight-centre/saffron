@@ -72,27 +72,48 @@ public class EvaluateTaxoStructure {
 	
 	private static class TaxonomyStats {
 		
+		private String rootNode;
 		private int numberOfNodes;
 		private float minDegree;
 		private double avgDegree;
+		private double medianDegree;
 		private float maxDegree;
 		private int minDepth;
 		private double medianDepth;
 		private int maxDepth;
+		private int numberOfLeaves;
+		private int numberOfBranchNodes;
+		private boolean isPathTaxonomy;
 	    
 		public TaxonomyStats() {
 			
 		}
 		
 	    public TaxonomyStats(Taxonomy taxo) {
+	    	rootNode = taxo.root;
 	    	numberOfNodes = taxo.size();
 	        minDegree = 1;// Taxonomies are trees and their leaves always have degree=1
+	        medianDegree = taxo.medianDegree();
 	        avgDegree = taxo.avgDegree();
 	        maxDegree = taxo.maxDegree();
 	        minDepth = taxo.minDepth();
 	        medianDepth = taxo.medianDepth();
 	        maxDepth = taxo.depth();
+	        numberOfLeaves = taxo.numberOfLeafNodes();
+	        numberOfBranchNodes = taxo.size() - (numberOfLeaves + 1);
+			if(numberOfBranchNodes == (maxDepth -1)) {
+				isPathTaxonomy = true;
+			} else
+				isPathTaxonomy = false;
 	    }
+
+		public String getRootNode() {
+			return rootNode;
+		}
+
+		public void setRootNode(String rootNode) {
+			this.rootNode = rootNode;
+		}
 
 		public int getNumberOfNodes() {
 			return numberOfNodes;
@@ -116,6 +137,14 @@ public class EvaluateTaxoStructure {
 
 		public void setAvgDegree(double avgDegree) {
 			this.avgDegree = avgDegree;
+		}
+
+		public double getMedianDegree() {
+			return medianDegree;
+		}
+
+		public void setMedianDegree(double medianDegree) {
+			this.medianDegree = medianDegree;
 		}
 
 		public float getMaxDegree() {
@@ -148,8 +177,31 @@ public class EvaluateTaxoStructure {
 
 		public void setMaxDepth(int maxDepth) {
 			this.maxDepth = maxDepth;
-		}	    
-	    
+		}
+
+		public int getNumberOfLeaves() {
+			return numberOfLeaves;
+		}
+
+		public void setNumberOfLeaves(int numberOfLeaves) {
+			this.numberOfLeaves = numberOfLeaves;
+		}
+
+		public int getNumberOfBranchNodes() {
+			return numberOfBranchNodes;
+		}
+
+		public void setNumberOfBranchNodes(int numberOfBranchNodes) {
+			this.numberOfBranchNodes = numberOfBranchNodes;
+		}
+
+		public boolean isPathTaxonomy() {
+			return isPathTaxonomy;
+		}
+
+		public void setPathTaxonomy(boolean isPathTaxonomy) {
+			this.isPathTaxonomy = isPathTaxonomy;
+		}
 	}
 }
 
