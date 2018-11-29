@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -165,10 +166,18 @@ public class Taxonomy {
     public double medianDepth() {
     	//Calculate the depth to each leaf node (i.e. each node without children)
     	Map<String, Integer> leafDepths = this.leavesDepths(0);
+    	return calculateMedian(leafDepths.values());
     	
-    	//Calculate the median depth
-    	Integer[] depthArray = new Integer[leafDepths.values().size()]; 
-    	depthArray = leafDepths.values().toArray(depthArray);    	
+    }
+    
+    /**
+     * Calculate the median of a list of values
+     * @param valueList The list of values to be considered
+     * @return The median value
+     */
+    private double calculateMedian(Collection<Integer> valueList) {
+    	Integer[] depthArray = new Integer[valueList.size()]; 
+    	depthArray = valueList.toArray(depthArray);    	
     	Arrays.sort(depthArray);
     	
     	double median;
@@ -178,6 +187,33 @@ public class Taxonomy {
     	    median = (double) depthArray[depthArray.length/2];
     	
     	return median;
+    }
+    
+    /**
+     * Calculates the number of leaf nodes in the taxonomy
+     * @return The number of leaf nodes in the taxonomy
+     */
+    public int numberOfLeafNodes() {
+    	int numberOfLeaves = 0;
+    	
+    	for(Taxonomy child: children) {
+    		if (child.children.isEmpty()) {
+    			numberOfLeaves++;
+    		} else {
+    			numberOfLeaves+=child.numberOfLeafNodes();
+    		}
+    	}
+    	
+    	return numberOfLeaves;
+    }
+    
+    /**
+     * Calculates the number of branch nodes in the taxonomy
+     * @return The number of branch nodes in the taxonomy
+     */
+    public int numberOfBranchNodes() {
+    	//The root node is neither a leaf or a branch
+    	return this.size() - (numberOfLeafNodes() + 1); 
     }
     
     /**
@@ -202,7 +238,7 @@ public class Taxonomy {
     }
 
     /**
-     * Maximum degree of a node in the taxonomy
+     * Maximum degree of a node in the taxonomy (using graph theory, i.e. any edge counts including parent)
      * @return The maximum degree of a node in the taxonomy
      */
     public int maxDegree() {
@@ -216,8 +252,8 @@ public class Taxonomy {
     }
     
     /**
-     * Average degree of a node in the taxonomy
-     * @return The average degree of a node in the taxonomy
+     * Average degree of nodes in the taxonomy (using graph theory, i.e. any edge counts including parent)
+     * @return The average degree of nodes in the taxonomy
      */
     public double avgDegree() {
     	int agg = children.size();
@@ -235,6 +271,38 @@ public class Taxonomy {
     	} while (!nodesToVisit.isEmpty());
     	
     	return ((double) agg)/size();
+    }
+    
+    /**
+     * Median degree of nodes in the taxonomy (using graph theory, i.e. any edge counts including parent)
+     * @return The median of the degree of nodes in the taxonomy
+     */ 
+    public double medianDegree() {
+    	Map<String,Integer> nodeDegrees = this.nodeDegrees(true);
+    	return calculateMedian(nodeDegrees.values());
+    }
+    
+    /**
+     * Return all nodes and their correspondent degrees (using graph theory, i.e. any edge counts including parent)
+     * 
+     * @param isRoot Inform if the current node is the root of the whole graph
+     * @return A map with 
+     * 		'key': the label(root) of each node, and 
+     * 		'value': the degree of each node.
+     */
+    protected Map<String, Integer> nodeDegrees(boolean isRoot) {
+    	Map<String, Integer> nodeDegrees = new HashMap<String, Integer>();
+    	
+    	for(Taxonomy child: children) {
+    		nodeDegrees.putAll(child.nodeDegrees(false));
+    	}
+    	
+		if(isRoot)
+			nodeDegrees.put(root, children.size());
+		else
+			nodeDegrees.put(root, children.size() + 1);
+    	
+		return nodeDegrees;
     }
     
     /**
