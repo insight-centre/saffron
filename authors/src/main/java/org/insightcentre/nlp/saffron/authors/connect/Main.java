@@ -54,11 +54,11 @@ public class Main {
             }
             final File docTopicFile = (File)os.valueOf("d");
             if(docTopicFile == null || !docTopicFile.exists()) {
-                badOptions(p, "Corpus does not exist");
+                badOptions(p, "Doc-topic do not exist");
             }
             final File topicFile = (File)os.valueOf("p");
             if(topicFile == null || !topicFile.exists()) {
-                badOptions(p, "Corpus does not exist");
+                badOptions(p, "Topics do not exist");
             }
 
             final File output = (File)os.valueOf("o");

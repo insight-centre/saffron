@@ -84,10 +84,11 @@ public class Main {
                 IndexedCorpus icorpus = mapper.readValue(corpusFile, IndexedCorpus.class);
                 if(indexFile != null && !indexFile.equals(icorpus.index)) {
                     System.err.println("Using " + indexFile + " as index not " + icorpus.index + " as in metadata");
-                    corpus = new IndexedCorpus(icorpus.documents, SaffronPath.fromFile(indexFile));
+                    corpus = icorpus = new IndexedCorpus(icorpus.documents, SaffronPath.fromFile(indexFile));
                 } else {
                     corpus = icorpus;
                 }
+                mapper.writeValue(outputFile, icorpus);
             }
 
             DocumentSearcherFactory.loadSearcher(corpus, indexFile, true);
