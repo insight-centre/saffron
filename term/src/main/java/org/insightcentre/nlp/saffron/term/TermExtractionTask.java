@@ -185,9 +185,9 @@ public class TermExtractionTask implements Runnable {
             for(int k = i; k <= j; k++) {
                 allValid = allValid && isValidTerm(tokens[k]);
             }
-            if (allValid) {
                 String termStrOrig = join(tokens, i, j);
                 String termStr = termStrOrig.toLowerCase();
+            if (allValid && termStr.length() > 2) {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
                 if (dts != null) {
