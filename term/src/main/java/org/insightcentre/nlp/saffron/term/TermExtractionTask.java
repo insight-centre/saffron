@@ -32,6 +32,7 @@ public class TermExtractionTask implements Runnable {
     private final boolean headTokenFinal;
     private final ConcurrentLinkedQueue<DocumentTopic> docTopics;
     private final CasingStats casing;
+    private final Set<String> blacklist;
 
     public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger,
             ThreadLocal<Lemmatizer> lemmatizer,
@@ -42,7 +43,8 @@ public class TermExtractionTask implements Runnable {
             boolean headTokenFinal,
             FrequencyStats summary,
             ConcurrentLinkedQueue<DocumentTopic> docTopics,
-            CasingStats casing) {
+            CasingStats casing,
+            Set<String> blacklist) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
@@ -57,6 +59,7 @@ public class TermExtractionTask implements Runnable {
         this.headTokenFinal = headTokenFinal;
         this.docTopics = docTopics;
         this.casing = casing;
+        this.blacklist = blacklist;
     }
 
     @Override
@@ -168,16 +171,23 @@ public class TermExtractionTask implements Runnable {
     }
 
     private boolean isValidTerm(String term) {
-        return term.matches("\\p{Alpha}.*\\p{Alpha}.*\\p{Alpha}");
+        return !blacklist.contains(term.toLowerCase()) && (
+                (term.length() >= 3 && term.matches("\\p{Alpha}.*\\p{Alpha}.*\\p{Alpha}")) ||
+                (term.length() <= 2 && term.matches("\\p{Alpha}+")))
+                && !term.startsWith("http://") && !term.startsWith("https://");
     }
 
     private void processTerm(String[] tokens, int i, int j,
             HashMap<String, DocumentTopic> dts,
             CasingStats localCasing) {
         if (j - i >= this.ngramMin - 1) {
-            String termStrOrig = join(tokens, i, j);
-            String termStr = termStrOrig.toLowerCase();
-            if (isValidTerm(termStr)) {
+            boolean allValid = true;
+            for(int k = i; k <= j; k++) {
+                allValid = allValid && isValidTerm(tokens[k]);
+            }
+            if (allValid) {
+                String termStrOrig = join(tokens, i, j);
+                String termStr = termStrOrig.toLowerCase();
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
                 if (dts != null) {

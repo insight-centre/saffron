@@ -115,9 +115,9 @@ public class TermExtraction {
                 if (config.tokenizerModel == null) {
                     return SimpleTokenizer.INSTANCE;
                 } else {
-                    try{
+                    try {
                         return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-                    } catch(IOException x) {
+                    } catch (IOException x) {
                         throw new RuntimeException(x);
                     }
                 }
@@ -182,7 +182,7 @@ public class TermExtraction {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTopics, casing));
+                    summary, docTopics, casing, lowercaseAll(blacklist)));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -200,10 +200,8 @@ public class TermExtraction {
             final Lazy<DomainStats> domain) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
-            if (!blacklist.contains(topic.toLowerCase())) {
-                scores.put(topic,
-                        Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
-            }
+            scores.put(topic,
+                    Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
         }
         return scores;
 
@@ -413,6 +411,14 @@ public class TermExtraction {
                     Collections.EMPTY_LIST));
         }
         return topics;
+    }
+
+    private static Set<String> lowercaseAll(Set<String> blacklist) {
+        Set<String> ss = new HashSet<>();
+        for(String s : ss) {
+            ss.add(s.toLowerCase());
+        }
+        return ss;
     }
 
     public static class Result {
