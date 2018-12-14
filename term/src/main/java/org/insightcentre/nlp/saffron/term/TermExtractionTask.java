@@ -171,9 +171,9 @@ public class TermExtractionTask implements Runnable {
     }
 
     private boolean isValidTerm(String term) {
-        return !blacklist.contains(term.toLowerCase()) && (
-                (term.length() >= 3 && term.matches("\\p{Alpha}.*\\p{Alpha}.*\\p{Alpha}")) ||
-                (term.length() <= 2 && term.matches("\\p{Alpha}+")))
+        return !blacklist.contains(term.toLowerCase()) && term.matches(".*\\p{Alpha}.*")
+                && (term.matches("\\p{Alpha}.*") || term.matches(".*\\p{Alpha}"))
+                && term.length() > 1                
                 && !term.startsWith("http://") && !term.startsWith("https://");
     }
 
