@@ -415,7 +415,7 @@ public class TermExtraction {
 
     private static Set<String> lowercaseAll(Set<String> blacklist) {
         Set<String> ss = new HashSet<>();
-        for(String s : ss) {
+        for(String s : blacklist) {
             ss.add(s.toLowerCase());
         }
         return ss;

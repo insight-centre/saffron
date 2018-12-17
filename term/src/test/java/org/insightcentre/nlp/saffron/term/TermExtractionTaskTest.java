@@ -373,8 +373,8 @@ public class TermExtractionTaskTest {
         File tokenizerFile = new File("../models/en-token.bin");
         if (tokenizerFile.exists()) {
 
-            String[] tokens = new String[]{"this", "is", "a", "@test_of", "steel"};
-            final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "NN"};
+            String[] tokens = new String[]{"this", "is", "a", "@test_of", "@test_of", "steel"};
+            final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "NN", "NN"};
             final POSTagger tagger = mock(POSTagger.class);
             when(tagger.tag(tokens)).thenReturn(tags);
             Tokenizer _tokenizer = new TokenizerME(new TokenizerModel(tokenizerFile));
@@ -387,7 +387,7 @@ public class TermExtractionTaskTest {
 
             };
             Document doc = mock(Document.class);
-            when(doc.contents()).thenReturn("this is a @test_of steel");
+            when(doc.contents()).thenReturn("this is a @test_of @test_of steel");
             final Lemmatizer lemmatizer = new Lemmatizer() {
                 @Override
                 public String[] lemmatize(String[] toks, String[] tags) {
@@ -422,7 +422,7 @@ public class TermExtractionTaskTest {
             FrequencyStats expResult = new FrequencyStats();
             expResult.docFrequency.put("steel", 1);
             expResult.termFrequency.put("steel", 1);
-            expResult.tokens = 5;
+            expResult.tokens = 6;
             expResult.documents = 1;
             instance.run();
             assertEquals(expResult, result);
