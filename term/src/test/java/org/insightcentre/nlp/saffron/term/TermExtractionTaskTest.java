@@ -1,9 +1,11 @@
 package org.insightcentre.nlp.saffron.term;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import opennlp.tools.lemmatizer.Lemmatizer;
@@ -17,6 +19,8 @@ import opennlp.tools.tokenize.TokenizerModel;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -71,12 +75,12 @@ public class TermExtractionTaskTest {
         FrequencyStats result = new FrequencyStats();
         ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
         CasingStats casing = new CasingStats();
-        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
                 return _tokenizer;
             }
-          
+
         };
         TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
             @Override
@@ -121,13 +125,13 @@ public class TermExtractionTaskTest {
         String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
         when(_tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
-        
-        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
                 return _tokenizer;
             }
-          
+
         };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -177,13 +181,13 @@ public class TermExtractionTaskTest {
         String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
         when(_tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
-        
-        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
                 return _tokenizer;
             }
-          
+
         };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -231,13 +235,13 @@ public class TermExtractionTaskTest {
         String[] lemmas = new String[]{"an", "faiche", "mor"};
         final String[] tags = new String[]{"DT", "NN", "JJ"};
         when(_tokenizer.tokenize("an fhaiche mhor")).thenReturn(tokens);
-        
-        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
                 return _tokenizer;
             }
-          
+
         };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -279,15 +283,15 @@ public class TermExtractionTaskTest {
         String[] tags = new POSTaggerME(new POSModel(new File("../models/en-pos-maxent.bin"))).tag(tokens);
 
     }
-    
+
     @Test
     public void testOpenNLPTokenizer() throws Exception {
         File f = new File("../models/en-token.bin");
-        if(f.exists()) {
+        if (f.exists()) {
             Tokenizer tokenizer = new TokenizerME(new TokenizerModel(f));
             //Tokenizer tokenizer = SimpleTokenizer.INSTANCE;
             String[] tokens = tokenizer.tokenize("401k account");
-            assertArrayEquals(new String[] { "401k", "account"}, tokens);
+            assertArrayEquals(new String[]{"401k", "account"}, tokens);
         }
     }
 
@@ -309,8 +313,7 @@ public class TermExtractionTaskTest {
             }
         }
     }
-    
-    
+
     /**
      * Test of call method, of class TermExtractionTask.
      */
@@ -324,13 +327,13 @@ public class TermExtractionTaskTest {
         String[] lemmas = new String[]{"this", "be", "a", "test", "of", "steel"};
         final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "IN", "NN"};
         when(_tokenizer.tokenize("this is a test of steel")).thenReturn(tokens);
-        
-        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() { 
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
                 return _tokenizer;
             }
-          
+
         };
         final Lemmatizer lemmatizer = mock(Lemmatizer.class);
         when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
@@ -363,5 +366,66 @@ public class TermExtractionTaskTest {
         expResult.documents = 1;
         instance.run();
         assertEquals(expResult, result);
+    }
+
+    @Test
+    public void testBlackList2() throws Exception {
+        File tokenizerFile = new File("../models/en-token.bin");
+        if (tokenizerFile.exists()) {
+
+            String[] tokens = new String[]{"this", "is", "a", "@test_of", "steel"};
+            final String[] tags = new String[]{"DT", "VBZ", "DT", "NN", "NN"};
+            final POSTagger tagger = mock(POSTagger.class);
+            when(tagger.tag(tokens)).thenReturn(tags);
+            Tokenizer _tokenizer = new TokenizerME(new TokenizerModel(tokenizerFile));
+
+            ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+                @Override
+                protected Tokenizer initialValue() {
+                    return _tokenizer;
+                }
+
+            };
+            Document doc = mock(Document.class);
+            when(doc.contents()).thenReturn("this is a @test_of steel");
+            final Lemmatizer lemmatizer = new Lemmatizer() {
+                @Override
+                public String[] lemmatize(String[] toks, String[] tags) {
+                    return toks;
+                }
+
+                @Override
+                public List<List<String>> lemmatize(List<String> toks, List<String> tags) {
+                    throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                }
+            };
+            FrequencyStats result = new FrequencyStats();
+            Set<String> blacklist = new HashSet<>();
+            blacklist.add("@test_of");
+            TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+                @Override
+                public POSTagger get() {
+                    return tagger;
+                }
+
+            }, new ThreadLocal<Lemmatizer>() {
+                @Override
+                protected Lemmatizer initialValue() {
+                    return lemmatizer;
+                }
+
+            }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                    new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                    new HashSet<String>(Arrays.asList(new String[]{"IN"})),
+                    new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                    true, result, null, null, blacklist);
+            FrequencyStats expResult = new FrequencyStats();
+            expResult.docFrequency.put("steel", 1);
+            expResult.termFrequency.put("steel", 1);
+            expResult.tokens = 5;
+            expResult.documents = 1;
+            instance.run();
+            assertEquals(expResult, result);
+        }
     }
 }
