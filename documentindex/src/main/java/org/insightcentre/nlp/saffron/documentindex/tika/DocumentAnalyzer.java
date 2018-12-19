@@ -67,20 +67,23 @@ public class DocumentAnalyzer implements Document.Loader {
         }
     }
 
+    private InputStream openDoc(Document d) throws IOException {
+        
+            if (d.file != null) {
+                return TikaInputStream.get(d.file.toFile().toPath());
+            } else {
+                System.err.println("Accessing remote URL " + d.url);
+                return TikaInputStream.get(d.url);
+            }
+    }
+    
     @Override
     public String getContents(Document d) {
         try {
             AutoDetectParser parser = new AutoDetectParser();
             Metadata metadata = new Metadata();
             BodyContentHandler handler = new BodyContentHandler(-1);
-            final InputStream stream;
-            if (d.file != null) {
-                stream = TikaInputStream.get(d.file.toFile().toPath());
-            } else {
-                System.err.println("Accessing remote URL " + d.url);
-                stream = TikaInputStream.get(d.url);
-            }
-            try {
+            try(final InputStream stream = openDoc(d)) {
                 parser.parse(stream, handler, metadata);
             } catch (SAXException | TikaException ex) {
                 throw new IOException(ex);
