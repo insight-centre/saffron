@@ -28,15 +28,14 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
-import opennlp.tools.util.Sequence;
 import opennlp.tools.util.Span;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 
 /**
@@ -70,7 +69,80 @@ public class EnrichTopics {
         return n;
     }
 
-    public static Result enrich(Set<String> topicStrings, IndexedCorpus corpus, int nThreads,
+    public static Result enrich(Set<String> topicStrings, Corpus corpus, TermExtractionConfiguration config) {
+        final ThreadLocal<Tokenizer> tokenizer;
+        final ThreadLocal<POSTagger> tagger;
+        final ThreadLocal<Lemmatizer> lemmatizer;
+        final int nThreads;
+        if(config == null) {
+                tokenizer = new ThreadLocal<Tokenizer>() {
+                    @Override
+                    protected Tokenizer initialValue() {
+                        return new Tokenizer() {
+                            @Override
+                            public String[] tokenize(String s) {
+                                return s.split("\\s+");
+                            }
+
+                            @Override
+                            public Span[] tokenizePos(String s) {
+                                throw new UnsupportedOperationException("Not supported");
+                            }
+                        };
+                    }
+                    
+                };
+                tagger = null;
+                lemmatizer = null;
+                nThreads = 10;
+            } else {
+                tagger = new ThreadLocal<POSTagger>() {
+                    @Override
+                    protected POSTagger initialValue() {
+                        try {
+                            return new POSTaggerME(new POSModel(config.posModel.toFile()));
+                        } catch (IOException x) {
+                            x.printStackTrace();
+                            return null;
+                        }
+                    }
+                };
+                tokenizer = new ThreadLocal<Tokenizer>() {
+                    @Override
+                    protected Tokenizer initialValue() {
+
+                        if (config.tokenizerModel == null) {
+                            return SimpleTokenizer.INSTANCE;
+                        } else {
+                            try {
+                                return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
+                            } catch (IOException x) {
+                                throw new RuntimeException(x);
+                            }
+                        }
+                    }
+                };
+                if (config.lemmatizerModel == null) {
+                    lemmatizer = null;
+                } else {
+                    lemmatizer = new ThreadLocal<Lemmatizer>() {
+                        @Override
+                        protected Lemmatizer initialValue() {
+                            try {
+                                return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
+                            } catch (IOException x) {
+                                x.printStackTrace();
+                                return null;
+                            }
+                        }
+                    };
+                }
+                nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
+            }
+        return enrich(topicStrings, corpus, nThreads, tagger, lemmatizer, tokenizer);
+    }
+    
+    public static Result enrich(Set<String> topicStrings, Corpus corpus, int nThreads,
             ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer) {
         try {
             ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
@@ -90,7 +162,7 @@ public class EnrichTopics {
             List<Topic> topics = new ArrayList<>();
             for (String topic : topicStrings) {
                 topics.add(new Topic(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
-                        (double) summary.docFrequency.getInt(topic) / corpus.getDocuments().size(),
+                        (double) summary.docFrequency.getInt(topic) / corpus.size(),
                         Collections.EMPTY_LIST));
             }
 
@@ -162,87 +234,23 @@ public class EnrichTopics {
                 badOptions(p, "The corpus file does not exist");
             }
             File cfgFile = (File) os.valueOf("cfg");
-            final ThreadLocal<POSTagger> tagger;
-            final ThreadLocal<Tokenizer> tokenizer;
-            final ThreadLocal<Lemmatizer> lemmatizer;
-            final int nThreads;
+            
+            final TermExtractionConfiguration config;
             
             if(cfgFile == null) {
-                tokenizer = new ThreadLocal<Tokenizer>() {
-                    @Override
-                    protected Tokenizer initialValue() {
-                        return new Tokenizer() {
-                            @Override
-                            public String[] tokenize(String s) {
-                                return s.split("\\s+");
-                            }
-
-                            @Override
-                            public Span[] tokenizePos(String s) {
-                                throw new UnsupportedOperationException("Not supported");
-                            }
-                        };
-                    }
-                    
-                };
-                tagger = null;
-                lemmatizer = null;
-                nThreads = 10;
+                config = null;
             } else if(!cfgFile.exists()) {
                 badOptions(p, "The config file does not exist");
                 return;
             } else {
-                TermExtractionConfiguration config = mapper.readValue(cfgFile, Configuration.class).termExtraction;
-                tagger = new ThreadLocal<POSTagger>() {
-                    @Override
-                    protected POSTagger initialValue() {
-                        try {
-                            return new POSTaggerME(new POSModel(config.posModel.toFile()));
-                        } catch (IOException x) {
-                            x.printStackTrace();
-                            return null;
-                        }
-                    }
-                };
-                tokenizer = new ThreadLocal<Tokenizer>() {
-                    @Override
-                    protected Tokenizer initialValue() {
-
-                        if (config.tokenizerModel == null) {
-                            return SimpleTokenizer.INSTANCE;
-                        } else {
-                            try {
-                                return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-                            } catch (IOException x) {
-                                throw new RuntimeException(x);
-                            }
-                        }
-                    }
-                };
-                if (config.lemmatizerModel == null) {
-                    lemmatizer = null;
-                } else {
-                    lemmatizer = new ThreadLocal<Lemmatizer>() {
-                        @Override
-                        protected Lemmatizer initialValue() {
-                            try {
-                                return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
-                            } catch (IOException x) {
-                                x.printStackTrace();
-                                return null;
-                            }
-                        }
-                    };
-                }
-                nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
+                config = mapper.readValue(cfgFile, Configuration.class).termExtraction;
             }
             
-            final IndexedCorpus corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
-            DocumentSearcherFactory.loadSearcher(corpus);
+            final Corpus corpus = CorpusTools.readFile(corpusFile);
 
             final Set<String> topics = readTExEval(taxoFile);
 
-            Result res = enrich(topics, corpus, nThreads, tagger, lemmatizer, tokenizer);
+            Result res = enrich(topics, corpus, config);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(topicOutFile, res.topics);
             mapper.writerWithDefaultPrettyPrinter().writeValue(docTopicOutFile, res.docTopics);

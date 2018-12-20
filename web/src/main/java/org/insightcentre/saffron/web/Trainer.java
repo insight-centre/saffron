@@ -21,8 +21,6 @@ import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
@@ -34,7 +32,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train.StringPair;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
-import org.insightcentre.nlp.saffron.topic.enrich.EnrichTopics;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics;
 
 /**
  * The code to train a Saffron Instance
@@ -108,19 +106,13 @@ public class Trainer extends AbstractHandler {
             status.stage++;
             status.setStatusMessage("Indexing Corpus");
             final File indexFile = new File(directory, "index");
-            DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus, indexFile, true);
-            status.setStatusMessage("Loading index");
-            ArrayList<Document> docs = new ArrayList<>();
-            for (Document d : corpus.getDocuments()) {
-                docs.add(d);
-            }
-            IndexedCorpus indexedCorpus = new IndexedCorpus(docs, SaffronPath.fromFile(indexFile));
+            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile);
 
             status.stage++;
             status.setStatusMessage("Enriching topics from corpus");
             Set<String> topics = new HashSet<>();
             flatten(taxonomy, topics);
-            EnrichTopics.Result result = EnrichTopics.enrich(topics, indexedCorpus);
+            EnrichTopics.Result result = EnrichTopics.enrich(topics, searcher, config.termExtraction);
 
             status.stage++;
             status.setStatusMessage("Building topic map");

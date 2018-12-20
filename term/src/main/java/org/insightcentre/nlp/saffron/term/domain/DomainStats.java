@@ -20,6 +20,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -50,7 +51,7 @@ public class DomainStats {
         this.N = N;
     }
 
-    public static DomainStats initialize(DocumentSearcher searcher, int nThreads,
+    public static DomainStats initialize(Corpus searcher, int nThreads,
             ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, Set<String> stopWords,
             ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
@@ -85,7 +86,7 @@ public class DomainStats {
         return topTerms;
     }
 
-    private static Map<String, Object2IntMap<String>> totalFreqs(DocumentSearcher searcher, int nThreads,
+    private static Map<String, Object2IntMap<String>> totalFreqs(Corpus searcher, int nThreads,
             ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, 
             ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
@@ -97,7 +98,7 @@ public class DomainStats {
         Map<String, Object2IntMap<String>> totalFreqs = new HashMap<>();
 
         int docCount = 0;
-        for (Document doc : searcher.allDocuments()) {
+        for (Document doc : searcher.getDocuments()) {
             service.submit(new TopWordsTask(doc, tokenizer, maxLength, topTerms, totalFreqs, tagger, preceedingTokens, middleTokens, endTokens, headTokenFinal));
             if (docCount++ > maxDocs) {
                 break;

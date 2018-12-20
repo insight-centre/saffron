@@ -50,7 +50,7 @@ public class DocumentAnalyzerTest {
         DocumentAnalyzer instance = new DocumentAnalyzer();
         
         for(Document d : Arrays.asList(txtFile, pdfFile, docFile)) {
-            Document result = instance.analyze(d);
+            Document result = instance.analyze(d.file.toFile(), d.id);
             assertEquals("This is a test file.", result.contents().trim());
         }
     }

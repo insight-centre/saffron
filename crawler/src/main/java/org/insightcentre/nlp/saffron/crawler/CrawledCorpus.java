@@ -19,6 +19,11 @@ public class CrawledCorpus implements Corpus {
     public List<Document> getDocuments() {
         return documents;
     }
+
+    @Override
+    public int size() {
+        return documents.size();
+    }
     
     
 }

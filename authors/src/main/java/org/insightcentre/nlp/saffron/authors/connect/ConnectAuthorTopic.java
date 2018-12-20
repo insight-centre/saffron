@@ -67,7 +67,7 @@ public class ConnectAuthorTopic {
     }
     
     public Collection<AuthorTopic> connectResearchers(List<Topic> topics, List<DocumentTopic> documentTopics,
-        List<Document> documents) {
+        Iterable<Document> documents) {
 
         Map<String, Document>     docById      = buildDocById(documents);
         Map<Author, List<String>> author2Topic = buildAuthor2Topic(documentTopics, docById);
@@ -151,7 +151,7 @@ public class ConnectAuthorTopic {
         return topicById;
     }
 
-    private Map<String, Document> buildDocById(List<Document> documents) {
+    private Map<String, Document> buildDocById(Iterable<Document> documents) {
         Map<String, Document> docById = new HashMap<>();
         for(Document document : documents)
             docById.put(document.id, document);

@@ -13,8 +13,9 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 
 /**
  *
@@ -32,7 +33,6 @@ public class Consolidate {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("t", "The input text corpus").withRequiredArg().ofType(File.class);
-                accepts("o", "The output text corpus (with consolidated authors)").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
             
@@ -47,22 +47,18 @@ public class Consolidate {
             if(corpusFile == null || !corpusFile.exists()) {
                 badOptions(p, "Corpus does not exist");
             }
-            final File output = (File)os.valueOf("o");
-            if(output == null) {
-                badOptions(p, "Output not specified");
-            }
             
             ObjectMapper mapper = new ObjectMapper();
 
-            IndexedCorpus corpus        = mapper.readValue(corpusFile, IndexedCorpus.class);
+            DocumentSearcher corpus        = DocumentSearcherFactory.load(corpusFile);
 
             Set<Author> authors = extractAuthors(corpus);
             
             Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
 
-            IndexedCorpus corpus2 = applyConsolidation(corpus, consolidation);
+            applyConsolidation(corpus, consolidation);
 
-            mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus2);
+            //mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus);
             
         } catch(Throwable t) {
             t.printStackTrace();
@@ -80,7 +76,7 @@ public class Consolidate {
         return authors;
     }
 
-    public static IndexedCorpus applyConsolidation(IndexedCorpus corpus, Map<Author, Set<Author>> consolidation) {
+    public static void applyConsolidation(DocumentSearcher corpus, Map<Author, Set<Author>> consolidation) {
         Map<Author, Author> rmap = new HashMap<>();
         for(Map.Entry<Author, Set<Author>> e1 : consolidation.entrySet()) {
             for(Author a1 : e1.getValue()) {
@@ -88,7 +84,6 @@ public class Consolidate {
             }
         }
 
-        List<Document> documents = new ArrayList<>();
         for(Document document : corpus.getDocuments()) {
             List<Author> authors2 = new ArrayList<>();
             for(Author a : document.authors) {
@@ -97,9 +92,8 @@ public class Consolidate {
             Document doc2 = new Document(document.file, document.id, document.url,
                     document.name, document.mimeType, authors2, document.metadata, 
                     document.getContents());
-            documents.add(doc2);
+            corpus.updateDocument(document.id, doc2);
         }
-        return new IndexedCorpus(documents, corpus.index);
     }
  
 }

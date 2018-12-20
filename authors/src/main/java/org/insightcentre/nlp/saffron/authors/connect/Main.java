@@ -9,10 +9,10 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 
 /**
  *
@@ -69,13 +69,13 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             AuthorTopicConfiguration config          = configurationFile == null ? new AuthorTopicConfiguration() : mapper.readValue(configurationFile, AuthorTopicConfiguration.class);
-            IndexedCorpus corpus                 = mapper.readValue(corpusFile, IndexedCorpus.class);
+            Corpus corpus                 = CorpusTools.readFile(corpusFile);
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
             ConnectAuthorTopic cr = new ConnectAuthorTopic(config);
 
-            Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, docTopics, corpus.documents);
+            Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
             
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTopics);
             

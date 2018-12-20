@@ -2,11 +2,10 @@ package org.insightcentre.nlp.saffron.term.lda;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.io.IOException;
 import opennlp.tools.tokenize.Tokenizer;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 
@@ -34,7 +33,7 @@ public class NovelTopicModel {
         this.minTopicFreq = maxTopicFreq;
     }
     
-   public static NovelTopicModel initialize(DocumentSearcher searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
+   public static NovelTopicModel initialize(Corpus searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
        CorpusProcessor.Result r = CorpusProcessor.convert(searcher, tokenizer);
        LDA lda = new LDA(r.buffer, K, r.docCount, r.dictionary.size(), alpha, beta);
        lda.train(iterations, verbose);

@@ -22,8 +22,8 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import static org.insightcentre.nlp.saffron.benchmarks.TaxonomyExtractionBenchmark.readTExEval;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.wikiclean.WikiClean;
@@ -112,13 +112,33 @@ public class BenchmarkFromWikipedia {
                 corpus.add(new Document(SaffronPath.fromFile(f), d.id, d.url, d.name, d.mimeType, d.authors, d.metadata, null));
             }
             mapper.writeValue(new File(outputFile, "corpus.json"),
-                    new IndexedCorpus(corpus, null));
+                    new SimpleCorpus(corpus));
 
         } catch (Exception x) {
             x.printStackTrace();
             System.exit(-1);
         }
 
+    }
+    
+    private static final class SimpleCorpus implements Corpus {
+        public final List<Document> documents;
+
+        public SimpleCorpus(List<Document> documents) {
+            this.documents = documents;
+        }
+
+        @Override
+        public Iterable<Document> getDocuments() {
+            return documents;
+        }
+
+        @Override
+        public int size() {
+            return documents.size();
+        }
+        
+        
     }
 
     private static final Pattern TITLE = Pattern.compile(".*<title>(.*)</title>.*");

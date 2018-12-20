@@ -17,6 +17,7 @@ import java.util.zip.GZIPInputStream;
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
@@ -52,9 +53,9 @@ public class ProcessWikipedia {
 
         TermExtraction extractor = new TermExtraction(config);
 
-        FrequencyStats stats = extractor.extractStats(new DocumentSearcher() {
+        FrequencyStats stats = extractor.extractStats(new Corpus() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return new Iterable<Document>() {
                     @Override
                     public Iterator<Document> iterator() {
@@ -64,14 +65,8 @@ public class ProcessWikipedia {
             }
 
             @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
+            public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-            
-            
-
-            @Override
-            public void close() throws IOException {
             }
         }, null, null);
 

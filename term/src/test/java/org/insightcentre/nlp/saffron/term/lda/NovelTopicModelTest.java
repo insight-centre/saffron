@@ -75,7 +75,7 @@ public class NovelTopicModelTest {
         System.out.println("initialize");
         DocumentSearcher searcher = new DocumentSearcher() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
                     mkDoc("this is a test"),
                     mkDoc("this is also a test"),
@@ -92,6 +92,18 @@ public class NovelTopicModelTest {
             @Override
             public void close() throws IOException {
             }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+           
+            
         };
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
         
@@ -115,7 +127,7 @@ public class NovelTopicModelTest {
         
         DocumentSearcher searcher = new DocumentSearcher() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
                     mkDoc("this is a test"),
                     mkDoc("this is also a test"),
@@ -132,6 +144,19 @@ public class NovelTopicModelTest {
             @Override
             public void close() throws IOException {
             }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            
+            
+
         };
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
         

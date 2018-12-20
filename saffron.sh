@@ -37,8 +37,8 @@ echo "## Step 1:Indexing corpus             ##"
 echo "########################################"
 if [[ "$1" == *.json ]] || [ -d $1 ] || [[ "$1" == *.zip ]] || [[ "$1" == *.tar.gz ]] || [[ "$1" == *.tgz ]]
 then
-    CORPUS=$OUTPUT/corpus-unconsolidated.json
-    $DIR/index-corpus -c $1 -i $OUTPUT/index -o $CORPUS || die "Indexing failed"
+    $DIR/index-corpus -c $1 -i $OUTPUT/index || die "Indexing failed"
+    CORPUS=$OUTPUT/index
 else
     die "$1 should be Json document, archive or a folder of text files"
 fi
@@ -53,8 +53,7 @@ $DIR/extract-topics -c $CONFIG \
 echo "########################################"
 echo "## Step 3: Author Consolidation       ##"
 echo "########################################"
-$DIR/consolidate-authors -t $CORPUS -o $OUTPUT/corpus.json
-CORPUS=$OUTPUT/corpus.json
+$DIR/consolidate-authors -t $CORPUS 
 
 echo "########################################"
 echo "## Step 4: DBpedia Lookup             ##"

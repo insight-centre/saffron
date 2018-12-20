@@ -31,8 +31,6 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.IndexedCorpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -186,9 +184,8 @@ public class Executor extends AbstractHandler {
                     if (tmpFile.getName().endsWith(".tgz") || tmpFile.getName().endsWith(".tar.gz")) {
                         corpus = CorpusTools.fromTarball(tmpFile, new File(new File(parentDirectory, saffronDatasetName), "docs"));
                     } else {
-                        corpus = CorpusTools.fromZIP(tmpFile, new File(new File(parentDirectory, saffronDatasetName), "docs"));
+                        corpus = CorpusTools.fromZIP(tmpFile);
                     }
-                    System.err.println(corpus.getDocuments().iterator().next().name);
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
@@ -245,7 +242,7 @@ public class Executor extends AbstractHandler {
                 _status.setStatusMessage("Reading JSON: " + tmpFile.getPath());
                 try {
                     ObjectMapper mapper = new ObjectMapper();
-                    IndexedCorpus corpus = mapper.readValue(tmpFile, IndexedCorpus.class);
+                    Corpus corpus = CorpusTools.fromJson(tmpFile);
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
@@ -288,13 +285,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
-        DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus, indexFile, false);
-        _status.setStatusMessage("Loading index");
-        ArrayList<Document> docs = new ArrayList<>();
-        for (Document d : corpus.getDocuments()) {
-            docs.add(d);
-        }
-        IndexedCorpus indexedCorpus = new IndexedCorpus(docs, SaffronPath.fromFile(indexFile));
+        DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile);
 
         _status.stage++;
         _status.setStatusMessage("Initializing topic extractor");
@@ -313,17 +304,14 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Extracting authors from corpus");
-        Set<Author> authors = Consolidate.extractAuthors(indexedCorpus);
+        Set<Author> authors = Consolidate.extractAuthors(searcher);
 
         _status.setStatusMessage("Consolidating author names");
         Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
 
         _status.setStatusMessage("Applying consoliation to corpus");
-        IndexedCorpus corpus2 = applyConsolidation(indexedCorpus, consolidation);
-
-        _status.setStatusMessage("Writing consolidated corpus");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "corpus.json"), corpus2);
-        data.setCorpus(corpus2);
+        applyConsolidation(searcher, consolidation);
+        data.setCorpus(searcher);
 
         _status.stage++;
         _status.setStatusMessage("Linking to DBpedia");
@@ -337,7 +325,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
         ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
-        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, corpus2.documents);
+        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments());
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);

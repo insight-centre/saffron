@@ -1,18 +1,13 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.channels.Channels;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.Random;
+import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -21,10 +16,8 @@ import org.apache.commons.collections4.iterators.FilterIterator;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 
 /**
@@ -33,6 +26,54 @@ import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
  * @author John McCrae <john@mccr.ae>
  */
 public class CorpusTools {
+    
+    /**
+     * Read a file from disk, the format should be one of
+     * <ul>
+     * <li> <code>.json</code> For Json file</li>
+     * <li> <code>.json.gz</code> For Gzipped Json file</li>
+     * <li> <code>.tar.gz</code> or <code>.tgz</code> For Tarballs</li>
+     * <li> <code>.zip</code> For ZIP files</li>
+     * <li> A directory containing files </li>
+     * </ul>
+     * @param file The file to read
+     * @return The corpus object
+     * @throws IOException If the file could not be read
+     * @throws IllegalArgumentException If the file type was not recognized
+     */
+    public static Corpus readFile(File file) throws IOException {
+        if (file.getName().endsWith(".json")) {
+            return fromJson(file);
+        } else if (file.getName().endsWith(".json.gz")) {
+            return new ObjectMapper().readValue(
+                    new GZIPInputStream(new FileInputStream(file)),
+                    IndexedCorpus.class);
+        } else if (file.getName().endsWith(".tar.gz") || file.getName().endsWith(".tgz")) {
+            return fromTarball(file);
+        } else if (file.getName().endsWith(".zip")) {
+            return fromZIP(file);
+        } else if (file.isDirectory()) {
+            File indexFile = new File(file, "segments.gen");
+            if(indexFile.exists()) {
+                return DocumentSearcherFactory.load(file);
+            } else {
+                return fromFolder(file);
+            }
+        } else {
+            throw new IllegalArgumentException("Could not deduce corpus type for: " + file.getName());
+        }
+    }
+
+    /**
+     * Read a corpus from a JSON file
+     *
+     * @param jsonFile The JSON file to read
+     * @return The corpus object
+     * @throws IOException If the file could not be read
+     */
+    public static Corpus fromJson(File jsonFile) throws IOException {
+        return new ObjectMapper().readValue(jsonFile, IndexedCorpus.class);
+    }
 
     /**
      * Create a corpus from a folder, each file will be considered a single
@@ -102,8 +143,6 @@ public class CorpusTools {
         }
 
     }
-    private static final Document.Loader TIKA_LOADER = new DocumentAnalyzer();
-
     private static class FolderCorpus implements Corpus {
 
         private final File folder;
@@ -128,9 +167,7 @@ public class CorpusTools {
                         public Document next() {
                             File f = iter.next();
                             try {
-                                return new Document(SaffronPath.fromFile(f), f.getName().replaceAll(File.separator, "_"), null, f.getName().replaceAll(File.separator, "_"),
-                                        Files.probeContentType(f.toPath()), new ArrayList<Author>(),
-                                        new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
+                                return DocumentAnalyzer.analyze(f, f.getName().replaceAll(File.separator, "_"));
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }
@@ -139,8 +176,30 @@ public class CorpusTools {
                 }
             };
         }
+        private int _size = -1;
 
+        @Override
+        public int size() {
+            if(_size < 0) 
+                _size = countFiles(folder);
+            return _size;
+        }
     }
+    
+    
+        private static int countFiles(File folder) {
+            if(!folder.isDirectory())
+                return 1;
+            int n = 0;
+            for(File f : folder.listFiles()) {
+                if(f.isDirectory()) {
+                    n += countFiles(f);
+                } else {
+                    n++;
+                }
+            }
+            return n;
+        }
 
     /**
      * Create a corpus from a zip file, each file will be considered a single
@@ -150,35 +209,18 @@ public class CorpusTools {
      * @return A corpus object
      */
     public static Corpus fromZIP(File zipFile) {
-        return fromZIP(zipFile, null);
-    }
-
-    /**
-     * Create a corpus from a zip file, each file will be considered a single
-     * document
-     *
-     * @param zipFile The zip file
-     * @param targetDir The directory to extract the file to
-     * @return A corpus object
-     */
-    public static Corpus fromZIP(File zipFile, File targetDir) {
         if (!zipFile.exists() && zipFile.isDirectory()) {
             throw new IllegalArgumentException(zipFile.getName() + " does not exist or is a folder");
         }
-        if (targetDir != null && !targetDir.mkdirs() && !targetDir.isDirectory()) {
-            throw new IllegalArgumentException(targetDir.getName() + " could not be created as a file");
-        }
-        return new ZIPCorpus(zipFile, targetDir);
+        return new ZIPCorpus(zipFile);
     }
 
     private static class ZIPCorpus implements Corpus {
 
         private final File zipFile;
-        private final File targetDir;
 
-        public ZIPCorpus(File zipFile, File targetFile) {
+        public ZIPCorpus(File zipFile) {
             this.zipFile = zipFile;
-            this.targetDir = targetFile;
         }
 
         @Override
@@ -203,32 +245,10 @@ public class CorpusTools {
                             public Document next() {
                                 try {
                                     ZipEntry ze = zes.nextElement();
-                                    if (ze.isDirectory()) {
-                                        return null;
+                                    while (ze.isDirectory() && zes.hasMoreElements()) {
+                                        ze = zes.nextElement();
                                     }
-                                    if (file != null && targetDir == null) {
-                                        file.delete();
-                                    }
-                                    if (targetDir != null) {
-                                        file = new File(targetDir, ze.getName());
-                                        while (file.exists()) {
-                                            file = new File(targetDir, ze.getName() + new Random().nextInt(10000));
-                                        }
-                                        if(file.getParentFile() != null) {
-                                            file.getParentFile().mkdirs();
-                                        } 
-                                    } else {
-                                        file = File.createTempFile(ze.getName(), "");
-                                        file.deleteOnExit();
-                                    }
-                                    FileOutputStream fos2 = new FileOutputStream(file);
-                                    InputStream is = zip.getInputStream(ze);
-
-                                    fos2.getChannel().transferFrom(Channels.newChannel(is), 0, Long.MAX_VALUE);
-
-                                    return new Document(SaffronPath.fromFile(file), ze.getName().replaceAll(File.separator, "_"), null,
-                                            ze.getName().replaceAll(File.separator, "_"), Files.probeContentType(new File(ze.getName()).toPath()),
-                                            new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
+                                    return DocumentAnalyzer.analyze(zip.getInputStream(ze), ze.getName().replaceAll(File.separator, "_"));
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);
                                 }
@@ -247,8 +267,24 @@ public class CorpusTools {
                     }
                 }
             };
-
         }
+
+        private int _size = -1;
+        
+        @Override
+        public int size() {
+            if(_size < 0) {
+                try {
+                    final ZipFile zip = new ZipFile(zipFile);
+                    _size = zip.size();
+                } catch(IOException x) {
+                    throw new RuntimeException(x);
+                }
+            }
+            return _size;
+        }
+        
+        
     }
 
     /**
@@ -329,28 +365,7 @@ public class CorpusTools {
                                     if (tae == null) {
                                         throw new NoSuchElementException();
                                     }
-                                    if (file != null && targetDir == null) {
-                                        file.delete();
-                                    }
-                                    if (targetDir != null) {
-                                        file = new File(targetDir, tae.getName());
-                                        while (file.exists()) {
-                                            file = new File(targetDir, tae.getName() + new Random().nextInt(10000));
-                                        }
-                                        if(file.getParentFile() != null) {
-                                            file.getParentFile().mkdirs();
-                                        } 
-                                    } else {
-                                        file = File.createTempFile(tae.getName(), "");
-                                        file.deleteOnExit();
-                                    }
-                                    FileOutputStream fos2 = new FileOutputStream(file);
-
-                                    fos2.getChannel().transferFrom(Channels.newChannel(tais), 0, Long.MAX_VALUE);
-
-                                    return new Document(SaffronPath.fromFile(file), tae.getName().replaceAll(File.separator, "_"), null,
-                                            tae.getName().replaceAll(File.separator, "_"), Files.probeContentType(new File(tae.getName()).toPath()),
-                                            new ArrayList<Author>(), new HashMap<String, String>(), null).withLoader(TIKA_LOADER);
+                                    return DocumentAnalyzer.analyze(tais, tae.getName().replace(File.separator, "_"));
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);
                                 } finally {
@@ -371,5 +386,27 @@ public class CorpusTools {
             };
 
         }
+
+        private int _size = -1;
+        
+        @Override
+        public int size() {
+            if(_size < 0) {
+                int n = 0;
+                try(final TarArchiveInputStream tais = new TarArchiveInputStream(new GzipCompressorInputStream(new FileInputStream(zipFile)))) {
+                    TarArchiveEntry tae = (TarArchiveEntry)tais.getNextEntry();
+                    while(tae != null) {
+                        if(tae.isFile()) n++;
+                        tae = tais.getNextTarEntry();
+                    }
+                    _size = n;
+                } catch(IOException x) {
+                    throw new RuntimeException(x);
+                }
+            }
+            return _size;
+        }
+        
+        
     }
 }

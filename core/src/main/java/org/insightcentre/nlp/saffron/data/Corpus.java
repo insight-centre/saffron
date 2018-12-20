@@ -15,4 +15,10 @@ public interface Corpus {
      */
     public Iterable<Document> getDocuments();
     
+    
+    /**
+     * The number of documents in this corpus
+     * @return The size of this corpus
+     */
+    public int size();
 }

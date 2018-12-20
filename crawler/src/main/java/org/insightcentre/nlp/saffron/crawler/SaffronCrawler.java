@@ -15,6 +15,7 @@ import edu.uci.ics.crawler4j.url.WebURL;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -24,8 +25,14 @@ import java.util.List;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.apache.tika.exception.TikaException;
+import org.apache.tika.io.TikaInputStream;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.sax.BodyContentHandler;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
+import org.xml.sax.SAXException;
 
 /**
  *
@@ -62,7 +69,8 @@ public class SaffronCrawler extends WebCrawler {
     }
 
     private static final Set<String> SUPPORTED_TYPES = new HashSet<>();
-    static{
+
+    static {
         SUPPORTED_TYPES.add("application/x-ibooks+zip");
         SUPPORTED_TYPES.add("application/epub+zip");
         SUPPORTED_TYPES.add("application/x-mspublisher");
@@ -129,15 +137,17 @@ public class SaffronCrawler extends WebCrawler {
         SUPPORTED_TYPES.add("application/pdf");
         SUPPORTED_TYPES.add("application/rtf");
         SUPPORTED_TYPES.add("text/plain");
-    };
+    }
+
+    ;
         
     @Override
     public void visit(Page page) {
         System.err.println(page.getWebURL().getURL());
         if ((languageFilter == null || page.getLanguage().equals(languageFilter))
                 && (urlFilter == null || page.getWebURL().getURL().matches(urlFilter))) {
-                byte[] urlBytes = page.getWebURL().getURL().getBytes();
-                String key = toHexString(Murmur3.hash_x64_128(urlBytes, urlBytes.length, 0));
+            byte[] urlBytes = page.getWebURL().getURL().getBytes();
+            String key = toHexString(Murmur3.hash_x64_128(urlBytes, urlBytes.length, 0));
             if (page.getParseData() instanceof HtmlParseData) {
                 HtmlParseData htmlParseData = (HtmlParseData) page.getParseData();
                 String html = htmlParseData.getHtml();
@@ -148,21 +158,23 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null));
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null)
+                        .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
-            } else if(SUPPORTED_TYPES.contains(page.getContentType())) {
+            } else if (SUPPORTED_TYPES.contains(page.getContentType())) {
                 String url = page.getWebURL().getURL();
-                String extension = url.lastIndexOf('.') > 0 ?
-                        url.substring(url.lastIndexOf('.')) : ".bin";
+                String extension = url.lastIndexOf('.') > 0
+                        ? url.substring(url.lastIndexOf('.')) : ".bin";
                 File file = new File(saveFolder, key + extension);
-                try(FileOutputStream fos = new FileOutputStream(file)) {
+                try (FileOutputStream fos = new FileOutputStream(file)) {
                     fos.write(page.getContentData());
-                } catch(IOException x) {
+                } catch (IOException x) {
                     System.err.println("Could not write binary for " + url + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null));
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null)
+                    .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }
@@ -170,10 +182,43 @@ public class SaffronCrawler extends WebCrawler {
         }
     }
 
+    private static class CrawlLoader implements Document.Loader {
+
+        public static String removeLigatures(String s) {
+            return s.replaceAll("\ufb00", "ff").
+                    replaceAll("\ufb03", "ffi").
+                    replaceAll("\ufb04", "ffl").
+                    replaceAll("\ufb01", "fi").
+                    replaceAll("\ufb02", "fl");
+
+        }
+
+        @Override
+        public String getContents(Document d) {
+            AutoDetectParser parser = new AutoDetectParser();
+            BodyContentHandler handler = new BodyContentHandler(-1);
+            Metadata metadata = new Metadata();
+            final InputStream stream;
+            try {
+                stream = TikaInputStream.get(d.file.toFile().toPath());
+                parser.parse(stream, handler, metadata);
+            } catch (SAXException | TikaException | IOException ex) {
+                throw new RuntimeException(ex);
+            }
+
+            return removeLigatures(handler.toString());
+        }
+
+        @Override
+        public String getContentsSerializable(Document d) {
+            return null;
+        }
+    }
+
     private static URL pageURL(Page page) {
         try {
             return new URL(page.getWebURL().getURL());
-        } catch(MalformedURLException x) {
+        } catch (MalformedURLException x) {
             throw new RuntimeException(x);
         }
     }
@@ -244,9 +289,9 @@ public class SaffronCrawler extends WebCrawler {
         }
     }
 
-    public static CrawledCorpus crawl(final String crawlStorageFolder, File saveFolder, 
-            final String languageFilter, final int collectionLimit, 
-            final String urlFilter, final String seedURL, 
+    public static CrawledCorpus crawl(final String crawlStorageFolder, File saveFolder,
+            final String languageFilter, final int collectionLimit,
+            final String urlFilter, final String seedURL,
             int numberOfCrawlers) throws Exception, IOException {
         SaffronCrawlerFactory factory = new SaffronCrawlerFactory(saveFolder);
         CrawlConfig config = new CrawlConfig();
@@ -257,7 +302,7 @@ public class SaffronCrawler extends WebCrawler {
         factory.setUrlFilter(urlFilter);
         /*
         * Instantiate the controller for this crawl.
-        */
+         */
         PageFetcher pageFetcher = new PageFetcher(config);
         RobotstxtConfig robotstxtConfig = new RobotstxtConfig();
         RobotstxtServer robotstxtServer = new RobotstxtServer(robotstxtConfig, pageFetcher);
@@ -266,7 +311,7 @@ public class SaffronCrawler extends WebCrawler {
         /*
         * Start the crawl. This is a blocking operation, meaning that your code
         * will reach the line after this only when crawling is finished.
-        */
+         */
         System.err.println("Starting crawl");
         controller.start(factory, numberOfCrawlers);
         return new CrawledCorpus(factory.getDocuments());

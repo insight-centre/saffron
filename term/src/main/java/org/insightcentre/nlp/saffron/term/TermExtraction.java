@@ -39,9 +39,6 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.index.CorpusAsDocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.domain.DomainStats;
@@ -168,7 +165,7 @@ public class TermExtraction {
         return set;
     }
 
-    public FrequencyStats extractStats(DocumentSearcher searcher,
+    public FrequencyStats extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTopic> docTopics,
             CasingStats casing)
             throws SearchException, InterruptedException, ExecutionException {
@@ -178,7 +175,7 @@ public class TermExtraction {
         final FrequencyStats summary = new FrequencyStats();
 
         int docCount = 0;
-        for (Document doc : searcher.allDocuments()) {
+        for (Document doc : searcher.getDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
@@ -216,7 +213,7 @@ public class TermExtraction {
         });
     }
 
-    public Result extractTopics(final DocumentSearcher searcher) {
+    public Result extractTopics(final Corpus searcher) {
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
@@ -233,9 +230,9 @@ public class TermExtraction {
                         } else if (refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
                         } else if (refFile.getName().endsWith(".zip")) {
-                            return extractStats(new CorpusAsDocumentSearcher(CorpusTools.fromZIP(refFile)), null, null);
+                            return extractStats(CorpusTools.fromZIP(refFile), null, null);
                         } else if (refFile.getName().endsWith(".tar.gz")) {
-                            return extractStats(new CorpusAsDocumentSearcher(CorpusTools.fromTarball(refFile)), null, null);
+                            return extractStats(CorpusTools.fromTarball(refFile), null, null);
                         } else {
                             throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
@@ -479,7 +476,7 @@ public class TermExtraction {
             final OptionParser p = new OptionParser() {
                 {
                     accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("x", "The corpus to write to").withRequiredArg().ofType(File.class);
+                    accepts("x", "The corpus index to read").withRequiredArg().ofType(File.class);
                     accepts("t", "The topics to write").withRequiredArg().ofType(File.class);
                     accepts("o", "The doc-topic corespondences to write").withRequiredArg().ofType(File.class);
                 }
@@ -513,8 +510,7 @@ public class TermExtraction {
             }
             Configuration c = mapper.readValue((File) os.valueOf("c"), Configuration.class);
             File corpusFile = (File) os.valueOf("x");
-            final IndexedCorpus corpus = mapper.readValue(corpusFile, IndexedCorpus.class);
-            final DocumentSearcher searcher = DocumentSearcherFactory.loadSearcher(corpus);
+            final Corpus searcher = CorpusTools.readFile(corpusFile);
 
             final TermExtraction te = new TermExtraction(c.termExtraction);
 

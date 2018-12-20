@@ -1,10 +1,14 @@
-package org.insightcentre.nlp.saffron.data;
+package org.insightcentre.nlp.saffron.documentindex;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.File;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Objects;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  * A corpus of documents for processing
@@ -39,7 +43,7 @@ public class IndexedCorpus implements Corpus {
 
     public void addDocument(Document document) {
         this.documents.add(document);
-    }
+    }    
 
     @Override
     public int hashCode() {
@@ -61,6 +65,11 @@ public class IndexedCorpus implements Corpus {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public int size() {
+        return documents.size();
     }
 
     

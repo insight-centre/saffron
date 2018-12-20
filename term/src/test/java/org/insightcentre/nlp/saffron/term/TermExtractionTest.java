@@ -1,19 +1,14 @@
 package org.insightcentre.nlp.saffron.term;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
-import opennlp.tools.postag.POSModel;
 import opennlp.tools.postag.POSTagger;
-import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.tokenize.Tokenizer;
-import opennlp.tools.tokenize.TokenizerME;
-import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.util.Sequence;
 import opennlp.tools.util.Span;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -109,9 +104,9 @@ public class TermExtractionTest {
             }
 
         };
-        DocumentSearcher searcher = new DocumentSearcher() {
+        Corpus searcher = new Corpus() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
                     mkDoc("this is a test"),
                     mkDoc("this is also a test"),
@@ -121,13 +116,10 @@ public class TermExtractionTest {
             }
 
             @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
+            public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-
-            @Override
-            public void close() throws IOException {
-            }
+            
         };
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override

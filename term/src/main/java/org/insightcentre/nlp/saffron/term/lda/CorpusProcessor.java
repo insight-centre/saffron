@@ -8,8 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import opennlp.tools.tokenize.Tokenizer;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 /**
@@ -19,13 +19,13 @@ import org.insightcentre.nlp.saffron.data.index.SearchException;
  */
 public class CorpusProcessor {
 
-    public static Result convert(DocumentSearcher searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
+    public static Result convert(Corpus searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
         final Object2IntMap<String> dictionary = new Object2IntOpenHashMap<>();
         final File tmpFile = File.createTempFile("assign", ".buf");
         tmpFile.deleteOnExit();
         int J = 0;
         try (DataOutputStream out = new DataOutputStream(new FileOutputStream(tmpFile))) {
-            for (Document doc : searcher.allDocuments()) {
+            for (Document doc : searcher.getDocuments()) {
 
                 String contents = doc.contents();
                 for (String sentence : contents.split("\n")) {

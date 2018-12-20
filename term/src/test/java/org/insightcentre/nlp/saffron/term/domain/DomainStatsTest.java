@@ -104,13 +104,18 @@ public class DomainStatsTest {
         
         DocumentSearcher searcher = new DocumentSearcher() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
                     mkDoc("this is a test"),
                     mkDoc("this is also a test"),
                     mkDoc("this is a good test"),
                     mkDoc("a good test is also a test")
                 });
+            }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
 
             @Override
@@ -121,6 +126,13 @@ public class DomainStatsTest {
             @Override
             public void close() throws IOException {
             }
+
+            @Override
+            public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            
+            
         };
         int nThreads = 2;
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
@@ -150,7 +162,7 @@ public class DomainStatsTest {
         
         DocumentSearcher searcher = new DocumentSearcher() {
             @Override
-            public Iterable<Document> allDocuments() throws SearchException {
+            public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
                     mkDoc("this is a test"),
                     mkDoc("this is also a test"),
@@ -167,6 +179,19 @@ public class DomainStatsTest {
             @Override
             public void close() throws IOException {
             }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            
+            
+            
         };
         int nThreads = 2;
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
