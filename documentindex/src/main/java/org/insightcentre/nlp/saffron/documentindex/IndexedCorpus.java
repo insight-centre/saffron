@@ -18,7 +18,6 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 public class IndexedCorpus implements Corpus {
 
     public final List<Document> documents;
-    public final SaffronPath index;
 
 
     /**
@@ -30,12 +29,8 @@ public class IndexedCorpus implements Corpus {
     public IndexedCorpus(@JsonProperty("documents") List<Document> documents,
                   @JsonProperty("index") SaffronPath index) {
         this.documents = documents;
-        this.index = index;
     }
     
-    public File getIndex() {
-        return index == null ? null : index.toFile();
-    }
 
     public List<Document> getDocuments() {
         return documents;
