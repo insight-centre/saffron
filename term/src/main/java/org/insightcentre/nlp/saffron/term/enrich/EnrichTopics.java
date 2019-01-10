@@ -74,74 +74,74 @@ public class EnrichTopics {
         final ThreadLocal<POSTagger> tagger;
         final ThreadLocal<Lemmatizer> lemmatizer;
         final int nThreads;
-        if(config == null) {
-                tokenizer = new ThreadLocal<Tokenizer>() {
-                    @Override
-                    protected Tokenizer initialValue() {
-                        return new Tokenizer() {
-                            @Override
-                            public String[] tokenize(String s) {
-                                return s.split("\\s+");
-                            }
+        if (config == null) {
+            tokenizer = new ThreadLocal<Tokenizer>() {
+                @Override
+                protected Tokenizer initialValue() {
+                    return new Tokenizer() {
+                        @Override
+                        public String[] tokenize(String s) {
+                            return s.split("\\s+");
+                        }
 
-                            @Override
-                            public Span[] tokenizePos(String s) {
-                                throw new UnsupportedOperationException("Not supported");
-                            }
-                        };
+                        @Override
+                        public Span[] tokenizePos(String s) {
+                            throw new UnsupportedOperationException("Not supported");
+                        }
+                    };
+                }
+
+            };
+            tagger = null;
+            lemmatizer = null;
+            nThreads = 10;
+        } else {
+            tagger = new ThreadLocal<POSTagger>() {
+                @Override
+                protected POSTagger initialValue() {
+                    try {
+                        return new POSTaggerME(new POSModel(config.posModel.toFile()));
+                    } catch (IOException x) {
+                        x.printStackTrace();
+                        return null;
                     }
-                    
-                };
-                tagger = null;
-                lemmatizer = null;
-                nThreads = 10;
-            } else {
-                tagger = new ThreadLocal<POSTagger>() {
-                    @Override
-                    protected POSTagger initialValue() {
+                }
+            };
+            tokenizer = new ThreadLocal<Tokenizer>() {
+                @Override
+                protected Tokenizer initialValue() {
+
+                    if (config.tokenizerModel == null) {
+                        return SimpleTokenizer.INSTANCE;
+                    } else {
                         try {
-                            return new POSTaggerME(new POSModel(config.posModel.toFile()));
+                            return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
+                        } catch (IOException x) {
+                            throw new RuntimeException(x);
+                        }
+                    }
+                }
+            };
+            if (config.lemmatizerModel == null) {
+                lemmatizer = null;
+            } else {
+                lemmatizer = new ThreadLocal<Lemmatizer>() {
+                    @Override
+                    protected Lemmatizer initialValue() {
+                        try {
+                            return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
                         } catch (IOException x) {
                             x.printStackTrace();
                             return null;
                         }
                     }
                 };
-                tokenizer = new ThreadLocal<Tokenizer>() {
-                    @Override
-                    protected Tokenizer initialValue() {
-
-                        if (config.tokenizerModel == null) {
-                            return SimpleTokenizer.INSTANCE;
-                        } else {
-                            try {
-                                return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-                            } catch (IOException x) {
-                                throw new RuntimeException(x);
-                            }
-                        }
-                    }
-                };
-                if (config.lemmatizerModel == null) {
-                    lemmatizer = null;
-                } else {
-                    lemmatizer = new ThreadLocal<Lemmatizer>() {
-                        @Override
-                        protected Lemmatizer initialValue() {
-                            try {
-                                return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
-                            } catch (IOException x) {
-                                x.printStackTrace();
-                                return null;
-                            }
-                        }
-                    };
-                }
-                nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
             }
+            nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
+        }
         return enrich(topicStrings, corpus, nThreads, tagger, lemmatizer, tokenizer);
     }
-    
+
     public static Result enrich(Set<String> topicStrings, Corpus corpus, int nThreads,
             ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer) {
         try {
@@ -202,7 +202,7 @@ public class EnrichTopics {
                     accepts("c", "The corpus to load").withRequiredArg().ofType(File.class);
                     accepts("o", "The output topic list").withRequiredArg().ofType(File.class);
                     accepts("d", "The output doc-topic list").withRequiredArg().ofType(File.class);
-                    accepts("cfg", "The configuration").withRequiredArg().ofType(File.class);
+                    accepts("cfg", "The configuration (Used of tokenization, tagging and lemmatization of the corpus)").withRequiredArg().ofType(File.class);
                 }
             };
             final OptionSet os;
@@ -234,18 +234,18 @@ public class EnrichTopics {
                 badOptions(p, "The corpus file does not exist");
             }
             File cfgFile = (File) os.valueOf("cfg");
-            
+
             final TermExtractionConfiguration config;
-            
-            if(cfgFile == null) {
+
+            if (cfgFile == null) {
                 config = null;
-            } else if(!cfgFile.exists()) {
+            } else if (!cfgFile.exists()) {
                 badOptions(p, "The config file does not exist");
                 return;
             } else {
                 config = mapper.readValue(cfgFile, Configuration.class).termExtraction;
             }
-            
+
             final Corpus corpus = CorpusTools.readFile(corpusFile);
 
             final Set<String> topics = readTExEval(taxoFile);
