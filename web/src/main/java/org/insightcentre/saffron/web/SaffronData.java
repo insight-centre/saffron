@@ -91,24 +91,23 @@ public class SaffronData {
         List<AuthorAuthor> aas = authorByAuthor2.get(author2);
         return aas == null ? Collections.EMPTY_LIST : aas;
     }
-    
+
     public List<Author> authorAuthorToAuthor1(List<AuthorAuthor> aas) {
         List<Author> as = new ArrayList<>();
-        for(AuthorAuthor aa : aas) {
+        for (AuthorAuthor aa : aas) {
             Author a = getAuthor(aa.author1_id);
-            if(a != null) {
+            if (a != null) {
                 as.add(a);
             }
         }
         return as;
     }
-    
-    
+
     public List<Author> authorAuthorToAuthor2(List<AuthorAuthor> aas) {
         List<Author> as = new ArrayList<>();
-        for(AuthorAuthor aa : aas) {
+        for (AuthorAuthor aa : aas) {
             Author a = getAuthor(aa.author2_id);
-            if(a != null) {
+            if (a != null) {
                 as.add(a);
             }
         }
@@ -202,7 +201,7 @@ public class SaffronData {
     }
 
     public Collection<String> getTopTopics(int from, int to) {
-        if(from < topicsSorted.size() && to <= topicsSorted.size()) {
+        if (from < topicsSorted.size() && to <= topicsSorted.size()) {
             return topicsSorted.subList(from, to);
         } else {
             return Collections.EMPTY_LIST;
@@ -211,6 +210,10 @@ public class SaffronData {
 
     public Topic getTopic(String topic) {
         return topics.get(topic);
+    }
+    
+    public Collection<Topic> getTopics() {
+        return topics.values();
     }
 
     public void setTopics(Collection<Topic> _topics) {
@@ -260,11 +263,12 @@ public class SaffronData {
     public List<TopicTopic> getTopicByTopic1(String topic1, List<String> _ignore) {
         Set<String> ignore = _ignore == null ? new HashSet<>() : new HashSet<>(_ignore);
         List<TopicTopic> tt = topicByTopic1.get(topic1);
-        if(tt != null) {
+        if (tt != null) {
             Iterator<TopicTopic> itt = tt.iterator();
-            while(itt.hasNext()) {
-                if(ignore.contains(itt.next().topic2))
+            while (itt.hasNext()) {
+                if (ignore.contains(itt.next().topic2)) {
                     itt.remove();
+                }
             }
             return tt;
         } else {
@@ -350,7 +354,7 @@ public class SaffronData {
                 tf.constructCollectionType(List.class, Topic.class)));
 
         File indexFile = new File(directory, "index");
-        if(!indexFile.exists()) {
+        if (!indexFile.exists()) {
             throw new FileNotFoundException("Could not find index");
         }
 
@@ -381,8 +385,6 @@ public class SaffronData {
     public DocumentSearcher getSearcher() {
         return searcher;
     }
-    
-    
 
     public List<Document> getDocsByAuthor(String authorId) {
         List<Document> docs = corpusByAuthor.get(authorId);
@@ -393,8 +395,16 @@ public class SaffronData {
         return authors.get(authorId);
     }
 
+    public Collection<Author> getAuthors() {
+        return authors.values();
+    }
+
     public Document getDoc(String docId) {
         return corpus.get(docId);
+    }
+
+    public Collection<Document> getDocuments() {
+        return corpus.values();
     }
 
     private HashMap<String, IntList> getTaxoLocations(Taxonomy t) {
@@ -448,7 +458,7 @@ public class SaffronData {
             return Collections.EMPTY_LIST;
         }
     }
-    
+
     public List<TopicAndScore> getTaxoChildrenScored(String topic_string) {
         IntList il = taxoMap.get(topic_string);
         if (il != null) {
@@ -462,8 +472,9 @@ public class SaffronData {
             return Collections.EMPTY_LIST;
         }
     }
-    
+
     public static class TopicAndScore {
+
         public final String topic;
         public final double score;
 
@@ -471,7 +482,6 @@ public class SaffronData {
             this.topic = topic;
             this.score = score;
         }
-        
-        
+
     }
 }

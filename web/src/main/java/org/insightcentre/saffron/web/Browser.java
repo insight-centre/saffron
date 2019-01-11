@@ -9,9 +9,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import static java.lang.Integer.min;
 import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -282,7 +284,7 @@ public class Browser extends AbstractHandler {
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), saffron.getTopTopics(n, offset + n));
                 } else if (target.startsWith("/topic/")) {
-                    final String topicString = target.substring(7);
+                    final String topicString = decode(target.substring(7));
                     final Topic topic = saffron.getTopic(topicString);
                     if (topic != null) {
 
@@ -295,7 +297,7 @@ public class Browser extends AbstractHandler {
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/author/")) {
-                    final String authorString = target.substring(8);
+                    final String authorString = decode(target.substring(8));
                     final Author author = saffron.getAuthor(authorString);
                     if (author != null) {
                         response.setContentType("text/html;charset=utf-8");
@@ -307,7 +309,7 @@ public class Browser extends AbstractHandler {
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/doc/")) {
-                    final String docId = target.substring(5);
+                    final String docId = decode(target.substring(5));
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null) {
                         response.setContentType("text/html;charset=utf-8");
@@ -319,7 +321,7 @@ public class Browser extends AbstractHandler {
                         response.getWriter().write(data);
                     }
                 } else if (target.startsWith("/doc_content/")) {
-                    final String docId = target.substring(13);
+                    final String docId = decode(target.substring(13));
                     final Document doc = saffron.getDoc(docId);
                     System.err.println(doc);
                     if (doc != null && doc.file != null) {
@@ -421,7 +423,7 @@ public class Browser extends AbstractHandler {
                         }
                     }
                 } else if (target.startsWith("/ttl/doc/")) {
-                    final String docId = target.substring(9);
+                    final String docId = decode(target.substring(9));
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null) {
                         response.setContentType("text/turtle");
@@ -431,7 +433,7 @@ public class Browser extends AbstractHandler {
                         model.write(response.getWriter(), "TURTLE");
                     }
                 } else if (target.startsWith("/ttl/author/")) {
-                    final String authorId = target.substring(12);
+                    final String authorId = decode(target.substring(12));
                     final Author author = saffron.getAuthor(authorId);
                     if (author != null) {
                         response.setContentType("text/turtle");
@@ -441,7 +443,7 @@ public class Browser extends AbstractHandler {
                         model.write(response.getWriter(), "TURTLE");
                     }
                 } else if (target.startsWith("/ttl/topic/")) {
-                    final String topicId = target.substring(11);
+                    final String topicId = decode(target.substring(11));
                     final Topic topic = saffron.getTopic(topicId);
                     if (topic != null) {
                         response.setContentType("text/turtle");
@@ -451,7 +453,7 @@ public class Browser extends AbstractHandler {
                         model.write(response.getWriter(), "TURTLE");
                     }
                 } else if (target.startsWith("/rdf/doc/")) {
-                    final String docId = target.substring(9);
+                    final String docId = decode(target.substring(9));
                     final Document doc = saffron.getDoc(docId);
                     if (doc != null) {
                         response.setContentType("application/rdf+xml");
@@ -461,7 +463,7 @@ public class Browser extends AbstractHandler {
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
                 } else if (target.startsWith("/rdf/author/")) {
-                    final String authorId = target.substring(12);
+                    final String authorId = decode(target.substring(12));
                     final Author author = saffron.getAuthor(authorId);
                     if (author != null) {
                         response.setContentType("application/rdf+xml");
@@ -471,7 +473,7 @@ public class Browser extends AbstractHandler {
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
                 } else if (target.startsWith("/rdf/topic/")) {
-                    final String topicId = target.substring(11);
+                    final String topicId = decode(target.substring(11));
                     final Topic topic = saffron.getTopic(topicId);
                     if (topic != null) {
                         response.setContentType("application/rdf+xml");
@@ -480,6 +482,20 @@ public class Browser extends AbstractHandler {
                         Model model = RDFConversion.topicToRDF(topic, saffron);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
+                } else if (target.equals("/download/rdf")) {
+                    response.setContentType("application/rdf+xml");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    String base = getBase(request, "/download/rdf");
+                    Model model = RDFConversion.allToRdf(base, saffron);
+                    model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
+                } else if (target.equals("/download/ttl")) {
+                    response.setContentType("text/turtle");
+                    response.setStatus(HttpServletResponse.SC_OK);
+                    baseRequest.setHandled(true);
+                    String base = getBase(request, "/download/ttl");
+                    Model model = RDFConversion.allToRdf(base, saffron);
+                    model.write(response.getWriter(), "TURTLE");
                 }
 
             }
@@ -489,6 +505,21 @@ public class Browser extends AbstractHandler {
         }
     }
 
+    private String getBase(HttpServletRequest req, String path) {
+        StringBuffer sb = req.getRequestURL();
+        sb.delete(sb.length() - path.length(), sb.length());
+        return sb.toString();
+    }
+    
+    private String decode(String id) {
+        try {
+            return URLDecoder.decode(id, "UTF-8");
+        } catch(UnsupportedEncodingException x) {
+            // silly Java, you could have used an enum here and not had to throw an exception....
+            return id;
+        }
+    }
+    
     private List<TopicTopic> getTopN(final List<TopicTopic> tts, final int n, final int offset) {
         tts.sort(new Comparator<TopicTopic>() {
             @Override

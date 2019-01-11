@@ -35,8 +35,14 @@ public class RDFConversion {
     
     public static Model documentToRDF(Document d, SaffronData data) {
         Model model = ModelFactory.createDefaultModel();
+        
+        return documentToRDF(d, data, model, null);
+        
+    }
+    
+    public static Model documentToRDF(Document d, SaffronData data, Model model, String base) {
 
-        Resource res = model.createResource("")
+        Resource res = model.createResource(base == null ? "" : base + "/rdf/doc/" + encode(d.id))
                 .addProperty(RDF.type, FOAF.Document);
         if (d.getName() != null) {
             res.addLiteral(RDFS.label, d.getName());
@@ -49,7 +55,9 @@ public class RDFConversion {
         }
 
         for (DocumentTopic dt : data.getTopicByDoc(d.id)) {
-            res.addProperty(DCTerms.subject, model.createResource("../topic/" + encode(dt.topic_string)));
+            res.addProperty(DCTerms.subject, model.createResource(
+                    base == null ? "../topic/" + encode(dt.topic_string) 
+                            : base + "/rdf/topic/" + encode(dt.topic_string)));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);
@@ -61,8 +69,11 @@ public class RDFConversion {
 
     public static Model topicToRDF(Topic t, SaffronData data) {
         Model model = ModelFactory.createDefaultModel();
-
-        Resource res = model.createResource("")
+        return topicToRDF(t, data, model, null);
+    }
+    
+    public static Model topicToRDF(Topic t, SaffronData data, Model model, String base) {
+        Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.topicString))
                 .addProperty(RDF.type, SKOS.Concept)
                 .addProperty(RDFS.label, t.topicString)
                 .addProperty(SAFFRON.occurrences, model.createTypedLiteral(t.occurrences))
@@ -81,12 +92,16 @@ public class RDFConversion {
         
         for(AuthorTopic at : data.getAuthorByTopic(t.topicString)) {
             res.addProperty(SAFFRON.author, 
-                    model.createResource("../author/" + encode(at.author_id)));
+                    model.createResource(base == null ?
+                            "../author/" + encode(at.author_id)
+                            : base + "/rdf/author/" + encode(at.author_id)));
         }
         
         for(TopicTopic tt : data.getTopicByTopic1(t.topicString, null)) {
             res.addProperty(SKOS.related,
-                    model.createResource(encode(tt.topic2)));
+                    model.createResource(
+                            base == null ? encode(tt.topic2)
+                                    : base + "/rdf/topic/" + encode(tt.topic2)));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);
@@ -98,21 +113,32 @@ public class RDFConversion {
     
     public static Model authorToRdf(Author author, SaffronData data) {
         Model model = ModelFactory.createDefaultModel();
+        return authorToRdf(author, data, model, null);
+    }
+    
+    public static Model authorToRdf(Author author, SaffronData data, Model model, String base) {
 
-        Resource res = model.createResource("")
+        Resource res = model.createResource(base == null ? "" 
+                : base + "/rdf/author/" + encode(author.id))
                 .addProperty(RDF.type, FOAF.Person)
                 .addLiteral(FOAF.name, author.name);
         for(String variant : author.nameVariants) {
             res.addLiteral(FOAF.nick, variant);
         }
         for(AuthorAuthor aa : data.getAuthorSimByAuthor1(author.id)) {
-            res.addProperty(SAFFRON.relatedAuthor, model.createResource(encode(aa.author2_id)));
+            res.addProperty(SAFFRON.relatedAuthor, model.createResource(
+                    base == null ? encode(aa.author2_id)
+                            : base + "/rdf/author/" + aa.author2_id));
         }
         for(AuthorTopic at : data.getTopicByAuthor(author.id)) {
-            res.addProperty(SAFFRON.authorTopic, model.createResource("../topic/" + encode(at.topic_id)));
+            res.addProperty(SAFFRON.authorTopic, model.createResource(
+                    base == null ? "../topic/" + encode(at.topic_id) 
+                            : base + "/rdf/topic/" + encode(at.topic_id)));
         }
         for(Document d : data.getDocsByAuthor(author.id)) {
-            res.addProperty(FOAF.made, "../doc/" + encode(d.id));
+            res.addProperty(FOAF.made, base == null ? 
+                    "../doc/" + encode(d.id)
+                    : base + "/rdf/doc/" + encode(d.id));
         }
         
         model.setNsPrefix("foaf", FOAF.NS);
@@ -121,5 +147,19 @@ public class RDFConversion {
         
         return model;
         
+    }
+    
+    public static Model allToRdf(String base, SaffronData data) {
+        Model model = ModelFactory.createDefaultModel();
+        for(Document doc : data.getDocuments()) {
+            documentToRDF(doc, data, model, base);
+        }
+        for(Author auth : data.getAuthors()) {
+            authorToRdf(auth, data, model, base);
+        }
+        for(Topic topic : data.getTopics()) {
+            topicToRDF(topic, data, model, base);
+        }
+        return model;
     }
 }
