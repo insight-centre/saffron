@@ -7,10 +7,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -153,7 +156,7 @@ public class EnrichTopics {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
 
             for (Document d : corpus.getDocuments()) {
-                service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, topicStrings, dts));
+                service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(topicStrings, tokenizer), dts));
             }
 
             service.shutdown();
@@ -300,5 +303,66 @@ public class EnrichTopics {
             }
         }
     }
+    
+    private static WordTrie makeTrie(Set<String> topicStrings, ThreadLocal<Tokenizer> _tokenizer) {
+        Tokenizer tokenizer = _tokenizer.get();
+        WordTrie trie = new WordTrie("");
+        for(String topicString : topicStrings) {
+            trie.addTokenized(tokenizer.tokenize(topicString.toLowerCase()));
+        }
+        return trie;
+    }
 
+    public static class WordTrie extends AbstractMap<String, WordTrie> {
+
+        final Map<String, WordTrie> trie;
+        final String word;
+        boolean present = false;
+
+        public WordTrie(String word) {
+            trie = new HashMap<>();
+            this.word = word;
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            return trie.containsKey(key);
+        }
+
+        @Override
+        public WordTrie get(Object key) {
+            return trie.get(key); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        public void addTokenized(String[] words) {
+            _add(words, 0);
+        }
+
+        private void _add(String[] words, int i) {
+            if (i >= words.length) {
+                present = true;
+                return;
+            }
+
+            if (!trie.containsKey(words[i])) {
+                trie.put(words[i], new WordTrie(join(words, i)));
+            }
+            trie.get(words[i])._add(words, i + 1);
+        }
+        
+        private String join(String[] words, int i) {
+            StringBuilder sb = new StringBuilder();
+            for(int j = 0; j <= i; j++) {
+                if(j != 0)
+                    sb.append(" ");
+                sb.append(words[j]);
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public Set<Entry<String, WordTrie>> entrySet() {
+            return trie.entrySet();
+        }
+    }
 }
