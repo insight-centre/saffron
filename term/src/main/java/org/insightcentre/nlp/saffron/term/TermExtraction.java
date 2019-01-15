@@ -94,17 +94,19 @@ public class TermExtraction {
         if (config.posModel == null) {
             throw new RuntimeException("Tagger must be set");
         }
+        final POSModel posModel = new POSModel(config.posModel.toFile());
         this.tagger = new ThreadLocal<POSTagger>() {
             @Override
             protected POSTagger initialValue() {
-                try {
-                    return new POSTaggerME(new POSModel(config.posModel.toFile()));
-                } catch (IOException x) {
-                    x.printStackTrace();
-                    return null;
-                }
+                return new POSTaggerME(posModel);
             }
         };
+        final TokenizerModel tokenizerModel;
+        if (config.tokenizerModel == null) {
+            tokenizerModel = null;
+        } else {
+            tokenizerModel = new TokenizerModel(config.tokenizerModel.toFile());
+        }
         this.tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
             protected Tokenizer initialValue() {
@@ -112,11 +114,7 @@ public class TermExtraction {
                 if (config.tokenizerModel == null) {
                     return SimpleTokenizer.INSTANCE;
                 } else {
-                    try {
-                        return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-                    } catch (IOException x) {
-                        throw new RuntimeException(x);
-                    }
+                    return new TokenizerME(tokenizerModel);
                 }
             }
         };
@@ -125,15 +123,11 @@ public class TermExtraction {
         if (config.lemmatizerModel == null) {
             this.lemmatizer = null;
         } else {
+            final DictionaryLemmatizer dictLemmatizer = new DictionaryLemmatizer(config.lemmatizerModel.toFile());
             this.lemmatizer = new ThreadLocal<Lemmatizer>() {
                 @Override
                 protected Lemmatizer initialValue() {
-                    try {
-                        return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
-                    } catch (IOException x) {
-                        x.printStackTrace();
-                        return null;
-                    }
+                    return dictLemmatizer;
                 }
             };
         }
@@ -412,7 +406,7 @@ public class TermExtraction {
 
     private static Set<String> lowercaseAll(Set<String> blacklist) {
         Set<String> ss = new HashSet<>();
-        for(String s : blacklist) {
+        for (String s : blacklist) {
             ss.add(s.toLowerCase());
         }
         return ss;
