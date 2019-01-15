@@ -99,17 +99,25 @@ public class EnrichTopics {
             lemmatizer = null;
             nThreads = 10;
         } else {
+            final POSModel posModel;
+            try {
+                posModel = new POSModel(config.posModel.toFile());
+            } catch (IOException x) {
+                throw new RuntimeException(x);
+            }
+
             tagger = new ThreadLocal<POSTagger>() {
                 @Override
                 protected POSTagger initialValue() {
-                    try {
-                        return new POSTaggerME(new POSModel(config.posModel.toFile()));
-                    } catch (IOException x) {
-                        x.printStackTrace();
-                        return null;
-                    }
+                    return new POSTaggerME(posModel);
                 }
             };
+            final TokenizerModel tokenizerModel;
+            try {
+                tokenizerModel = new TokenizerModel(config.tokenizerModel.toFile());
+            } catch (IOException x) {
+                throw new RuntimeException(x);
+            }
             tokenizer = new ThreadLocal<Tokenizer>() {
                 @Override
                 protected Tokenizer initialValue() {
@@ -117,26 +125,23 @@ public class EnrichTopics {
                     if (config.tokenizerModel == null) {
                         return SimpleTokenizer.INSTANCE;
                     } else {
-                        try {
-                            return new TokenizerME(new TokenizerModel(config.tokenizerModel.toFile()));
-                        } catch (IOException x) {
-                            throw new RuntimeException(x);
-                        }
+                        return new TokenizerME(tokenizerModel);
                     }
                 }
             };
             if (config.lemmatizerModel == null) {
                 lemmatizer = null;
             } else {
+                final Lemmatizer dictLemmatizer;
+                try {
+                    dictLemmatizer = new DictionaryLemmatizer(config.lemmatizerModel.toFile());
+                } catch (IOException x) {
+                    throw new RuntimeException(x);
+                }
                 lemmatizer = new ThreadLocal<Lemmatizer>() {
                     @Override
                     protected Lemmatizer initialValue() {
-                        try {
-                            return new DictionaryLemmatizer(config.lemmatizerModel.toFile());
-                        } catch (IOException x) {
-                            x.printStackTrace();
-                            return null;
-                        }
+                        return dictLemmatizer;
                     }
                 };
             }
@@ -303,11 +308,11 @@ public class EnrichTopics {
             }
         }
     }
-    
+
     private static WordTrie makeTrie(Set<String> topicStrings, ThreadLocal<Tokenizer> _tokenizer) {
         Tokenizer tokenizer = _tokenizer.get();
         WordTrie trie = new WordTrie("");
-        for(String topicString : topicStrings) {
+        for (String topicString : topicStrings) {
             trie.addTokenized(tokenizer.tokenize(topicString.toLowerCase()));
         }
         return trie;
@@ -349,12 +354,13 @@ public class EnrichTopics {
             }
             trie.get(words[i])._add(words, i + 1);
         }
-        
+
         private String join(String[] words, int i) {
             StringBuilder sb = new StringBuilder();
-            for(int j = 0; j <= i; j++) {
-                if(j != 0)
+            for (int j = 0; j <= i; j++) {
+                if (j != 0) {
                     sb.append(" ");
+                }
                 sb.append(words[j]);
             }
             return sb.toString();
