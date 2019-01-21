@@ -2,6 +2,8 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import java.util.Map;
 import java.util.Set;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -20,6 +22,11 @@ public interface TaxonomySearch {
     
     public static TaxonomySearch create(TaxonomySearchConfiguration config, 
             SupervisedTaxo classifier, Set<String> topics) {
+        return create(config, classifier, topics, new DefaultSaffronListener());                
+    }
+    
+    public static TaxonomySearch create(TaxonomySearchConfiguration config, 
+            SupervisedTaxo classifier, Set<String> topics, SaffronListener log) {
         final TaxonomyScore score = TaxonomyScore.create(config, config.score, classifier, topics);
         switch(config.algorithm) {
             case greedy:

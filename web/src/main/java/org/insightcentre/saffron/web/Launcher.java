@@ -24,12 +24,14 @@ public class Launcher {
     }
 
     public static void main(String[] args) {
+        args = "-l tmp.log".split(" ");
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
                     accepts("d", "The directory containing the output or where to write the output to").withRequiredArg().ofType(File.class);
                     accepts("p", "The port to run on").withRequiredArg().ofType(Integer.class);
+                    accepts("l", "The log file").withOptionalArg().ofType(File.class);
                 }
             };
             final OptionSet os;
@@ -66,7 +68,7 @@ public class Launcher {
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory);
-            Executor executor = new Executor(browser.saffron, directory);
+            Executor executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(browser.saffron, directory);
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});

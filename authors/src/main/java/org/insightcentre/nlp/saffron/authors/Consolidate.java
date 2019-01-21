@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Set;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
@@ -56,7 +58,7 @@ public class Consolidate {
             
             Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
 
-            applyConsolidation(corpus, consolidation);
+            applyConsolidation(corpus, consolidation, new DefaultSaffronListener());
 
             //mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus);
             
@@ -67,6 +69,10 @@ public class Consolidate {
     }
 
     public static Set<Author> extractAuthors(Corpus corpus) {
+        return extractAuthors(corpus, new DefaultSaffronListener());
+    }
+    
+    public static Set<Author> extractAuthors(Corpus corpus, SaffronListener log) {
         Set<Author> authors = new HashSet<Author>();
         for(Document doc : corpus.getDocuments()) {
             for(Author author : doc.getAuthors()) {
@@ -76,7 +82,7 @@ public class Consolidate {
         return authors;
     }
 
-    public static void applyConsolidation(DocumentSearcher corpus, Map<Author, Set<Author>> consolidation) {
+    public static void applyConsolidation(DocumentSearcher corpus, Map<Author, Set<Author>> consolidation, SaffronListener log) {
         Map<Author, Author> rmap = new HashMap<>();
         for(Map.Entry<Author, Set<Author>> e1 : consolidation.entrySet()) {
             for(Author a1 : e1.getValue()) {

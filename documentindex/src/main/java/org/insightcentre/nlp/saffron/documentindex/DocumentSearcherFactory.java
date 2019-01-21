@@ -4,7 +4,6 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.ListIterator;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -14,11 +13,12 @@ import org.apache.lucene.analysis.standard.StandardTokenizer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneIndexer;
 import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneSearcher;
-import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 
 /**
  * For creating a document searcher
@@ -51,11 +51,15 @@ public class DocumentSearcherFactory {
      * @throws IOException If a disk error occurs
      */
     public static DocumentSearcher index(Corpus corpus, File index) throws IOException {
+        return index(corpus, index, new DefaultSaffronListener());
+    }
+    
+    public static DocumentSearcher index(Corpus corpus, File index, SaffronListener log) throws IOException {
         final Directory dir = luceneFileDirectory(index, true);
         try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
-            System.err.println("Indexing");
+            log.log("Indexing");
             for (Document doc : corpus.getDocuments()) {
-                System.err.println(doc.name);
+                log.log(doc.name);
                 //Document doc2 = TIKA_ANALYZER.analyze(doc);
                 indexer.indexDoc(doc, doc.contents());
             }

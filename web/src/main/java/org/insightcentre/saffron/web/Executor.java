@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
@@ -22,6 +25,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.authors.Consolidate;
 import static org.insightcentre.nlp.saffron.authors.Consolidate.applyConsolidation;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
@@ -58,9 +62,10 @@ public class Executor extends AbstractHandler {
     private final Map<String, Status> statuses;
     private Corpus corpus;
     private Configuration defaultConfig;
+    private final File logFile;
     //private Configuration config;
 
-    public Executor(Map<String, SaffronData> data, File directory) {
+    public Executor(Map<String, SaffronData> data, File directory, File logFile) {
         this.data = data;
         this.parentDirectory = directory;
         this.statuses = new HashMap<>();
@@ -70,6 +75,7 @@ public class Executor extends AbstractHandler {
             this.defaultConfig = new Configuration();
             System.err.println("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");
         }
+        this.logFile = logFile;
 
     }
 
@@ -142,8 +148,7 @@ public class Executor extends AbstractHandler {
                             execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName);
                         } catch (IOException x) {
                             Status _status = statuses.get(saffronDatasetName);
-                            _status.fail(x.getMessage());
-                            x.printStackTrace();
+                            _status.fail(x.getMessage(), x);
                         }
                     }
                 }).start();
@@ -171,7 +176,7 @@ public class Executor extends AbstractHandler {
     }
 
     void startWithZip(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
-        final Status _status = new Status();
+        final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
@@ -193,16 +198,31 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Throwable x) {
-                    _status.fail(x.getMessage());
-                    x.printStackTrace();
+                    _status.fail(x.getMessage(), x);
                 }
+                try {
+                    _status.close();
+                } catch(IOException x) {}
             }
         }).start();
     }
 
+    private Status makeStatus()  {
+        try {
+            if(logFile != null && !logFile.exists()) {
+                PrintWriter out = new PrintWriter(logFile);
+                out.close();
+            }
+            return new Status(logFile == null ? null : new PrintWriter(new FileWriter(logFile, true)));
+        } catch(IOException x) {
+            System.err.println("Could not create logging file: " + x.getMessage());
+            return new Status(null);
+        }
+    }
+
     void startWithCrawl(final String url, final int maxPages, final boolean domain,
             final boolean advanced, final String saffronDatasetName) {
-        final Status _status = new Status();
+        final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
@@ -224,15 +244,17 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
-                    _status.fail(x.getMessage());
-                    x.printStackTrace();
+                    _status.fail(x.getMessage(), x);
                 }
+                try {
+                _status.close();
+                } catch(IOException x) {}
             }
         }).start();
     }
 
     void startWithJson(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
-        final Status _status = new Status();
+        final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
         new Thread(new Runnable() {
@@ -250,9 +272,11 @@ public class Executor extends AbstractHandler {
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
                     }
                 } catch (Exception x) {
-                    _status.fail(x.getMessage());
-                    x.printStackTrace();
+                    _status.fail(x.getMessage(), x);
                 }
+                try {
+                    _status.close();
+                } catch(IOException x) {}
             }
         }).start();
     }
@@ -285,7 +309,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
-        DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile);
+        DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, _status);
 
         _status.stage++;
         _status.setStatusMessage("Initializing topic extractor");
@@ -293,7 +317,7 @@ public class Executor extends AbstractHandler {
         TermExtraction extractor = new TermExtraction(config.termExtraction);
 
         _status.setStatusMessage("Extracting Topics");
-        TermExtraction.Result res = extractor.extractTopics(searcher);
+        TermExtraction.Result res = extractor.extractTopics(searcher, _status);
 
         _status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
@@ -304,13 +328,13 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Extracting authors from corpus");
-        Set<Author> authors = Consolidate.extractAuthors(searcher);
+        Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
 
         _status.setStatusMessage("Consolidating author names");
-        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
+        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
 
         _status.setStatusMessage("Applying consoliation to corpus");
-        applyConsolidation(searcher, consolidation);
+        applyConsolidation(searcher, consolidation, _status);
         data.setCorpus(searcher);
 
         _status.stage++;
@@ -325,7 +349,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
         ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
-        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments());
+        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
@@ -334,7 +358,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting topics");
         TopicSimilarity ts = new TopicSimilarity(config.topicSim);
-        final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics);
+        final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving topic connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
@@ -343,7 +367,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting authors to authors");
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
-        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics);
+        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics, _status);
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
@@ -351,7 +375,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Building topic map");
-        Map<String, Topic> topicMap = loadMap(topics, mapper);
+        Map<String, Topic> topicMap = loadMap(topics, mapper, _status);
 
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         _status.setStatusMessage("Reading model");
@@ -373,7 +397,7 @@ public class Executor extends AbstractHandler {
         _status.completed = true;
     }
 
-    public class Status {
+    public class Status implements SaffronListener, Closeable {
 
         public int stage = 0;
         public boolean failed = false;
@@ -381,6 +405,11 @@ public class Executor extends AbstractHandler {
         public boolean advanced = false;
         private String statusMessage2 = "";
         public String name;
+        private final PrintWriter out;
+
+        public Status(PrintWriter out) {
+            this.out = out;
+        }
 
         public String getStatusMessage() {
             return statusMessage2;
@@ -388,15 +417,46 @@ public class Executor extends AbstractHandler {
 
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
+            if(out != null) out.printf("[STAGE %d] %s\n", stage, statusMessage);    
+            if(out != null) out.flush();
             this.statusMessage2 = statusMessage;
         }
 
-        public void fail(String message) {
+        @Override
+        public void fail(String message, Throwable cause) {
             this.failed = true;
             setStatusMessage("Failed: " + message);
             data.remove(name);
+            cause.printStackTrace();
+            if(out != null) cause.printStackTrace(out);
+            if(out != null) out.flush();
         }
 
+        @Override
+        public void log(String message) {
+            System.err.println(message);
+            if(out != null) out.println(message);
+            if(out != null) out.flush();
+        }
+
+        @Override
+        public void endTick() {
+            System.err.println();
+            if(out != null) out.println();
+            if(out != null) out.flush();
+        }
+
+        @Override
+        public void tick() {
+            System.err.print(".");
+            if(out != null) out.print(".");
+            if(out != null) out.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            out.close();
+        }
     }
 
 }

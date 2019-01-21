@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
@@ -28,11 +30,15 @@ public class AuthorSimilarity {
     }
 
     public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats) {
+        return authorSimilarity(ats, new DefaultSaffronListener());
+    }
+       
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats, SaffronListener log) {
         List<AuthorAuthor> topicAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
         //System.err.printf("%d author topics\n", ats.size());
         for (AuthorTopic at : ats) {
-            System.err.print(".");
+            log.tick();
             if (!vectors.containsKey(at.author_id)) {
                 vectors.put(at.author_id, new Object2DoubleOpenHashMap<String>());
             }
@@ -69,7 +75,8 @@ public class AuthorSimilarity {
             }
             topicAuthors.addAll(topN);
         }
-
+        
+        log.endTick();
         return topicAuthors;
     }
 

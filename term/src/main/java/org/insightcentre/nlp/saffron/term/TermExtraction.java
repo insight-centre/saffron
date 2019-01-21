@@ -34,6 +34,8 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
@@ -208,6 +210,10 @@ public class TermExtraction {
     }
 
     public Result extractTopics(final Corpus searcher) {
+        return extractTopics(searcher, new DefaultSaffronListener());
+    }
+        
+    public Result extractTopics(final Corpus searcher, SaffronListener log) {
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();

@@ -19,6 +19,7 @@ import libsvm.svm_parameter;
 import libsvm.svm_problem;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
@@ -106,7 +107,7 @@ public class Trainer extends AbstractHandler {
             status.stage++;
             status.setStatusMessage("Indexing Corpus");
             final File indexFile = new File(directory, "index");
-            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile);
+            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status);
 
             status.stage++;
             status.setStatusMessage("Enriching topics from corpus");
@@ -116,7 +117,7 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Building topic map");
-            Map<String, Topic> topicMap = loadMap(result.topics, mapper);
+            Map<String, Topic> topicMap = loadMap(result.topics, mapper, status);
 
             status.stage++;
             final Map<String, double[]> glove;
@@ -165,7 +166,7 @@ public class Trainer extends AbstractHandler {
             status.setStatusMessage("Saving model");
             mapper.writerWithDefaultPrettyPrinter().writeValue(config.taxonomy.modelFile.toFile(), model);
         } catch (Exception x) {
-            status.fail(x.getMessage());
+            status.fail(x.getMessage(), x);
         }
 
     }
@@ -192,7 +193,7 @@ public class Trainer extends AbstractHandler {
         }
     }
     
-    public class Status {
+    public class Status implements SaffronListener {
 
         public int stage = 0;
         public boolean failed = false;
@@ -210,9 +211,26 @@ public class Trainer extends AbstractHandler {
             this.statusMessage2 = statusMessage;
         }
         
-        public void fail(String message) {
+        @Override
+        public void fail(String message, Throwable cause) {
             this.failed = true;
             setStatusMessage("Failed: " + message);
+            cause.printStackTrace();
+        }
+
+        @Override
+        public void log(String message) {
+            System.err.println(message);
+        }
+
+        @Override
+        public void tick() {
+            System.err.print(".");
+        }
+
+        @Override
+        public void endTick() {
+            System.err.println();
         }
 
     }

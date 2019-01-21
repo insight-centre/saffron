@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
@@ -27,9 +29,13 @@ public class TopicSimilarity {
     }
 
     public List<TopicTopic> topicSimilarity(List<DocumentTopic> documentTopics) {
+        return topicSimilarity(documentTopics, new DefaultSaffronListener());
+    }
+    
+    public List<TopicTopic> topicSimilarity(List<DocumentTopic> documentTopics, SaffronListener log) {
         List<TopicTopic> topicTopics = new ArrayList<>();
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
-        System.err.printf("%s doc-topics\n", documentTopics.size());
+        log.log(String.format("%s doc-topics\n", documentTopics.size()));
         for (DocumentTopic dt : documentTopics) {
             if (!vectors.containsKey(dt.topic_string)) {
                 vectors.put(dt.topic_string, new Object2IntOpenHashMap<String>());

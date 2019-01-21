@@ -30,6 +30,7 @@ import libsvm.svm_model;
 import libsvm.svm_node;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -116,7 +117,7 @@ public class Train {
             final List<Topic> topics = topicsFile == null ? null
                     : (List<Topic>) mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper);
+            Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper, new DefaultSaffronListener());
 
             train(docTopics, topicMap, taxos, config);
 

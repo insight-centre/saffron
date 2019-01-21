@@ -13,6 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Author;
 
 /**
@@ -26,6 +28,10 @@ public class ConsolidateAuthors {
     public static final double UNASSIGNED_COST = 0.1;
 
     public static Map<Author, Set<Author>> consolidate(Collection<Author> authors) {
+        return consolidate(authors, new DefaultSaffronListener());
+    }
+    
+    public static Map<Author, Set<Author>> consolidate(Collection<Author> authors, SaffronListener log) {
         Map<Author, Set<Author>> consolidated = new HashMap<>();
         Set<Author> marked = new HashSet<>();
         for (Author author : authors) {

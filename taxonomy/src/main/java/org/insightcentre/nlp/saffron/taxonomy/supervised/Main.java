@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -76,7 +78,7 @@ public class Main {
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
             List<Topic> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
 
-            Map<String, Topic> topicMap = loadMap(topics, mapper);
+            Map<String, Topic> topicMap = loadMap(topics, mapper, new DefaultSaffronListener());
             
             Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
@@ -92,7 +94,7 @@ public class Main {
         }
     }
 
-    public static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper) throws IOException {
+    public static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper, SaffronListener log) throws IOException {
         Map<String, Topic> tMap = new HashMap<>();
         //System.err.printf("%d topics\n", topics.size());
         for (Topic topic : topics) {
