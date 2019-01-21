@@ -122,8 +122,10 @@ public class RDFConversion {
                 : base + "/rdf/author/" + encode(author.id))
                 .addProperty(RDF.type, FOAF.Person)
                 .addLiteral(FOAF.name, author.name);
-        for(String variant : author.nameVariants) {
-            res.addLiteral(FOAF.nick, variant);
+        if (author.nameVariants != null){
+        	for(String variant : author.nameVariants) {
+        		res.addLiteral(FOAF.nick, variant);
+        	}
         }
         for(AuthorAuthor aa : data.getAuthorSimByAuthor1(author.id)) {
             res.addProperty(SAFFRON.relatedAuthor, model.createResource(
