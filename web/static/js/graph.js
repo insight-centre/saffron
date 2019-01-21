@@ -80,7 +80,7 @@ function update() {
   link.exit().remove();
 
   link.enter().insert("line", ".node")
-      .style("stroke-width", function(d) { if(d.target.linkScore && !isNaN(d.target.linkScore)) { return Math.min(1,d.target.linkScore) * 2 + 1; } else { return 1; } })
+      .style("stroke-width", function(d) { if(d.target.linkScore && !isNaN(d.target.linkScore)) { return Math.min(1,d.target.linkScore) * 3 + 2; } else { return 2; } })
       .attr("class", "link");
 
   // Update nodes.
