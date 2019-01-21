@@ -288,9 +288,9 @@ public class Features {
             v.add(overlap(top, bottom));
         if(selection == null || selection.lcs)
             v.add(longestCommonSubseq(top, bottom));
-        if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
+        if((selection == null || selection.svdSimAve) && vectors != null && svdMatrixAve != null) 
             v.add(svdSimAve(top, bottom));
-        if((selection == null || selection.svdSimMinMax) && svdMatrixMinMax != null)
+        if((selection == null || selection.svdSimMinMax) && vectors != null && svdMatrixMinMax != null)
             v.add(svdSimMixMax(top, bottom));
         if((selection == null || selection.topicDiff) && topicDocuments != null)
             v.add(topicComplementDiff(top, bottom));
@@ -311,9 +311,9 @@ public class Features {
             v.add("overlap");
         if(selection == null || selection.lcs)
             v.add("longestCommonSubseq");
-        if((selection == null || selection.svdSimAve) && svdMatrixAve != null) 
+        if((selection == null || selection.svdSimAve) && vectors != null && svdMatrixAve != null) 
             v.add("svdSimAve");
-        if((selection == null || selection.svdSimMinMax) && svdMatrixMinMax != null)
+        if((selection == null || selection.svdSimMinMax) && vectors != null && svdMatrixMinMax != null)
             v.add("svdSimMixMax");
         if((selection == null || selection.topicDiff) && topicDocuments != null)
             v.add("topicComplementDiff");
