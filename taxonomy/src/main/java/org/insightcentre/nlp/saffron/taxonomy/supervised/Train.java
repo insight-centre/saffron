@@ -97,7 +97,7 @@ public class Train {
             } else {
                 config = mapper.readValue(configFile, Configuration.class).taxonomy;
             }
-
+            
             if (config.verify() != null) {
                 badOptions(p, "Config invalid: " + config.verify());
             }
@@ -173,11 +173,11 @@ public class Train {
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Model model = new Model();
         model.features = config.features;
-        final Map<String, double[]> glove = config.features.gloveFile == null ? null : loadGLoVE(config.features.gloveFile.toFile());
-        final Set<Hypernym> hypernyms = config.features.hypernyms == null ? null : loadHypernyms(config.features.hypernyms.toFile());
+        final Map<String, double[]> glove = config.features == null || config.features.gloveFile == null ? null : loadGLoVE(config.features.gloveFile.toFile());
+        final Set<Hypernym> hypernyms = config.features == null || config.features.hypernyms == null ? null : loadHypernyms(config.features.hypernyms.toFile());
         
         Features features = new Features(null, null, indexDocTopics(docTopics), 
-                glove, topicMap, hypernyms, config.features.featureSelection);
+                glove, topicMap, hypernyms, config.features == null ? null : config.features.featureSelection);
         
         features = glove == null ? features : learnSVD(taxos, features, config, model);
 
