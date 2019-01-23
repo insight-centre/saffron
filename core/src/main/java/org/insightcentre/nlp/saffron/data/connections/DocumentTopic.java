@@ -7,7 +7,7 @@ import java.util.Objects;
 
 /**
  * The link between a document and a topic
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DocumentTopic {

@@ -20,7 +20,7 @@ import org.xml.sax.SAXException;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class DocumentAnalyzer {
 

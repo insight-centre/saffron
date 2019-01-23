@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Main {
    private static void badOptions(OptionParser p, String message) throws IOException {

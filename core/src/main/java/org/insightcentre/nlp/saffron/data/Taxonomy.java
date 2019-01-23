@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 /**
  * A taxonomy of topics
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Taxonomy {
     /** The topic string of this node in the taxonomy */

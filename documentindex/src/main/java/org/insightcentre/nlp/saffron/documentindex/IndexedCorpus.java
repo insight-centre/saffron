@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 /**
  * A corpus of documents for processing
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class IndexedCorpus implements Corpus {
 

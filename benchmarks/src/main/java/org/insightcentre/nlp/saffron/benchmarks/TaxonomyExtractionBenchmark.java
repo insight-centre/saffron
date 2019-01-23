@@ -18,7 +18,7 @@ import org.insightcentre.nlp.saffron.data.Taxonomy;
 /**
  * Benchmark system for comparing two extracted taxonomies
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class TaxonomyExtractionBenchmark {
 

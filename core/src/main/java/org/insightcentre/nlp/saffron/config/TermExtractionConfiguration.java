@@ -9,7 +9,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
  * Term extraction configuration
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class TermExtractionConfiguration {
     /** Minimum threshold score to extract */

@@ -18,7 +18,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class NewRun extends AbstractHandler {
 

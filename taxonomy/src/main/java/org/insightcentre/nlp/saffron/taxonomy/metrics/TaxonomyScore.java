@@ -24,7 +24,7 @@ public interface TaxonomyScore {
 
     /**
      * Generate a new taxonomy score for the solution which differs from this
-     * solution only by adding the link bottom -> top
+     * solution only by adding the link bottom -&gt; top
      *
      * @param top The broader topic
      * @param bottom The narrower topic

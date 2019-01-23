@@ -53,7 +53,7 @@ import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Executor extends AbstractHandler {
 

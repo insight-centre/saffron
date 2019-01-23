@@ -9,7 +9,7 @@ import org.insightcentre.nlp.saffron.data.Document;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class SaffronCrawlerFactory implements CrawlController.WebCrawlerFactory<SaffronCrawler> {
     private String languageFilter;

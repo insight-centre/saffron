@@ -45,7 +45,7 @@ import org.insightcentre.nlp.saffron.term.FrequencyStats;
  * This is used to create a Doc-Topics file from a taxonomy, such as those used
  * in TExEval
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class EnrichTopics {
 

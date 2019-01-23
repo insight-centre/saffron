@@ -8,7 +8,7 @@ import java.util.List;
 /**
  * A taxonomy with the relative size of each topic.
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class TaxonomyWithSize  {
     

@@ -29,7 +29,7 @@ import java.util.Arrays;
  * in the graph, so the average number of children is (n-1)/n =~ 1. Instead
  * we ignore all leaf nodes (with no children) hence the metric is
  * 
- *   sim = sum_>0(sqrt(f / (n-n0) * l ^ x * exp(-l) / fact(x))) + CONSTANT
+ *   sim = sum_&gt;0(sqrt(f / (n-n0) * l ^ x * exp(-l) / fact(x))) + CONSTANT
  * 
  *  We then weight this according to the size of the graph and a factor alpha
  * 

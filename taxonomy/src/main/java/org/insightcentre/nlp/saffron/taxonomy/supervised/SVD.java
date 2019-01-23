@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * Generate a function that predicts hierarchical relations using vTAw
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public abstract class SVD {
     private final Object2IntMap<String> ids;

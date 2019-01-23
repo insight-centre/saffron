@@ -9,7 +9,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
  * Calculcate the sizes of the taxonomy
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class AddSizesToTaxonomy {
     

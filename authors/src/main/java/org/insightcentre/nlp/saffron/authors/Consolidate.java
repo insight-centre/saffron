@@ -21,7 +21,7 @@ import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Consolidate {
    private static void badOptions(OptionParser p, String message) throws IOException {

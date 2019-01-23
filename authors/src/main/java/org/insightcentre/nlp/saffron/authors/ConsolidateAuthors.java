@@ -19,8 +19,8 @@ import org.insightcentre.nlp.saffron.data.Author;
 
 /**
  *
- * @author Hugues Lerebours Pigeonnière <hugues@lereboursp.net>
- * @author John McCrae <john@mccr.ae>
+ * @author Hugues Lerebours Pigeonnière &lt;hugues@lereboursp.net&gt;
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class ConsolidateAuthors {
 

@@ -11,7 +11,7 @@ import java.util.UUID;
 /**
  * The author of a document
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Author {

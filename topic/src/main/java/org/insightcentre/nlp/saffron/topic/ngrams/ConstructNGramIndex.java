@@ -15,7 +15,7 @@ import joptsimple.OptionSet;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class ConstructNGramIndex {
    private static void badOptions(OptionParser p, String message) throws IOException {

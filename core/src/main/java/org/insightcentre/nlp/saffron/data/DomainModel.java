@@ -9,7 +9,7 @@ import java.util.Objects;
 /**
  * A domain model (list of single words that are associated with a domain)
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class DomainModel {
 

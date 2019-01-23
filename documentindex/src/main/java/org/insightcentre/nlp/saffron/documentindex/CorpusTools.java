@@ -23,7 +23,7 @@ import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 /**
  * General tools for working with corpora
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class CorpusTools {
     

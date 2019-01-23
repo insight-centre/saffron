@@ -13,7 +13,7 @@ import org.eclipse.jetty.server.handler.ResourceHandler;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Launcher {
 

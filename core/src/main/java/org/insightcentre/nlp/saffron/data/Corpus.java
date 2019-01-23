@@ -3,7 +3,7 @@ package org.insightcentre.nlp.saffron.data;
 /**
  * A corpus
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public interface Corpus {
     /**

@@ -31,7 +31,7 @@ import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
  * All the data generated during the run of Saffron that is exposed by the Web
  * interface
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class SaffronData {
 

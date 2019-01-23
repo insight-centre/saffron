@@ -18,7 +18,7 @@ import java.util.Objects;
 /**
  * A single document in a corpus
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Document {
@@ -82,7 +82,7 @@ public class Document {
      * files to read contents, unlike contents()
      *
      * @return The contents
-     * @throw IllegalArgumentException If the document has not been loaded
+     * @throws IllegalArgumentException If the document has not been loaded
      */
     public String getContents() {
         if (contents != null) {

@@ -18,7 +18,7 @@ import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 /**
  * Builds the DBpedia index from the redirects dump
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class ConstructDBpediaIndex {
    private static void badOptions(OptionParser p, String message) throws IOException {

@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class AuthorTopic {
     public String author_id;

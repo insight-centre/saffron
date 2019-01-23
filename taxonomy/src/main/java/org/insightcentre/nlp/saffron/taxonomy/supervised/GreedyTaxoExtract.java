@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 /**
  * Greedily construct a taxonomy
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class GreedyTaxoExtract {
 

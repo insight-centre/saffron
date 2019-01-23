@@ -49,7 +49,7 @@ import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
  *        -p ../benchmarks/data/texeval/food_en-topics.json \
  *        -t ../benchmarks/data/texeval/food_en.taxo
  * 
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Train {
 

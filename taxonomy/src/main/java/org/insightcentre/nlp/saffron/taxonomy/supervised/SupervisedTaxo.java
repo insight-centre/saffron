@@ -17,7 +17,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  * Provides pairwise supervised predictions of the order of elements in a
  * taxonomy.
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class SupervisedTaxo {
 

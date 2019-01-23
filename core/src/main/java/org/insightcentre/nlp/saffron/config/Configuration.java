@@ -2,7 +2,7 @@ package org.insightcentre.nlp.saffron.config;
 
 /**
  * The configuration of a Saffon run
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Configuration {
     public TermExtractionConfiguration termExtraction = new TermExtractionConfiguration();

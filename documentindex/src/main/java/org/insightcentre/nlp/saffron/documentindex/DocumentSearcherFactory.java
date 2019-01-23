@@ -23,7 +23,7 @@ import org.insightcentre.nlp.saffron.documentindex.lucene.LuceneSearcher;
 /**
  * For creating a document searcher
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class DocumentSearcherFactory {
 

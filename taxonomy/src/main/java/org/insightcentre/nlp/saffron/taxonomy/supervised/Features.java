@@ -18,7 +18,7 @@ import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 /**
  * Provides supervised feature extraction for taxonomy learning
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Features {
 

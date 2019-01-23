@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
  * Extract a taxonomy by using a MST
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class MSTTaxoExtract implements TaxonomySearch {
     

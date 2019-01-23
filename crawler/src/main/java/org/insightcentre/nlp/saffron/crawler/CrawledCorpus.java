@@ -6,7 +6,7 @@ import org.insightcentre.nlp.saffron.data.Document;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class CrawledCorpus implements Corpus {
     private final List<Document> documents;

@@ -14,7 +14,7 @@ import org.insightcentre.nlp.saffron.data.Topic;
 /**
  * Compares the result of two topic extractions
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class TopicExtractionBenchmark {
 

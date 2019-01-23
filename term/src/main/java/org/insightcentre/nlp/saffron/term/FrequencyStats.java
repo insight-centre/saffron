@@ -9,7 +9,7 @@ import java.util.Objects;
  * The statistics obtained by running through a document. This includes term 
  * frequency, document frequency, total number of tokens and total number of 
  * documents
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class FrequencyStats {
     public Object2IntOpenHashMap<String> termFrequency = new Object2IntOpenHashMap<>();

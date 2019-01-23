@@ -10,7 +10,7 @@ import static org.insightcentre.nlp.saffron.term.TermExtractionTask.join;
 
 /**
  *
- * @author John McCrae <john@mccr.ae>
+ * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class InclusionStats {
 
