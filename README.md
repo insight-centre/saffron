@@ -48,7 +48,7 @@ Web Interface
 To start the Saffron Web server simply choose a directory for Saffron to create
 the models and run the command as follows
 
-    ./saffron-web.sh output-folder/
+    ./saffron-web.sh
 
 Then open the following url in a browser 
 
