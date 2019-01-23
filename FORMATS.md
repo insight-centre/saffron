@@ -9,15 +9,20 @@ Corpus
 
 A collection of documents. A corpus has the following properties
 
-* `index`: A string representing the path of the index for this corpus
 * `documents`: An array of documents in the corpus
 
 ### Document
 
-A single document in a corpus. It has the following properties
+A single document in a corpus. At least one of the following four must
+be present
 
 * `file`: A string referring to the original version of this document on disk
 * `id`: A unique string to identify the document
+* `url`: The URL of the file
+* `contents`: The text contents of the file
+
+In addition the following may be provided
+
 * `name`: The human readable name of the document
 * `mime_type`: The MIME type of the document
 * `authors`: An array of authors of this document
@@ -29,7 +34,7 @@ A single author of a document in a corpus.
 
 * `id`: A unique string to identify the author (optional)
 * `name`: The author's name (required)
-* `variants`: An array of strings given other known variants of the name
+* `name_variants`: An array of strings given other known variants of the name
 
 Domain Model
 ------------
@@ -56,10 +61,6 @@ topic string
 A variant form of a topic
 
 * `string`: The form of this variant
-* `occurrences`: The number of times this variant occurs
-* `pattern`: The pattern this variant matches
-* `acronym`: If this is an acronym the acronym form of the term
-* `expanded_acronym`: The expanded version of this acronym
 
 Taxonomy
 --------
@@ -68,6 +69,8 @@ The topic taxonomy containing the following
 
 * `root`: The topic string of this topic or `""` for no topic
 * `children`: A list of children of this node (these are also Taxonomy objects)
+* `score`: The weighting given to the root topic
+* `linkScore`: The likelihood of the link from this topic to its root being correct
 
 Author-Author
 -------------
