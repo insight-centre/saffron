@@ -12,8 +12,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -67,6 +69,7 @@ public class TermExtraction {
     private final int maxTopics;
     private final Feature keyFeature;
     private final Set<String> blacklist;
+    private final boolean oneTopicPerDoc;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
         this.nThreads = nThreads;
@@ -89,8 +92,34 @@ public class TermExtraction {
         this.maxTopics = 100;
         this.keyFeature = Feature.comboBasic;
         this.blacklist = Collections.EMPTY_SET;
+        this.oneTopicPerDoc = false;
     }
 
+    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq, ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords, Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens, int ngramMin, int ngramMax, boolean headTokenFinal, TermExtractionConfiguration.WeightingMethod method, List<Feature> features, File refFile, int maxTopics, Feature keyFeature, Set<String> blacklist, boolean oneTopicPerDoc) {
+        this.nThreads = nThreads;
+        this.tagger = tagger;
+        this.tokenizer = tokenizer;
+        this.maxDocs = maxDocs;
+        this.minTermFreq = minTermFreq;
+        this.lemmatizer = lemmatizer;
+        this.stopWords = stopWords;
+        this.preceedingsTokens = preceedingsTokens;
+        this.endTokens = endTokens;
+        this.middleTokens = middleTokens;
+        this.ngramMin = ngramMin;
+        this.ngramMax = ngramMax;
+        this.headTokenFinal = headTokenFinal;
+        this.method = method;
+        this.features = features;
+        this.refFile = refFile;
+        this.maxTopics = maxTopics;
+        this.keyFeature = keyFeature;
+        this.blacklist = blacklist;
+        this.oneTopicPerDoc = oneTopicPerDoc;
+    }
+
+    
+    
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
         this.nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
         if (config.posModel == null) {
@@ -149,6 +178,7 @@ public class TermExtraction {
         this.maxTopics = config.maxTopics;
         this.keyFeature = config.baseFeature;
         this.blacklist = config.blacklist;
+        this.oneTopicPerDoc = config.oneTopicPerDoc;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
@@ -279,7 +309,11 @@ public class TermExtraction {
                             freqs, ref, incl, ntm, domain);
                     rankTopicsByFeat(topics, scores);
                     if (topics.size() > maxTopics) {
-                        topics = topics.subList(0, maxTopics);
+                        if(oneTopicPerDoc) {
+                            topics = getTopTopics(topics, maxTopics, dts);
+                        } else {
+                            topics = topics.subList(0, maxTopics);
+                        }
                     }
                     return new Result(convertToTopics(topics, freqs, scores, casing),
                             filterTopics(topics, dts, casing, stopWords));
@@ -296,7 +330,11 @@ public class TermExtraction {
                     }
                     rankTopicsByFeat(topics, voting);
                     if (topics.size() > maxTopics) {
-                        topics = topics.subList(0, maxTopics);
+                        if(oneTopicPerDoc) {
+                            topics = getTopTopics(topics, maxTopics, dts);
+                        } else {
+                            topics = topics.subList(0, maxTopics);
+                        }
                     }
                     return new Result(convertToTopics(topics, freqs, voting, casing),
                             filterTopics(topics, dts, casing, stopWords));
@@ -416,6 +454,38 @@ public class TermExtraction {
             ss.add(s.toLowerCase());
         }
         return ss;
+    }
+
+    private List<String> getTopTopics(List<String> topics, int maxTopics, ConcurrentLinkedQueue<DocumentTopic> dts) {
+        Set<String> docs = new HashSet<>();
+        Map<String, Set<String>> topic2doc = new HashMap<>();
+        for(DocumentTopic dt : dts) {
+            docs.add(dt.document_id);
+            if(!topic2doc.containsKey(dt.topic_string)) {
+                topic2doc.put(dt.topic_string, new HashSet<>());
+            }
+            topic2doc.get(dt.topic_string).add(dt.document_id);
+        }
+        List<String> acceptedTopics = new ArrayList<>();
+        for(String topic : topics) {
+            Set<String> d = topic2doc.get(topic);
+            if(acceptedTopics.size() < maxTopics) {
+                if(d != null)
+                    docs.removeAll(d);
+                acceptedTopics.add(topic);
+            } else if(docs.isEmpty()) {
+                return acceptedTopics;
+            } else {
+                if(d != null) {
+                    d.retainAll(docs);
+                    if(!d.isEmpty()) {
+                        docs.removeAll(d);
+                        acceptedTopics.add(topic);
+                    }
+                }
+            }
+        }
+        return acceptedTopics;
     }
 
     public static class Result {

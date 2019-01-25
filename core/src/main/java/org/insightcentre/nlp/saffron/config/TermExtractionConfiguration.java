@@ -58,6 +58,11 @@ public class TermExtractionConfiguration {
      * A list of topics that should never be generated
      */
     public Set<String> blacklist = Collections.EMPTY_SET;
+    /**
+     * If set always output at least one topic for each input document (overrides maxTopics
+     * if necessary)
+     */
+    public boolean oneTopicPerDoc;
     
     /** The Weighting method to use */
     public enum WeightingMethod {
