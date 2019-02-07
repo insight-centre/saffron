@@ -91,3 +91,12 @@ To create a .dot file, use the command line:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
+Configuration
+=============
+
+Full details of the configuration can be seen from the [JavaDoc](https://johmcc.pages.insight-centre.org/saffron/org/insightcentre/nlp/saffron/config/package-summary.html)
+
+Documentation
+=============
+
+The JavaDoc is available at https://johmcc.pages.insight-centre.org/saffron/
