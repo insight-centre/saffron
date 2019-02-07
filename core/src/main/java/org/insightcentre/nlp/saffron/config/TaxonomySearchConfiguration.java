@@ -31,8 +31,10 @@ public class TaxonomySearchConfiguration {
      */
     public double alpha = 0.01;
     
+    /** Enumeration of the algorithms to use */
     public enum Algorithm { greedy, beam, mst };
     
+    /** Enumeration of the scoring methods */
     public enum Score { simple, transitive, bhattacharryaPoisson };
 
     @Override

@@ -1,7 +1,5 @@
 package org.insightcentre.nlp.saffron.config;
 
-import java.util.Collections;
-import java.util.Set;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 /**
@@ -52,6 +50,7 @@ public class TaxonomyExtractionConfiguration {
      */
     public double simThreshold = 0.0;
 
+    /** The features to be used by this taxonomy extractor */
     public static class FeatureSelection {
 
         /**
@@ -97,6 +96,7 @@ public class TaxonomyExtractionConfiguration {
         return "TaxonomyExtractionConfiguration{" + "negSampling=" + negSampling + ", features=" + features + ", modelFile=" + modelFile + ", search=" + search + ", maxChildren=" + maxChildren + ", simThreshold=" + simThreshold + '}';
     }
 
+    /** Configuration of the feature extraction */
     public static class FeatureConfiguration {
 
         /**
