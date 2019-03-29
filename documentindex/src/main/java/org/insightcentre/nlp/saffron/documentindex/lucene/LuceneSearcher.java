@@ -109,7 +109,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
 
         @Override
         public boolean hasNext() {
-            return i < reader.maxDoc();
+            return i < reader.maxDoc() || data != null;
         }
 
         @Override
