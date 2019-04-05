@@ -91,6 +91,8 @@ public class Consolidate {
         }
 
         for(Document document : corpus.getDocuments()) {
+            if(document.authors.isEmpty())
+                continue;
             List<Author> authors2 = new ArrayList<>();
             for(Author a : document.authors) {
                 authors2.add(rmap.get(a));
