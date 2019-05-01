@@ -381,6 +381,56 @@ public class SaffronData {
         }
         this.searcher = corpus;
     }
+    
+       /**
+     * Load the Saffron data from mongo
+     *
+     * @param runId The runId for the saffron instance
+     * @param directory The directory for the saffron output
+     * @return An initializes object
+     * @throws IOException
+     */
+    public static SaffronData fromMongo(String runId, File directory) throws IOException {
+
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        final SaffronData saffron = new SaffronData();
+
+//        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+//        System.out.print("ID = " + runId);
+//        List<AuthorAuthor> authorSim = mongo.getAuthorSimilarity(runId);
+//        System.out.print("authorSim = " + authorSim);
+//        saffron.setAuthorSim(authorSim);
+//
+//        Taxonomy graph = mongo.getTaxonomy(runId);
+//        saffron.setTaxonomy(graph);
+//        System.out.print("graph = " + graph);
+//        List<TopicTopic> topicSim = mongo.getTopicsSimilarity(runId);
+//        saffron.setTopicSim(topicSim);
+//        System.out.print("topicSim = " + topicSim);
+//
+//        List<AuthorTopic> authorTopics = mongo.getAuthorTopics(runId);
+//        saffron.setAuthorTopics(authorTopics);
+//        System.out.print("authorTopics = " + authorTopics);
+//
+//        List<DocumentTopic> docTopics = mongo.getDocumentTopicCorrespondence(runId);
+//        saffron.setDocTopics(docTopics);
+//        System.out.print("docTopics = " + docTopics);
+
+//        List<Topic> topics = mongo.getTopics(runId);
+//        saffron.setTopics(topics);
+//        System.out.print("topics = " + topics);
+
+//        File indexFile = new File(directory, "index");
+//        if (!indexFile.exists()) {
+//            throw new FileNotFoundException("Could not find index");
+//        }
+//
+//        saffron.setCorpus(DocumentSearcherFactory.load(indexFile));
+
+        return saffron;
+    }
+    
 
     public DocumentSearcher getSearcher() {
         return searcher;
