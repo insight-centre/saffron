@@ -30,7 +30,7 @@ public class ConsolidateAuthors {
     public static Map<Author, Set<Author>> consolidate(Collection<Author> authors) {
         return consolidate(authors, new DefaultSaffronListener());
     }
-    
+
     public static Map<Author, Set<Author>> consolidate(Collection<Author> authors, SaffronListener log) {
         Map<Author, Set<Author>> consolidated = new HashMap<>();
         Set<Author> marked = new HashSet<>();
@@ -59,29 +59,33 @@ public class ConsolidateAuthors {
     }
 
     static Author _choose_author(Collection<Author> authors) {
-        if(authors.isEmpty())
+        if (authors.isEmpty()) {
             throw new IllegalArgumentException();
-        if(authors.size() == 1) 
+        }
+        if (authors.size() == 1) {
             return authors.iterator().next();
+        }
         Author best = null;
         double bestScore = 0.0;
         for (Author author : authors) {
             PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.name);
             double score = 0.0;
-            for (int i = 0; i < pa.words.length; i++) {
-                double wordScore = (pa.words[i].length() - count(pa.words[i], '_'))
-                    * (pa.probas[i][0] > pa.probas[i][1] ? pa.probas[i][0] : pa.probas[i][1]);
-                score += wordScore;
+            if (pa != null) {
+                for (int i = 0; i < pa.words.length; i++) {
+                    double wordScore = (pa.words[i].length() - count(pa.words[i], '_'))
+                            * (pa.probas[i][0] > pa.probas[i][1] ? pa.probas[i][0] : pa.probas[i][1]);
+                    score += wordScore;
+                }
+                score = Math.pow(score, 1.0 / pa.words.length);
             }
-            score = Math.pow(score, 1.0 / pa.words.length);
             if (score > bestScore) {
                 best = author;
                 bestScore = score;
             }
         }
         Set<String> variants = new HashSet<>();
-        for(Author author : authors) {
-            if(!author.equals(best)) {
+        for (Author author : authors) {
+            if (!author.equals(best)) {
                 variants.add(author.name);
             }
         }
@@ -153,7 +157,7 @@ public class ConsolidateAuthors {
 
         boolean initial() {
             return (this.word.length == 1
-                || (this.word.length == 3 && this.word[2] == '.'));
+                    || (this.word.length == 3 && this.word[2] == '.'));
         }
 
     }
@@ -186,6 +190,9 @@ public class ConsolidateAuthors {
             RuleMatcher.probas_for a1 = RuleMatcher.get_probas_for(authorName1);
             RuleMatcher.probas_for a2 = RuleMatcher.get_probas_for(authorName2);
 
+            if (a1 == null || a2 == null) {
+                return false;
+            }
             Word[] w1 = makeWords(a1.words, a1.probas);
             Word[] w2 = makeWords(a2.words, a2.probas);
 
@@ -298,15 +305,15 @@ public class ConsolidateAuthors {
             Word rhs = rhs_index.length == 1 ? this.words[(Integer) rhs_index[0]] : (Word) rhs_index[1];
 
             double proba = 1. - (lhs.prob_firstname + rhs.prob_firstname - 2
-                * lhs.prob_firstname * rhs.prob_firstname)
-                * (lhs.prob_lastname + rhs.prob_lastname - 2 * lhs.prob_lastname * rhs.prob_lastname);
+                    * lhs.prob_firstname * rhs.prob_firstname)
+                    * (lhs.prob_lastname + rhs.prob_lastname - 2 * lhs.prob_lastname * rhs.prob_lastname);
             double nick = -1.;
 
             int l1 = min(len(lhs.word), len(rhs.word));
             int l2 = max(len(lhs.word), len(rhs.word));
             if (lhs.initial() || rhs.initial()) {
                 if (!char_equal(lhs.word[0], rhs.word[0])
-                    || (l1 > 1 && !char_equal(lhs.word[1], rhs.word[1]))) {
+                        || (l1 > 1 && !char_equal(lhs.word[1], rhs.word[1]))) {
                     proba = .0;
                 }
             } else {
@@ -316,7 +323,7 @@ public class ConsolidateAuthors {
                 if (proba > min_similarity) {
                     int i = 0;
                     while (i < l1 && lhs.word[i] == rhs.word[i]
-                        && lhs.word[i] == '_') {
+                            && lhs.word[i] == '_') {
                         i += 1;
                     }
 
@@ -332,7 +339,7 @@ public class ConsolidateAuthors {
                         double dist = l2 - l1;
                         if (i < l1) {
                             dist = mx - close_to(Arrays.copyOfRange(lhs.word, i, lhs.word.length),
-                                Arrays.copyOfRange(rhs.word, i, rhs.word.length), mx); // Edit distance
+                                    Arrays.copyOfRange(rhs.word, i, rhs.word.length), mx); // Edit distance
                         }
                         proba *= (1. - dist / mx);
                     }
@@ -362,8 +369,8 @@ public class ConsolidateAuthors {
             double best_dist = -42.;
 
             while (lhs_off < len(lhs_word) && rhs_off < len(rhs_word)
-                && lhs_word[lhs_off] == rhs_word[rhs_off]
-                && lhs_word[lhs_off] != '_' && lhs_word[lhs_off] != '.') {
+                    && lhs_word[lhs_off] == rhs_word[rhs_off]
+                    && lhs_word[lhs_off] != '_' && lhs_word[lhs_off] != '.') {
                 lhs_off += 1;
                 rhs_off += 1;
             }
@@ -401,10 +408,10 @@ public class ConsolidateAuthors {
                 if (lhs_off < len(lhs_word) - 1 && rhs_off < len(rhs_word) - 1) {
                     tmp_dist = max_dist - chdist * TRANSPOS_COST;
                     if (tmp_dist >= .0
-                        && (char_equal(lhs_word[lhs_off],
-                            rhs_word[rhs_off + 1])
-                        && char_equal(lhs_word[lhs_off + 1],
-                            rhs_word[rhs_off]))) {
+                            && (char_equal(lhs_word[lhs_off],
+                                    rhs_word[rhs_off + 1])
+                            && char_equal(lhs_word[lhs_off + 1],
+                                    rhs_word[rhs_off]))) {
                         double res = _close_to(lhs_word, rhs_word, tmp_dist, lhs_off + 2, rhs_off + 2);
                         if (res > best_dist) {
                             best_dist = res;
@@ -421,8 +428,8 @@ public class ConsolidateAuthors {
                 }
             } else {
                 best_dist = max_dist
-                    - (len(lhs_word) + len(rhs_word) - lhs_off - rhs_off)
-                    * INS_DEL_COST;
+                        - (len(lhs_word) + len(rhs_word) - lhs_off - rhs_off)
+                        * INS_DEL_COST;
             }
 
             return best_dist;
@@ -439,7 +446,7 @@ public class ConsolidateAuthors {
         }
 
         double max_close_to(char[] lhs_word, char[] rhs_word, double max_dist, int rhs_offp1, int lhs_off, char[] lhs_word0) {
-                     //return max(_close_to(lhs_word, rhs_word, max_dist, i, rhs_off + 1) \
+            //return max(_close_to(lhs_word, rhs_word, max_dist, i, rhs_off + 1) \
             //               for i in xrange(lhs_off, len(lhs_word)));
             double max = Double.NEGATIVE_INFINITY;
             for (int i = lhs_off; i < len(lhs_word0); i++) {
@@ -651,7 +658,7 @@ public class ConsolidateAuthors {
             static Object[] _parse_name(String name) {
                 List<String> words = new ArrayList<>();
                 StringBuilder rule = new StringBuilder();
-               // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
+                // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
                 // because a PDF may contain footnote/reference numbers beside the name.
                 Object number = null;
                 for (String c : _tokenize_name(name)) {
