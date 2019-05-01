@@ -13,12 +13,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -50,6 +45,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 /**
  *
@@ -299,6 +295,9 @@ public class Executor extends AbstractHandler {
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        mongo.addRun(saffronDatasetName, new Date());
+
         final File datasetFolder = new File(parentDirectory, saffronDatasetName);
         if(!datasetFolder.exists()) {
             if(!datasetFolder.mkdirs())
@@ -321,9 +320,11 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
+        mongo.addTopicExtraction(saffronDatasetName, new Date(), res.topics);
 
         _status.setStatusMessage("Writing document topic correspondence");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
+        mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
         data.setDocTopics(res.docTopics);
 
         _status.stage++;
@@ -345,6 +346,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving linked topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
+        mongo.addTopics(saffronDatasetName, new Date(), topics);
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
@@ -353,6 +355,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
+        mongo.addAuthorTopics(saffronDatasetName, new Date(), topics);
         data.setAuthorTopics(authorTopics);
 
         _status.stage++;
@@ -362,6 +365,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving topic connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
+        mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
         data.setTopicSim(topicSimilarity);
 
         _status.stage++;
@@ -371,6 +375,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
+        mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
         data.setAuthorSim(authorSim);
 
         _status.stage++;
@@ -391,8 +396,10 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
+        mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
         data.setTaxonomy(graph);
 
+        mongo.close();
         _status.setStatusMessage("Done");
         _status.completed = true;
     }
