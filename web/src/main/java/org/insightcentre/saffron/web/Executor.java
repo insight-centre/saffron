@@ -396,7 +396,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
-        mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
+        //mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
         data.setTaxonomy(graph);
 
         mongo.close();
