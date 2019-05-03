@@ -26,6 +26,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web

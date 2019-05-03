@@ -10,7 +10,10 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.glassfish.jersey.servlet.ServletContainer;
+import org.insightcentre.saffron.web.api.SaffronAPI;
 /**
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
@@ -71,11 +74,28 @@ public class Launcher {
             Executor executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(browser.saffron, directory);
-            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
+            SaffronAPI api = new SaffronAPI();
+
+            ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+            context.setContextPath("/");
+            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
+
+            ServletHolder jerseyServlet = context.addServlet(
+                    org.glassfish.jersey.servlet.ServletContainer.class, "/*");
+            jerseyServlet.setInitOrder(0);
+
+            jerseyServlet.setInitParameter(
+                    "jersey.config.server.provider.classnames",
+                    SaffronAPI.class.getCanonicalName());
+
+
+
+
 
             try {
                 server.start();
+                System.out.println(server.dump());
             } catch(BindException x) {
                 for(int i = port + 1; i < port + 20; i++) {
                     try {
