@@ -155,6 +155,19 @@ public class MongoDBHandler implements Closeable {
         return docs;
     }
 
+    public FindIterable<Document> deleteTopic(String runId, String topic) {
+
+        BasicDBObject updateFields = new BasicDBObject();
+        updateFields.append("run", runId);
+        updateFields.append("topic", topic);
+        BasicDBObject setQuery = new BasicDBObject();
+        setQuery.append("$set", updateFields);
+        topicsCollection.findOneAndDelete(and(eq("run", runId), (eq("topic", topic))));
+        FindIterable<Document> docs = topicsCollection.find(eq("run", runId));
+
+        return docs;
+    }
+
     public boolean addAuthorTopics(String id, Date date, List<Topic> topics) {
         Document document = new Document();
 

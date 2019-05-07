@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 
 import com.google.gson.Gson;
@@ -17,6 +18,8 @@ import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.saffron.web.SaffronData;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 @Path("/api/v1/run")
 public class SaffronAPI{
@@ -141,6 +144,13 @@ public class SaffronAPI{
     public Response deleteTopic(@PathParam("param") String name,
                                 @PathParam("topic_id") String topicId) {
 
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        List<TopicResponse> topicsResponse = new ArrayList<>();
+        TopicsResponse resp = new TopicsResponse();
+        FindIterable<Document> topics;
+
+        topics = mongo.deleteTopic(name, topicId);
+
         return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
 
@@ -149,9 +159,10 @@ public class SaffronAPI{
     @Path("/{param}/topics")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postDeleteManyTopics(InputStream incomingData) {
-        StringBuilder crunchifyBuilder = new StringBuilder();
+    public Response postDeleteManyTopics(@PathParam("param") String name, InputStream incomingData) {
 
+        StringBuilder crunchifyBuilder = new StringBuilder();
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(incomingData));
             String line = null;
@@ -161,11 +172,37 @@ public class SaffronAPI{
         } catch (Exception e) {
             System.out.println("Error Parsing: - ");
         }
+        FindIterable<Document> topics;
 
         System.out.println("Data Received: " + crunchifyBuilder.toString());
+        JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
+        JSONArray lister = jsonObj.getJSONArray("topics");
+        Iterator<String> keys = jsonObj.keys();
+
+            while(keys.hasNext()) {
+                String key = keys.next();
+
+                JSONArray obj = (JSONArray) jsonObj.get(key);
+                System.out.print("Here:" + obj.toString());
+                for (int i = 0; i < obj.length(); i++) {
+                    JSONObject json = obj.getJSONObject(i);
+                    System.out.println("Here1:" + json.get("id").toString());
+                    topics = mongo.deleteTopic(name, json.get("id").toString());
+//                    Iterator<String> keysArr = json.keys();
+//
+//                    while (keysArr.hasNext()) {
+//                        System.out.println("Here2:" + json.keys());
+//                        String keyVal = keys.next();
+//                        System.out.println("Key :" + keyVal + "  Value :" + json.get(keyVal));
+//                        topics = mongo.deleteTopic(name, json.get(keyVal).toString());
+//                    }
+
+                }
+            }
 
 
-        return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
+
+        return Response.ok("Topics " + jsonObj + " Deleted").build();
     }
 
 
@@ -187,9 +224,18 @@ public class SaffronAPI{
         }
 
         System.out.println("Data Received: " + crunchifyBuilder.toString());
+        JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
+        JSONArray lister = jsonObj.getJSONArray("topics");
+    List<String> deletedTopics = new ArrayList<String>();
+      for (int i = 0; i < lister.length(); i++) {
+          deletedTopics.add(lister.getString(i));
+          System.out.print(lister.getString(i));
+      }
 
 
-        return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
+
+
+        return Response.ok("Topics " + deletedTopics + " Deleted").build();
     }
 
     @PUT
