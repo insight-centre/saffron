@@ -188,14 +188,7 @@ public class SaffronAPI{
                     JSONObject json = obj.getJSONObject(i);
                     System.out.println("Here1:" + json.get("id").toString());
                     topics = mongo.deleteTopic(name, json.get("id").toString());
-//                    Iterator<String> keysArr = json.keys();
-//
-//                    while (keysArr.hasNext()) {
-//                        System.out.println("Here2:" + json.keys());
-//                        String keyVal = keys.next();
-//                        System.out.println("Key :" + keyVal + "  Value :" + json.get(keyVal));
-//                        topics = mongo.deleteTopic(name, json.get(keyVal).toString());
-//                    }
+
 
                 }
             }
