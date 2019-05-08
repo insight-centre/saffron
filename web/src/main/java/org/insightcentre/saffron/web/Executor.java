@@ -401,7 +401,10 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(graph);
 
         try {
-            MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+            String mongoUrl = System.getenv("MONGO_URL");
+            String mongoPort = System.getenv("MONGO_PORT");
+            System.out.println("Mongo:" + mongoUrl + ":" + mongoPort);
+            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), "saffron", "saffron_runs");
             mongo.addRun(saffronDatasetName, new Date());
             mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
             mongo.addTopics(saffronDatasetName, new Date(), topics);

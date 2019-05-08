@@ -11,4 +11,6 @@ die() { echo "$@" 1>&2 ; exit 1; }
 
 cd $DIR/web
 export SAFFRON_HOME=$DIR
+export MONGO_URL=localhost
+export MONGO_PORT=27017
 mvn -q exec:java -f pom.xml -Dexec.args="$*"
