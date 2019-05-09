@@ -82,8 +82,6 @@ public class TermExtractionTask implements Runnable {
                 if (tokens.length > 0) {
                     String[] tags = new String[0];
                     tags = tagger.get().tag(tokens);
-                    System.err.println(Arrays.toString(tokens));
-                    System.err.println(Arrays.toString(tags));
 
                     if (tags.length != tokens.length) {
                         throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
@@ -152,7 +150,9 @@ public class TermExtractionTask implements Runnable {
             } else {
                 String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
                 tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
-                tokens2[0] = lemmas[i];
+                if (!lemmas[i].equals("O")) {
+                    tokens2[0] = lemmas[i];
+                }
             }
             processTerm(tokens2, 0, j - i, docTopicMap,
                     localCasing);
@@ -191,7 +191,6 @@ public class TermExtractionTask implements Runnable {
             }
             String termStrOrig = join(tokens, i, j);
             String termStr = termStrOrig.toLowerCase();
-            System.err.println(termStr);
             if (allValid && termStr.length() > 2) {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
