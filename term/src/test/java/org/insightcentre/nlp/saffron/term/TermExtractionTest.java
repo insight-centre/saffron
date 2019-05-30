@@ -422,6 +422,6 @@ public class TermExtractionTest {
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(!res.topics.stream().filter((Topic t) -> t.topicString.equals("good time")).findFirst().isEmpty());
+        assert(!res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time")));
     }
 }
