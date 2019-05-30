@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
  * Extract a taxonomy by using a MST
@@ -57,6 +59,13 @@ public class MSTTaxoExtract implements TaxonomySearch {
         return buildTaxo(topNode, arbor, topicMap, null, topics, matrix);        
     }
 
+    @Override
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap, Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    
+    
     private Taxonomy buildTaxo(String node, Weighted<Arborescence<String>> arbor,
             Map<String, Topic> topicMap, String parent,
             ArrayList<String> topic, double[][] matrix) {

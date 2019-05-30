@@ -329,6 +329,19 @@ public class Taxonomy {
             return true;
         }
     }
+    
+    /**
+     * Verifies if all scores in the tree are real (except the root)
+     * @return 
+     */
+    public boolean scoresValid() {
+        return children.stream().allMatch((Taxonomy t) -> t._scoresValid());
+        
+    }
+    
+    private boolean _scoresValid() {
+        return Double.isFinite(linkScore) && children.stream().allMatch((Taxonomy t) -> t._scoresValid());
+    }
 
     /**
      * Create a copy of this with a new link score
@@ -338,7 +351,7 @@ public class Taxonomy {
     public Taxonomy withLinkScore(double linkScore) {
         return new Taxonomy(this.root, this.score, linkScore, this.children);
     }
-    
+        
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy

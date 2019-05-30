@@ -1,14 +1,11 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import org.insightcentre.nlp.saffron.taxonomy.metrics.SumScore;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
@@ -88,5 +85,36 @@ public class GreedyTest {
         Taxonomy result = instance.extractTaxonomy(topics);
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
+    }
+    
+        /**
+     * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
+     */
+    @Test
+    public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
+        System.out.println("extractTaxonomyWithBlackWhiteList");
+        HashMap<String, Topic> topics = new HashMap<>();
+        addTopic(topics, "", 0.0);
+        addTopic(topics, "a", 0.0);
+        addTopic(topics, "b", 0.0);
+        addTopic(topics, "c", 0.0);
+        addTopic(topics, "ab", 0.0);
+        addTopic(topics, "ac", 0.0);
+        addTopic(topics, "abc", 0.0);
+        addTopic(topics, "ba", 0.0);
+        addTopic(topics, "bd", 0.0);
+        
+        Set<TaxoLink> whiteList = new HashSet<>();
+        Set<TaxoLink> blackList = new HashSet<>();
+        whiteList.add(new TaxoLink("", "ab"));
+        blackList.add(new TaxoLink("", "c"));
+        
+        Greedy instance = new Greedy(new SumScore(new TestSupervisedTaxo()));
+        Taxonomy result = instance.extractTaxonomyWithBlackWhiteList(topics, whiteList, blackList);
+        assertEquals("", result.root);
+        assertEquals(3, result.children.size());
+        assert(result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));
+        assert(result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b")));
+        assert(result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab")));
     }
 }
