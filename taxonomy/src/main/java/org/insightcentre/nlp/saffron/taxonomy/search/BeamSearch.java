@@ -1,7 +1,9 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import java.util.HashSet;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.Map;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 
@@ -17,35 +19,55 @@ public class BeamSearch implements TaxonomySearch {
     public BeamSearch(TaxonomyScore emptyScore, int beamSize) {
         this.emptyScore = emptyScore;
         this.beamSize = beamSize;
-        assert(beamSize > 0);
+        assert (beamSize > 0);
     }
 
-
     @Override
-    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+            Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);
-        previous.push(new Soln(Solution.empty(topicMap.keySet()), emptyScore, 0.0, false), 0.0);
+        TaxonomyScore score = emptyScore;
+        Solution soln = Solution.empty(topicMap.keySet());
+        double s2 = 0.0;
+        Set<String> whiteHeads = new HashSet<>();
+
+        for (TaxoLink sp : whiteList) {
+            soln = soln.add(sp.top, sp.bottom,
+                    topicMap.get(sp.top).score,
+                    topicMap.get(sp.bottom).score,
+                    score.deltaScore(sp));
+            s2 += score.deltaScore(sp);
+            score = score.next(sp.top, sp.bottom, soln);
+            whiteHeads.add(sp.bottom);
+        }
+        previous.push(new Soln(soln, score, s2, false), s2);
         for (String t1 : topicMap.keySet()) {
+            if(whiteHeads.contains(t1)) 
+                continue;
             Beam<Soln> next = new Beam<>(beamSize);
             // We are looking for t1's parent
             for (String t2 : topicMap.keySet()) {
-                if(!t1.equals(t2)) {
-                    for(Soln prevSoln : previous) {
-                        final double linkScore = prevSoln.score.deltaScore(new TaxoLink(t2, t1));
-                        double totalScore = prevSoln.totalScore +
-                                linkScore;
-                        if(next.canPush(totalScore)) {
-                            Solution s = prevSoln.soln.add(t2, t1, 
-                                    topicMap.get(t2).score, 
-                                    topicMap.get(t1).score,linkScore);
-                            if(s != null) {
-                                Soln candidate = new Soln(s, 
-                                    prevSoln.score.next(t2, t1, s),
-                                    totalScore,
-                                    prevSoln.rooted);
+                if (!t1.equals(t2)) {
+                    final TaxoLink taxoLink = new TaxoLink(t2, t1);
+                    if (blackList.contains(taxoLink)) {
+                        continue;
+                    }
+                    for (Soln prevSoln : previous) {
+                        final double linkScore = prevSoln.score.deltaScore(taxoLink);
+                        double totalScore = prevSoln.totalScore
+                                + linkScore;
+                        if (next.canPush(totalScore)) {
+                            Solution s = prevSoln.soln.add(t2, t1,
+                                    topicMap.get(t2).score,
+                                    topicMap.get(t1).score, linkScore);
+                            if (s != null) {
+                                Soln candidate = new Soln(s,
+                                        prevSoln.score.next(t2, t1, s),
+                                        totalScore,
+                                        prevSoln.rooted);
                                 next.push(candidate, totalScore);
-                                if(candidate.soln.isComplete()) {
+                                if (candidate.soln.isComplete()) {
                                     complete.push(candidate, totalScore);
                                 }
                             }
@@ -53,10 +75,10 @@ public class BeamSearch implements TaxonomySearch {
                     }
                     // We may once in a search have a node with no parents, this
                     // is the root element and a flag is set to decide this
-                    for(Soln prevSoln : previous) {
-                        if(!prevSoln.rooted) {
-                            next.push(new Soln(prevSoln.soln, prevSoln.score, 
-                                    prevSoln.totalScore, true), 
+                    for (Soln prevSoln : previous) {
+                        if (!prevSoln.rooted) {
+                            next.push(new Soln(prevSoln.soln, prevSoln.score,
+                                    prevSoln.totalScore, true),
                                     prevSoln.totalScore);
                         }
                     }
@@ -66,8 +88,9 @@ public class BeamSearch implements TaxonomySearch {
         }
         return complete.pop().soln.toTaxonomy();
     }
-    
+
     private static class Soln implements Comparable<Soln> {
+
         public final Solution soln;
         public final TaxonomyScore score;
         public final double totalScore;
@@ -80,17 +103,24 @@ public class BeamSearch implements TaxonomySearch {
             this.rooted = rooted;
         }
 
-
         @Override
         public int compareTo(Soln o) {
             int c = Integer.compare(this.hashCode(), o.hashCode());
-            if(c != 0) return c;
+            if (c != 0) {
+                return c;
+            }
             c = Integer.compare(this.soln.hashCode(), o.soln.hashCode());
-            if(c != 0) return c;
+            if (c != 0) {
+                return c;
+            }
             c = Integer.compare(this.score.hashCode(), o.score.hashCode());
-            if(c != 0) return c;
+            if (c != 0) {
+                return c;
+            }
             c = Double.compare(totalScore, o.totalScore);
-            if(c != 0) return c;
+            if (c != 0) {
+                return c;
+            }
             c = Boolean.compare(rooted, o.rooted);
             // This means there is a chance that some solutions may be lost
             return c;
