@@ -140,16 +140,21 @@ public class TermExtractionTask implements Runnable {
             final HashMap<String, DocumentTopic> docTopicMap, CasingStats localCasing,
             boolean headTokenFinal) {
         if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
-            String[] tokens2;
+            String[] ltoks = Arrays.copyOf(tokens, tokens.length);
+            for (int n = 0; n < ltoks.length; n++) {
+                ltoks[n] = ltoks[n].toLowerCase();
+            }
+            String[] lemmas = lemmatizer.get().lemmatize(ltoks, tags);
+            if(tokens[i].equals("Ghaeilge")) {
+                System.err.println(Arrays.toString(tokens));
+                System.err.println(Arrays.toString(lemmas));
+            }
+            String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
             if (headTokenFinal) {
-                String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
                 if (!lemmas[j].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
                     tokens2[tokens2.length - 1] = lemmas[j];
                 }
             } else {
-                String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
                 if (!lemmas[i].equals("O")) {
                     tokens2[0] = lemmas[i];
                 }

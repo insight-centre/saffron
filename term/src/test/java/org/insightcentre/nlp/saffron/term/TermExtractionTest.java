@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.term;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import opennlp.tools.lemmatizer.DictionaryLemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.util.Sequence;
@@ -324,6 +325,4 @@ public class TermExtractionTest {
         Result res = instance.extractTopics(searcher);
         assert(res.topics.size() > 1);
     }
-
-
 }
