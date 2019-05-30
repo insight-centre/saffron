@@ -95,7 +95,14 @@ public class TermExtraction {
         this.oneTopicPerDoc = false;
     }
 
-    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq, ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords, Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens, int ngramMin, int ngramMax, boolean headTokenFinal, TermExtractionConfiguration.WeightingMethod method, List<Feature> features, File refFile, int maxTopics, Feature keyFeature, Set<String> blacklist, boolean oneTopicPerDoc) {
+    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, 
+            ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq, 
+            ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords, 
+            Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens, 
+            int ngramMin, int ngramMax, boolean headTokenFinal, 
+            TermExtractionConfiguration.WeightingMethod method, List<Feature> features, 
+            File refFile, int maxTopics, Feature keyFeature, Set<String> blacklist, 
+            boolean oneTopicPerDoc) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -118,8 +125,6 @@ public class TermExtraction {
         this.oneTopicPerDoc = oneTopicPerDoc;
     }
 
-    
-    
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
         this.nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
         if (config.posModel == null) {
@@ -230,11 +235,26 @@ public class TermExtraction {
 
     }
 
-    private void rankTopicsByFeat(List<String> topics, final Object2DoubleMap<String> scores) {
+    private void rankTopicsByFeat(List<String> topics, final Object2DoubleMap<String> scores,
+            Set<String> whiteList, Set<String> blackList) {
+        topics.removeIf((String t) -> blackList.contains(t));
+
         topics.sort(new Comparator<String>() {
             @Override
             public int compare(String o1, String o2) {
-                return -Double.compare(scores.getDouble(o1), scores.getDouble(o2));
+                if (whiteList.contains(o1)) {
+                    if (whiteList.contains(o2)) {
+                        return -Double.compare(scores.getDouble(o1), scores.getDouble(o2));
+                    } else {
+                        return -1;
+                    }
+                } else {
+                    if (whiteList.contains(o2)) {
+                        return +1;
+                    } else {
+                        return -Double.compare(scores.getDouble(o1), scores.getDouble(o2));
+                    }
+                }
             }
         });
     }
@@ -242,8 +262,13 @@ public class TermExtraction {
     public Result extractTopics(final Corpus searcher) {
         return extractTopics(searcher, new DefaultSaffronListener());
     }
-        
+
     public Result extractTopics(final Corpus searcher, SaffronListener log) {
+        return extractTopics(searcher, Collections.EMPTY_SET, Collections.EMPTY_SET, log);
+
+    }
+
+    public Result extractTopics(final Corpus searcher, final Set<String> whiteList, final Set<String> blackList, SaffronListener log) {
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
@@ -307,9 +332,9 @@ public class TermExtraction {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(topics, keyFeature,
                             freqs, ref, incl, ntm, domain);
-                    rankTopicsByFeat(topics, scores);
+                    rankTopicsByFeat(topics, scores, whiteList, blackList);
                     if (topics.size() > maxTopics) {
-                        if(oneTopicPerDoc) {
+                        if (oneTopicPerDoc) {
                             topics = getTopTopics(topics, maxTopics, dts);
                         } else {
                             topics = topics.subList(0, maxTopics);
@@ -322,15 +347,15 @@ public class TermExtraction {
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
                                 freqs, ref, incl, ntm, domain);
-                        rankTopicsByFeat(topics, scores2);
+                        rankTopicsByFeat(topics, scores2, whiteList, blackList);
                         int i = 1;
                         for (String topic : topics) {
                             voting.put(topic, voting.getDouble(topic) + 1.0 / i++);
                         }
                     }
-                    rankTopicsByFeat(topics, voting);
+                    rankTopicsByFeat(topics, voting, whiteList, blackList);
                     if (topics.size() > maxTopics) {
-                        if(oneTopicPerDoc) {
+                        if (oneTopicPerDoc) {
                             topics = getTopTopics(topics, maxTopics, dts);
                         } else {
                             topics = topics.subList(0, maxTopics);
@@ -459,26 +484,27 @@ public class TermExtraction {
     private List<String> getTopTopics(List<String> topics, int maxTopics, ConcurrentLinkedQueue<DocumentTopic> dts) {
         Set<String> docs = new HashSet<>();
         Map<String, Set<String>> topic2doc = new HashMap<>();
-        for(DocumentTopic dt : dts) {
+        for (DocumentTopic dt : dts) {
             docs.add(dt.document_id);
-            if(!topic2doc.containsKey(dt.topic_string)) {
+            if (!topic2doc.containsKey(dt.topic_string)) {
                 topic2doc.put(dt.topic_string, new HashSet<>());
             }
             topic2doc.get(dt.topic_string).add(dt.document_id);
         }
         List<String> acceptedTopics = new ArrayList<>();
-        for(String topic : topics) {
+        for (String topic : topics) {
             Set<String> d = topic2doc.get(topic);
-            if(acceptedTopics.size() < maxTopics) {
-                if(d != null)
+            if (acceptedTopics.size() < maxTopics) {
+                if (d != null) {
                     docs.removeAll(d);
+                }
                 acceptedTopics.add(topic);
-            } else if(docs.isEmpty()) {
+            } else if (docs.isEmpty()) {
                 return acceptedTopics;
             } else {
-                if(d != null) {
+                if (d != null) {
                     d.retainAll(docs);
-                    if(!d.isEmpty()) {
+                    if (!d.isEmpty()) {
                         docs.removeAll(d);
                         acceptedTopics.add(topic);
                     }
