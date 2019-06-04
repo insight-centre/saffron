@@ -3,15 +3,8 @@ package org.insightcentre.saffron.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-import java.io.BufferedReader;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
+
+import java.io.*;
 import java.net.URL;
 import java.util.*;
 import javax.servlet.ServletException;
@@ -397,7 +390,6 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
-        //mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
         data.setTaxonomy(graph);
 
         try {
@@ -412,6 +404,7 @@ public class Executor extends AbstractHandler {
             mongo.addAuthorTopics(saffronDatasetName, new Date(), topics);
             mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
             mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
+            mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
 
         } catch (MongoException ex) {
             System.out.println("MongoDB not available - starting execution in local mode");

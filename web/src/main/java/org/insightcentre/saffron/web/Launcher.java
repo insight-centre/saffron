@@ -4,20 +4,30 @@ import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
+
+import io.swagger.jaxrs.config.DefaultJaxrsConfig;
+import io.swagger.jersey.config.JerseyJaxrsConfig;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.server.session.SessionHandler;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
 import org.insightcentre.saffron.web.api.SaffronAPI;
+import org.insightcentre.saffron.web.swagger.SwaggerInitializer;
+
+import javax.ws.rs.ApplicationPath;
+
 /**
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
+@ApplicationPath("/api/v1")
 public class Launcher {
 
     private static void badOptions(OptionParser p, String message) throws IOException {
@@ -78,19 +88,43 @@ public class Launcher {
 
             ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
             context.setContextPath("/");
-            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
-            server.setHandler(handlers);
+
 
             ServletHolder jerseyServlet = context.addServlet(
                     org.glassfish.jersey.servlet.ServletContainer.class, "/*");
             jerseyServlet.setInitOrder(0);
-
             jerseyServlet.setInitParameter(
                     "jersey.config.server.provider.classnames",
-                    SaffronAPI.class.getCanonicalName());
+                    SaffronAPI.class.getCanonicalName() + ";com.wordnik.swagger.jersey.listing.ApiListingResourceJSON;" +
+                            "com.wordnik.swagger.jersey.listing.JerseyApiDeclarationProvider;" +
+                            "com.wordnik.swagger.jersey.listing.JerseyResourceListingProvider");
+            jerseyServlet.setInitParameter(
+                    "jersey.config.server.provider.packages",
+                    "com.wordnik.swagger.jaxrs.json;org.insightcentre.saffron.web.api");
 
 
+//            ServletHolder swaggerServlet = context.addServlet(
+//                    org.glassfish.jersey.servlet.ServletContainer.class, "/swagger-core");
+//            swaggerServlet.setInitOrder(0);
+//            swaggerServlet.setInitParameter(
+//                    "jersey.config.server.provider.classnames",
+//                    SaffronAPI.class.getCanonicalName() + ";com.wordnik.swagger.jersey.listing.ApiListingResourceJSON;" +
+//                            "com.wordnik.swagger.jersey.listing.JerseyApiDeclarationProvider;" +
+//                            "com.wordnik.swagger.jersey.listing.JerseyResourceListingProvider");
+//            swaggerServlet.setInitParameter(
+//                    "jersey.config.server.provider.packages",
+//                    "com.wordnik.swagger.jaxrs.json;org.insightcentre.saffron.web.api");
+//            swaggerServlet.setInitParameter("api.version", "1.0.0");
+//            swaggerServlet.setInitParameter("swagger.api.basepath", "http://localhost:8080/api");
+//
+//            // Setup Swagger-UI static resources
+//            String resourceBasePath = Launcher.class.getResource("/webapp").toExternalForm();
+//            context.setWelcomeFiles(new String[] {"index.html"});
+//            context.setResourceBase(resourceBasePath);
+//            context.addServlet(new ServletHolder(new DefaultServlet()), "/api");
 
+            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
+            server.setHandler(handlers);
 
 
             try {
@@ -119,5 +153,22 @@ public class Launcher {
             x.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    private static ServletContextHandler setupSwaggerContextHandler() {
+        // Configure Swagger-core
+        final ServletHolder swaggerServletHolder = new ServletHolder(new JerseyJaxrsConfig());
+        swaggerServletHolder.setName("JerseyJaxrsConfig");
+        swaggerServletHolder.setInitParameter("api.version", "1.0.0");
+        swaggerServletHolder.setInitParameter("swagger.api.basepath", "http://localhost:8080/api");
+        swaggerServletHolder.setInitOrder(2);
+
+        final ServletContextHandler swaggerContextHandler = new ServletContextHandler();
+        swaggerContextHandler.setSessionHandler(new SessionHandler());
+        // Bind Swagger-core to the url HOST/api-docs
+        swaggerContextHandler.setContextPath("/api-docs");
+        swaggerContextHandler.addServlet(swaggerServletHolder, "/api/v1*");
+
+        return swaggerContextHandler;
     }
 }

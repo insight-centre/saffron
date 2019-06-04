@@ -2,6 +2,7 @@ package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import com.mongodb.client.FindIterable;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.io.File;
@@ -27,6 +28,7 @@ import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
+import org.json.JSONObject;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web
@@ -387,41 +389,46 @@ public class SaffronData {
      * Load the Saffron data from mongo
      *
      * @param runId The runId for the saffron instance
-     * @param directory The directory for the saffron output
      * @return An initializes object
      * @throws IOException
      */
-    public static SaffronData fromMongo(String runId, File directory) throws IOException {
+    public static SaffronData fromMongo(String runId) throws IOException {
 
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
         final SaffronData saffron = new SaffronData();
 
-//        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
-//        System.out.print("ID = " + runId);
-//        List<AuthorAuthor> authorSim = mongo.getAuthorSimilarity(runId);
-//        System.out.print("authorSim = " + authorSim);
-//        saffron.setAuthorSim(authorSim);
-//
-//        Taxonomy graph = mongo.getTaxonomy(runId);
-//        saffron.setTaxonomy(graph);
-//        System.out.print("graph = " + graph);
-//        List<TopicTopic> topicSim = mongo.getTopicsSimilarity(runId);
-//        saffron.setTopicSim(topicSim);
-//        System.out.print("topicSim = " + topicSim);
-//
-//        List<AuthorTopic> authorTopics = mongo.getAuthorTopics(runId);
-//        saffron.setAuthorTopics(authorTopics);
-//        System.out.print("authorTopics = " + authorTopics);
-//
-//        List<DocumentTopic> docTopics = mongo.getDocumentTopicCorrespondence(runId);
-//        saffron.setDocTopics(docTopics);
-//        System.out.print("docTopics = " + docTopics);
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        System.out.print("ID = " + runId);
+        List<AuthorAuthor> authorSim = mongo.getAuthorSimilarity(runId);
+        System.out.print("authorSim = " + authorSim);
+        saffron.setAuthorSim(authorSim);
 
-//        List<Topic> topics = mongo.getTopics(runId);
+        FindIterable<org.bson.Document> docs = mongo.getTaxonomy(runId);
+        for (org.bson.Document doc : docs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            Taxonomy graph = Taxonomy.fromJsonString(jsonObj.toString());
+            saffron.setTaxonomy(graph);
+
+        }
+
+
+        List<TopicTopic> topicSim = mongo.getTopicsSimilarity(runId);
+        saffron.setTopicSim(topicSim);
+        System.out.print("topicSim = " + topicSim);
+
+        List<AuthorTopic> authorTopics = mongo.getAuthorTopics(runId);
+        saffron.setAuthorTopics(authorTopics);
+        System.out.print("authorTopics = " + authorTopics);
+
+        List<DocumentTopic> docTopics = mongo.getDocumentTopicCorrespondence(runId);
+        saffron.setDocTopics(docTopics);
+        System.out.print("docTopics = " + docTopics);
+
+//        FindIterable<org.bson.Document> topics = mongo.getTopics(runId);
 //        saffron.setTopics(topics);
 //        System.out.print("topics = " + topics);
-
+//
 //        File indexFile = new File(directory, "index");
 //        if (!indexFile.exists()) {
 //            throw new FileNotFoundException("Could not find index");
@@ -431,7 +438,8 @@ public class SaffronData {
 
         return saffron;
     }
-    
+
+
 
     public DocumentSearcher getSearcher() {
         return searcher;
@@ -494,6 +502,13 @@ public class SaffronData {
         } else {
             return Collections.EMPTY_LIST;
         }
+    }
+
+
+    public Taxonomy getTaxoDescendent(String topic_string) {
+
+            Taxonomy t = taxonomy;
+            return taxonomy.descendent(topic_string);
     }
 
     public List<String> getTaxoChildren(String topic_string) {
