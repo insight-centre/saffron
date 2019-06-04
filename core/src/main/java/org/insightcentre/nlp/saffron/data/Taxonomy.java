@@ -15,8 +15,10 @@ import java.util.Queue;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -25,6 +27,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * 
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
     /** The topic string of this node in the taxonomy */
     public final String root;
@@ -36,7 +39,8 @@ public class Taxonomy {
     public final List<Taxonomy> children;
 
     @JsonCreator
-    public Taxonomy(@JsonProperty("root") String root, 
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public Taxonomy(@JsonProperty("root") String root,
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
                     @JsonProperty("children") List<Taxonomy> children) {
@@ -58,6 +62,7 @@ public class Taxonomy {
      */
     public static Taxonomy fromJsonFile(File file) throws JsonParseException, JsonMappingException, IOException{
     	ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     	return objectMapper.readValue(file, Taxonomy.class);
     }
 
@@ -67,6 +72,22 @@ public class Taxonomy {
      */
     public String getRoot() {
         return root;
+    }
+
+    /**
+     * Get the double of linkScore
+     * @return double
+     */
+    public double getLinkScore() {
+        return linkScore;
+    }
+
+    /**
+     * Get the double for the score
+     * @return double
+     */
+    public double getScore() {
+        return score;
     }
 
     /**
@@ -106,10 +127,47 @@ public class Taxonomy {
                 return d;
         }
         return null;
-    } 
-    
- 
-    
+    }
+
+
+
+
+    /**
+     * Search this taxonomy for a taxonomy with a given root
+     * @param child The name to search for
+     * @return A taxonomy whose root is name or null if no taxonomy is found
+     */
+    public Taxonomy removeChild(Taxonomy child, Taxonomy oldParent) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy childTaxo : oldParent.getChildren()) {
+            if(!childTaxo.equals(child)){
+                newChildren.add(childTaxo);
+            }
+
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+    }
+
+    /**
+     * Search this taxonomy for a taxonomy with a given root
+     * @param newParent The name to search for
+     * @return A taxonomy whose root is name or null if no taxonomy is found
+     */
+    public Taxonomy addChild(Taxonomy child, Taxonomy newParent) {
+
+       // return newParent.(child);
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy childTaxo : newParent.getChildren()) {
+                newChildren.add(childTaxo);
+        }
+        newChildren.add(child);
+
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+    }
+
+
+
     /**
      * The size of the taxonomy (number of topics). Note this calculates the size 
      * and so takes O(N) time!
@@ -363,6 +421,47 @@ public class Taxonomy {
         }
         return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
     }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopyNewParent(String topicString, String newParent, Taxonomy newParentTaxo) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+
+            if (!t.root.equals(topicString)) {
+
+                if (t.root.equals(newParent)){
+                    t.children.add(newParentTaxo.children.get(0));
+                    newChildren.add(t.deepCopy());
+                } else {
+                    newChildren.add(t.deepCopyNewParent(topicString, newParent, newParentTaxo));
+                }
+
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+    }
+
+
+    /**
+     * Build a Taxonomy object from a string
+     * @param json file to read from
+     * @return a Taxonomy object
+     *
+     * @throws JsonParseException
+     * @throws JsonMappingException
+     * @throws IOException
+     */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static Taxonomy fromJsonString(String json) throws JsonParseException, JsonMappingException, IOException{
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(json, Taxonomy.class);
+    }
+
+
 
     @Override
     public int hashCode() {

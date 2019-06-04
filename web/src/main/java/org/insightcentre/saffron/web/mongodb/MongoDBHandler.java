@@ -3,17 +3,17 @@ package org.insightcentre.saffron.web.mongodb;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
+
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
-import org.insightcentre.nlp.saffron.term.TermExtraction;
+import org.json.JSONObject;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -63,6 +63,15 @@ public class MongoDBHandler implements Closeable {
 
     public FindIterable<Document>  getAllRuns() {
         FindIterable<Document> docs = runCollection.find();
+        return docs;
+    }
+
+    public FindIterable<Document>  deleteRun(String name) {
+        Document document = new Document();
+        document.put("run", name);
+        runCollection.findOneAndDelete(and(eq("id", name)));
+        FindIterable<Document> docs = topicsCollection.find(eq("id", name));
+
         return docs;
     }
 
@@ -235,23 +244,25 @@ public class MongoDBHandler implements Closeable {
     }
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
-        Document document = new Document();
-        //graph.getChildren().forEach(name -> {
-            document.put("_id", id + "_" + graph.getRoot());
-            document.put("run", id);
-            document.put("run_date", date);
-            document.put("root", graph.getRoot());
-            document.put("children", graph.getChildren());
-
-
-        taxonomyCollection.insertOne(document);
-        //});
+        JSONObject jsonObject = new JSONObject(graph);
+        Document doc = Document.parse( jsonObject.toString() );
+        doc.append("id", id);
+        doc.append("date", date);
+        taxonomyCollection.insertOne(doc);
         return true;
     }
 
-    public Taxonomy getTaxonomy(String runId) {
-        Taxonomy graph = new Taxonomy("", 0,0, null);
-        return graph;
+    public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
+        Document doc = new Document();
+        doc.append("id", id);
+        taxonomyCollection.findOneAndDelete(doc);
+        this.addTaxonomy(id, date, graph);
+        return true;
+    }
+
+    public FindIterable<Document> getTaxonomy(String runId) {
+        FindIterable<Document> docs = taxonomyCollection.find(eq("id", runId));
+        return docs;
     }
 
     /*
