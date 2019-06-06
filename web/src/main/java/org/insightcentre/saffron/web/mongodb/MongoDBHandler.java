@@ -4,9 +4,15 @@ import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndUpdateOptions;
+import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Updates.set;
 
+import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -142,6 +148,7 @@ public class MongoDBHandler implements Closeable {
             document.put("topicString", name.topicString);
             document.put("mvList", name.mvList);
             document.put("dbpedia_url", name.dbpedia_url);
+            document.put("status", "none");
             topicsCollection.insertOne(document);
         });
 
@@ -263,6 +270,22 @@ public class MongoDBHandler implements Closeable {
     public FindIterable<Document> getTaxonomy(String runId) {
         FindIterable<Document> docs = taxonomyCollection.find(eq("id", runId));
         return docs;
+    }
+
+
+    public boolean updateTopic(String id, String topic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+        Bson update = set("status", status);
+
+
+        FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+        findOptions.upsert(true);
+        findOptions.returnDocument(ReturnDocument.AFTER);
+
+        //System.out.println("Here : " + topicsCollection.findOneAndUpdate(condition, updateDoc));
+        topicsCollection.findOneAndUpdate(condition, update, findOptions);
+        return true;
     }
 
     /*
