@@ -158,6 +158,7 @@ public class SaffronAPI{
                 entity.setScore(doc.getDouble("score"));
                 entity.setTopicString(doc.getString("topicString"));
                 entity.setMvList((List<String>) doc.get("mvList"));
+                entity.setStatus(doc.getString("status"));
                 topicsResponse.add(entity);
             }
 
@@ -287,7 +288,44 @@ public class SaffronAPI{
     }
 
 
+    @POST
+    @JSONP
+    @Path("/{param}/topics/update")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response updateTopic(@PathParam("param") String name, InputStream incomingData) {
 
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        List<TopicResponse> topicsResponse = new ArrayList<>();
+        StringBuilder crunchifyBuilder = getJsonData(incomingData);
+        TopicsResponse resp = new TopicsResponse();
+        Boolean topics;
+
+        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+        Iterator<String> keys = jsonRqObj.keys();
+
+        try {
+            while(keys.hasNext()) {
+                String key = keys.next();
+
+                JSONArray obj = (JSONArray) jsonRqObj.get(key);
+                for (int i = 0; i < obj.length(); i++) {
+                    JSONObject json = obj.getJSONObject(i);
+
+                    String topicString = json.get("topic").toString();
+                    String status = json.get("status").toString();
+                    topics = mongo.updateTopic(name, topicString, status);
+                }
+            }
+
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to update topic");
+        }
+
+        return Response.ok("Topics for run ID: " + name + " Updated").build();
+    }
 
 
     @PUT
@@ -313,5 +351,7 @@ public class SaffronAPI{
         }
         return crunchifyBuilder;
     }
+
+
 
 }

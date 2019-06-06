@@ -11,6 +11,7 @@ public class TopicResponse {
     private double score;
     private List<String> mvList;
     private String id;
+    private String status;
 
 
     public void setTopicString(String topicString) {
@@ -19,6 +20,14 @@ public class TopicResponse {
 
     public String getTopicString() {
         return topicString;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getStatus() {
+        return status;
     }
 
     public void setOccurrences(Integer occurrences) {
