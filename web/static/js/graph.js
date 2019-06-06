@@ -6,6 +6,7 @@ var force = d3.layout.force()
     .linkDistance(80)
     .charge(-80)
     .gravity(.08)
+    .alpha(0)
     .size([width, height])
     .on("tick", tick);
 
@@ -202,13 +203,22 @@ function tick() {
       .attr("x2", function(d) { return d.target.x; })
       .attr("y2", function(d) { return d.target.y; });
 
-  node.attr("transform", function(d) { 
-      if(d.root == rootLabel) {
-          d.x = width/2;
-          d.y = height/2;
-      }
-      return "translate(" + d.x + "," + d.y + ")"; 
-  });
+  // Calming down initial tick of a force layout
+  // if the tick is needed, toggle comments the following lines
+  // node.attr("transform", function(d) { 
+  //     if(d.root == rootLabel) {
+  //         d.x = width/2;
+  //         d.y = height/2;
+  //     }
+  //     return "translate(" + d.x + "," + d.y + ")"; 
+  // });
+  var k = 0;
+  while ((force.alpha() > 1e-2) && (k < 150)) {
+    force.tick();
+    k = k + 1;
+  }
+  node.attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+  // end calming down initial tick of a force layout
 }
 
 function componentToHex(c) {
