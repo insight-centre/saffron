@@ -137,12 +137,15 @@ function main(o, data) {
   } else {
     root = data;
   }
-    
-  initialize(root);
-  accumulate(root);
-  layout(root);
-  console.log(root);
-  display(root);
+  
+  if(root){
+    initialize(root);
+    accumulate(root);
+    layout(root);
+    // console.log(root);
+    display(root);
+  }
+  
 
   if (window.parent !== window) {
     var myheight = document.documentElement.scrollHeight || document.body.scrollHeight;
@@ -320,7 +323,7 @@ function convertData(data) {
 if (window.location.hash === "") {
     d3.json("/" + saffronDatasetName + "/taxonomy_with_size", function(err, res) {
         if (!err) {
-            console.log(res);
+            // console.log(res);
             //var data = d3.nest().key(function(d) { return d.region; }).key(function(d) { return d.subregion; }).entries(res);
             var data = convertData(res);
             main({title: "Topic Frequencies"}, data);
