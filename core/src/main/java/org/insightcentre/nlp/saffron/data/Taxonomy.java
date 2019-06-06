@@ -29,7 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
     /** The topic string of this node in the taxonomy */
-    public final String root;
+    public String root;
     /** The score associated with this topic (its importance) */
     public final double score;
     /** The score relating this node to its parent (NaN if there is no parent) */
@@ -72,6 +72,16 @@ public class Taxonomy {
     public String getRoot() {
         return root;
     }
+
+    /**
+     * Set the string for the root topic
+     * @return
+     */
+    public void setRoot(String root) {
+
+        this.root = root;
+    }
+
 
     /**
      * Get the double of linkScore
@@ -359,6 +369,27 @@ public class Taxonomy {
                     newChildren.add(t.deepCopyNewParent(topicString, newParent, newParentTaxo));
                 }
 
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopyNewTopic(String topicString, String newTopicString) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+
+            if (!t.root.equals(topicString)) {
+
+                newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
+
+            } else {
+                t.setRoot(newTopicString);
+                newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
             }
         }
         return new Taxonomy(this.root, this.score, this.linkScore, newChildren);

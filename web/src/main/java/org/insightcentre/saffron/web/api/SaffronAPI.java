@@ -238,7 +238,6 @@ public class SaffronAPI{
         MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
         StringBuilder crunchifyBuilder = getJsonData(incomingData);
 
-        System.out.println("Data Received: " + crunchifyBuilder.toString());
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
 
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>());
@@ -258,18 +257,29 @@ public class SaffronAPI{
                 for (int i = 0; i < obj.length(); i++) {
                     JSONObject json = obj.getJSONObject(i);
                     String topicString = json.get("id").toString();
+                    String newTopicString = json.get("new_id").toString();
                     String newParentString = json.get("new_parent").toString();
+                    String oldParentString = json.get("current_parent").toString();
+                    if(!newParentString.equals(oldParentString)) {
+                        Taxonomy topic = data.getTaxoDescendent(topicString);
+                        Taxonomy newParent = data.getTaxoDescendent(newParentString);
+                        newParent = newParent.addChild(topic, newParent);
 
-                    Taxonomy topic = data.getTaxoDescendent(topicString);
-                    Taxonomy newParent = data.getTaxoDescendent(newParentString);
-                    newParent = newParent.addChild(topic, newParent);
+                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, newParent);
 
-                    finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, newParent);
+                        returnJson.put("id", name);
+                        returnJson.put("success", true);
+                        returnJson.put("new_parent", newParentString);
+                        returnJsonArray.put(returnJson);
+                    } else {
+                        System.out.println("Change topic name");
+                        Taxonomy topic = data.getTaxoDescendent(topicString);
+                        System.out.println(topic);
+                        topic.setRoot(newTopicString);
+                        finalTaxon = originalTaxo.deepCopyNewTopic(topicString, newTopicString);
+                    }
 
-                    returnJson.put("id", name);
-                    returnJson.put("success", true);
-                    returnJson.put("new_parent", newParentString);
-                    returnJsonArray.put(returnJson);
+
                 }
             }
 
