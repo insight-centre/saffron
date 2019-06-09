@@ -10,6 +10,7 @@ import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 
 import org.bson.conversions.Bson;
@@ -277,6 +278,23 @@ public class MongoDBHandler implements Closeable {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
         Bson update = set("status", status);
+
+
+        FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+        findOptions.upsert(true);
+        findOptions.returnDocument(ReturnDocument.AFTER);
+
+        //System.out.println("Here : " + topicsCollection.findOneAndUpdate(condition, updateDoc));
+        topicsCollection.findOneAndUpdate(condition, update, findOptions);
+        return true;
+    }
+
+
+    public boolean updateTopicName(String id, String topic, String newTopic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+        Bson update = combine(set("topic", newTopic), set("topicString", newTopic));
+
 
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();

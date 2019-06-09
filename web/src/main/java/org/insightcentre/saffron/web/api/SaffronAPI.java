@@ -240,7 +240,7 @@ public class SaffronAPI{
 
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
 
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>());
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), "none");
         Iterator<String> keys = jsonRqObj.keys();
 
         try {
@@ -277,6 +277,11 @@ public class SaffronAPI{
                         System.out.println(topic);
                         topic.setRoot(newTopicString);
                         finalTaxon = originalTaxo.deepCopyNewTopic(topicString, newTopicString);
+                        mongo.updateTopicName(name, topicString, newTopicString, "accepted");
+                        returnJson.put("id", name);
+                        returnJson.put("success", true);
+                        returnJson.put("new_id", newTopicString);
+                        returnJsonArray.put(returnJson);
                     }
 
 
@@ -306,27 +311,34 @@ public class SaffronAPI{
     public Response updateTopic(@PathParam("param") String name, InputStream incomingData) {
 
         MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
-        List<TopicResponse> topicsResponse = new ArrayList<>();
         StringBuilder crunchifyBuilder = getJsonData(incomingData);
-        TopicsResponse resp = new TopicsResponse();
-        Boolean topics;
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), "none");
 
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
         Iterator<String> keys = jsonRqObj.keys();
 
         try {
+
+            SaffronData data;
+            data = SaffronData.fromMongo(name);
+            Taxonomy originalTaxo = data.getTaxonomy();
+
             while(keys.hasNext()) {
                 String key = keys.next();
 
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
                 for (int i = 0; i < obj.length(); i++) {
                     JSONObject json = obj.getJSONObject(i);
-
                     String topicString = json.get("topic").toString();
                     String status = json.get("status").toString();
-                    topics = mongo.updateTopic(name, topicString, status);
+                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, status);
+
+                    mongo.updateTopic(name, topicString, status);
                 }
             }
+
+            mongo.updateTaxonomy(name, new Date(), finalTaxon);
+
 
 
         } catch (Exception x) {
