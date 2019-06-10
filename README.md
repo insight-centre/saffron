@@ -128,3 +128,12 @@ Documentation
 =============
 
 The JavaDoc is available at https://johmcc.pages.insight-centre.org/saffron/
+
+API Documentation
+=================
+
+For full API documentation, see here:
+
+https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
+
+
