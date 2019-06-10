@@ -52,8 +52,8 @@ angular.module('app').component('topic', {
         $http.get('/' + saffronDatasetName + '/parents?topic=' + topic.topic_string).then(
             function (response) {
                 ctrl.parent = response.data[response.data.length - 1];
-                ctrl.current_parent_id = ctrl.saffronDatasetName + '_' + ctrl.parent;
-                ctrl.parent_id = ctrl.saffronDatasetName + '_' + ctrl.parent;
+                ctrl.current_parent_id = ctrl.parent;
+                ctrl.parent_id = ctrl.parent;
                 // console.log(response);
                 console.log("Got parent name: " + ctrl.parent_id);
             },
@@ -70,7 +70,7 @@ angular.module('app').component('topic', {
                 for (let t = 0; t < response.data.length; t++) {
                     ctrl.topics.push({
                         "topic_string": response.data[t].topicString,
-                        "topic_id": response.data[t].id,
+                        "topic_id": response.data[t].topicString,
                         "pos": (t + 1)
                     });
                 }
@@ -96,6 +96,8 @@ angular.module('app').component('topic', {
                     ]
                 };
 
+            console.log(JsonData);
+
             $http.post('/api/v1/run/' + saffronDatasetName + '/topics/changeroot', JsonData).then(
                 function (response) {
                     console.log(response);
@@ -112,7 +114,7 @@ angular.module('app').component('topic', {
         $scope.ApiDeleteTopic = function(topic_string, $event){
             $event.preventDefault();
             // this needs to be discussed with Andy for deleting the main topic
-            $http.delete('/api/v1/run/' + saffronDatasetName + '/topics/' + saffronDatasetName + '_' + topic_string).then(
+            $http.delete('/api/v1/run/' + saffronDatasetName + '/topics/' + topic_string).then(
                 function (response) {
                     console.log(response);
                     console.log("Deleted: " + topic_string);
