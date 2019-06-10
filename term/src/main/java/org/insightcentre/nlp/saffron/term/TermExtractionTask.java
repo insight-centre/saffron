@@ -75,7 +75,7 @@ public class TermExtractionTask implements Runnable {
                 String[] tokens;
                 try {
                     tokens = tokenizer.get().tokenize(sentence);
-                } catch(Exception x) {
+                } catch (Exception x) {
                     System.err.println(sentence);
                     throw x;
                 }
@@ -95,42 +95,20 @@ public class TermExtractionTask implements Runnable {
                             }
                             if (headTokenFinal) {
                                 if (endTokens.contains(tags[j]) && nonStop) {
-                                    if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
-                                        String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
-                                        if (!lemmas[j].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
-                                            tokens2[tokens2.length - 1] = lemmas[j];
-                                        }
-                                        processTerm(tokens2, 0, j - i, docTopicMap,
-                                                localCasing);
-                                    } else {
-                                        processTerm(tokens, i, j, docTopicMap,
-                                                localCasing);
-                                    }
+                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
                                 if (!preceedingTokens.contains(tags[j]) && (i == j || !middleTokens.contains(tags[j]))) {
                                     break;
                                 }
                             } else {
-                                if (!endTokens.contains(tags[i])) {
-                                    break;
+                                if (j == i && endTokens.contains(tags[j]) && nonStop) {
+                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
-                                if (preceedingTokens.contains(tags[j]) && nonStop && j - i + 1 >= ngramMin) {
-                                    if (lemmatizer != null && lemmatizer.get() != null) {
-                                        String[] lemmas = lemmatizer.get().lemmatize(tokens, tags);
-                                        String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
-                                        if (!lemmas[i].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
-                                            tokens2[0] = lemmas[i];
-                                        }
-                                        processTerm(tokens2, 0, j - i, docTopicMap,
-                                                localCasing);
-                                    } else {
-                                        processTerm(tokens, i, j, docTopicMap,
-                                                localCasing);
-                                    }
+                                if (preceedingTokens.contains(tags[j]) && j != i) {
+                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
-                                if (!preceedingTokens.contains(tags[j])
-                                        && (i == j || !middleTokens.contains(tags[j]))) {
+                                if (j == i && !endTokens.contains(tags[j])
+                                        || j > i && !middleTokens.contains(tags[j]) && !preceedingTokens.contains(tags[j])) {
                                     break;
                                 }
                             }
@@ -142,6 +120,7 @@ public class TermExtractionTask implements Runnable {
 
             stats.documents = 1;
 
+            System.err.println(stats);
             synchronized (summary) {
                 summary.add(stats);
             }
@@ -155,6 +134,37 @@ public class TermExtractionTask implements Runnable {
             }
         } catch (Exception x) {
             x.printStackTrace();
+        }
+    }
+
+    private void emitTerm(int j, int i, String[] tokens, String[] tags,
+            final HashMap<String, DocumentTopic> docTopicMap, CasingStats localCasing,
+            boolean headTokenFinal) {
+        if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
+            String[] ltoks = Arrays.copyOf(tokens, tokens.length);
+            for (int n = 0; n < ltoks.length; n++) {
+                ltoks[n] = ltoks[n].toLowerCase();
+            }
+            String[] lemmas = lemmatizer.get().lemmatize(ltoks, tags);
+            if(tokens[i].equals("Ghaeilge")) {
+                System.err.println(Arrays.toString(tokens));
+                System.err.println(Arrays.toString(lemmas));
+            }
+            String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
+            if (headTokenFinal) {
+                if (!lemmas[j].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
+                    tokens2[tokens2.length - 1] = lemmas[j];
+                }
+            } else {
+                if (!lemmas[i].equals("O")) {
+                    tokens2[0] = lemmas[i];
+                }
+            }
+            processTerm(tokens2, 0, j - i, docTopicMap,
+                    localCasing);
+        } else {
+            processTerm(tokens, i, j, docTopicMap,
+                    localCasing);
         }
     }
 
@@ -173,7 +183,7 @@ public class TermExtractionTask implements Runnable {
     private boolean isValidTerm(String term) {
         return !blacklist.contains(term.toLowerCase()) && term.matches(".*\\p{Alpha}.*")
                 && (term.matches("\\p{Alpha}.*") || term.matches(".*\\p{Alpha}"))
-                && term.length() > 1                
+                && term.length() > 1
                 && !term.startsWith("http://") && !term.startsWith("https://");
     }
 
@@ -182,11 +192,11 @@ public class TermExtractionTask implements Runnable {
             CasingStats localCasing) {
         if (j - i >= this.ngramMin - 1) {
             boolean allValid = true;
-            for(int k = i; k <= j; k++) {
+            for (int k = i; k <= j; k++) {
                 allValid = allValid && isValidTerm(tokens[k]);
             }
-                String termStrOrig = join(tokens, i, j);
-                String termStr = termStrOrig.toLowerCase();
+            String termStrOrig = join(tokens, i, j);
+            String termStr = termStrOrig.toLowerCase();
             if (allValid && termStr.length() > 2) {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
@@ -201,6 +211,5 @@ public class TermExtractionTask implements Runnable {
         }
 
     }
-
 
 }

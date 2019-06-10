@@ -7,15 +7,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
+import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 
 /**
  * Implements a simple greedy search for the best taxonomy
  *
  * @author John McCrae
  */
-public class Greedy implements TaxonomySearch{
+public class Greedy implements TaxonomySearch {
 
     private final TaxonomyScore emptyScore;
 
@@ -24,7 +26,8 @@ public class Greedy implements TaxonomySearch{
     }
 
     @Override
-    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+            Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(topicMap.size() == 0) {
@@ -40,8 +43,16 @@ public class Greedy implements TaxonomySearch{
                 }
             }
         }
+        candidates.removeAll(blackList);
 
         Solution soln = Solution.empty(topicMap.keySet());
+        for (TaxoLink sp : whiteList) {
+            soln = soln.add(sp.top, sp.bottom,
+                    topicMap.get(sp.top).score,
+                    topicMap.get(sp.bottom).score,
+                    score.deltaScore(sp));
+            score = score.next(sp.top, sp.bottom, soln);
+        }
         SOLN_LOOP:
         while (!soln.isComplete()) {
             final Object2DoubleMap<TaxoLink> scores = new Object2DoubleOpenHashMap<>();
@@ -70,8 +81,8 @@ public class Greedy implements TaxonomySearch{
                     continue SOLN_LOOP;
                 }
             }
-            System.err.println(soln);
-            for(TaxoLink candidate : candidates) {
+            //System.err.println(soln);
+            for (TaxoLink candidate : candidates) {
                 System.err.println(candidate);
             }
             throw new RuntimeException("Failed to find solution");

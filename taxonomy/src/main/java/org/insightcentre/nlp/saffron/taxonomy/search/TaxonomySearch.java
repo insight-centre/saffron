@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
@@ -16,7 +17,12 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  * @author John McCrae
  */
 public interface TaxonomySearch {
-    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap);
+    public default Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+        return extractTaxonomyWithBlackWhiteList(topicMap, Collections.EMPTY_SET, Collections.EMPTY_SET);
+    }
+    
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap, 
+            Set<TaxoLink> whiteList, Set<TaxoLink> blackList);
     
     
     

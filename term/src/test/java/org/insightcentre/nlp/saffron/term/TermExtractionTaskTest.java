@@ -428,4 +428,134 @@ public class TermExtractionTaskTest {
             assertEquals(expResult, result);
         }
     }
+
+    @Test
+    public void testIrish() throws Exception {
+        String text = "Go raibh maith agat , a chara .";
+        String[] tokens = new String[]{"Go", "raibh", "maith", "agat", ",", "a", "chara", "."};
+        final String[] tags = new String[]{"O", "O", "O", "O", "O", "O", "B", "O"};
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
+        when(_tokenizer.tokenize(text)).thenReturn(tokens);
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn(text);
+        final Lemmatizer lemmatizer = new Lemmatizer() {
+            @Override
+            public String[] lemmatize(String[] toks, String[] tags) {
+                return toks;
+            }
+
+            @Override
+            public List<List<String>> lemmatize(List<String> toks, List<String> tags) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+        FrequencyStats result = new FrequencyStats();
+        Set<String> blacklist = new HashSet<>();
+        blacklist.add("@test_of");
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(Arrays.asList(new String[]{"I"})),
+                new HashSet<String>(Arrays.asList(new String[]{"I"})),
+                new HashSet<String>(Arrays.asList(new String[]{"B"})),
+                false, result, null, null, blacklist);
+        FrequencyStats expResult = new FrequencyStats();
+        expResult.docFrequency.put("chara", 1);
+        expResult.termFrequency.put("chara", 1);
+        expResult.tokens = 8;
+        expResult.documents = 1;
+        instance.run();
+        assertEquals(expResult, result);
+    }
+
+    @Test
+    public void testIrishTerms() {
+        String text = "an Rialtais don Ghaeilge . i leith na Gaeilge .";
+        String[] tokens = new String[]{"an", "Rialtais", "don", "Ghaeilge", ".", "i", "leith", "na", "Gaeilge", "."};
+        final String[] tags = new String[]{"D", "N", "P", "N", "O", "P", "N", "D", "N", "P"};
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        Tokenizer _tokenizer = mock(Tokenizer.class);
+        when(_tokenizer.tokenize(text)).thenReturn(tokens);
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn(text);
+        final Lemmatizer lemmatizer = new Lemmatizer() {
+            @Override
+            public String[] lemmatize(String[] toks, String[] tags) {
+                for(int i = 0; i < toks.length; i++) {
+                    if(toks[i].equalsIgnoreCase("Ghaeilge")) {
+                        toks[i] = "gaeilge";
+                    }
+                }
+                return toks;
+            }
+
+            @Override
+            public List<List<String>> lemmatize(List<String> toks, List<String> tags) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+        FrequencyStats result = new FrequencyStats();
+        Set<String> blacklist = new HashSet<>();
+        blacklist.add("@test_of");
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(Arrays.asList(new String[]{"N","A"})),
+                new HashSet<String>(Arrays.asList(new String[]{"N","A","D"})),
+                new HashSet<String>(Arrays.asList(new String[]{"N"})),
+                false, result, null, null, blacklist);
+        FrequencyStats expResult = new FrequencyStats();
+        expResult.docFrequency.put("rialtais", 1); 
+        expResult.termFrequency.put("rialtais", 1);
+        expResult.docFrequency.put("gaeilge", 1); 
+        expResult.termFrequency.put("gaeilge", 2);
+        expResult.docFrequency.put("leith", 1); 
+        expResult.termFrequency.put("leith", 1);
+        expResult.docFrequency.put("leith na gaeilge", 1); 
+        expResult.termFrequency.put("leith na gaeilge", 1);
+        expResult.tokens = 10;
+        expResult.documents = 1;
+        instance.run();
+        assertEquals(expResult, result);
+        
+    }
 }

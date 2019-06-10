@@ -1,15 +1,20 @@
 package org.insightcentre.nlp.saffron.term;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.util.Sequence;
 import opennlp.tools.util.Span;
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.term.TermExtraction.Result;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -324,6 +329,99 @@ public class TermExtractionTest {
         Result res = instance.extractTopics(searcher);
         assert(res.topics.size() > 1);
     }
+    
+    
+    /**
+     * Test of extractTopics method, of class TermExtraction.
+     */
+    @Test
+    public void testExtractTopicsWithBlackWhite() throws Exception {
+        System.out.println("extractStatsBlackWhite");
+        final POSTagger tagger = new POSTagger() {
+            @Override
+            public String[] tag(String[] strings) {
+                String[] x = new String[strings.length];
+                for (int i = 0; i < strings.length; i++) {
+                    if ("test".equals(strings[i]) || "time".equals(strings[i])) {
+                        x[i] = "NN";
+                    } else if ("good".equals(strings[i])) {
+                        x[i] = "JJ";
+                    } else {
+                        x[i] = "DT";
+                    }
+                }
+                return x;
+            }
 
+            @Override
+            public String[] tag(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
 
+            @Override
+            public Sequence[] topKSequences(String[] strings) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+        Tokenizer _tokenizer = new Tokenizer() {
+            @Override
+            public String[] tokenize(String string) {
+                return string.split(" ");
+            }
+
+            @Override
+            public Span[] tokenizePos(String string) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        Corpus searcher = new Corpus() {
+            @Override
+            public Iterable<Document> getDocuments() {
+                return Arrays.asList(new Document[]{
+                    mkDoc("this is a test"),
+                    mkDoc("this is also a test"),
+                    mkDoc("this is a good test"),
+                    mkDoc("a good time is also a test")
+                });
+            }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            
+        };
+        
+        TermExtractionConfiguration config = new TermExtractionConfiguration();
+        TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
+            @Override
+            protected POSTagger initialValue() {
+                return tagger;
+            }
+
+        }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
+                config.preceedingTokens, config.headTokens, config.middleTokens, 
+            config.ngramMin, config.ngramMax, config.headTokenFinal, 
+            config.method, config.features, 
+            null, 1, config.baseFeature, config.blacklist, 
+            config.oneTopicPerDoc);
+        Set<String> whiteList = Collections.singleton("good time");
+        Set<String> blackList = Collections.singleton("test");
+        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
+        
+        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time")));
+    }
 }

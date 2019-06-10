@@ -37,7 +37,6 @@ public class Launcher {
     }
 
     public static void main(String[] args) {
-        args = "-l tmp.log".split(" ");
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {

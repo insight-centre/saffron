@@ -236,4 +236,85 @@ public class TaxonomyTest {
     	
     	assertEquals("The average node degree is different from expected", 28.0/15, taxonomy.avgDegree(), 0.00001);
     }
+    
+    @Test
+    public void testMedianDegree() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The median node degree is different from expected", 1.0, taxonomy.medianDegree(), 0.00001);
+    }
+
+    @Test
+    public void testNodeDegrees() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	Map<String, Integer> expected = new HashMap<String, Integer>();
+    	expected.put("root node", 4);
+    	expected.put("node 10", 1);
+    	expected.put("node 11", 2);
+    	expected.put("node 11-1", 1);
+    	expected.put("node 12", 3);
+    	expected.put("node 12-1", 1);
+    	expected.put("node 12-2", 1);
+    	expected.put("node 13", 4);
+    	expected.put("node 13-1", 3);
+    	expected.put("node 13-1-1", 1);
+    	expected.put("node 13-1-2", 2);
+    	expected.put("node 13-1-2-1", 1);
+    	expected.put("node 13-2", 1);
+    	expected.put("node 13-3", 1);
+    	
+    	Map<String, Integer> actual = taxonomy.nodeDegrees(true);
+    	
+    	assertEquals("The number of nodes returned is incorrect", expected.size(), actual.size());
+    	for(Entry<String, Integer> entry: actual.entrySet()) {
+    		if(!expected.containsKey(entry.getKey())) {
+    			fail("The key " + entry.getKey() + " is not expected in the result");
+    		} else {
+    			assertEquals("The degree of the node '" + entry.getKey() + "' is incorrect",expected.get(entry.getKey()),entry.getValue());
+    		}
+    	}    	
+    }
+    
+    @Test
+    public void testNumberOfLeafNodes() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The number of leaves is different from expected", 8,taxonomy.numberOfLeafNodes());
+    }
+    
+    @Test
+    public void testNumberOfLeafNodes2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue("{"
+    			+ "\"root\": \"root node\","
+    			+ "\"score\": 210.12345,"
+    			+ "\"linkScore\": 0.98765,"
+    			+ "\"children\": []}", Taxonomy.class);
+    	
+    	assertEquals("The number of leaves is different from expected", 0,taxonomy.numberOfLeafNodes());
+    }
+    
+    @Test
+    public void testNumberOfBranchNodes() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
+    	
+    	assertEquals("The number of branch nodes is different from expected", 5,taxonomy.numberOfBranchNodes());
+    }
+    
+    @Test
+    public void testNumberOfBranchNodes2() throws JsonParseException, JsonMappingException, IOException {
+    	ObjectMapper mapper = new ObjectMapper();
+    	final Taxonomy taxonomy = mapper.readValue("{"
+    			+ "\"root\": \"root node\","
+    			+ "\"score\": 210.12345,"
+    			+ "\"linkScore\": 0.98765,"
+    			+ "\"children\": []}", Taxonomy.class);
+    	
+    	assertEquals("The number of branch nodes is different from expected", 0,taxonomy.numberOfBranchNodes());
+    }
 }
