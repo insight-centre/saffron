@@ -167,7 +167,7 @@ public class CorpusTools {
                         public Document next() {
                             File f = iter.next();
                             try {
-                                return DocumentAnalyzer.analyze(f, f.getName().replaceAll(File.separator, "_"));
+                                return DocumentAnalyzer.analyze(f, f.getName().replaceAll("/|\\\\", "_"));
                             } catch (IOException ex) {
                                 throw new RuntimeException(ex);
                             }
@@ -248,7 +248,7 @@ public class CorpusTools {
                                     while (ze.isDirectory() && zes.hasMoreElements()) {
                                         ze = zes.nextElement();
                                     }
-                                    return DocumentAnalyzer.analyze(zip.getInputStream(ze), ze.getName().replaceAll(File.separator, "_"));
+                                    return DocumentAnalyzer.analyze(zip.getInputStream(ze), ze.getName().replaceAll("/|\\\\", "_"));
                                 } catch (IOException x) {
                                     throw new RuntimeException(x);
                                 }
