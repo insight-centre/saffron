@@ -73,10 +73,9 @@ angular.module('app').component('topic', {
                         "topic_id": response.data[t].id,
                         "pos": (t + 1)
                     });
-                    // console.log(response);
-                    // console.log("Got topics: " + ctrl.topics);
-                    console.log("Got topics");
                 }
+                // console.log(response);
+                console.log("Got topic: " + response.data);
             },
             function (response) {
                 console.log(response);
@@ -90,13 +89,14 @@ angular.module('app').component('topic', {
                     "topics": [
                         {
                             "id": old_topic_id,
+                            "new_id": new_topic_name,
                             "current_parent": old_topic_parent,
                             "new_parent": new_topic_parent
                         }
                     ]
                 };
 
-            $http.post('/api/v1/run/' + saffronDatasetName + '/topics/' + old_topic_id, JsonData).then(
+            $http.post('/api/v1/run/' + saffronDatasetName + '/topics/changeroot', JsonData).then(
                 function (response) {
                     console.log(response);
                     console.log("Post topic: " + new_topic_name);
@@ -116,7 +116,7 @@ angular.module('app').component('topic', {
                 function (response) {
                     console.log(response);
                     console.log("Deleted: " + topic_string);
-                    $window.location.href = '/' + saffronDatasetName + '/';
+                    //$window.location.href = '/' + saffronDatasetName + '/';
                 },
                 function (response) {
                     console.log(response);
