@@ -3,25 +3,15 @@ package org.insightcentre.saffron.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-import java.io.BufferedReader;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
+
+import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.mongodb.MongoException;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -50,6 +40,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 /**
  *
@@ -299,6 +290,8 @@ public class Executor extends AbstractHandler {
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
+
+
         final File datasetFolder = new File(parentDirectory, saffronDatasetName);
         if(!datasetFolder.exists()) {
             if(!datasetFolder.mkdirs())
@@ -322,8 +315,10 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
 
+
         _status.setStatusMessage("Writing document topic correspondence");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
+
         data.setDocTopics(res.docTopics);
 
         _status.stage++;
@@ -346,6 +341,7 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Saving linked topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
 
+
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
         ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
@@ -353,6 +349,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
+
         data.setAuthorTopics(authorTopics);
 
         _status.stage++;
@@ -362,6 +359,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving topic connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
+
         data.setTopicSim(topicSimilarity);
 
         _status.stage++;
@@ -371,6 +369,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving author connections");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
+
         data.setAuthorSim(authorSim);
 
         _status.stage++;
@@ -392,6 +391,24 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
         data.setTaxonomy(graph);
+
+        try {
+            String mongoUrl = System.getenv("MONGO_URL");
+            String mongoPort = System.getenv("MONGO_PORT");
+            System.out.println("Mongo:" + mongoUrl + ":" + mongoPort);
+            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), "saffron", "saffron_runs");
+            mongo.addRun(saffronDatasetName, new Date());
+            mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
+            mongo.addTopics(saffronDatasetName, new Date(), topics);
+            mongo.addTopicExtraction(saffronDatasetName, new Date(), res.topics);
+            mongo.addAuthorTopics(saffronDatasetName, new Date(), topics);
+            mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
+            mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
+            mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
+
+        } catch (MongoException ex) {
+            System.out.println("MongoDB not available - starting execution in local mode");
+        }
 
         _status.setStatusMessage("Done");
         _status.completed = true;
