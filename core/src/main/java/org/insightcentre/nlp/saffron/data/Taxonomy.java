@@ -460,15 +460,24 @@ public class Taxonomy {
      * @return A copy of this taxonomy
      */
     public Taxonomy deepCopyNewParent(String topicString, String newParent, Taxonomy newParentTaxo) {
-
+        System.out.println("New Parent = " + newParent);
+        System.out.println("New Parent Topic = " + topicString);
+        System.out.println("New Parent = " + newParentTaxo);
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
             if (!t.root.equals(topicString)) {
 
                 if (t.root.equals(newParent)){
-                    t.children.add(newParentTaxo.children.get(0));
-                    newChildren.add(t.deepCopy());
+                    System.out.println("Adding = " + newParentTaxo.children.get(0));
+                    for (Taxonomy newChild:newParentTaxo.children){
+                        System.out.println("T Root = " + t.root);
+                        if (newChild.root.equals(topicString)){
+                            t.children.add(newChild);
+                            newChildren.add(t.deepCopy());
+                        }
+                    }
+
                 } else {
                     newChildren.add(t.deepCopyNewParent(topicString, newParent, newParentTaxo));
                 }
