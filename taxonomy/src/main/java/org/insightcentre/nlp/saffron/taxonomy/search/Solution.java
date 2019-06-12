@@ -57,13 +57,9 @@ public class Solution {
      * @return
      */
     public Solution add(final String top, final String bottom,
-            final double topScore, final double bottomScore, final double linkScore) {
+                        final double topScore, final double bottomScore, final double linkScore) {
         if (heads.containsKey(bottom)) {
-            if(Double.isNaN(heads.get(bottom).linkScore)) {
-                heads.put(bottom, heads.get(bottom).withLinkScore(linkScore));
-            } else {
-                assert(heads.get(bottom).linkScore == linkScore);
-            }
+
             for (Map.Entry<String, Taxonomy> e : heads.entrySet()) {
                 if (e.getValue().hasDescendent(top)) {
                     if (e.getKey().equals(bottom)) {
@@ -73,13 +69,13 @@ public class Solution {
                     Map<String, Taxonomy> newHeads = new HashMap<>(heads);
                     newHeads.remove(bottom);
                     newHeads.put(e.getKey(),
-                            insertIntoTaxo(newHeads.get(e.getKey()), top, heads.get(bottom).deepCopy()));
+                            insertIntoTaxo(newHeads.get(e.getKey()), top, heads.get(bottom).withLinkScore(linkScore).deepCopy()));
                     return new Solution(newHeads, topics, size);
                 }
             }
             // top is not yet in taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom))), "none");
+            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), "none");
             newHeads.remove(bottom);
             newHeads.put(top, t2);
             return new Solution(newHeads, topics, size + 1);
