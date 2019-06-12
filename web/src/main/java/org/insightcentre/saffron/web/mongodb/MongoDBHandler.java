@@ -1,5 +1,7 @@
 package org.insightcentre.saffron.web.mongodb;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -21,8 +23,10 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 import java.io.Closeable;
+import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
@@ -252,12 +256,27 @@ public class MongoDBHandler implements Closeable {
     }
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
-        JSONObject jsonObject = new JSONObject(graph);
-        Document doc = Document.parse( jsonObject.toString() );
-        doc.append("id", id);
-        doc.append("date", date);
-        taxonomyCollection.insertOne(doc);
-        return true;
+
+            JSONObject jsonObject = new JSONObject(graph);
+            ObjectMapper mapper = new ObjectMapper();
+
+            ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
+        try{
+            System.out.println("Testing 123");
+            System.out.println(mapper.writeValueAsString(graph));
+            Document doc = Document.parse( mapper.writeValueAsString(graph) );
+            doc.append("id", id);
+            doc.append("date", date);
+            taxonomyCollection.insertOne(doc);
+            return true;
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+
+        return false;
+
     }
 
     public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
