@@ -293,6 +293,8 @@ public class Browser extends AbstractHandler {
                         String data = new String(Files.readAllBytes(Paths.get("static/topic.html")));
                     if (topic != null) {
                         data = data.replaceAll("\\{\\{topic\\}\\}", mapper.writeValueAsString(topic));
+                    } else {
+                        data = data.replaceAll("\\{\\{topic\\}\\}", "{}");
                     }
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
