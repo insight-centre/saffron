@@ -40,6 +40,8 @@ public class Taxonomy {
     /** The status of the topic string */
     public String status;
 
+    public List<Taxonomy> parent;
+
 
 
     @JsonCreator
@@ -160,6 +162,24 @@ public class Taxonomy {
                 return d;
         }
         return null;
+    }
+
+    /**
+     * Search this taxonomy for a taxonomy with a given root
+     * @param name The name to search for
+     * @return A taxonomy whose root is name or null if no taxonomy is found
+     */
+    public Taxonomy antecendent(String name, String previous, Taxonomy previousTaxo, Taxonomy current) {
+          if(this.root.equals(name)){
+
+            return previousTaxo;
+          }
+          for(Taxonomy child : children) {
+              Taxonomy d = child.antecendent(name, previous, this, child);
+              if (d != null)
+                return d;
+          }
+          return null;
     }
 
 

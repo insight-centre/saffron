@@ -200,6 +200,35 @@ public class SaffronAPI{
     }
 
 
+    @GET
+    @JSONP
+    @Path("/{param}/topics/{topic_id}/parent")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTopicParent(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), "none");
+
+        try {
+            SaffronData data;
+            data = SaffronData.fromMongo(runId);
+            Taxonomy originalTaxo = data.getTaxonomy();
+            int count = 0;
+            String previousTopicId = "";
+            Taxonomy antecendent = originalTaxo.antecendent(topic_id,"", originalTaxo, null);
+            System.out.println("Descendent = " + antecendent);
+            String json = new Gson().toJson(antecendent);
+            return Response.ok(json).build();
+
+
+        } catch (Exception e) {
+
+        }
+
+        return Response.ok().build();
+    }
+
+
 
 
     @DELETE
