@@ -286,16 +286,16 @@ public class Browser extends AbstractHandler {
                 } else if (target.startsWith("/topic/")) {
                     final String topicString = decode(target.substring(7));
                     final Topic topic = saffron.getTopic(topicString);
-                    if (topic != null) {
 
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
                         String data = new String(Files.readAllBytes(Paths.get("static/topic.html")));
+                    if (topic != null) {
                         data = data.replaceAll("\\{\\{topic\\}\\}", mapper.writeValueAsString(topic));
+                    }
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
-                    }
                 } else if (target.startsWith("/author/")) {
                     final String authorString = decode(target.substring(8));
                     final Author author = saffron.getAuthor(authorString);
