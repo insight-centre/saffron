@@ -400,9 +400,7 @@ public class SaffronData {
 
         MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
         System.out.print("ID = " + runId);
-        List<AuthorAuthor> authorSim = mongo.getAuthorSimilarity(runId);
-        System.out.print("authorSim = " + authorSim);
-        saffron.setAuthorSim(authorSim);
+
 
         FindIterable<org.bson.Document> docs = mongo.getTaxonomy(runId);
         for (org.bson.Document doc : docs) {
@@ -411,30 +409,6 @@ public class SaffronData {
             saffron.setTaxonomy(graph);
 
         }
-
-
-        List<TopicTopic> topicSim = mongo.getTopicsSimilarity(runId);
-        saffron.setTopicSim(topicSim);
-        System.out.print("topicSim = " + topicSim);
-
-        List<AuthorTopic> authorTopics = mongo.getAuthorTopics(runId);
-        saffron.setAuthorTopics(authorTopics);
-        System.out.print("authorTopics = " + authorTopics);
-
-        List<DocumentTopic> docTopics = mongo.getDocumentTopicCorrespondence(runId);
-        saffron.setDocTopics(docTopics);
-        System.out.print("docTopics = " + docTopics);
-
-//        FindIterable<org.bson.Document> topics = mongo.getTopics(runId);
-//        saffron.setTopics(topics);
-//        System.out.print("topics = " + topics);
-//
-//        File indexFile = new File(directory, "index");
-//        if (!indexFile.exists()) {
-//            throw new FileNotFoundException("Could not find index");
-//        }
-//
-//        saffron.setCorpus(DocumentSearcherFactory.load(indexFile));
 
         return saffron;
     }
