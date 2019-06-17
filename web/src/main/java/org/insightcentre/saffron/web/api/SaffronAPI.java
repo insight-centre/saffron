@@ -13,8 +13,6 @@ import com.google.gson.Gson;
 import com.mongodb.client.FindIterable;
 import io.swagger.annotations.*;
 import org.bson.Document;
-import org.bson.json.JsonMode;
-import org.bson.json.JsonWriterSettings;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.saffron.web.SaffronData;
@@ -639,6 +637,45 @@ public class SaffronAPI{
         TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
         try {
             runs = mongo.getDocumentTopicCorrespondenceForTopic(name, topicId);
+            for (Document doc : runs) {
+
+                TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setAcronym(doc.getString("acronym"));
+                entity.setOccurrences(doc.getInteger("occurences"));
+                entity.setPattern(doc.getString("pattern"));
+                entity.setTfidf(doc.getString("tfidf"));
+                entity.setTopic(doc.getString("topic"));
+                entity.setDocumentId(doc.getString("document_id"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+
+    }
+
+    @GET
+    @Path("/{param}/docs/{document_id}")
+    public Response getTopicCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
+        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        try {
+            runs = mongo.getDocumentTopicCorrespondenceForDocument(name, documentId);
             for (Document doc : runs) {
 
                 TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();

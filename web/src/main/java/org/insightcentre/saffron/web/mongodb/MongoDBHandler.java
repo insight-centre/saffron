@@ -146,7 +146,13 @@ public class MongoDBHandler implements Closeable {
 
     public FindIterable<Document> getDocumentTopicCorrespondenceForTopic(String runId, String topicId) {
 
-        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("topicId", topicId)));
+        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("topic", topicId)));
+    }
+
+
+    public FindIterable<Document> getDocumentTopicCorrespondenceForDocument(String runId, String docId) {
+        System.out.println("Document = " + docId);
+        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
     }
 
     public boolean addTopics(String id, Date date, List<Topic> topics) {
