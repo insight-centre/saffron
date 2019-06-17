@@ -252,6 +252,12 @@ public class MongoDBHandler implements Closeable {
         return topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic1), eq("topic2", topic2)));
     }
 
+    public FindIterable<Document> getTopicsSimilarityForTopic(String runId, String topic) {
+        Document document = new Document();
+        document.put("run", runId);
+        return topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic)));
+    }
+
     public boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim) {
         Document document = new Document();
 
