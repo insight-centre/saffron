@@ -475,6 +475,44 @@ public class SaffronAPI{
         return Response.ok("OK").build();
     }
 
+    @GET
+    @Path("/{param}/authortopics/{topic_id}")
+    public Response getAuthorTopics(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<AuthorTopicsResponse> topicsResponse = new ArrayList<>();
+        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        try {
+            runs = mongo.getAuthorTopicsForTopic(name, topicId);
+            for (Document doc : runs) {
+
+                AuthorTopicsResponse entity = new AuthorTopicsResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setAuthorTopic(doc.getString("author_topic"));
+                entity.setMvList((List<String>) doc.get("mvList"));
+                entity.setTopicString(doc.getString("topicString"));
+                entity.setOccurrences(doc.getInteger("occurences"));
+                entity.setMatches(doc.getInteger("matches"));
+                entity.setScore(doc.getDouble("score"));
+                entity.setDbpediaUrl(doc.getString("dbpedia_url"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+    }
+
 
     @GET
     @Path("/{param}/authorsimilarity/")
@@ -515,6 +553,44 @@ public class SaffronAPI{
 
 
     @GET
+    @Path("/{param}/authorsimilarity/{topic1}/{topic2}")
+    public Response getAuthorSimilarityForTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<AuthorSimilarityResponse> topicsResponse = new ArrayList<>();
+        AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
+        try {
+            runs = mongo.getAuthorSimilarityForTopic(name, topic1, topic2);
+            for (Document doc : runs) {
+
+                AuthorSimilarityResponse entity = new AuthorSimilarityResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setSimilarity(doc.getDouble("similarity"));
+                entity.setTopicString1(doc.getString("topic1"));
+                entity.setTopicString2(doc.getString("topic2"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+
+    }
+
+
+    @GET
     @Path("/{param}/topiccorrespondence/")
     public Response getTopicCorrespondence(@PathParam("param") String name) {
         MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
@@ -523,6 +599,46 @@ public class SaffronAPI{
         TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
         try {
             runs = mongo.getDocumentTopicCorrespondence(name);
+            for (Document doc : runs) {
+
+                TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setAcronym(doc.getString("acronym"));
+                entity.setOccurrences(doc.getInteger("occurences"));
+                entity.setPattern(doc.getString("pattern"));
+                entity.setTfidf(doc.getString("tfidf"));
+                entity.setTopic(doc.getString("topic"));
+                entity.setDocumentId(doc.getString("document_id"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+
+    }
+
+
+    @GET
+    @Path("/{param}/topiccorrespondence/{topic_id}")
+    public Response getTopicCorrespondenceForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
+        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        try {
+            runs = mongo.getDocumentTopicCorrespondenceForTopic(name, topicId);
             for (Document doc : runs) {
 
                 TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
@@ -594,6 +710,47 @@ public class SaffronAPI{
     }
 
 
+
+    @GET
+    @Path("/{param}/topicextraction/{topic_id}")
+    public Response getTopicExtractionForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<TopicExtractionResponse> topicsResponse = new ArrayList<>();
+        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
+        try {
+            runs = mongo.getTopicExtractionForTopic(name, topicId);
+            for (Document doc : runs) {
+
+                TopicExtractionResponse entity = new TopicExtractionResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setScore(doc.getDouble("score"));
+                entity.setTopic(doc.getString("topic"));
+                entity.setDbpediaUrl(doc.getString("dbpedia_url"));
+                entity.setMvList((List<String>) doc.get("mvList"));
+                entity.setOccurrences(doc.getInteger("occurrences"));
+                entity.setMatches(doc.getInteger("matches"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+
+    }
+
+
     @GET
     @Path("/{param}/topicsimilarity/")
     @Produces(MediaType.APPLICATION_JSON)
@@ -604,6 +761,46 @@ public class SaffronAPI{
         TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
         try {
             runs = mongo.getTopicsSimilarity(name);
+
+            for (Document doc : runs) {
+
+                TopicSimilarityResponse entity = new TopicSimilarityResponse();
+                entity.setId(doc.getString("_id"));
+                entity.setRun(doc.getString("run"));
+                entity.setRunDate(doc.getDate("run_date"));
+                entity.setSimilarity(doc.getDouble("similarity"));
+                entity.setTopicString1(doc.getString("topic1"));
+                entity.setTopicString2(doc.getString("topic2"));
+
+                topicsResponse.add(entity);
+            }
+            returnEntity.setTopics(topicsResponse);
+            mongo.close();
+
+
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+
+    }
+
+    @GET
+    @Path("/{param}/topicsimilarity/{topic1}/{topic2}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getTopicSimilarityBetweenTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
+        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        FindIterable<Document> runs;
+        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
+        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        try {
+            runs = mongo.getTopicsSimilarityBetweenTopics(name, topic1, topic2);
 
             for (Document doc : runs) {
 

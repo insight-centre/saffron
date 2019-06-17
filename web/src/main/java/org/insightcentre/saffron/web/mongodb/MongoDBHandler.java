@@ -93,10 +93,13 @@ public class MongoDBHandler implements Closeable {
 
 
     public FindIterable<Document> getTopicExtraction(String runId) {
-        Document document = new Document();
-        document.put("run", runId);
         return topicsExtractionCollection.find(and(eq("run", runId)));
     }
+
+    public FindIterable<Document> getTopicExtractionForTopic(String runId, String topicId) {
+        return topicsExtractionCollection.find(and(eq("run", runId), eq("topicId", topicId)));
+    }
+
     public boolean addTopicExtraction(String id, Date date, Set<Topic> res) {
         Document document = new Document();
 
@@ -139,6 +142,11 @@ public class MongoDBHandler implements Closeable {
         Document document = new Document();
         document.put("run", runId);
         return topicsCorrespondenceCollection.find(and(eq("run", runId)));
+    }
+
+    public FindIterable<Document> getDocumentTopicCorrespondenceForTopic(String runId, String topicId) {
+
+        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("topicId", topicId)));
     }
 
     public boolean addTopics(String id, Date date, List<Topic> topics) {
@@ -209,6 +217,13 @@ public class MongoDBHandler implements Closeable {
 
     }
 
+    public FindIterable<Document>  getAuthorTopicsForTopic(String runId, String topic) {
+        Document document = new Document();
+        document.put("run", runId);
+        return authorTopicsCollection.find(and(eq("run", runId), eq("author_topic", topic)));
+
+    }
+
     public boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity) {
         Document document = new Document();
 
@@ -231,6 +246,12 @@ public class MongoDBHandler implements Closeable {
         return topicsSimilarityCollection.find(and(eq("run", runId)));
     }
 
+    public FindIterable<Document> getTopicsSimilarityBetweenTopics(String runId, String topic1, String topic2) {
+        Document document = new Document();
+        document.put("run", runId);
+        return topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic1), eq("topic2", topic2)));
+    }
+
     public boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim) {
         Document document = new Document();
 
@@ -251,6 +272,13 @@ public class MongoDBHandler implements Closeable {
         Document document = new Document();
         document.put("run", runId);
         return authorSimilarityCollection.find(and(eq("run", runId)));
+    }
+
+
+    public FindIterable<Document> getAuthorSimilarityForTopic(String runId, String topic1, String topic2) {
+        Document document = new Document();
+        document.put("run", runId);
+        return authorSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic1), eq("topic2", topic2)));
     }
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
