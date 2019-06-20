@@ -144,6 +144,7 @@ angular.module('app').component('topic', {
                 function (response) {
                     console.log(response);
                     console.log("Post topic: " + new_topic_name);
+                    $window.location.href = '/' + saffronDatasetName + '/topic/' + new_topic_name;
                 },
                 function (response) {
                     console.log(response);
