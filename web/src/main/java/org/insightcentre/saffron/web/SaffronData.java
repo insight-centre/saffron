@@ -385,7 +385,7 @@ public class SaffronData {
         this.searcher = corpus;
     }
     
-       /**
+    /**
      * Load the Saffron data from mongo
      *
      * @param runId The runId for the saffron instance

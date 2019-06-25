@@ -31,10 +31,10 @@ public class Greedy implements TaxonomySearch {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(topicMap.size() == 0) {
-            return new Taxonomy("NO TOPICS", 0, 0, Collections.EMPTY_LIST, "none");
+            return new Taxonomy("NO TOPICS", 0, 0, "", "", Collections.EMPTY_LIST, "none");
         } else if(topicMap.size() == 1) {
             // It is not possible to construct a taxonomy from 1 topic
-            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, Collections.EMPTY_LIST, "none");
+            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, "none");
         }
         for (String t1 : topicMap.keySet()) {
             for (String t2 : topicMap.keySet()) {
