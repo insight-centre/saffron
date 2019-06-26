@@ -196,7 +196,7 @@ public class TransTaxoExtract {
                 }
             }
             double linkScore = parent == null ? Double.NaN : scores.getDouble(new StringPair(parent, root));
-            return new Taxonomy(root, 0.0, linkScore, childrenTaxos, "none");
+            return new Taxonomy(root, 0.0, linkScore, "", "", childrenTaxos, "none");
         }
     }
 

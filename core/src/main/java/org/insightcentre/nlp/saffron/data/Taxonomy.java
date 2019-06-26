@@ -31,6 +31,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class Taxonomy {
     /** The topic string of this node in the taxonomy */
     public String root;
+    /** The original parent node of this node in the taxonomy */
+    public String originalParent;
+    /** The original Topic string of this node in the taxonomy */
+    public String originalTopic;
     /** The score associated with this topic (its importance) */
     public final double score;
     /** The score relating this node to its parent (NaN if there is no parent) */
@@ -49,9 +53,13 @@ public class Taxonomy {
     public Taxonomy(@JsonProperty("root") String root,
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
+                    @JsonProperty("originalParent") String originalParent,
+                    @JsonProperty("originalTopic") String originalTopic,
                     @JsonProperty("children") List<Taxonomy> children,
                     @JsonProperty("status") String status) {
         this.root = root;
+        this.originalParent = originalParent;
+        this.originalTopic = originalTopic;
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
@@ -199,7 +207,7 @@ public class Taxonomy {
             }
 
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
     /**
@@ -216,7 +224,7 @@ public class Taxonomy {
         }
         newChildren.add(child);
 
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
 
@@ -460,7 +468,7 @@ public class Taxonomy {
      * @return A new taxonomy instance
      */
     public Taxonomy withLinkScore(double linkScore) {
-        return new Taxonomy(this.root, this.score, linkScore, this.children, this.status);
+        return new Taxonomy(this.root, this.score, linkScore, this.originalParent, this.originalTopic, this.children, this.status);
     }
         
     /**
@@ -472,7 +480,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             newChildren.add(t.deepCopy());
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
     /**
@@ -504,7 +512,7 @@ public class Taxonomy {
 
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
     /**
@@ -525,7 +533,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
     /**
@@ -547,7 +555,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
 

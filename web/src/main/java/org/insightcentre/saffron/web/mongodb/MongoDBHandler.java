@@ -197,6 +197,9 @@ public class MongoDBHandler implements Closeable {
         return docs;
     }
 
+
+
+
     public boolean addAuthorTopics(String id, Date date, List<Topic> topics) {
         Document document = new Document();
 
@@ -320,9 +323,16 @@ public class MongoDBHandler implements Closeable {
     public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
         Document doc = new Document();
         doc.append("id", id);
-        taxonomyCollection.findOneAndDelete(doc);
-        this.addTaxonomy(id, date, graph);
-        return true;
+        try {
+            taxonomyCollection.findOneAndDelete(doc);
+            this.addTaxonomy(id, date, graph);
+            return true;
+        } catch (Exception e){
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic from the taxonomy " + id);
+            return false;
+        }
+
     }
 
     public FindIterable<Document> getTaxonomy(String runId) {
@@ -333,24 +343,56 @@ public class MongoDBHandler implements Closeable {
 
     public boolean updateTopic(String id, String topic, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+        try {
+            Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+            Bson update = set("status", status);
+
+
+            FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+            findOptions.upsert(true);
+            findOptions.returnDocument(ReturnDocument.AFTER);
+
+            topicsCollection.findOneAndUpdate(condition, update, findOptions);
+            //this.updateTopicSimilarity(id, topic, status);
+            return true;
+        } catch (Exception e ) {
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            return false;
+        }
+
+    }
+
+
+
+    public boolean updateTopicSimilarity(String id, String topic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
         Bson update = set("status", status);
+
 
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
+        try {
+            topicsSimilarityCollection.updateMany(condition, update);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            return false;
+        }
 
-        //System.out.println("Here : " + topicsCollection.findOneAndUpdate(condition, updateDoc));
-        topicsCollection.findOneAndUpdate(condition, update, findOptions);
-        return true;
     }
+
+
 
 
     public boolean updateTopicName(String id, String topic, String newTopic, String status) {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
-        Bson update = combine(set("topic", newTopic), set("topicString", newTopic));
+        Bson update = combine(set("topic", newTopic), set("topicString", newTopic), set("originalTopic", topic));
 
 
 
@@ -358,9 +400,16 @@ public class MongoDBHandler implements Closeable {
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
 
-        //System.out.println("Here : " + topicsCollection.findOneAndUpdate(condition, updateDoc));
         topicsCollection.findOneAndUpdate(condition, update, findOptions);
         return true;
+    }
+
+
+    public FindIterable<Document> searchTaxonomy(String id, String term) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", term));
+
+        return topicsCorrespondenceCollection.find(condition);
     }
 
     /*

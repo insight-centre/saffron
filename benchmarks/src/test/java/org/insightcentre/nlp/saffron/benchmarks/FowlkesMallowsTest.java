@@ -44,7 +44,7 @@ public class FowlkesMallowsTest {
     }
 
     private Taxonomy makeTaxo(String root, Taxonomy... children) {
-        return new Taxonomy(root, 0, 0, Arrays.asList(children), "none");
+        return new Taxonomy(root, 0, 0, "", "", Arrays.asList(children), "none");
     }
     
     /**

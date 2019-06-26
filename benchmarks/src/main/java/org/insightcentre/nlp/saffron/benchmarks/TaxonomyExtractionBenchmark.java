@@ -175,10 +175,10 @@ public class TaxonomyExtractionBenchmark {
             if(taxos.containsKey(sp._2)) {
                 child = taxos.get(sp._2);
             } else {
-                child = new Taxonomy(sp._2, 0, 0, new ArrayList<>(), "none");
+                child = new Taxonomy(sp._2, 0, 0, "", "", new ArrayList<>(), "none");
             }
             children.add(child);
-            taxos.put(sp._1, new Taxonomy(sp._1, 0, 0, children, "none"));
+            taxos.put(sp._1, new Taxonomy(sp._1, 0, 0,"", "", children, "none"));
             nonRoots.add(sp._2);
         }
         Set<String> roots = new HashSet<>(taxos.keySet());
@@ -192,7 +192,7 @@ public class TaxonomyExtractionBenchmark {
             for(String root : roots) {
                 children.add(taxos.get(root));
             }
-            return new Taxonomy("", 0, 0, children, "none");
+            return new Taxonomy("", 0, 0, "", "", children, "none");
         }
     }
 
