@@ -300,13 +300,10 @@ public class SaffronAPI{
                                 @PathParam("status") String status) {
 
         MongoDBHandler mongo = getMongoDBHandler();
-        System.out.println("Here1");
-        //mongo.updateTopic(name, topicId, "rejected");
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
         FindIterable<Document> runs = mongo.getTaxonomy(name);
-        System.out.println("Here2");
+
         try {
-            System.out.println("Here3");
             for (org.bson.Document doc : runs) {
                 JSONObject jsonObj = new JSONObject(doc.toJson());
                 System.out.println(jsonObj);
@@ -337,7 +334,6 @@ public class SaffronAPI{
         StringBuilder crunchifyBuilder = getJsonData(incomingData);
         FindIterable<Document> topics;
 
-        System.out.println("Data Received: " + crunchifyBuilder.toString());
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
 
         Iterator<String> keys = jsonObj.keys();
@@ -346,11 +342,9 @@ public class SaffronAPI{
                 String key = keys.next();
 
                 JSONArray obj = (JSONArray) jsonObj.get(key);
-                System.out.print("Here:" + obj.toString());
                 for (int i = 0; i < obj.length(); i++) {
                     JSONObject json = obj.getJSONObject(i);
-                    System.out.println("Here1:" + json.get("id").toString());
-                    topics = mongo.deleteTopic(name, json.get("id").toString());
+                    mongo.deleteTopic(name, json.get("id").toString());
 
 
                 }
@@ -418,6 +412,9 @@ public class SaffronAPI{
                         finalTaxon.originalParent = oldParentString;
                         finalTaxon.originalTopic = topicString;
                         mongo.updateTopicName(name, topicString, newTopicString, "accepted");
+                        mongo.updateTopicSimilarityName(name, topicString, newTopicString, "accepted");
+                        mongo.updateAuthorTopicName(name, topicString, newTopicString, "accepted");
+                        mongo.updateDocumentTopicName(name, topicString, newTopicString, "accepted");
                         returnJson.put("id", name);
                         returnJson.put("success", true);
                         returnJson.put("new_id", newTopicString);
@@ -470,12 +467,14 @@ public class SaffronAPI{
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
                 for (int i = 0; i < obj.length(); i++) {
                     JSONObject json = obj.getJSONObject(i);
-                    String topicString = json.get("topic").toString();
-                    String status = json.get("status").toString();
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, status);
+                    String topic1String = json.get("topic").toString();
 
-                    mongo.updateTopic(name, topicString, status);
-                    mongo.updateTopicSimilarity(name, topicString, status);
+                    String status = json.get("status").toString();
+                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topic1String, status);
+
+
+                    mongo.updateTopic(name, topic1String, status);
+                    mongo.updateTopicSimilarity(name, topic1String, status);
                 }
             }
 
