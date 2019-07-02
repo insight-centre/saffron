@@ -83,7 +83,6 @@ public class Launcher {
             Executor executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(browser.saffron, directory);
-            SaffronAPI api = new SaffronAPI();
 
             ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
             context.setContextPath("/");

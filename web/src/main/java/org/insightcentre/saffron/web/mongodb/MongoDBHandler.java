@@ -365,9 +365,10 @@ public class MongoDBHandler implements Closeable {
 
 
 
-    public boolean updateTopicSimilarity(String id, String topic, String status) {
+    public boolean updateTopicSimilarity(String id, String topic1, String topic2, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic1),
+                Filters.eq("topic2", topic2));
         Bson update = set("status", status);
 
 
@@ -380,7 +381,7 @@ public class MongoDBHandler implements Closeable {
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the topic " + topic1 + " from the taxonomy " + id);
             return false;
         }
 
