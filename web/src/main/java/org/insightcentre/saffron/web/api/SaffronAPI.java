@@ -468,6 +468,7 @@ public class SaffronAPI{
 
                     mongo.updateTopic(name, topic1String, status);
                     mongo.updateTopicSimilarity(name, topic1String, topic2String, status);
+                    mongo.updateTopicSimilarity(name, topic2String, topic1String, status);
                 }
             }
 
