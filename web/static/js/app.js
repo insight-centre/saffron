@@ -18,16 +18,17 @@ angular.module('app', ['ngMaterial'])
     });
 
 // general function to accept or reject child/related topics
-function acceptRejectTopics($http, topics, status){
+function acceptRejectTopics($http, topics, mainTopic, status){
     topicsContainer = [];
     angular.forEach(topics,function(item, index){
         if (item.checked === true){
             topics.splice(index, 1);
-            topicsContainer.push({"id": item.topic_string, "status": status});
+            topicsContainer.push({"topic1": mainTopic, "topic2": item.topic_string, "status": status});
         }
     });
 
     let finalTopics = {"topics": topicsContainer};
+    console.log(finalTopics);
     console.log(apiUrlWithSaffron + 'topics/update');
 
     $http.post(apiUrlWithSaffron + 'topics/update', finalTopics).then(
@@ -295,14 +296,14 @@ angular.module('app').component('relatedtopics', {
         $scope.ApiAcceptTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "accepted");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
         };
 
         // reject one or multiple topics
         $scope.ApiRejectTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "rejected");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
         };
     }
 });
@@ -383,14 +384,14 @@ angular.module('app').component('childtopics', {
         $scope.ApiAcceptTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "accepted");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
         };
 
         // reject one or multiple topics
         $scope.ApiRejectTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "rejected");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
         };
     }
 });
