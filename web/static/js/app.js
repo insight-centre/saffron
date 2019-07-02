@@ -23,7 +23,7 @@ function acceptRejectTopics($http, topics, mainTopic, status){
     angular.forEach(topics,function(item, index){
         if (item.checked === true){
             topics.splice(index, 1);
-            topicsContainer.push({"topic1": mainTopic, "topic2": item.topic_string, "status": status});
+            topicsContainer.push({"topic1": item.topic_string, "topic2": mainTopic, "status": status});
         }
     });
 
