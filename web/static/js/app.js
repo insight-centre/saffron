@@ -43,6 +43,44 @@ function acceptRejectTopics($http, topics, mainTopic, status){
     );
 }
 
+// general function to accept or reject child/related topics
+function deleteOneRun($http, id){
+
+    $http.delete(apiUrl + id).then(
+        function (response) {
+            console.log(response);
+            console.log("Changed status: " + id);
+        },
+        function (response) {
+            console.log(response);
+            console.log("Failed to change status of topics");
+        }
+    ).then(function() { location.reload(); });
+
+}
+
+
+// Rerun function
+function rerunTaxonomy($http, runId){
+
+    console.log(runId);
+    console.log(apiUrlWithSaffron + 'topics/update');
+    let finalTopics = {"topics": topicsContainer};
+
+    $http.post(apiUrlWithSaffron + runId, finalTopics).then(
+        function (response) {
+            console.log(response);
+            console.log("Changed status: " + finalTopics);
+        },
+        function (response) {
+            console.log(response);
+            console.log("Failed to change status of topics");
+        }
+    );
+}
+
+
+
 // getting the top topics to fill the right sidebar on homepage of a run
 angular.module('app').component('toptopics', {
     templateUrl: '/top-topics.html',
@@ -324,6 +362,48 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
     getParents(sharedProperties.getTopic());
 });
 
+
+// the runs controller
+angular.module('app').controller('runs', function ($scope, $http, $location, sharedProperties) {
+    $scope.parents = [];
+    console.log("HERE")
+    function getRuns() {
+        var url = apiUrl;
+        $http.get(url).then(function (response) {
+            console.log(response)
+            console.log(response.data)
+
+            for (t = 0; t < response.data.length; t++) {
+                console.log(response.data[t])
+                $scope.parents.push(response.data[t])
+            }
+        });
+    }
+    getRuns();
+
+    // reject one or multiple topics
+    $scope.deleteRun = function($event, id){
+        $event.preventDefault();
+        deleteOneRun($http, id);
+    };
+
+});
+
+// angular.module('app').controller('deleteRun', function ($scope, $http, $location, sharedProperties) {
+//
+//     $scope.parents = parents;
+//     $scope.deleteRun = function(id) {
+//         console.log("HERE")
+//         if(confirm("Are you sure you want to delete this run?")) {
+//             var index = $scope.parents.indexOf(id);
+//             if(index >= 0) {
+//                 $scope.parents.splice(index, 1);
+//             }
+//             $http.get("/api/v1/" + parents);
+//         }
+//     };
+// });
+
 // the child topics component
 angular.module('app').component('childtopics', {
     templateUrl: '/topic-list.html',
@@ -412,6 +492,22 @@ angular.module('app').component('searchresults', {
     }
 });
 
+
+// search results: needs to implement the highlight
+angular.module('app').component('homepage', {
+    templateUrl: '/home.html',
+    controller: function ($http, $sce) {
+        var ctrl = this;
+        ctrl.title = "Topics";
+        $http.get(apiUrlWithSaffron + 'search/' + searchQuery).then(function (response) {
+            ctrl.results = response.data;
+            // removed because we don't have a way to highlight the topic in the file through the API yet
+            // for (i in ctrl.results) {
+            //     ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
+            // }
+        });
+    }
+});
 
 
 // <!-- not API ready, still from the JSON files -->
