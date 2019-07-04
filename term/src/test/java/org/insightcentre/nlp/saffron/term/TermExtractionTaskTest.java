@@ -1,7 +1,6 @@
 package org.insightcentre.nlp.saffron.term;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -19,8 +18,6 @@ import opennlp.tools.tokenize.TokenizerModel;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -557,5 +554,51 @@ public class TermExtractionTaskTest {
         instance.run();
         assertEquals(expResult, result);
         
+    }
+    
+    @Test
+    public void testStopWords() {
+        
+        System.out.println("call");
+        Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("this is one test");
+        Tokenizer _tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[]{"this", "is", "one", "test"};
+        String[] lemmas = new String[]{"this", "be", "one", "test"};
+        final String[] tags = new String[]{"DT", "VBZ", "CD", "NN"};
+        when(_tokenizer.tokenize("this is one test")).thenReturn(tokens);
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        FrequencyStats result = new FrequencyStats();
+        ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+        CasingStats casing = new CasingStats();
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+
+        }, tokenizer, new HashSet<>(Arrays.asList("one")), 1, 4,
+                new HashSet<String>(),
+                new HashSet<String>(),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS", "CD"})),
+                true, result, dts, casing, Collections.EMPTY_SET);
+        instance.run();
+        assert(!result.termFrequency.containsKey("one"));
     }
 }

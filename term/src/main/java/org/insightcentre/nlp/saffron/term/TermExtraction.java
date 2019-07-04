@@ -219,6 +219,8 @@ public class TermExtraction {
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
         summary.filter(minTermFreq);
+        System.err.println(summary.termFrequency.containsKey("one"));
+        System.err.println(summary.termFrequency.getInt("one"));
         return summary;
     }
 

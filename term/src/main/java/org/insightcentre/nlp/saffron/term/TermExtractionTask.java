@@ -76,12 +76,11 @@ public class TermExtractionTask implements Runnable {
                 try {
                     tokens = tokenizer.get().tokenize(sentence);
                 } catch (Exception x) {
-                    System.err.println(sentence);
+                    //System.err.println(sentence);
                     throw x;
                 }
                 if (tokens.length > 0) {
-                    String[] tags = new String[0];
-                    tags = tagger.get().tag(tokens);
+                    String[] tags = tagger.get().tag(tokens);
 
                     if (tags.length != tokens.length) {
                         throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
@@ -104,7 +103,7 @@ public class TermExtractionTask implements Runnable {
                                 if (j == i && endTokens.contains(tags[j]) && nonStop) {
                                     emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
-                                if (preceedingTokens.contains(tags[j]) && j != i) {
+                                if (preceedingTokens.contains(tags[j]) && j != i && nonStop) {
                                     emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
                                 if (j == i && !endTokens.contains(tags[j])
@@ -120,7 +119,6 @@ public class TermExtractionTask implements Runnable {
 
             stats.documents = 1;
 
-            System.err.println(stats);
             synchronized (summary) {
                 summary.add(stats);
             }
@@ -146,10 +144,6 @@ public class TermExtractionTask implements Runnable {
                 ltoks[n] = ltoks[n].toLowerCase();
             }
             String[] lemmas = lemmatizer.get().lemmatize(ltoks, tags);
-            if(tokens[i].equals("Ghaeilge")) {
-                System.err.println(Arrays.toString(tokens));
-                System.err.println(Arrays.toString(lemmas));
-            }
             String[] tokens2 = Arrays.copyOfRange(tokens, i, j + 1);
             if (headTokenFinal) {
                 if (!lemmas[j].equals("O") && !lemmas[j].equalsIgnoreCase("datum")) {
@@ -197,7 +191,7 @@ public class TermExtractionTask implements Runnable {
             }
             String termStrOrig = join(tokens, i, j);
             String termStr = termStrOrig.toLowerCase();
-            if (allValid && termStr.length() > 2) {
+            if (allValid && termStr.length() > 2 && !stopWords.contains(termStr)) {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
                 if (dts != null) {
