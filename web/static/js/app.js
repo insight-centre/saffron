@@ -18,17 +18,18 @@ angular.module('app', ['ngMaterial'])
     });
 
 // general function to accept or reject child/related topics
-function acceptRejectTopics($http, topics, status){
+function acceptRejectTopics($http, topics, mainTopic, status){
     topicsContainer = [];
     angular.forEach(topics,function(item, index){
         if (item.checked === true){
             topics.splice(index, 1);
-            topicsContainer.push({"id": item.topic_string, "status": status});
+            topicsContainer.push({"topic1": item.topic_string, "topic2": mainTopic, "status": status});
         }
     });
 
     let finalTopics = {"topics": topicsContainer};
     console.log(finalTopics);
+    console.log(apiUrlWithSaffron + 'topics/update');
 
     $http.post(apiUrlWithSaffron + 'topics/update', finalTopics).then(
         function (response) {
@@ -57,10 +58,12 @@ angular.module('app').component('toptopics', {
                     response = response.slice(ctrl.n2, ctrl.n2+30);
                     ctrl.topics = [];
                     for (t = 0; t < response.length; t++) {
-                        ctrl.topics.push({
-                            "topic_string": response[t].topicString,
-                            "pos": (t + 1 + ctrl.n2)
-                        });
+                        if(response[t].status !== "rejected") {
+                            ctrl.topics.push({
+                                "topic_string": response[t].topicString,
+                                "pos": (t + 1 + ctrl.n2)
+                            });                            
+                        }
                     }
                     ctrl.n = ctrl.n2;
                 },
@@ -157,7 +160,7 @@ angular.module('app').component('topic', {
         // function to delete the main topic on topic page
         $scope.ApiDeleteTopic = function(topic_string, $event){
             $event.preventDefault();
-            $http.delete(apiUrlWithSaffron + 'topics/' + topic_string).then(
+            $http.post(apiUrlWithSaffron + 'topics/' + topic_string + '/rejected').then(
                 function (response) {
                     console.log(response);
                     $window.location.href = '/' + saffronDatasetName + '/';
@@ -231,7 +234,7 @@ angular.module('app').component('relatedtopics', {
                 });
             } else 
 
-            // if on an author page, show top topics from that author <!-- API -->
+            // if on an author page, show top topics from that author <!-- not API ready, still from the JSON files -->
             if (ctrl.author) {
                 ctrl.title = "Main topics";
                 $http.get('/' + saffronDatasetName + '/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
@@ -293,128 +296,15 @@ angular.module('app').component('relatedtopics', {
         $scope.ApiAcceptTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "accepted");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
         };
 
         // reject one or multiple topics
         $scope.ApiRejectTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "rejected");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
         };
-    }
-});
-
-// <!-- API -->
-angular.module('app').component('relatedauthors', {
-    templateUrl: '/author-list.html',
-    bindings: {
-        topic: '<',
-        author: '<'
-    },
-    controller: function ($http) {
-        var ctrl = this;
-        if (ctrl.topic) {
-            ctrl.title = "Major authors on this topic";
-            $http.get('/' + saffronDatasetName + '/author-topics?topic=' + ctrl.topic).then(function (response) {
-                ctrl.authors = [];
-                for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-                    });
-                }
-            });
-        } else if (ctrl.author) {
-            ctrl.title = "Similar authors";
-            $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function (response) {
-                ctrl.authors = [];
-                for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-
-                    });
-                }
-            });
-        }
-    }
-});
-
-// <!-- API -->
-angular.module('app').component('relateddocuments', {
-    templateUrl: '/document-list.html',
-    bindings: {
-        topic: '<',
-        author: '<'
-    },
-    controller: function ($http, $sce) {
-        var ctrl = this;
-        ctrl.n = 0;
-        ctrl.n2 = 0;
-        this.loadTopics = function () {
-            if (ctrl.topic) {
-                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&topic=' + ctrl.topic).then(function (response) {
-                    ctrl.docs = [];
-                    for (t = 0; t < response.data.length; t++) {
-                        ctrl.docs.push({
-                            "doc": response.data[t],
-                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
-                            "pos": (t + 1)
-                        });
-                    }
-                    ctrl.n = ctrl.n2;
-                });
-            } else if (ctrl.author) {
-                $http.get('/' + saffronDatasetName + '/author-docs?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
-                    ctrl.docs = [];
-                    for (t = 0; t < response.data.length; t++) {
-                        ctrl.docs.push({
-                            "doc": response.data[t],
-                            "pos": (t + 1)
-                        });
-                    }
-                    ctrl.n = ctrl.n2;
-                })
-            }
-        };
-        this.docForward = function () {
-            ctrl.n2 += 20;
-            this.loadTopics();
-        };
-        this.docBackward = function () {
-            ctrl.n2 -= 20;
-            this.loadTopics();
-        };
-        this.loadTopics();
-    }
-});
-
-// <!-- API -->
-angular.module('app').component('author', {
-    templateUrl: '/authors.html',
-    controller: function () {
-        var ctrl = this;
-        if (author) {
-            ctrl.author = author;
-        }
-    }
-});
-
-// <!-- API -->
-angular.module('app').component('doc', {
-    templateUrl: '/docs.html',
-    controller: function () {
-        var ctrl = this;
-        if (doc) {
-            ctrl.doc = doc;
-        }
     }
 });
 
@@ -494,34 +384,150 @@ angular.module('app').component('childtopics', {
         $scope.ApiAcceptTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "accepted");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
         };
 
         // reject one or multiple topics
         $scope.ApiRejectTopics = function($event, topics){
             $event.preventDefault();
             topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, "rejected");
+            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
         };
     }
 });
 
-// <!-- API -->
+// search results: needs to implement the highlight
 angular.module('app').component('searchresults', {
     templateUrl: '/search-results.html',
     controller: function ($http, $sce) {
         var ctrl = this;
         ctrl.title = "Topics";
-        $http.get('/' + saffronDatasetName + '/search_results?query=' + searchQuery).then(function (response) {
+        $http.get(apiUrlWithSaffron + 'search/' + searchQuery).then(function (response) {
             ctrl.results = response.data;
-            for (i in ctrl.results) {
-                ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
-            }
+            // removed because we don't have a way to highlight the topic in the file through the API yet
+            // for (i in ctrl.results) {
+            //     ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
+            // }
         });
     }
 });
 
-// <!-- API -->
+
+
+// <!-- not API ready, still from the JSON files -->
+angular.module('app').component('relatedauthors', {
+    templateUrl: '/author-list.html',
+    bindings: {
+        topic: '<',
+        author: '<'
+    },
+    controller: function ($http) {
+        var ctrl = this;
+        if (ctrl.topic) {
+            ctrl.title = "Major authors on this topic";
+            $http.get('/' + saffronDatasetName + '/author-topics?topic=' + ctrl.topic).then(function (response) {
+                ctrl.authors = [];
+                for (t = 0; t < response.data.length; t++) {
+                    ctrl.authors.push({
+                        "id": response.data[t].id,
+                        "name": response.data[t].name,
+                        "pos": (t + 1),
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
+                    });
+                }
+            });
+        } else if (ctrl.author) {
+            ctrl.title = "Similar authors";
+            $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function (response) {
+                ctrl.authors = [];
+                for (t = 0; t < response.data.length; t++) {
+                    ctrl.authors.push({
+                        "id": response.data[t].id,
+                        "name": response.data[t].name,
+                        "pos": (t + 1),
+                        "left": t < response.data.length / 2,
+                        "right": t >= response.data.length / 2
+
+                    });
+                }
+            });
+        }
+    }
+});
+
+// <!-- not API ready, still from the JSON files -->
+angular.module('app').component('relateddocuments', {
+    templateUrl: '/document-list.html',
+    bindings: {
+        topic: '<',
+        author: '<'
+    },
+    controller: function ($http, $sce) {
+        var ctrl = this;
+        ctrl.n = 0;
+        ctrl.n2 = 0;
+        this.loadTopics = function () {
+            if (ctrl.topic) {
+                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&topic=' + ctrl.topic).then(function (response) {
+                    ctrl.docs = [];
+                    for (t = 0; t < response.data.length; t++) {
+                        ctrl.docs.push({
+                            "doc": response.data[t],
+                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
+                            "pos": (t + 1)
+                        });
+                    }
+                    ctrl.n = ctrl.n2;
+                });
+            } else if (ctrl.author) {
+                $http.get('/' + saffronDatasetName + '/author-docs?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
+                    ctrl.docs = [];
+                    for (t = 0; t < response.data.length; t++) {
+                        ctrl.docs.push({
+                            "doc": response.data[t],
+                            "pos": (t + 1)
+                        });
+                    }
+                    ctrl.n = ctrl.n2;
+                })
+            }
+        };
+        this.docForward = function () {
+            ctrl.n2 += 20;
+            this.loadTopics();
+        };
+        this.docBackward = function () {
+            ctrl.n2 -= 20;
+            this.loadTopics();
+        };
+        this.loadTopics();
+    }
+});
+
+// <!-- not API ready, still from the JSON files -->
+angular.module('app').component('author', {
+    templateUrl: '/authors.html',
+    controller: function () {
+        var ctrl = this;
+        if (author) {
+            ctrl.author = author;
+        }
+    }
+});
+
+// <!-- not API ready, still from the JSON files -->
+angular.module('app').component('doc', {
+    templateUrl: '/docs.html',
+    controller: function () {
+        var ctrl = this;
+        if (doc) {
+            ctrl.doc = doc;
+        }
+    }
+});
+
+// <!-- not API ready, still from the JSON files -->
 angular.module('app').component('metadata', {
     templateUrl: '/metadata.html',
     bindings: {

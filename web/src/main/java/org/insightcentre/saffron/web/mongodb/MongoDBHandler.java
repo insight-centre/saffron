@@ -365,12 +365,74 @@ public class MongoDBHandler implements Closeable {
 
 
 
-    public boolean updateTopicSimilarity(String id, String topic, String status) {
+    public boolean updateTopicSimilarity(String id, String topic1, String topic2, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic1),
+                Filters.eq("topic2", topic2));
         Bson update = set("status", status);
 
 
+
+        FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+        findOptions.upsert(true);
+        findOptions.returnDocument(ReturnDocument.AFTER);
+        try {
+            topicsSimilarityCollection.updateMany(condition, update);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic " + topic1 + " from the taxonomy " + id);
+            return false;
+        }
+
+    }
+
+    public boolean updateAuthorTopicName(String id, String topic, String newTopic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_topic", topic));
+        Bson update = combine(set("author_topic", newTopic), set("topicString", newTopic),
+                set("originalTopic", topic), set("status", status));
+
+        FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+        findOptions.upsert(true);
+        findOptions.returnDocument(ReturnDocument.AFTER);
+        try {
+            topicsSimilarityCollection.updateMany(condition, update);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            return false;
+        }
+
+    }
+
+
+    public boolean updateDocumentTopicName(String id, String topic, String newTopic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+        Bson update = combine(set("topic", newTopic),
+                set("originalTopic", topic), set("status", status));
+
+        FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+        findOptions.upsert(true);
+        findOptions.returnDocument(ReturnDocument.AFTER);
+        try {
+            topicsCorrespondenceCollection.updateMany(condition, update);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            return false;
+        }
+
+    }
+
+    public boolean updateTopicSimilarityName(String id, String topic, String newTopic, String status) {
+
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
+        Bson update = combine(set("topic1", newTopic),
+                set("originalTopic", topic), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
