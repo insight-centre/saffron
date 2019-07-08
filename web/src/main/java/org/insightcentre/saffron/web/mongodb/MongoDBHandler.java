@@ -77,13 +77,17 @@ public class MongoDBHandler implements Closeable {
         return docs;
     }
 
-    public FindIterable<Document>  deleteRun(String name) {
+    public void deleteRun(String name) {
         Document document = new Document();
         document.put("run", name);
         runCollection.findOneAndDelete(and(eq("id", name)));
-        FindIterable<Document> docs = topicsCollection.find(eq("id", name));
-
-        return docs;
+        topicsCollection.deleteMany(and(eq("run", name)));
+        topicsCorrespondenceCollection.deleteMany(and(eq("run", name)));
+        topicsExtractionCollection.deleteMany(and(eq("run", name)));
+        authorTopicsCollection.deleteMany(and(eq("run", name)));
+        topicsSimilarityCollection.deleteMany(and(eq("run", name)));
+        authorSimilarityCollection.deleteMany(and(eq("run", name)));
+        taxonomyCollection.findOneAndDelete(and(eq("id", name)));
     }
 
     public List<DocumentTopic> getRun(String runId) {
