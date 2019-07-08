@@ -79,8 +79,6 @@ function rerunTaxonomy($http, runId){
     );
 }
 
-
-
 // getting the top topics to fill the right sidebar on homepage of a run
 angular.module('app').component('toptopics', {
     templateUrl: '/top-topics.html',
@@ -120,6 +118,101 @@ angular.module('app').component('toptopics', {
             this.loadTopics();
         };
         this.loadTopics();
+    }
+});
+
+// Edit component
+angular.module('app').component('edittopics', {
+    templateUrl: '/edit-topics.html',
+    controller: function ($http, $scope, $window, $location, sharedProperties) {
+        var ctrl = this;
+        var denialList = [];
+
+        $http.get(apiUrlWithSaffron + 'topics').then(
+            function (response) {
+                ctrl.topics =  [];
+                for (let t = 0; t < response.data.length; t++) {
+                    ctrl.topics.push({
+                        "topic_string": response.data[t].topicString,
+                        "topic_id": response.data[t].topicString,
+                        "pos": (t + 1)
+                    });                       
+                }
+            },
+
+            function (response) {
+                console.log(response);
+                console.log("Failed to get topics");
+            }
+        );
+
+        // enabling multiple selections
+        $scope.checkAll = function() {
+            $scope.checkedAll = (!$scope.checkedAll);
+            ctrl.checkedStatus = ($scope.checkedAll);
+
+            if($scope.checkedAll){
+                angular.forEach(ctrl.topics,function(item){
+                    if (item.status == null)
+                        item.checked = true;
+                });
+            } else {
+                angular.forEach(ctrl.topics,function(item){
+                    item.checked = false;
+                });
+            }
+        };
+
+        // adding selected status to item
+        ctrl.checkedStatus = false;
+        $scope.checkStatus = function(){
+            angular.forEach(ctrl.topics,function(item) {
+                if (item.checked === true) {
+                    ctrl.checkedStatus = true;
+                    return false;
+                }
+            });
+        };
+
+        // accept one or multiple topics
+        $scope.ApiAcceptTopics = function($event, topic){
+            $event.preventDefault();
+            if (topic == null) {
+                angular.forEach(ctrl.topics,function(element){
+                    if (element.checked === true) {
+                        element.status = "accepted";
+                        element.checkedStatus = false;
+                        element.checked = false;
+                    }
+                });
+            } else {
+                ctrl.topics.forEach(function(element) {
+                    if (element.topic_string === topic.topic_string) {
+                        element.status = "accepted";
+                    }
+                }, topic);
+            }
+        };
+
+        // reject one or multiple topics
+        $scope.ApiRejectTopics = function($event, topic){
+            $event.preventDefault();
+            if (topic == null) {
+                angular.forEach(ctrl.topics,function(element){
+                    if (element.checked === true) {
+                        element.status = "rejected";
+                        element.checkedStatus = false;
+                        element.checked = false;
+                    }
+                });
+            } else {
+                ctrl.topics.forEach(function(element) {
+                    if (element.topic_string === topic.topic_string) {
+                        element.status = "rejected";
+                    }
+                }, topic);
+            }
+        };
     }
 });
 
