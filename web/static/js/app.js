@@ -123,10 +123,9 @@ angular.module('app').component('toptopics', {
 
 // Edit component
 angular.module('app').component('edittopics', {
-    templateUrl: '/edit-topics.html',
+    templateUrl: '/edit-topics-component.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
-        var denialList = [];
 
         $http.get(apiUrlWithSaffron + 'topics').then(
             function (response) {
@@ -153,8 +152,7 @@ angular.module('app').component('edittopics', {
 
             if($scope.checkedAll){
                 angular.forEach(ctrl.topics,function(item){
-                    if (item.status == null)
-                        item.checked = true;
+                    item.checked = true;
                 });
             } else {
                 angular.forEach(ctrl.topics,function(item){
@@ -174,8 +172,8 @@ angular.module('app').component('edittopics', {
             });
         };
 
-        // accept one or multiple topics
-        $scope.ApiAcceptTopics = function($event, topic){
+        // accept one or multiple topics only in the UI
+        $scope.acceptTopics = function($event, topic){
             $event.preventDefault();
             if (topic == null) {
                 angular.forEach(ctrl.topics,function(element){
@@ -185,6 +183,7 @@ angular.module('app').component('edittopics', {
                         element.checked = false;
                     }
                 });
+                $scope.checkedAll = false;
             } else {
                 ctrl.topics.forEach(function(element) {
                     if (element.topic_string === topic.topic_string) {
@@ -194,8 +193,8 @@ angular.module('app').component('edittopics', {
             }
         };
 
-        // reject one or multiple topics
-        $scope.ApiRejectTopics = function($event, topic){
+        // reject one or multiple topics only in the UI
+        $scope.rejectTopics = function($event, topic){
             $event.preventDefault();
             if (topic == null) {
                 angular.forEach(ctrl.topics,function(element){
@@ -205,6 +204,7 @@ angular.module('app').component('edittopics', {
                         element.checked = false;
                     }
                 });
+                $scope.checkedAll = false;
             } else {
                 ctrl.topics.forEach(function(element) {
                     if (element.topic_string === topic.topic_string) {
@@ -213,6 +213,11 @@ angular.module('app').component('edittopics', {
                 }, topic);
             }
         };
+
+        // send all modifications to the API
+        $scope.saveTopics = function() {
+            /* TO IMPLEMENT*/
+        }
     }
 });
 
