@@ -216,9 +216,95 @@ angular.module('app').component('edittopics', {
 
         // send all modifications to the API
         $scope.saveTopics = function() {
-            /* TO IMPLEMENT*/
+            /* $event.preventDefault();
+            
+            let JsonData = {
+                    ???
+                };
+            
+            $http.post(apiUrlWithSaffron + 'topics/update', JsonData).then(
+                function (response) {
+                    console.log(response);
+                    console.log("Topics' status update successfully");
+                    $window.location.href = '/' + saffronDatasetName + '/edit/parents';
+                },
+                function (response) {
+                    console.log(response);
+                    console.log("Failed to update topics' status");
+                }
+            );*/
+            $window.location.href = '/' + saffronDatasetName + '/edit/parents';
         }
     }
+});
+
+angular.module('app').component('editparents', {
+    templateUrl: '/edit-parents-component.html',
+    controller: function ($http, $scope, $window, $location, sharedProperties) {
+        var ctrl = this;
+
+        ctrl.topics = [];
+
+        $http.get(apiUrlWithSaffron).then(
+            function (response) {
+
+                $scope.getChildren(response.data, "Root", null);
+
+            },
+            function (error) {
+                console.log(error);
+                console.log("Failed to get taxonomy structure");
+            }
+        );
+        
+        $scope.getChildren = function(topic, parent_branch, parent) {
+            current_topic = {
+                "topic_string": topic.root,
+                "branch": parent_branch,
+                "topic_id": topic.root,
+                "parent": parent 
+            }
+            ctrl.topics.push(current_topic);
+
+            for (let i = 0; i < topic.children.length; i++) {
+                $scope.getChildren(topic.children[i], parent_branch + " > " + topic.root, current_topic);
+            }
+        };
+
+/*
+        $http.get(apiUrlWithSaffron + 'topics').then(
+            function (response) {
+                ctrl.topics =  [];
+                for (let t = 0; t < response.data.length; t++) {    
+                    ctrl.topics.push({
+                        "topic_string": response.data[t].topicString,
+                        "branch": $scope.getParents(response.data[t].topicString),
+                        "topic_id": response.data[t].topicString,
+                        "pos": (t + 1)
+                    });                       
+                }
+            },
+
+            function (response) {
+                console.log(response);
+                console.log("Failed to get topics");
+            }
+        );
+
+        $scope.getParents = function(topicName) {
+            var parents = [];
+            var url = apiUrlWithSaffron + 'topics/' + topicName + '/parent';
+            $http.get(url).then(function (response) {
+                if(response.data && response.data.root) {
+                    console.log(response.data);
+                    parents.unshift(response.data.root);
+                    parents.unshift($scope.getParents(response.data.root));
+                } 
+            });
+            return parents;
+        };*/
+    }
+    
 });
 
 // the main topic component
