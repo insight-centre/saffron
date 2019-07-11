@@ -8,7 +8,7 @@ API Routes in place:
 
 * GET /run
 
-`This API call returns all previous saffron runs`
+
 
 * POST /run
 
