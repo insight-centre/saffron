@@ -242,20 +242,20 @@ angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
+       
+        $scope.loadTopics = function() {
+             ctrl.topics = [];
+            $http.get(apiUrlWithSaffron).then(
+                function (response) {
 
-        ctrl.topics = [];
-
-        $http.get(apiUrlWithSaffron).then(
-            function (response) {
-
-                $scope.getChildren(response.data, "Root", null);
-
-            },
-            function (error) {
-                console.log(error);
-                console.log("Failed to get taxonomy structure");
-            }
-        );
+                    $scope.getChildren(response.data, "", null);
+                },
+                function (error) {
+                    console.log(error);
+                    console.log("Failed to get taxonomy structure");
+                }
+            );
+        }
         
         $scope.getChildren = function(topic, parent_branch, parent) {
             current_topic = {
@@ -267,42 +267,17 @@ angular.module('app').component('editparents', {
             ctrl.topics.push(current_topic);
 
             for (let i = 0; i < topic.children.length; i++) {
-                $scope.getChildren(topic.children[i], parent_branch + " > " + topic.root, current_topic);
+                $scope.getChildren(topic.children[i], parent_branch == "" ? topic.root : parent_branch + " > " + topic.root, current_topic);
             }
         };
 
-/*
-        $http.get(apiUrlWithSaffron + 'topics').then(
-            function (response) {
-                ctrl.topics =  [];
-                for (let t = 0; t < response.data.length; t++) {    
-                    ctrl.topics.push({
-                        "topic_string": response.data[t].topicString,
-                        "branch": $scope.getParents(response.data[t].topicString),
-                        "topic_id": response.data[t].topicString,
-                        "pos": (t + 1)
-                    });                       
-                }
-            },
+        $scope.changeParent = function(topic, new_parent) {
+            // TO IMPLEMENT
+            // API Call
+            //Reload topics
+        };
 
-            function (response) {
-                console.log(response);
-                console.log("Failed to get topics");
-            }
-        );
-
-        $scope.getParents = function(topicName) {
-            var parents = [];
-            var url = apiUrlWithSaffron + 'topics/' + topicName + '/parent';
-            $http.get(url).then(function (response) {
-                if(response.data && response.data.root) {
-                    console.log(response.data);
-                    parents.unshift(response.data.root);
-                    parents.unshift($scope.getParents(response.data.root));
-                } 
-            });
-            return parents;
-        };*/
+        $scope.loadTopics();
     }
     
 });
