@@ -40,6 +40,8 @@ API Routes in place:
 
 
 * POST /run/{saffron-run-id}/topics (Delete multiple)
+    [request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/delete_many_req.json)
+    [response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/delete_many_response.json)
 
 
 * POST /run/{saffron-run-id}/topics/changeroot (Change Topic root)
