@@ -43,6 +43,8 @@ API Routes in place:
 
 
 * POST /run/{saffron-run-id}/topics/changeroot (Change Topic root)
+    [request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_rq.json)
+    [response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_resp.json)
 
 
 * POST /run/{saffron-run-id}/topics/update (Update accept/reject/none status)
