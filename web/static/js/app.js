@@ -274,6 +274,7 @@ angular.module('app').component('editparents', {
         $scope.changeParent = function(topic, new_parent) {
             // TO IMPLEMENT
             // API Call
+            ctrl.activeTopic = null;
             //Reload topics
         };
 
