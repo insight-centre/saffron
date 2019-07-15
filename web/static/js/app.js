@@ -271,10 +271,31 @@ angular.module('app').component('editparents', {
         };
 
         $scope.changeParent = function(topic, new_parent) {
-            // TO IMPLEMENT
-            // API Call
-            ctrl.activeTopic = null;
-            //Reload topics
+
+            var requestData = {
+                    "topics" : [{
+                        "id": topic.topic_id,
+                        "current_parent": topic.parent.topic_id,
+                        "new_parent": new_parent.topic_id
+                    }]
+                };
+                console.log(requestData);
+
+            $http.post(apiUrlWithSaffron + 'topics/changeroot', requestData).then(
+                function (response) {
+                    console.log(response);
+                    console.log("Parent topic update successfully");
+
+                    //Reload topics
+                    ctrl.activeTopic = null;
+                    $scope.loadTopics();
+                },
+                function (response) {
+                    console.log(response);
+                    console.log("Failed to update topics' status");
+                }
+            );
+
         };
 
         $scope.loadTopics();
