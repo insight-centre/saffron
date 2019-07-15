@@ -12,7 +12,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
 import org.apache.commons.io.FileUtils;
+import org.bson.Document;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
@@ -23,10 +25,7 @@ import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
@@ -34,13 +33,15 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
+
+import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
-import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  *
@@ -121,6 +122,7 @@ public class Executor extends AbstractHandler {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
                 BufferedReader r = hsr.getReader();
                 StringBuilder sb = new StringBuilder();
+
                 final Configuration newConfig;
                 try {
                     String line;
@@ -136,7 +138,9 @@ public class Executor extends AbstractHandler {
                     @Override
                     public void run() {
                         try {
+                            //execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, true);
                             execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName);
+
                         } catch (IOException x) {
                             Status _status = statuses.get(saffronDatasetName);
                             _status.fail(x.getMessage(), x);
@@ -146,7 +150,76 @@ public class Executor extends AbstractHandler {
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
 
+//            }  else if (target.startsWith("/api/v1/run/rerun")) {
+//                final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
+//                Status _status = makeStatus();
+//                _status.name = saffronDatasetName;
+//                statuses.put(saffronDatasetName, _status);
+//                response.setContentType("text/html");
+//                response.setStatus(HttpServletResponse.SC_OK);
+//                baseRequest.setHandled(true);
+//                FileReader reader = new FileReader(new File("static/executing.html"));
+//                Writer writer = new StringWriter();
+//                char[] buf = new char[4096];
+//                int p = 0;
+//                while ((p = reader.read(buf)) >= 0) {
+//                    writer.write(buf, 0, p);
+//                }
+//                response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+//
+//                String mongoUrl = System.getenv("MONGO_URL");
+//                String mongoPort = System.getenv("MONGO_PORT");
+//                String mongoDbName = System.getenv("MONGO_DB_NAME");
+//
+//                MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+//                FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
+//                final Configuration newConfig =
+//                        new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+//                List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
+//                final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
+//                for (Document doc : docs) {
+//                    JSONObject jsonObj = new JSONObject(doc.toJson());
+//                    JSONArray docList = (JSONArray) jsonObj.get("documents");
+//                    for (int i = 0; i < docList.length(); i++) {
+//                        JSONObject obj = (JSONObject) docList.get(i);
+//                        List<Author> authors = new ArrayList<>();
+//                        JSONArray authorList = (JSONArray) obj.get("authors");
+//                        HashMap<String,String> result =
+//                            new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
+//                        for (int j = 0; j < authorList.length(); j++) {
+//                            authors.add((Author) authorList.get(j));
+//                        }
+//                        org.insightcentre.nlp.saffron.data.Document docCorp
+//                                = new org.insightcentre.nlp.saffron.data.Document(
+//                                new SaffronPath(""),
+//                                obj.getString("id"),
+//                                new URL("http://"+mongoUrl+"/"+mongoPort),
+//                                obj.getString("name"),
+//                                obj.getString("mime_type"),
+//                                authors,
+//                                result,
+//                                obj.get("metadata").toString());
+//                        other.addDocument(docCorp);
+//                    }
+//                }
+//                corpus = other;
+//
+//                new Thread(new Runnable() {
+//
+//                    @Override
+//                    public void run() {
+//                        _status.stage = 1;
+//                        try {
+//                            execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, false);
+//                        } catch (IOException x) {
+//                            Status _status = statuses.get(saffronDatasetName);
+//                            _status.fail(x.getMessage(), x);
+//                        }
+//                    }
+//                }).start();
             }
+
+
             if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
                 if (statuses.containsKey(saffronDatasetName)) {
@@ -186,7 +259,9 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
                     } else {
+                        //execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName, true);
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
+
                     }
                 } catch (Throwable x) {
                     _status.fail(x.getMessage(), x);
@@ -232,7 +307,9 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
                     } else {
+                        //execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName, true);
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
+
                     }
                 } catch (Exception x) {
                     _status.fail(x.getMessage(), x);
@@ -260,7 +337,9 @@ public class Executor extends AbstractHandler {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
                     } else {
+                        //execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName, true);
                         execute(corpus, defaultConfig, data.get(saffronDatasetName), saffronDatasetName);
+
                     }
                 } catch (Exception x) {
                     _status.fail(x.getMessage(), x);
@@ -283,13 +362,21 @@ public class Executor extends AbstractHandler {
         }
     }
 
+    //void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
     void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName) throws IOException {
-        scaleThreads(config);
+
         Status _status = statuses.get(saffronDatasetName);
         _status.advanced = false;
+//        BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
+//        if(bwList == null) {
+//            bwList = new BlackWhiteList();
+//        }
+//        System.out.println(bwList.termWhiteList.size());
+        scaleThreads(config);
+
+
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
-
 
 
         final File datasetFolder = new File(parentDirectory, saffronDatasetName);
@@ -302,15 +389,18 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Indexing Corpus");
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
+        //DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, _status, isInitialRun);
         DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, _status);
 
         _status.stage++;
         _status.setStatusMessage("Initializing topic extractor");
         //TopicExtraction extractor = new TopicExtraction(config.termExtraction);
         TermExtraction extractor = new TermExtraction(config.termExtraction);
-
         _status.setStatusMessage("Extracting Topics");
+        //TermExtraction.Result res = extractor.extractTopics(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
         TermExtraction.Result res = extractor.extractTopics(searcher, _status);
+
+        //res.normalize();
 
         _status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
@@ -386,17 +476,20 @@ public class Executor extends AbstractHandler {
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
         _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
+        //final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         final Taxonomy graph = search.extractTaxonomy(topicMap);
-
         _status.setStatusMessage("Saving taxonomy");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
         data.setTaxonomy(graph);
 
         try {
+
             String mongoUrl = System.getenv("MONGO_URL");
             String mongoPort = System.getenv("MONGO_PORT");
-            System.out.println("Mongo:" + mongoUrl + ":" + mongoPort);
-            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), "saffron", "saffron_runs");
+            String mongoDbName = System.getenv("MONGO_DB_NAME");
+
+            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+            mongo.deleteRun(saffronDatasetName);
             mongo.addRun(saffronDatasetName, new Date());
             mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
             mongo.addTopics(saffronDatasetName, new Date(), topics);
@@ -405,6 +498,7 @@ public class Executor extends AbstractHandler {
             mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
             mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
             mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
+            mongo.addCorpus(saffronDatasetName, new Date(), corpus);
 
         } catch (MongoException ex) {
             System.out.println("MongoDB not available - starting execution in local mode");
@@ -413,6 +507,24 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Done");
         _status.completed = true;
     }
+
+//    public BlackWhiteList extractBlackWhiteList(String datasetName) {
+//        String mongoUrl = System.getenv("MONGO_URL");
+//        String mongoPort = System.getenv("MONGO_PORT");
+//        String mongoDbName = System.getenv("MONGO_DB_NAME");
+//
+//        MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+//
+//        if(!mongo.getTopics(datasetName).iterator().hasNext()) {
+//            System.out.println("HERE");
+//            return new BlackWhiteList();
+//        }
+//        else {
+//            System.out.println("HERE2");
+//            return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
+//
+//        }
+//    }
 
     public class Status implements SaffronListener, Closeable {
 

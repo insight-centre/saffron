@@ -16,6 +16,7 @@ import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 
 import org.bson.conversions.Bson;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -34,7 +35,7 @@ public class MongoDBHandler implements Closeable {
 
     private final String url;
     private final int port;
-    private final String dbName;
+    private String dbName;
     private final String collectionName;
     private final MongoClient mongoClient;
     private final MongoDatabase database;
@@ -46,6 +47,7 @@ public class MongoDBHandler implements Closeable {
     private final MongoCollection topicsSimilarityCollection;
     private final MongoCollection authorSimilarityCollection;
     private final MongoCollection taxonomyCollection;
+    private final MongoCollection corpusCollection;
 
     public MongoDBHandler(String url, int port, String dbName, String collectionName) {
         this.url = url;
@@ -62,6 +64,15 @@ public class MongoDBHandler implements Closeable {
         this.topicsSimilarityCollection = database.getCollection(collectionName + "_topics_similarity");
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
         this.taxonomyCollection = database.getCollection(collectionName + "_taxonomy");
+        this.corpusCollection = database.getCollection(collectionName + "_corpus");
+    }
+
+    public void setDbName(String dbName) {
+        this.dbName = dbName;
+    }
+
+    public String getDbName() {
+        return this.dbName;
     }
 
     public boolean addRun(String id, Date date) {
@@ -302,13 +313,10 @@ public class MongoDBHandler implements Closeable {
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
 
-            JSONObject jsonObject = new JSONObject(graph);
-            ObjectMapper mapper = new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper();
 
-            ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
+
         try{
-            System.out.println("Testing 123");
-            System.out.println(mapper.writeValueAsString(graph));
             Document doc = Document.parse( mapper.writeValueAsString(graph) );
             doc.append("id", id);
             doc.append("date", date);
@@ -460,8 +468,6 @@ public class MongoDBHandler implements Closeable {
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
         Bson update = combine(set("topic", newTopic), set("topicString", newTopic), set("originalTopic", topic));
 
-
-
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
@@ -489,4 +495,41 @@ public class MongoDBHandler implements Closeable {
     }
 
 
+    public boolean addCorpus(String saffronDatasetName, Date date, Corpus corpus) {
+        ObjectMapper mapper = new ObjectMapper();
+
+
+        try{
+            Document doc = Document.parse( mapper.writeValueAsString(corpus) );
+            doc.append("id", saffronDatasetName);
+            doc.append("date", date);
+            FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+            findOptions.upsert(true);
+            findOptions.returnDocument(ReturnDocument.AFTER);
+            if (getCorpusCount(saffronDatasetName) > 0)
+                corpusCollection.findOneAndDelete(doc);
+
+            corpusCollection.insertOne(doc);
+
+            return true;
+
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+
+        return false;
+    }
+
+    public long getCorpusCount(String saffronDatasetName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        return corpusCollection.count(and(eq("id", saffronDatasetName)));
+    }
+
+    public FindIterable<Document> getCorpus(String saffronDatasetName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        return corpusCollection.find(and(eq("id", saffronDatasetName)));
+    }
 }

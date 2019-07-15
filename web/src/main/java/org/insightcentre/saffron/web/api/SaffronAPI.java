@@ -91,13 +91,11 @@ public class SaffronAPI{
     }
 
     @POST
-    @Path("/{param}/rerun")
+    @Path("/rerun/{param}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postRun(InputStream incomingData, @PathParam("param") String name) {
         StringBuilder crunchifyBuilder = new StringBuilder();
-        String executeUrl = "http://localhost:8080/?name=ten";
-
 
         BaseResponse resp = new BaseResponse();
 
@@ -268,7 +266,10 @@ public class SaffronAPI{
     }
 
     private MongoDBHandler getMongoDBHandler() {
-        return new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
+        String mongoUrl = System.getenv("MONGO_URL");
+        String mongoPort = System.getenv("MONGO_PORT");
+        String mongoDbName = System.getenv("MONGO_DB_NAME");
+        return  new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
     }
 
 
