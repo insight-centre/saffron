@@ -5,6 +5,8 @@ import javax.ws.rs.core.MediaType;
 
 import javax.ws.rs.core.Response;
 import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.*;
 
 import com.google.gson.Gson;
@@ -89,11 +91,15 @@ public class SaffronAPI{
     }
 
     @POST
-    @Path("/{param}")
+    @Path("/{param}/rerun")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postRun(InputStream incomingData, @PathParam("param") String name) {
         StringBuilder crunchifyBuilder = new StringBuilder();
+        String executeUrl = "http://localhost:8080/?name=ten";
+
+
+        BaseResponse resp = new BaseResponse();
 
         File directory = new File("data");
         if (directory == null) {
@@ -105,6 +111,9 @@ public class SaffronAPI{
 
         }
         try {
+            URL url = new URL("http://localhost:8080/?name="+name);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("GET");
             Map<String, SaffronData> saffron = new HashMap<String, SaffronData>();
             BufferedReader in = new BufferedReader(new InputStreamReader(incomingData));
             String line = null;
@@ -114,9 +123,8 @@ public class SaffronAPI{
             }
             Browser browser = new Browser(directory);
             Executor executor = new Executor(saffron, directory, new File("name"));
-            NewRun welcome = new NewRun(executor);
-            Home home = new Home(saffron, directory);
-            BaseResponse resp = new BaseResponse();
+//            executor.execute
+
             resp.setId(name);
             resp.setRunDate(new Date());
 
@@ -125,7 +133,7 @@ public class SaffronAPI{
         }
 
 
-        return Response.ok("Done").build();
+        return Response.ok(resp).build();
     }
 
     @GET
