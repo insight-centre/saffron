@@ -247,7 +247,6 @@ angular.module('app').component('editparents', {
              ctrl.topics = [];
             $http.get(apiUrlWithSaffron).then(
                 function (response) {
-
                     $scope.getChildren(response.data, "", null);
                 },
                 function (error) {
@@ -258,7 +257,7 @@ angular.module('app').component('editparents', {
         }
         
         $scope.getChildren = function(topic, parent_branch, parent) {
-            current_topic = {
+            var current_topic = {
                 "topic_string": topic.root,
                 "branch": parent_branch,
                 "topic_id": topic.root,
