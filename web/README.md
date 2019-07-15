@@ -9,110 +9,90 @@ API Routes in place:
 * GET /run
 
 
-
 * POST /run
 
-`This API call returns all previous saffron runs`
 
 * DELETE /run/{saffron-run-id}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}
-
-`This API call returns all previous saffron runs`
+    [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_run_response.json)
 
 * GET /run/{saffron-run-id}/topics
+    [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_topics_response.json)
 
-`This API call returns all previous saffron runs`
- 
 * GET /run/{saffron-run-id}/search/{topic}
-
-`This API call returns all previous saffron runs`
+    [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_search_response.json)
 
 * GET /run/{saffron-run-id}/topics/{topic}/children
-
-`This API call returns all previous saffron runs`
+    [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_children_response.json)
  
 * GET /run/{saffron-run-id}/topics/{topic}/parent
+    [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_parent_response.json)
 
-`This API call returns all previous saffron runs`
 
-* POST /run/{saffron-run-id}/topics/{topic}/{status}
+* POST /run/{saffron-run-id}/topics/{topic_id}/{topic_id2}/{status}
+    
 
-`This API call returns all previous saffron runs`
 
 * DELETE /run/{saffron-run-id}/topics/{topic_id} (SINGLE Topic)
 
-`This API call returns all previous saffron runs`
+
 
 * POST /run/{saffron-run-id}/topics (Delete multiple)
+    [request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/delete_many_req.json)
+    [response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/delete_many_response.json)
 
-`This API call returns all previous saffron runs`
 
 * POST /run/{saffron-run-id}/topics/changeroot (Change Topic root)
+    [request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_rq.json)
+    [response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_resp.json)
 
-`This API call returns all previous saffron runs`
 
 * POST /run/{saffron-run-id}/topics/update (Update accept/reject/none status)
 
-`This API call returns all previous saffron runs`
 
 * PUT /run/{saffron-run-id}/topics/{topic_id}
 
-`This API call returns all previous saffron runs`
  
 * GET /run/{saffron-run-id}/authortopics
 
-`This API call returns all previous saffron runs`
  
 * GET /run/{saffron-run-id}/authortopics/{topic}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/authorsimilarity
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/authorsimilarity/{topic}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/authorsimilarity/{topic1}/{topic2} 
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topiccorrespondence
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topiccorrespondence/{topic}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/docs/{document_id}
  
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topicextraction
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topicextraction/{topic}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topicsimilarity
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topicsimilarity/{topic}
 
-`This API call returns all previous saffron runs`
 
 * GET /run/{saffron-run-id}/topicsimilarity/{topic1}/{topic2}
 
-`This API call returns all previous saffron runs`
 
 
 
