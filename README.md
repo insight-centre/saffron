@@ -24,7 +24,7 @@ author
 9. *Taxonomy Extraction*: Organizes the topics into a single hierarchical 
 graph that allows for easy browsing of the corpus and deep insights.
 
-![Saffron Service Workflow](https://gitlab.insight-centre.org/johmcc/saffron/raw/master/docs/Saffron%20Services.png)
+![Saffron Service Workflow](https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png)
 
 Installation
 ------------
@@ -122,12 +122,12 @@ To create a .dot file, use the command line:
 Configuration
 =============
 
-Full details of the configuration can be seen from the [JavaDoc](https://johmcc.pages.insight-centre.org/saffron/org/insightcentre/nlp/saffron/config/package-summary.html)
+Full details of the configuration can be seen from the [JavaDoc](https://saffron.pages.insight-centre.org/saffron/org/insightcentre/nlp/saffron/config/package-summary.html)
 
 Documentation
 =============
 
-The JavaDoc is available at https://johmcc.pages.insight-centre.org/saffron/
+The JavaDoc is available at https://saffron.pages.insight-centre.org/saffron/
 
 API Documentation
 =================
