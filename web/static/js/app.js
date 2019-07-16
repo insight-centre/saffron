@@ -271,10 +271,10 @@ angular.module('app').component('editparents', {
         };
 
         $scope.changeParent = function(topic, new_parent) {
-
             var requestData = {
                     "topics" : [{
                         "id": topic.topic_id,
+                        "new_id": topic.topic_id,
                         "current_parent": topic.parent.topic_id,
                         "new_parent": new_parent.topic_id
                     }]
@@ -296,6 +296,10 @@ angular.module('app').component('editparents', {
                 }
             );
 
+        };
+
+        $scope.confirmParents = function() {
+            $window.location.href = '/' + saffronDatasetName + '/edit';
         };
 
         $scope.loadTopics();

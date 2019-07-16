@@ -312,7 +312,14 @@ public class Browser extends AbstractHandler {
                         String data = new String(Files.readAllBytes(Paths.get("static/edit-parents-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
-                } else if (target.startsWith("/author/")) {
+                } else if (target.startsWith("/edit")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-final-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                }else if (target.startsWith("/author/")) {
                     final String authorString = decode(target.substring(8));
                     final Author author = saffron.getAuthor(authorString);
                     if (author != null) {
