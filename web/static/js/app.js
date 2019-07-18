@@ -214,6 +214,16 @@ angular.module('app').component('edittopics', {
             }
         };
 
+        // reject one or multiple topics only in the UI
+        $scope.revertTopicDecision = function($event, topic){
+            $event.preventDefault();
+            ctrl.topics.forEach(function(element) {
+                if (element.topic_string === topic.topic_string) {
+                    element.status = "";
+                }
+            }, topic);
+        };
+
         // send all modifications to the API
         $scope.saveTopics = function() {
             /* $event.preventDefault();
