@@ -163,13 +163,15 @@ angular.module('app').component('edittopics', {
 
         // adding selected status to item
         ctrl.checkedStatus = false;
-        $scope.checkStatus = function(){
+        $scope.checkStatus = function(topicId,checkedValue){
             angular.forEach(ctrl.topics,function(item) {
+                if (item.topic_id === topicId){
+                    item.checked = checkedValue;
+                }
                 if (item.checked === true) {
                     ctrl.checkedStatus = true;
-                    return false;
                 }
-            });
+            }, topicId, checkedValue);
         };
 
         // accept one or multiple topics only in the UI
@@ -179,8 +181,8 @@ angular.module('app').component('edittopics', {
                 angular.forEach(ctrl.topics,function(element){
                     if (element.checked === true) {
                         element.status = "accepted";
-                        element.checkedStatus = false;
                         element.checked = false;
+                        ctrl.checkedStatus = false;
                     }
                 });
                 $scope.checkedAll = false;
@@ -188,6 +190,8 @@ angular.module('app').component('edittopics', {
                 ctrl.topics.forEach(function(element) {
                     if (element.topic_string === topic.topic_string) {
                         element.status = "accepted";
+                        element.checked = false;
+                        $scope.checkStatus(element.topic_id,false);
                     }
                 }, topic);
             }
@@ -200,8 +204,8 @@ angular.module('app').component('edittopics', {
                 angular.forEach(ctrl.topics,function(element){
                     if (element.checked === true) {
                         element.status = "rejected";
-                        element.checkedStatus = false;
                         element.checked = false;
+                        ctrl.checkedStatus = false;
                     }
                 });
                 $scope.checkedAll = false;
@@ -209,6 +213,8 @@ angular.module('app').component('edittopics', {
                 ctrl.topics.forEach(function(element) {
                     if (element.topic_string === topic.topic_string) {
                         element.status = "rejected";
+                        element.checked = false;
+                        $scope.checkStatus(element.topic_id,false);
                     }
                 }, topic);
             }
@@ -220,6 +226,8 @@ angular.module('app').component('edittopics', {
             ctrl.topics.forEach(function(element) {
                 if (element.topic_string === topic.topic_string) {
                     element.status = "";
+                    element.checked = false;
+                    $scope.checkStatus(element.topic_id,false);
                 }
             }, topic);
         };
