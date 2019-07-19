@@ -12,7 +12,7 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DocumentTopic {
     public final String document_id;
-    public final String topic_string;
+    public String topic_string;
     public final int occurrences;
     public final String pattern;
     public final String acronym;

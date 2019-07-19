@@ -21,9 +21,10 @@ var svg = d3.select("#graph").append("svg")
 var link = svg.selectAll(".link"),
     node = svg.selectAll(".node");
 
-d3.json("/" + saffronDatasetName + "/taxonomy", function(error, json) {
+
+d3.json(apiUrl + saffronDatasetName, function(error, json) {
   if (error) throw error;
-  
+  console.log("HEREEEEE")
   root = json;
   var links = graph.links;
   update();

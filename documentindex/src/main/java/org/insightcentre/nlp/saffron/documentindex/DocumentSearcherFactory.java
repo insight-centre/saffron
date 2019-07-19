@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;
@@ -50,16 +51,15 @@ public class DocumentSearcherFactory {
      * @return A document searcher
      * @throws IOException If a disk error occurs
      */
-    public static DocumentSearcher index(Corpus corpus, File index) throws IOException {
-        return index(corpus, index, new DefaultSaffronListener());
+    public static DocumentSearcher index(Corpus corpus, File index, Boolean isInitialRun) throws IOException {
+        return index(corpus, index, new DefaultSaffronListener(), isInitialRun);
     }
     
-    public static DocumentSearcher index(Corpus corpus, File index, SaffronListener log) throws IOException {
-        final Directory dir = luceneFileDirectory(index, true);
+    public static DocumentSearcher index(Corpus corpus, File index, SaffronListener log, Boolean isInitialRun) throws IOException {
+        final Directory dir = luceneFileDirectory(index, isInitialRun);
         try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
             log.log("Indexing");
             for (Document doc : corpus.getDocuments()) {
-                log.log(doc.name);
                 //Document doc2 = TIKA_ANALYZER.analyze(doc);
                 indexer.indexDoc(doc, doc.contents());
             }

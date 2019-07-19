@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data.connections;
 
 import java.util.Objects;
+import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *

@@ -13,6 +13,7 @@ import com.google.gson.Gson;
 import com.mongodb.client.FindIterable;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.saffron.web.*;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
@@ -40,7 +41,7 @@ public class SaffronAPI{
 
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
         return Response.ok("OK").build();
@@ -71,7 +72,7 @@ public class SaffronAPI{
             mongo.close();
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
 
@@ -95,44 +96,18 @@ public class SaffronAPI{
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Response postRun(InputStream incomingData, @PathParam("param") String name) {
-        StringBuilder crunchifyBuilder = new StringBuilder();
-
         BaseResponse resp = new BaseResponse();
-
-        File directory = new File("data");
-        if (directory == null) {
-            directory = new File("data");
-            //badOptions(p, "The directory was not specified");
-            //return;
-        } else if (directory.exists() && !directory.isDirectory()) {
-            //badOptions(p, "The directory exists but is not a directory");
-
-        }
         try {
-            URL url = new URL("http://localhost:8080/?name="+name);
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            con.setRequestMethod("GET");
-            Map<String, SaffronData> saffron = new HashMap<String, SaffronData>();
-            BufferedReader in = new BufferedReader(new InputStreamReader(incomingData));
-            String line = null;
-            while ((line = in.readLine()) != null) {
-                crunchifyBuilder.append(line);
-
-            }
-            Browser browser = new Browser(directory);
-            Executor executor = new Executor(saffron, directory, new File("name"));
-//            executor.execute
-
             resp.setId(name);
             resp.setRunDate(new Date());
 
         } catch (Exception e) {
-            System.out.println("Error Parsing: - ");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("This saffron object cannot be rerun").build();
         }
-
 
         return Response.ok(resp).build();
     }
+
 
     @GET
     @JSONP
@@ -162,7 +137,7 @@ public class SaffronAPI{
             mongo.close();
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
 
@@ -213,7 +188,7 @@ public class SaffronAPI{
 
         try {
 
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
             FindIterable<Document> runs = mongo.getTaxonomy(runId);
             for (org.bson.Document doc : runs) {
@@ -224,15 +199,16 @@ public class SaffronAPI{
 
             Taxonomy descendent = originalTaxo.descendent(topic_id);
             String json = new Gson().toJson(descendent);
+            mongo.close();
             return Response.ok(json).build();
 
 
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+
         }
 
-        return Response.ok().build();
     }
 
 
@@ -245,7 +221,7 @@ public class SaffronAPI{
 
 
         try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
             FindIterable<Document> runs = mongo.getTaxonomy(runId);
             for (org.bson.Document doc : runs) {
@@ -255,14 +231,15 @@ public class SaffronAPI{
             }
             Taxonomy antecendent = originalTaxo.antecendent(topic_id,"", originalTaxo, null);
             String json = new Gson().toJson(antecendent);
+            mongo.close();
             return Response.ok(json).build();
 
 
         } catch (Exception e) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
         }
 
-        return Response.ok().build();
     }
 
     private MongoDBHandler getMongoDBHandler() {
@@ -302,23 +279,33 @@ public class SaffronAPI{
                                 @PathParam("status") String status) {
 
         MongoDBHandler mongo = getMongoDBHandler();
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
         FindIterable<Document> runs = mongo.getTaxonomy(name);
 
         try {
             for (org.bson.Document doc : runs) {
                 JSONObject jsonObj = new JSONObject(doc.toJson());
                 Taxonomy originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, status);
+
+                if (status.equals("rejected")) {
+                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.rejected);
+                } else if (status.equals("accepted")) {
+                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.accepted);
+                } else if (status.equals("none")) {
+                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
+                }
+
                 mongo.updateTopic(name, topicId, status);
                 mongo.updateTopicSimilarity(name, topicId, topic_id2, status);
             }
 
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
-
+            mongo.close();
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Failed to reject the topic " + topicId + " from the taxonomy " + name);
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+
         }
      return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
@@ -368,11 +355,11 @@ public class SaffronAPI{
 
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
 
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
         Iterator<String> keys = jsonRqObj.keys();
 
         try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
             FindIterable<Document> runs = mongo.getTaxonomy(name);
             for (org.bson.Document doc : runs) {
@@ -393,20 +380,24 @@ public class SaffronAPI{
                     String newTopicString = json.get("new_id").toString();
                     String newParentString = json.get("new_parent").toString();
                     String oldParentString = json.get("current_parent").toString();
+
                     if(!newParentString.equals(oldParentString)) {
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         Taxonomy newParent = originalTaxo.descendent(newParentString);
-                        newParent = newParent.addChild(topic, newParent);
-
-                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, newParent);
-                        finalTaxon.originalParent = oldParentString;
-                        finalTaxon.originalTopic = topicString;
-
+                        Taxonomy oldParent = originalTaxo.descendent(oldParentString);
+                        oldParent.hasDescendent(newParentString);
+                        if (oldParent.hasDescendentParent(newParentString)) {
+                            return Response.status(Response.Status.BAD_REQUEST).entity("The selected move parent target is a member of a child topic and cannot be moved").build();
+                        }
+                        newParent = newParent.addChild(topic, newParent, oldParentString);
+                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, topic, newParent);
+                        finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
                         returnJson.put("id", name);
                         returnJson.put("success", true);
                         returnJson.put("new_parent", newParentString);
                         returnJsonArray.put(returnJson);
-                    } else {
+                    }
+                    else {
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         topic.setRoot(newTopicString);
                         finalTaxon = originalTaxo.deepCopyNewTopic(topicString, newTopicString);
@@ -426,14 +417,14 @@ public class SaffronAPI{
                 }
             }
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
+            mongo.close();
             return Response.ok(returnJsonArray.toString()).build();
 
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-        }
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
-        return Response.ok(finalTaxon.toString()).build();
+        }
 
     }
 
@@ -447,14 +438,14 @@ public class SaffronAPI{
 
         MongoDBHandler mongo = getMongoDBHandler();
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
         Iterator<String> keys = jsonRqObj.keys();
 
         try {
 
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), "none");
+            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
             FindIterable<Document> runs = mongo.getTaxonomy(name);
             for (org.bson.Document doc : runs) {
                 JSONObject jsonObj = new JSONObject(doc.toJson());
@@ -468,26 +459,32 @@ public class SaffronAPI{
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
                 for (int i = 0; i < obj.length(); i++) {
                     JSONObject json = obj.getJSONObject(i);
-                    String topic1String = json.get("topic1").toString();
-                    String topic2String = json.get("topic2").toString();
-
+                    String topicString = json.get("topic").toString();
                     String status = json.get("status").toString();
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topic1String, status);
+                    Taxonomy topic = originalTaxo.descendent(topicString);
+                    Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
 
+                    if (status.equals("rejected")) {
+                        finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
+                        finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
 
-                    mongo.updateTopic(name, topic1String, status);
-                    mongo.updateTopicSimilarity(name, topic1String, topic2String, status);
-                    mongo.updateTopicSimilarity(name, topic2String, topic1String, status);
+                    } else {
+                        finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
+                    }
+
+//
+                    mongo.updateTopic(name, topicString, status);
                 }
             }
 
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
-
+            mongo.close();
 
 
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to update topic");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
+
         }
 
         return Response.ok("Topics for run ID: " + name + " Updated").build();
@@ -525,9 +522,9 @@ public class SaffronAPI{
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author topics").build();
         }
 
-        return Response.ok("OK").build();
     }
 
 

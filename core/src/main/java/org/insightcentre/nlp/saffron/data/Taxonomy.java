@@ -40,9 +40,9 @@ public class Taxonomy {
     /** The score relating this node to its parent (NaN if there is no parent) */
     public final double linkScore;
     /** The list of child nodes */
-    public final List<Taxonomy> children;
+    public List<Taxonomy> children;
     /** The status of the topic string */
-    public String status;
+    public Status status;
 
     public List<Taxonomy> parent;
 
@@ -56,7 +56,7 @@ public class Taxonomy {
                     @JsonProperty("originalParent") String originalParent,
                     @JsonProperty("originalTopic") String originalTopic,
                     @JsonProperty("children") List<Taxonomy> children,
-                    @JsonProperty("status") String status) {
+                    @JsonProperty("status") Status status) {
         this.root = root;
         this.originalParent = originalParent;
         this.originalTopic = originalTopic;
@@ -86,7 +86,7 @@ public class Taxonomy {
      * Get the string for the root topic
      * @return 
      */
-    public String getStatus() {
+    public Status getStatus() {
         return status;
     }
 
@@ -95,7 +95,7 @@ public class Taxonomy {
      * Set the string for the root topic
      * @return
      */
-    public void setStatus(String status) {
+    public void setStatus(Status status) {
 
         this.status = status;
     }
@@ -149,7 +149,7 @@ public class Taxonomy {
     public boolean hasDescendent(String name) {
         if(this.root.equals(name))
             return true;
-        for(Taxonomy child : children) {
+        for(Taxonomy child : this.children) {
             if(child.hasDescendent(name))
                 return true;
         }
@@ -173,6 +173,23 @@ public class Taxonomy {
     }
 
     /**
+     * Is the originalTopic value below the newParent in the taxonomy
+     * @param originalTopic The root value that may be in this taxonomy
+     * @return
+     */
+    public boolean hasDescendentParent(String originalTopic) {
+        if(this.root.equals(originalTopic))
+            return true;
+        for(Taxonomy child : children) {
+            if(child.hasDescendent(originalTopic))
+                return true;
+        }
+        return false;
+    }
+
+
+
+    /**
      * Search this taxonomy for a taxonomy with a given root
      * @param name The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
@@ -193,17 +210,26 @@ public class Taxonomy {
 
 
 
+
     /**
      * Search this taxonomy for a taxonomy with a given root
-     * @param child The name to search for
+     * @param topic The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
-    public Taxonomy removeChild(Taxonomy child, Taxonomy oldParent) {
+    public Taxonomy removeChild(String topic, Taxonomy taxonomy) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
-        for(Taxonomy childTaxo : oldParent.getChildren()) {
-            if(!childTaxo.equals(child)){
+        Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
+        for(Taxonomy childTaxo : taxonomy.getChildren()) {
+            if(!childTaxo.root.equals(parent.root)){
                 newChildren.add(childTaxo);
+            } else if (childTaxo.root.equals(parent.root)){
+                for(Taxonomy removal : parent.getChildren()) {
+
+                    if (!removal.root.equals(topic)) {
+                        newChildren.add(childTaxo);
+                    }
+                }
             }
 
         }
@@ -215,15 +241,38 @@ public class Taxonomy {
      * @param newParent The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
-    public Taxonomy addChild(Taxonomy child, Taxonomy newParent) {
+    public Taxonomy addChild(Taxonomy child, Taxonomy newParent, String oldParentString) {
 
        // return newParent.(child);
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy childTaxo : newParent.getChildren()) {
+            if(!childTaxo.root.equals(oldParentString)) {
+
                 newChildren.add(childTaxo);
+            }
+
+
         }
+
         newChildren.add(child);
 
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    }
+
+    /**
+     * Search this taxonomy for a taxonomy with a given root
+     * @param currentTaxo The name to search for
+     * @return A taxonomy whose root is name or null if no taxonomy is found
+     */
+    public Taxonomy addChildTaxo(Taxonomy child, Taxonomy currentTaxo, String parentString) {
+        List<Taxonomy> newChildren = new ArrayList<>();
+
+        for(Taxonomy childTaxo : currentTaxo.getChildren()) {
+            if(!childTaxo.root.equals(parentString)) {
+               newChildren.add(childTaxo);
+            }
+        }
+        newChildren.add(child);
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
@@ -487,27 +536,66 @@ public class Taxonomy {
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopyNewParent(String topicString, String newParent, Taxonomy newParentTaxo) {
-        System.out.println("New Parent = " + newParent);
-        System.out.println("New Parent Topic = " + topicString);
-        System.out.println("New Parent = " + newParentTaxo);
+    public Taxonomy deepCopyNewTaxo(String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : newParentTaxo.children) {
+            if(t.root.equals(newParent)){
+                t = t.addChildTaxo(newTaxo, t, newParent);
+                newChildren.add(t.deepCopy());
+            } else {
+                newChildren.add(t.deepCopyNewTaxo(newParent, newTaxo, t));
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopyUpdatedTaxo(String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
+        List<Taxonomy> newChildren = new ArrayList<>();
+        Taxonomy descendent = newParentTaxo.antecendent(newParent, "", newParentTaxo, null);
+        if (descendent != null) {
+            for(Taxonomy t : newParentTaxo.children) {
+                if(t.root.equals(descendent.root)){
+                    t.children = new ArrayList<Taxonomy>();
+                    t.children = newTaxo.children;
+                    newChildren.add(t.deepCopy());
+                } else {
+                    newChildren.add(t.deepCopyUpdatedTaxo(newParent, newTaxo, t));
+                }
+            }
+        } else {
+            for(Taxonomy t : newParentTaxo.children) {
+                    newChildren.add(t.deepCopyUpdatedTaxo(newParent, newTaxo, t));
+            }
+        }
+        return new Taxonomy(newParentTaxo.root, newParentTaxo.score, newParentTaxo.linkScore, newParentTaxo.originalParent, newParentTaxo.originalTopic, newChildren, newParentTaxo.status);
+    }
+
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopyNewParent(String topicString, String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
+
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
             if (!t.root.equals(topicString)) {
-
                 if (t.root.equals(newParent)){
-                    System.out.println("Adding = " + newParentTaxo.children.get(0));
+
                     for (Taxonomy newChild:newParentTaxo.children){
-                        System.out.println("T Root = " + t.root);
                         if (newChild.root.equals(topicString)){
                             t.children.add(newChild);
-                            newChildren.add(t.deepCopy());
+                            newChildren.add(t.deepCopyNewParent(topicString, newParent, newTaxo, newParentTaxo));
                         }
                     }
 
                 } else {
-                    newChildren.add(t.deepCopyNewParent(topicString, newParent, newParentTaxo));
+                    newChildren.add(t.deepCopyNewParent(topicString, newParent, newTaxo, newParentTaxo));
                 }
 
             }
@@ -525,9 +613,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
 
             if (!t.root.equals(topicString)) {
-
                 newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
-
             } else {
                 t.setRoot(newTopicString);
                 newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
@@ -540,15 +626,13 @@ public class Taxonomy {
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopySetTopicStatus(String topicString, String status) {
+    public Taxonomy deepCopySetTopicStatus(String topicString, Status status) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
             if (!t.root.equals(topicString)) {
-
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
-
             } else {
                 t.setStatus(status);
                 t.setRoot(topicString);
@@ -556,6 +640,28 @@ public class Taxonomy {
             }
         }
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopyMoveChildTopics(String topicString, Taxonomy topic, Taxonomy topicParent) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : topic.children) {
+           newChildren.add(t.deepCopy());
+        }
+        for(Taxonomy t : topicParent.children) {
+            if (!t.root.equals(topicString)) {
+                newChildren.add(t.deepCopy());
+            } else {
+                t.children = new ArrayList<Taxonomy>();
+                newChildren.add(t);
+                t.setStatus(Status.rejected);
+            }
+        }
+        return new Taxonomy(topicParent.root, topicParent.score, topicParent.linkScore, topicParent.originalParent, this.originalTopic, newChildren, this.status);
     }
 
 
