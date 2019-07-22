@@ -132,6 +132,7 @@ angular.module('app').component('edittopics', {
                     ctrl.topics.push({
                         "topic_string": response.data[t].topicString,
                         "topic_id": response.data[t].topicString,
+                        "status": response.data[t].status,
                         "pos": (t + 1)
                     });                       
                 }
