@@ -8,15 +8,8 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
@@ -398,9 +391,11 @@ public class SaffronData {
         final TypeFactory tf = mapper.getTypeFactory();
         final SaffronData saffron = new SaffronData();
 
-        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
-        System.out.print("ID = " + runId);
+        String mongoUrl = System.getenv("MONGO_URL");
+        String mongoPort = System.getenv("MONGO_PORT");
+        String mongoDbName = System.getenv("MONGO_DB_NAME");
 
+        MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
         FindIterable<org.bson.Document> docs = mongo.getTaxonomy(runId);
         for (org.bson.Document doc : docs) {
@@ -455,6 +450,16 @@ public class SaffronData {
             _getTaxoLocations(t.children.get(i), il2, map);
         }
     }
+
+//    public BlackWhiteList extractBlackWhiteList(String datasetName) {
+//        if(!getTopics(datasetName).iterator().hasNext())
+//            return new BlackWhiteList();
+//        else {
+//            return BlackWhiteList.from(get(datasetName), getTaxonomy(datasetName));
+//
+//        }
+//    }
+
 
     private Taxonomy taxoNavigate(Taxonomy t, IntList il) {
         for (int i : il) {

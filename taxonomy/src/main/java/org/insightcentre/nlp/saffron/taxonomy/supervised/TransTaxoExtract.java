@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 
 /**
@@ -196,7 +198,7 @@ public class TransTaxoExtract {
                 }
             }
             double linkScore = parent == null ? Double.NaN : scores.getDouble(new StringPair(parent, root));
-            return new Taxonomy(root, 0.0, linkScore, "", "", childrenTaxos, "none");
+            return new Taxonomy(root, 0.0, linkScore, "", "", childrenTaxos, Status.none);
         }
     }
 

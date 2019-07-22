@@ -107,7 +107,7 @@ public class Trainer extends AbstractHandler {
             status.stage++;
             status.setStatusMessage("Indexing Corpus");
             final File indexFile = new File(directory, "index");
-            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status);
+            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status, true);
 
             status.stage++;
             status.setStatusMessage("Enriching topics from corpus");

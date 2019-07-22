@@ -219,8 +219,6 @@ public class TermExtraction {
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
         summary.filter(minTermFreq);
-        System.err.println(summary.termFrequency.containsKey("one"));
-        System.err.println(summary.termFrequency.getInt("one"));
         return summary;
     }
 
@@ -526,6 +524,21 @@ public class TermExtraction {
             this.docTopics = docTopics;
         }
 
+        /**
+         * Update the result to give a more normal distribution of topic scores.
+         */
+        public void normalize() {
+            double[] values = new double[topics.size()];
+            int i = 0;
+            for(Topic t : topics) {
+                values[i++] = t.score;
+            }
+            LogGap normalizer = LogGap.makeModel(values);
+            for(Topic t : topics) {
+                t.score = normalizer.normalize(t.score);
+            }
+        }
+
         @Override
         public String toString() {
             return "Result{" + "topics=" + topics + ", docTopics=" + docTopics + '}';
@@ -613,6 +626,7 @@ public class TermExtraction {
             final TermExtraction te = new TermExtraction(c.termExtraction);
 
             final Result r = te.extractTopics(searcher);
+            r.normalize();
 
             mapper.writeValue((File) os.valueOf("t"), r.topics);
             mapper.writeValue((File) os.valueOf("o"), r.docTopics);

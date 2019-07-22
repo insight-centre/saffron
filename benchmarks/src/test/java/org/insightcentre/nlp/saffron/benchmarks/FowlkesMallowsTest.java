@@ -10,6 +10,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -44,7 +46,7 @@ public class FowlkesMallowsTest {
     }
 
     private Taxonomy makeTaxo(String root, Taxonomy... children) {
-        return new Taxonomy(root, 0, 0, "", "", Arrays.asList(children), "none");
+        return new Taxonomy(root, 0, 0, "", "", Arrays.asList(children), Status.none);
     }
     
     /**

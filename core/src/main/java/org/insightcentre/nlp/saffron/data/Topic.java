@@ -15,7 +15,7 @@ public class Topic implements Comparable<Topic> {
     /**
      * The unique string for this topic
      */
-    public final String topicString;
+    public String topicString;
     /**
      * The number of times this occurs in text
      */
@@ -36,6 +36,14 @@ public class Topic implements Comparable<Topic> {
      * The link to DBpedia (may be null)
      */
     public URL dbpedia_url;
+    /**
+     * The statue of the topic
+     */
+    public Status status;
+    /**
+     * The original string
+     */
+    public final String originalTopic;
 
     @JsonCreator
     public Topic(
@@ -50,6 +58,7 @@ public class Topic implements Comparable<Topic> {
         this.matches = matches;
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
+        this.originalTopic = topic_string;
     }
 
     public void addMorphologicalVariation(MorphologicalVariation mv) {

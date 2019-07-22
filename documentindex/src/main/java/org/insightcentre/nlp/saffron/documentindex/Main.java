@@ -47,7 +47,7 @@ public class Main {
             
             final Corpus corpus = CorpusTools.readFile(corpusFile);
 
-            DocumentSearcherFactory.index(corpus, indexFile);
+            DocumentSearcherFactory.index(corpus, indexFile, true);
         } catch(Throwable t) {
             t.printStackTrace();
             System.exit(-1);

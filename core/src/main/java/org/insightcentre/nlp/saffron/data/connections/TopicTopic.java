@@ -3,15 +3,17 @@ package org.insightcentre.nlp.saffron.data.connections;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
+import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class TopicTopic {
-    public final String topic1;
-    public final String topic2;
+    public String topic1;
+    public String topic2;
     public final double similarity;
+    public Status status;
 
     @JsonCreator
     public TopicTopic(@JsonProperty("topic1_id") String topic1, 

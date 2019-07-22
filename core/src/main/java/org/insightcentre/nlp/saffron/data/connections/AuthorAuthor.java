@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.data.connections;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
+import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *
@@ -12,6 +13,7 @@ public class AuthorAuthor {
     public final String author1_id;
     public final String author2_id;
     public final double similarity;
+    public Status status;
 
     @JsonCreator
     public AuthorAuthor(@JsonProperty("author1_id") String author1_id, 

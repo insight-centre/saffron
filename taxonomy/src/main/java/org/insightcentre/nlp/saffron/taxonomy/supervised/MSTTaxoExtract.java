@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
@@ -91,7 +93,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
             }
         }
         double linkScore = parent == null ? Double.NaN : matrix[topic.indexOf(parent)][topic.indexOf(node)];
-        return new Taxonomy(node, topicMap.get(node).score, linkScore, "", "", children, "none");
+        return new Taxonomy(node, topicMap.get(node).score, linkScore, "", "", children, Status.none);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

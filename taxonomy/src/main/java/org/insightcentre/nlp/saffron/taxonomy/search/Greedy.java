@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -31,10 +32,10 @@ public class Greedy implements TaxonomySearch {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(topicMap.size() == 0) {
-            return new Taxonomy("NO TOPICS", 0, 0, "", "", Collections.EMPTY_LIST, "none");
+            return new Taxonomy("NO TOPICS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
         } else if(topicMap.size() == 1) {
             // It is not possible to construct a taxonomy from 1 topic
-            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, "none");
+            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
         }
         for (String t1 : topicMap.keySet()) {
             for (String t2 : topicMap.keySet()) {

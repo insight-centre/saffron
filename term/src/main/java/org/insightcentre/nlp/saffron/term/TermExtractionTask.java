@@ -76,11 +76,12 @@ public class TermExtractionTask implements Runnable {
                 try {
                     tokens = tokenizer.get().tokenize(sentence);
                 } catch (Exception x) {
-                    //System.err.println(sentence);
+                    System.err.println(sentence);
                     throw x;
                 }
                 if (tokens.length > 0) {
-                    String[] tags = tagger.get().tag(tokens);
+                    String[] tags = new String[0];
+                    tags = tagger.get().tag(tokens);
 
                     if (tags.length != tokens.length) {
                         throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
@@ -103,7 +104,7 @@ public class TermExtractionTask implements Runnable {
                                 if (j == i && endTokens.contains(tags[j]) && nonStop) {
                                     emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
-                                if (preceedingTokens.contains(tags[j]) && j != i && nonStop) {
+                                if (preceedingTokens.contains(tags[j]) && j != i) {
                                     emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
                                 }
                                 if (j == i && !endTokens.contains(tags[j])
@@ -191,7 +192,7 @@ public class TermExtractionTask implements Runnable {
             }
             String termStrOrig = join(tokens, i, j);
             String termStr = termStrOrig.toLowerCase();
-            if (allValid && termStr.length() > 2 && !stopWords.contains(termStr)) {
+            if (allValid && termStr.length() > 2) {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
                 if (dts != null) {

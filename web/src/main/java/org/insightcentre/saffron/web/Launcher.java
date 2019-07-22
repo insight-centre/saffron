@@ -101,33 +101,13 @@ public class Launcher {
                     "com.wordnik.swagger.jaxrs.json;org.insightcentre.saffron.web.api");
 
 
-//            ServletHolder swaggerServlet = context.addServlet(
-//                    org.glassfish.jersey.servlet.ServletContainer.class, "/swagger-core");
-//            swaggerServlet.setInitOrder(0);
-//            swaggerServlet.setInitParameter(
-//                    "jersey.config.server.provider.classnames",
-//                    SaffronAPI.class.getCanonicalName() + ";com.wordnik.swagger.jersey.listing.ApiListingResourceJSON;" +
-//                            "com.wordnik.swagger.jersey.listing.JerseyApiDeclarationProvider;" +
-//                            "com.wordnik.swagger.jersey.listing.JerseyResourceListingProvider");
-//            swaggerServlet.setInitParameter(
-//                    "jersey.config.server.provider.packages",
-//                    "com.wordnik.swagger.jaxrs.json;org.insightcentre.saffron.web.api");
-//            swaggerServlet.setInitParameter("api.version", "1.0.0");
-//            swaggerServlet.setInitParameter("swagger.api.basepath", "http://localhost:8080/api");
-//
-//            // Setup Swagger-UI static resources
-//            String resourceBasePath = Launcher.class.getResource("/webapp").toExternalForm();
-//            context.setWelcomeFiles(new String[] {"index.html"});
-//            context.setResourceBase(resourceBasePath);
-//            context.addServlet(new ServletHolder(new DefaultServlet()), "/api");
-
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
 
 
             try {
                 server.start();
-                System.out.println(server.dump());
+
             } catch(BindException x) {
                 for(int i = port + 1; i < port + 20; i++) {
                     try {

@@ -64,13 +64,11 @@ function deleteOneRun($http, id){
 function rerunTaxonomy($http, runId){
 
     console.log(runId);
-    console.log(apiUrlWithSaffron + 'topics/update');
-    let finalTopics = {"topics": topicsContainer};
 
-    $http.post(apiUrlWithSaffron + runId, finalTopics).then(
+    $http.post(apiUrl + runId).then(
         function (response) {
             console.log(response);
-            console.log("Changed status: " + finalTopics);
+            console.log("Reran:  " + runId);
         },
         function (response) {
             console.log(response);
@@ -417,6 +415,30 @@ angular.module('app').component('topic', {
                 }
             );
         };
+
+        ctrl.checkRerun = false;
+        $scope.checkRerunStatus = function(){
+            angular.forEach(ctrl.topics,function(item) {
+                if (item.checked === true) {
+                    ctrl.checkedStatus = true;
+                    return false;
+                }
+            });
+        };
+
+        $scope.reRun = function(){
+            console.log("here");
+            var url = apiUrl + 'rerun/' + saffronDatasetName;
+            $http.post(url, '').then(function (response) {
+                console.log(response);
+
+            }).then(function (resp) {
+                console.log("here" + saffronDatasetName);
+                //$window.location.href = '/execute?name=run6' + saffronDatasetName;
+                $window.location.href = '/execute?name=run6';
+            });
+        };
+
     }
 });
 
@@ -551,6 +573,9 @@ angular.module('app').component('relatedtopics', {
             topics ? topics.checked = true : '';
             acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
         };
+
+        // adding selected status to item
+
     }
 });
 
@@ -574,7 +599,7 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
 // the runs controller
 angular.module('app').controller('runs', function ($scope, $http, $location, sharedProperties) {
     $scope.parents = [];
-    console.log("HERE")
+
     function getRuns() {
         var url = apiUrl;
         $http.get(url).then(function (response) {
@@ -625,6 +650,7 @@ angular.module('app').component('childtopics', {
         var url = apiUrlWithSaffron + 'topics/' + sharedProperties.getTopic() + '/children';
         $http.get(url).then(function (response) {
             ctrl.topics = [];
+            console.log(response)
             for (t = 0; t < response.data.children.length; t++) {
                 if (response.data.children[t].status !== "rejected") {
                     ctrl.topics.push({
