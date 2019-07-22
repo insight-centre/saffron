@@ -24,7 +24,6 @@ var link = svg.selectAll(".link"),
 
 d3.json(apiUrl + saffronDatasetName, function(error, json) {
   if (error) throw error;
-  console.log("HEREEEEE")
   root = json;
   var links = graph.links;
   update();
@@ -103,7 +102,6 @@ function update() {
 
   nodeEnter.append("a")
       .attr("href", function(d) { 
-        console.log(location.href.endsWith("/edit"));
         if (location.href.endsWith("/edit")) {
             return location.href;  
           } else {

@@ -119,22 +119,24 @@ angular.module('app').component('toptopics', {
     }
 });
 
-// Edit component
 angular.module('app').component('edittopics', {
     templateUrl: '/edit-topics-component.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
+        ctrl.errorMessage = "";
 
         $http.get(apiUrlWithSaffron + 'topics').then(
             function (response) {
                 ctrl.topics =  [];
                 for (let t = 0; t < response.data.length; t++) {
-                    ctrl.topics.push({
-                        "topic_string": response.data[t].topicString,
-                        "topic_id": response.data[t].topicString,
-                        "status": response.data[t].status,
-                        "pos": (t + 1)
-                    });                       
+                    if (response.data[t].status !== "rejected") {
+                        ctrl.topics.push({
+                            "topic_string": response.data[t].topicString,
+                            "topic_id": response.data[t].topicString,
+                            "status": response.data[t].status,
+                            "pos": (t + 1)
+                        });
+                    }                
                 }
             },
 
@@ -254,6 +256,7 @@ angular.module('app').component('edittopics', {
                 },
                 function (response) {
                     console.log(response);
+                    ctrl.errorMessage = "An error has occurred while updating the topic status. Please try again later or contact the administration.";
                     console.log("Failed to update topics' status");
                 }
             );
@@ -265,6 +268,7 @@ angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
+        ctrl.errorMessage = "";
        
         $scope.loadTopics = function() {
              ctrl.topics = [];
@@ -315,7 +319,9 @@ angular.module('app').component('editparents', {
                 },
                 function (response) {
                     console.log(response);
-                    console.log("Failed to update topics' status");
+                    ctrl.errorMessage = response.data;
+                    ctrl.activeTopic = null;
+                    console.log("Failed to update topic parent");
                 }
             );
 
@@ -594,6 +600,17 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
         });
     }
     getParents(sharedProperties.getTopic());
+});
+
+//retrain
+angular.module('app').controller('edit', function ($scope, $http, $window, $location) {
+   // $scope.message = null;
+
+    $scope.retrain = function() {
+        var url = apiUrl + "rerun/" + saffronDatasetName;
+
+        $window.location.href = apiUrl + "rerun/" + saffronDatasetName;
+    }
 });
 
 
