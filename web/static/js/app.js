@@ -602,10 +602,9 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
     getParents(sharedProperties.getTopic());
 });
 
-//retrain
+// retrain Saffron
 angular.module('app').controller('edit', function ($scope, $http, $window, $location) {
-   // $scope.message = null;
-
+   
     $scope.retrain = function() {
         var url = apiUrl + "rerun/" + saffronDatasetName;
 
