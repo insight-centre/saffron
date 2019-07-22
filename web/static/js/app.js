@@ -225,7 +225,7 @@ angular.module('app').component('edittopics', {
             $event.preventDefault();
             ctrl.topics.forEach(function(element) {
                 if (element.topic_string === topic.topic_string) {
-                    element.status = "";
+                    element.status = "none";
                     element.checked = false;
                     $scope.checkStatus(element.topic_id,false);
                 }
@@ -234,13 +234,20 @@ angular.module('app').component('edittopics', {
 
         // send all modifications to the API
         $scope.saveTopics = function() {
-            /* $event.preventDefault();
+            var requestTopics = []
+            ctrl.topics.forEach(function(topic) {
+                if (topic.status !== undefined) {
+                    requestTopics.push({
+                        "topic": topic.topic_id,
+                        "status": topic.status
+                    });
+                }
+            });
+            let requestData = {
+                "topics": requestTopics
+            };
             
-            let JsonData = {
-                    ???
-                };
-            
-            $http.post(apiUrlWithSaffron + 'topics/update', JsonData).then(
+            $http.post(apiUrlWithSaffron + 'topics/update', requestData).then(
                 function (response) {
                     console.log(response);
                     console.log("Topics' status update successfully");
@@ -250,8 +257,7 @@ angular.module('app').component('edittopics', {
                     console.log(response);
                     console.log("Failed to update topics' status");
                 }
-            );*/
-            $window.location.href = '/' + saffronDatasetName + '/edit/parents';
+            );
         }
     }
 });
