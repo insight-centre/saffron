@@ -1,7 +1,7 @@
 const apiUrl = '/api/v1/run/';
 const apiUrlWithSaffron = apiUrl + saffronDatasetName + '/';
 
-angular.module('app', ['ngMaterial'])
+angular.module('app', ['ngMaterial', 'ui.bootstrap'])
     // this service is used to collect all public values
     // to be able to pass them among controllers
     .factory('sharedProperties', function ($location) {
@@ -121,7 +121,7 @@ angular.module('app').component('toptopics', {
 
 angular.module('app').component('edittopics', {
     templateUrl: '/edit-topics-component.html',
-    controller: function ($http, $scope, $window, $location, sharedProperties) {
+    controller: function ($http, $scope, $modal, $window, $location, sharedProperties) {
         var ctrl = this;
         ctrl.errorMessage = "";
 
@@ -132,7 +132,7 @@ angular.module('app').component('edittopics', {
                     if (response.data[t].status !== "rejected") {
                         ctrl.topics.push({
                             "topic_string": response.data[t].topicString,
-                            "topic_id": response.data[t].topicString,
+                            "topic_id": response.data[t].id,
                             "status": response.data[t].status,
                             "pos": (t + 1)
                         });
@@ -233,13 +233,38 @@ angular.module('app').component('edittopics', {
             }, topic);
         };
 
+        $scope.showConfirm = function() {
+
+            var modalInstance = $modal.open({
+              animation: $scope.animationsEnabled,
+              templateUrl: 'modal.html',
+              controller: function($scope, $modalInstance) {
+                $scope.ok = function() {
+                    $modalInstance.close();
+                };
+
+                $scope.cancel = function() {
+                    $modalInstance.dismiss('cancel');
+                };
+              },
+              resolve: {
+              }
+            });
+
+            modalInstance.result.then(function(selectedItem) {
+                $scope.saveTopics();
+            }, function() {
+                // Saving cancelled
+            });            
+          };
+
         // send all modifications to the API
         $scope.saveTopics = function() {
             var requestTopics = []
             ctrl.topics.forEach(function(topic) {
                 if (topic.status !== undefined) {
                     requestTopics.push({
-                        "topic": topic.topic_id,
+                        "topic": topic.topic_string,
                         "status": topic.status
                     });
                 }
@@ -314,6 +339,7 @@ angular.module('app').component('editparents', {
                     console.log("Parent topic update successfully");
 
                     //Reload topics
+                    ctrl.errorMessage = "";
                     ctrl.activeTopic = null;
                     $scope.loadTopics();
                 },
@@ -603,12 +629,32 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
 });
 
 // retrain Saffron
-angular.module('app').controller('edit', function ($scope, $http, $window, $location) {
-   
-    $scope.retrain = function() {
-        var url = apiUrl + "rerun/" + saffronDatasetName;
+angular.module('app').controller('edit', function ($scope, $modal, $http, $window, $location) {
 
-        $window.location.href = apiUrl + "rerun/" + saffronDatasetName;
+    $scope.retrain = function() {
+
+        var modalInstance = $modal.open({
+          animation: $scope.animationsEnabled,
+          templateUrl: 'modal.html',
+          controller: function($scope, $modalInstance) {
+            $scope.ok = function() {
+                $modalInstance.close();
+            };
+
+            $scope.cancel = function() {
+                $modalInstance.dismiss('cancel');
+            };
+          },
+          resolve: {
+          }
+        });
+
+        modalInstance.result.then(function(selectedItem) {
+            var url = apiUrl + "rerun/" + saffronDatasetName;
+            $window.location.href = apiUrl + "rerun/" + saffronDatasetName;
+        }, function() {
+            // Saving cancelled
+        });
     }
 });
 
