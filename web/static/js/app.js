@@ -356,10 +356,16 @@ angular.module('app').component('editparents', {
                     $scope.loadTopics();
                 },
                 function (response) {
-                    console.log(response);
-                    ctrl.message = {
-                        "text": response.data,
-                        "type": "error"
+                    if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
+                        ctrl.message = {
+                            "text": "Circular inheritance not allowed. Choose an antecedent or a topic on a parallel branch as a parent instead.",
+                            "type": "error"
+                        }
+                    } else {
+                        ctrl.message = {
+                            "text": "An error has occurred. Please try again later or contact the administration.",
+                            "type": "error"
+                        }
                     }
                     ctrl.activeTopic = null;
                     console.log("Failed to update topic parent");
