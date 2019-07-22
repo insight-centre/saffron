@@ -465,8 +465,12 @@ public class SaffronAPI{
                     Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
 
                     if (status.equals("rejected")) {
+
                         finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
-                        finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
+                        // If we are at top root, just use the resulting taxonomy
+                        if (!finalTaxon.root.equals(originalTaxo.root)) {
+                            finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
+                        }
 
                     } else {
                         finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);

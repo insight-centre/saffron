@@ -196,7 +196,6 @@ public class Taxonomy {
      */
     public Taxonomy antecendent(String name, String previous, Taxonomy previousTaxo, Taxonomy current) {
           if(this.root.equals(name)){
-
             return previousTaxo;
           }
           for(Taxonomy child : children) {
@@ -655,11 +654,12 @@ public class Taxonomy {
         for(Taxonomy t : topicParent.children) {
             if (!t.root.equals(topicString)) {
                 newChildren.add(t.deepCopy());
-            } else {
-                t.children = new ArrayList<Taxonomy>();
-                newChildren.add(t);
-                t.setStatus(Status.rejected);
             }
+//            else {
+//                t.children = new ArrayList<Taxonomy>();
+//                newChildren.add(t);
+//                t.setStatus(Status.rejected);
+//            }
         }
         return new Taxonomy(topicParent.root, topicParent.score, topicParent.linkScore, topicParent.originalParent, this.originalTopic, newChildren, this.status);
     }
