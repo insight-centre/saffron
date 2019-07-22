@@ -293,7 +293,7 @@ angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
-        ctrl.errorMessage = "";
+        ctrl.message = null;
        
         $scope.loadTopics = function() {
              ctrl.topics = [];
@@ -323,12 +323,21 @@ angular.module('app').component('editparents', {
         };
 
         $scope.changeParent = function(topic, new_parent) {
+
+            if (topic.parent == new_parent) {
+                ctrl.message = {
+                    "text": "'" + topic.topic_string + "' parent kept the same.",
+                    "type": "warning"
+                }
+                ctrl.activeTopic = null;
+                return;
+            }
             var requestData = {
                     "topics" : [{
-                        "id": topic.topic_id,
-                        "new_id": topic.topic_id,
-                        "current_parent": topic.parent.topic_id,
-                        "new_parent": new_parent.topic_id
+                        "id": topic.topic_string,
+                        "new_id": topic.topic_string,
+                        "current_parent": topic.parent.topic_string,
+                        "new_parent": new_parent.topic_string
                     }]
                 };
                 console.log(requestData);
@@ -339,13 +348,19 @@ angular.module('app').component('editparents', {
                     console.log("Parent topic update successfully");
 
                     //Reload topics
-                    ctrl.errorMessage = "";
+                    ctrl.message = {
+                        "text": "'" + topic.topic_string + "' parent successfuly changed from '" + topic.parent.topic_string + "' to '" + new_parent.topic_string +"'",
+                        "type": "success"
+                    }
                     ctrl.activeTopic = null;
                     $scope.loadTopics();
                 },
                 function (response) {
                     console.log(response);
-                    ctrl.errorMessage = response.data;
+                    ctrl.message = {
+                        "text": response.data,
+                        "type": "error"
+                    }
                     ctrl.activeTopic = null;
                     console.log("Failed to update topic parent");
                 }
