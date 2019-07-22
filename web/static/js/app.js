@@ -165,6 +165,7 @@ angular.module('app').component('edittopics', {
         // adding selected status to item
         ctrl.checkedStatus = false;
         $scope.checkStatus = function(topicId,checkedValue){
+            ctrl.checkedStatus = false;
             angular.forEach(ctrl.topics,function(item) {
                 if (item.topic_id === topicId){
                     item.checked = checkedValue;
@@ -183,9 +184,9 @@ angular.module('app').component('edittopics', {
                     if (element.checked === true) {
                         element.status = "accepted";
                         element.checked = false;
-                        ctrl.checkedStatus = false;
                     }
                 });
+                ctrl.checkedStatus = false;
                 $scope.checkedAll = false;
             } else {
                 ctrl.topics.forEach(function(element) {
@@ -206,9 +207,9 @@ angular.module('app').component('edittopics', {
                     if (element.checked === true) {
                         element.status = "rejected";
                         element.checked = false;
-                        ctrl.checkedStatus = false;
                     }
                 });
+                ctrl.checkedStatus = false;
                 $scope.checkedAll = false;
             } else {
                 ctrl.topics.forEach(function(element) {
