@@ -384,9 +384,7 @@ public class SaffronAPI{
                     if(!newParentString.equals(oldParentString)) {
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         Taxonomy newParent = originalTaxo.descendent(newParentString);
-                        Taxonomy oldParent = originalTaxo.descendent(oldParentString);
-                        oldParent.hasDescendent(newParentString);
-                        if (oldParent.hasDescendentParent(newParentString)) {
+                        if (topic.hasDescendentParent(newParentString)) {
                             return Response.status(Response.Status.BAD_REQUEST).entity("The selected move parent target is a member of a child topic and cannot be moved").build();
                         }
                         newParent = newParent.addChild(topic, newParent, oldParentString);
@@ -452,7 +450,6 @@ public class SaffronAPI{
                 originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
 
             }
-
             while(keys.hasNext()) {
                 String key = keys.next();
 
@@ -463,24 +460,24 @@ public class SaffronAPI{
                     String status = json.get("status").toString();
                     Taxonomy topic = originalTaxo.descendent(topicString);
                     Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
+                    if (!status.equals("none")) {
+                        if (status.equals("rejected")) {
 
-                    if (status.equals("rejected")) {
+                            finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
+                            // If we are at top root, just use the resulting taxonomy
+                            if (!finalTaxon.root.equals(originalTaxo.root)) {
+                                finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
+                            }
 
-                        finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
-                        // If we are at top root, just use the resulting taxonomy
-                        if (!finalTaxon.root.equals(originalTaxo.root)) {
-                            finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
+                        } else {
+                            finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
                         }
 
-                    } else {
-                        finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
-                    }
-
 //
-                    mongo.updateTopic(name, topicString, status);
+                        mongo.updateTopic(name, topicString, status);
+                    }
                 }
             }
-
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
             mongo.close();
 

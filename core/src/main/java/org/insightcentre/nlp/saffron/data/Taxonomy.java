@@ -648,19 +648,17 @@ public class Taxonomy {
     public Taxonomy deepCopyMoveChildTopics(String topicString, Taxonomy topic, Taxonomy topicParent) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
-        for(Taxonomy t : topic.children) {
-           newChildren.add(t.deepCopy());
-        }
-        for(Taxonomy t : topicParent.children) {
-            if (!t.root.equals(topicString)) {
+        if (topic != null) {
+            for(Taxonomy t : topic.children) {
                 newChildren.add(t.deepCopy());
             }
-//            else {
-//                t.children = new ArrayList<Taxonomy>();
-//                newChildren.add(t);
-//                t.setStatus(Status.rejected);
-//            }
+            for(Taxonomy t : topicParent.children) {
+                if (!t.root.equals(topicString)) {
+                    newChildren.add(t.deepCopy());
+                }
+            }
         }
+
         return new Taxonomy(topicParent.root, topicParent.score, topicParent.linkScore, topicParent.originalParent, this.originalTopic, newChildren, this.status);
     }
 
