@@ -77,6 +77,30 @@ function rerunTaxonomy($http, runId){
     );
 }
 
+
+angular.module('app').component('header', {
+   templateUrl: '/header-component.html',
+   controller: function ($location, $scope, $window) {
+      var ctrl = this;
+      ctrl.menuList = [];
+      ctrl.menuList.push({
+        "href": "/" + saffronDatasetName + "/",
+        "text": "Home"
+      });
+      ctrl.menuList.push({
+        "href": "/" + saffronDatasetName + "/edit/topics",
+        "text": "Review Mode"
+      });
+
+      ctrl.searchAction = "/" + saffronDatasetName + "/search/";
+   },
+   bindings: {
+     //expects the value "yes" 
+      menu: '@',
+      search: '@'
+   }
+});
+
 // getting the top topics to fill the right sidebar on homepage of a run
 angular.module('app').component('toptopics', {
     templateUrl: '/top-topics.html',
