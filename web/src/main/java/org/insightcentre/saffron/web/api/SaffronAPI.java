@@ -87,6 +87,7 @@ public class SaffronAPI{
     @Path("/{param}")
     public Response deleteRun(@PathParam("param") String name) {
         MongoDBHandler mongo = getMongoDBHandler();
+        //SaffronData.fromMongo(name);
         mongo.deleteRun(name);
         return Response.ok("Run " + name + " Deleted").build();
     }
@@ -444,12 +445,7 @@ public class SaffronAPI{
         try {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-            FindIterable<Document> runs = mongo.getTaxonomy(name);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
 
-            }
             while(keys.hasNext()) {
                 String key = keys.next();
 
@@ -458,6 +454,12 @@ public class SaffronAPI{
                     JSONObject json = obj.getJSONObject(i);
                     String topicString = json.get("topic").toString();
                     String status = json.get("status").toString();
+                    FindIterable<Document> runs = mongo.getTaxonomy(name);
+                    for (org.bson.Document doc : runs) {
+                        JSONObject jsonObj = new JSONObject(doc.toJson());
+                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+
+                    }
                     Taxonomy topic = originalTaxo.descendent(topicString);
                     Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
                     if (!status.equals("none")) {
@@ -472,13 +474,12 @@ public class SaffronAPI{
                         } else {
                             finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
                         }
-
-//
                         mongo.updateTopic(name, topicString, status);
+                        mongo.updateTaxonomy(name, new Date(), finalTaxon);
                     }
                 }
             }
-            mongo.updateTaxonomy(name, new Date(), finalTaxon);
+
             mongo.close();
 
 
