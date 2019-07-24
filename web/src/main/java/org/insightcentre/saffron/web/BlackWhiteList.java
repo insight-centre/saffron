@@ -4,19 +4,20 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.mongodb.client.FindIterable;
 import org.bson.Document;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.json.JSONObject;
+
+import com.mongodb.client.FindIterable;
 
 /**
  * Contains all the accepted and rejected suggestions packaged so that they can
  * be used in term/taxonomy extraction.
  *
  * @author John McCrae
+ * @author Bianca Pereira
  */
 public class BlackWhiteList {
     public final Set<String> termWhiteList, termBlackList;
@@ -76,17 +77,26 @@ public class BlackWhiteList {
         return new BlackWhiteList(topicWhiteList, topicBlackList, taxoWhiteList, taxoBlackList);
     }
 
-    private static void buildTaxoBWList(Taxonomy taxonomy, Set<TaxoLink> taxoWhiteList, Set<TaxoLink> taxoBlackList) {
-        if(taxonomy.originalParent != null) {
-            if(taxonomy.status.equals(Status.accepted)) {
-                taxoWhiteList.add(new TaxoLink(taxonomy.originalParent, taxonomy.root));
-            } else if(taxonomy.status.equals(Status.rejected)) {
-                taxoBlackList.add(new TaxoLink(taxonomy.originalParent, taxonomy.originalTopic));
-            }
-        }
-        for(Taxonomy child : taxonomy.children) {
-            buildTaxoBWList(child, taxoWhiteList, taxoBlackList);
-        }
+    /**
+     * Builds a list of accepted and denied relationships to be part of a taxonomy.
+     * 
+     * The children topics are the ones to keep the "accepted" or "none" statuses with their parents.
+     * "Rejected" parents are kept as the "originalParent" of a topic
+     * 
+     * @param taxonomy - The taxonomy used as source for the acceptance and denial lists
+     * @param taxoAcceptanceList - the list to be populated with accepted parent-child relations 
+     * @param taxoDenialList - the list to be populated with denied parent-child relations
+     */
+    private static void buildTaxoBWList(Taxonomy taxonomy, Set<TaxoLink> taxoAcceptanceList, Set<TaxoLink> taxoDenialList) {
+    	for(Taxonomy child: taxonomy.children) {
+    		if (child.getStatus().equals(Status.accepted)) {
+    			taxoAcceptanceList.add(new TaxoLink(taxonomy.root, child.root));
+    		}
+    		buildTaxoBWList(child, taxoAcceptanceList, taxoDenialList);
+    	}
+    	if (taxonomy.originalParent != null && !taxonomy.originalParent.isEmpty()) {
+    		taxoDenialList.add(new TaxoLink(taxonomy.originalParent, taxonomy.root));
+    	}
     }
 
 
