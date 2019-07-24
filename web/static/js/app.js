@@ -88,7 +88,7 @@ angular.module('app').component('header', {
         "text": "Home"
       });
       ctrl.menuList.push({
-        "href": "/" + saffronDatasetName + "/edit/topics",
+        "href": "/" + saffronDatasetName + "/edit",
         "text": "Review Mode"
       });
 
