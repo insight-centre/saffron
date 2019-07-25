@@ -82,6 +82,6 @@ API Routes in place:
 * **POST /run/{saffron-run-id}/topics/updaterelationship**
 
 > This POST request will change the status of taxonomy relationships. Currently this relationship can be "accepted" or "none"
-> - [request](https://gitlab.insight-centre.org/saffron/saffron/blob/issue92/examples/api/post_change_relationship_request.json)
+> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/issue92/examples/api/post_change_relationship_request.json)
  
 ---
