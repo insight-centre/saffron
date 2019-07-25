@@ -633,7 +633,6 @@ public class Taxonomy {
             if (!t.root.equals(topicString)) {
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
             } else {
-                t.setStatus(status);
                 t.setRoot(topicString);
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
             }
