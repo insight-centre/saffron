@@ -347,6 +347,8 @@ public class MongoDBHandler implements Closeable {
 
     }
 
+
+
     public FindIterable<Document> getTaxonomy(String runId) {
         FindIterable<Document> docs = taxonomyCollection.find(eq("id", runId));
         return docs;

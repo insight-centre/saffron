@@ -493,6 +493,67 @@ public class SaffronAPI{
     }
 
 
+
+    @POST
+    @JSONP
+    @Path("/{param}/topics/updaterelationship")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response updateTopicRelationship(@PathParam("param") String name, InputStream incomingData) {
+
+        MongoDBHandler mongo = getMongoDBHandler();
+        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+
+        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+        Iterator<String> keys = jsonRqObj.keys();
+
+        try {
+
+            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+
+            while(keys.hasNext()) {
+                String key = keys.next();
+
+                JSONArray obj = (JSONArray) jsonRqObj.get(key);
+                for (int i = 0; i < obj.length(); i++) {
+                    JSONObject json = obj.getJSONObject(i);
+                    String topicChild = json.get("topic_child").toString();
+                    String topicParent = json.get("topic_parent").toString();
+                    String status = json.get("status").toString();
+                    FindIterable<Document> runs = mongo.getTaxonomy(name);
+                    for (org.bson.Document doc : runs) {
+                        JSONObject jsonObj = new JSONObject(doc.toJson());
+                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+                    }
+                    if (!status.equals(Status.rejected.toString())) {
+                        if (status.equals(Status.accepted.toString())) {
+                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);
+                            finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.accepted);
+
+                        } else {
+                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.none);
+                            finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
+                        }
+                        mongo.updateTaxonomy(name, new Date(), finalTaxon);
+
+                    }
+
+                }
+            }
+
+            mongo.close();
+
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
+
+        }
+
+        return Response.ok("Topics for run ID: " + name + " Updated").build();
+    }
+
     @PUT
     @Path("/{param}/topics/{topic_id}")
     @Consumes(MediaType.APPLICATION_JSON)
