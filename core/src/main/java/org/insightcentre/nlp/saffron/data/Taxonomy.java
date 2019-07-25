@@ -633,9 +633,27 @@ public class Taxonomy {
             if (!t.root.equals(topicString)) {
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
             } else {
-                t.setStatus(status);
                 t.setRoot(topicString);
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopySetTopicRelationshipStatus(String topicString, Status status) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+
+            if (!t.root.equals(topicString)) {
+                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
+            } else {
+                t.setStatus(status);
+                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
             }
         }
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
