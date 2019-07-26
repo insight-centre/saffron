@@ -322,27 +322,19 @@ public class SaffronAPI{
         MongoDBHandler mongo = getMongoDBHandler();
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         FindIterable<Document> topics;
-
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
-
         Iterator<String> keys = jsonObj.keys();
-
-            while(keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    mongo.deleteTopic(name, json.get("id").toString());
-
-
-                }
+        while(keys.hasNext()) {
+            String key = keys.next();
+            JSONArray obj = (JSONArray) jsonObj.get(key);
+            for (int i = 0; i < obj.length(); i++) {
+                JSONObject json = obj.getJSONObject(i);
+                mongo.deleteTopic(name, json.get("id").toString());
             }
-
-
-
+        }
         return Response.ok("Topics " + jsonObj + " Deleted").build();
     }
+
 
 
     @POST
@@ -383,11 +375,14 @@ public class SaffronAPI{
                     String oldParentString = json.get("current_parent").toString();
 
                     if(!newParentString.equals(oldParentString)) {
+                        // If we are at top root, just use the resulting taxonomy
+
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         Taxonomy newParent = originalTaxo.descendent(newParentString);
                         if (topic.hasDescendentParent(newParentString)) {
                             return Response.status(Response.Status.BAD_REQUEST).entity("The selected move parent target is a member of a child topic and cannot be moved").build();
                         }
+
                         newParent = newParent.addChild(topic, newParent, oldParentString);
                         finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, topic, newParent);
                         finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
@@ -556,6 +551,7 @@ public class SaffronAPI{
         return Response.ok("Topics for run ID: " + name + " Updated").build();
     }
 
+
     @PUT
     @Path("/{param}/topics/{topic_id}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -564,8 +560,6 @@ public class SaffronAPI{
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
     }
-
-
 
 
 

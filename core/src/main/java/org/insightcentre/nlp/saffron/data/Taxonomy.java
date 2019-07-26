@@ -265,6 +265,13 @@ public class Taxonomy {
      */
     public Taxonomy addChildTaxo(Taxonomy child, Taxonomy currentTaxo, String parentString) {
         List<Taxonomy> newChildren = new ArrayList<>();
+        if(this.root.equals(parentString)){
+            newChildren.add(child);
+            for(Taxonomy childTaxo : this.getChildren()) {
+                newChildren.add(childTaxo);
+            }
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        }
 
         for(Taxonomy childTaxo : currentTaxo.getChildren()) {
             if(!childTaxo.root.equals(parentString)) {
@@ -537,6 +544,15 @@ public class Taxonomy {
      */
     public Taxonomy deepCopyNewTaxo(String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
         List<Taxonomy> newChildren = new ArrayList<>();
+        if(this.root.equals(newParent)) {
+            for(Taxonomy t : this.children) {
+
+                newChildren.add(t.deepCopy());
+            }
+            newChildren.add(newTaxo);
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        }
+
         for(Taxonomy t : newParentTaxo.children) {
             if(t.root.equals(newParent)){
                 t = t.addChildTaxo(newTaxo, t, newParent);
@@ -582,7 +598,6 @@ public class Taxonomy {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
-
             if (!t.root.equals(topicString)) {
                 if (t.root.equals(newParent)){
 
