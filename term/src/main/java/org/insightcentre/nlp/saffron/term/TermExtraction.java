@@ -225,11 +225,15 @@ public class TermExtraction {
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
-            final Lazy<DomainStats> domain) {
+            final Lazy<DomainStats> domain, final Set<String> whiteList) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
-            scores.put(topic,
+            if(whiteList.contains(topic)) {
+                scores.put(topic, Double.POSITIVE_INFINITY);
+            } else {
+                scores.put(topic,
                     Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
+            }
         }
         return scores;
 
@@ -328,10 +332,15 @@ public class TermExtraction {
                 }
             };
             List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
+            for(String whiteListTopic : whiteList) {
+                if(!freqs.docFrequency.containsKey(whiteListTopic)) {
+                    topics.add(whiteListTopic);
+                }
+            }
             switch (method) {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(topics, keyFeature,
-                            freqs, ref, incl, ntm, domain);
+                            freqs, ref, incl, ntm, domain, whiteList);
                     rankTopicsByFeat(topics, scores, whiteList, blackList);
                     if (topics.size() > maxTopics) {
                         if (oneTopicPerDoc) {
@@ -340,13 +349,13 @@ public class TermExtraction {
                             topics = topics.subList(0, maxTopics);
                         }
                     }
-                    return new Result(convertToTopics(topics, freqs, scores, casing),
+                    return new Result(convertToTopics(topics, freqs, scores, casing, whiteList),
                             filterTopics(topics, dts, casing, stopWords));
                 case voting:
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
-                                freqs, ref, incl, ntm, domain);
+                                freqs, ref, incl, ntm, domain, whiteList);
                         rankTopicsByFeat(topics, scores2, whiteList, blackList);
                         int i = 1;
                         for (String topic : topics) {
@@ -361,7 +370,7 @@ public class TermExtraction {
                             topics = topics.subList(0, maxTopics);
                         }
                     }
-                    return new Result(convertToTopics(topics, freqs, voting, casing),
+                    return new Result(convertToTopics(topics, freqs, voting, casing, whiteList),
                             filterTopics(topics, dts, casing, stopWords));
                 default:
                     throw new UnsupportedOperationException("TODO");
@@ -462,13 +471,17 @@ public class TermExtraction {
     }
 
     private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
-            Object2DoubleMap<String> scores, CasingStats casing) {
+            Object2DoubleMap<String> scores, CasingStats casing, Set<String> whiteList) {
         Set<Topic> topics = new HashSet<>();
         for (String t : ts) {
-            topics.add(new Topic(casing.trueCase(t),
+            final Topic topic = new Topic(casing.trueCase(t),
                     stats.termFrequency.getInt(t),
                     stats.docFrequency.getInt(t), scores.getDouble(t),
-                    Collections.EMPTY_LIST));
+                    Collections.EMPTY_LIST);
+            topics.add(topic);
+            if(whiteList.contains(t)) {
+                topic.status = Status.accepted;
+            }
         }
         return topics;
     }
