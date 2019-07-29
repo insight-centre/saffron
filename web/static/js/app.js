@@ -383,7 +383,7 @@ angular.module('app').component('editparents', {
                 function (response) {
                     if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
                         ctrl.message = {
-                            "text": "Circular inheritance not allowed. Choose an antecedent or a topic on a parallel branch as a parent instead.",
+                            "text": "It is not possible to change the parent of a topic to one of its children: circular inheritance problem. Choose an antecedent parent or a topic in a parallel branch instead.",
                             "type": "error"
                         }
                     } else {
