@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.insightcentre.nlp.saffron.data.Model;
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
@@ -115,8 +115,8 @@ public class BeamSearchTest {
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));
-        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b")));
-        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab")));
+        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b") && t.status == Status.none));
+        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab") && t.status == Status.accepted));
     }
 
     @Test
