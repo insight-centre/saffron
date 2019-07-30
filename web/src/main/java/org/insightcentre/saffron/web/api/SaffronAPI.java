@@ -1,12 +1,11 @@
 package org.insightcentre.saffron.web.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 import javax.ws.rs.core.Response;
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.*;
 
 import com.google.gson.Gson;
@@ -21,7 +20,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 @Path("/api/v1/run")
-public class SaffronAPI{
+public class SaffronAPI {
 
     private final org.insightcentre.saffron.web.api.APIUtils APIUtils = new APIUtils();
 
@@ -46,10 +45,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
-
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -61,7 +57,6 @@ public class SaffronAPI{
 
         try {
             runs = mongo.getAllRuns();
-
 
             for (Document doc : runs) {
                 BaseResponse entity = new BaseResponse();
@@ -75,13 +70,9 @@ public class SaffronAPI{
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
-
         String json = new Gson().toJson(runsResponse);
         return Response.ok(json).build();
     }
-
-
-
 
     @DELETE
     @Path("/{param}")
@@ -109,7 +100,6 @@ public class SaffronAPI{
         return Response.ok(resp).build();
     }
 
-
     @GET
     @JSONP
     @Path("/{param}/topics")
@@ -121,7 +111,6 @@ public class SaffronAPI{
 
         try {
             topics = mongo.getTopics(runId);
-
 
             for (Document doc : topics) {
                 TopicResponse entity = new TopicResponse();
@@ -140,7 +129,6 @@ public class SaffronAPI{
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
-
 
         String json = new Gson().toJson(topicsResponse);
         return Response.ok(json).build();
@@ -174,11 +162,9 @@ public class SaffronAPI{
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
         }
 
-
         String json = new Gson().toJson(searchResponses);
         return Response.ok(json).build();
     }
-
 
     @GET
     @JSONP
@@ -203,7 +189,6 @@ public class SaffronAPI{
             mongo.close();
             return Response.ok(json).build();
 
-
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
@@ -212,14 +197,12 @@ public class SaffronAPI{
 
     }
 
-
     @GET
     @JSONP
     @Path("/{param}/topics/{topic_id}/parent")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTopicParent(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
         MongoDBHandler mongo = getMongoDBHandler();
-
 
         try {
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
@@ -230,11 +213,10 @@ public class SaffronAPI{
                 originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
 
             }
-            Taxonomy antecendent = originalTaxo.antecendent(topic_id,"", originalTaxo, null);
+            Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
             String json = new Gson().toJson(antecendent);
             mongo.close();
             return Response.ok(json).build();
-
 
         } catch (Exception e) {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
@@ -247,9 +229,8 @@ public class SaffronAPI{
         String mongoUrl = System.getenv("MONGO_URL");
         String mongoPort = System.getenv("MONGO_PORT");
         String mongoDbName = System.getenv("MONGO_DB_NAME");
-        return  new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+        return new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
     }
-
 
     @DELETE
     @JSONP
@@ -257,7 +238,7 @@ public class SaffronAPI{
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public Response deleteTopic(@PathParam("param") String name,
-                                @PathParam("topic_id") String topicId) {
+            @PathParam("topic_id") String topicId) {
 
         MongoDBHandler mongo = getMongoDBHandler();
         List<TopicResponse> topicsResponse = new ArrayList<>();
@@ -275,9 +256,9 @@ public class SaffronAPI{
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public Response rejectTopic(@PathParam("param") String name,
-                                @PathParam("topic_id") String topicId,
-                                @PathParam("topic_id") String topic_id2,
-                                @PathParam("status") String status) {
+            @PathParam("topic_id") String topicId,
+            @PathParam("topic_id") String topic_id2,
+            @PathParam("status") String status) {
 
         MongoDBHandler mongo = getMongoDBHandler();
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
@@ -308,9 +289,8 @@ public class SaffronAPI{
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
         }
-     return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
+        return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
-
 
     @POST
     @Path("/{param}/topics")
@@ -318,13 +298,12 @@ public class SaffronAPI{
     @Produces(MediaType.TEXT_PLAIN)
     public Response postDeleteManyTopics(@PathParam("param") String name, InputStream incomingData) {
 
-
         MongoDBHandler mongo = getMongoDBHandler();
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         FindIterable<Document> topics;
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
         Iterator<String> keys = jsonObj.keys();
-        while(keys.hasNext()) {
+        while (keys.hasNext()) {
             String key = keys.next();
             JSONArray obj = (JSONArray) jsonObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
@@ -334,8 +313,6 @@ public class SaffronAPI{
         }
         return Response.ok("Topics " + jsonObj + " Deleted").build();
     }
-
-
 
     @POST
     @Path("/{param}/topics/changeroot")
@@ -363,7 +340,7 @@ public class SaffronAPI{
             JSONObject returnJson = new JSONObject();
 
             JSONArray returnJsonArray = new JSONArray();
-            while(keys.hasNext()) {
+            while (keys.hasNext()) {
                 String key = keys.next();
 
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
@@ -374,7 +351,7 @@ public class SaffronAPI{
                     String newParentString = json.get("new_parent").toString();
                     String oldParentString = json.get("current_parent").toString();
 
-                    if(!newParentString.equals(oldParentString)) {
+                    if (!newParentString.equals(oldParentString)) {
                         // If we are at top root, just use the resulting taxonomy
 
                         Taxonomy topic = originalTaxo.descendent(topicString);
@@ -392,8 +369,7 @@ public class SaffronAPI{
                         returnJson.put("success", true);
                         returnJson.put("new_parent", newParentString);
                         returnJsonArray.put(returnJson);
-                    }
-                    else {
+                    } else {
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         topic.setRoot(newTopicString);
                         finalTaxon = originalTaxo.deepCopyNewTopic(topicString, newTopicString);
@@ -409,7 +385,6 @@ public class SaffronAPI{
                         returnJsonArray.put(returnJson);
                     }
 
-
                 }
             }
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
@@ -423,7 +398,6 @@ public class SaffronAPI{
         }
 
     }
-
 
     @POST
     @JSONP
@@ -443,7 +417,7 @@ public class SaffronAPI{
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            while(keys.hasNext()) {
+            while (keys.hasNext()) {
                 String key = keys.next();
 
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
@@ -479,7 +453,6 @@ public class SaffronAPI{
 
             mongo.close();
 
-
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
@@ -488,8 +461,6 @@ public class SaffronAPI{
 
         return Response.ok("Topics for run ID: " + name + " Updated").build();
     }
-
-
 
     @POST
     @JSONP
@@ -509,7 +480,7 @@ public class SaffronAPI{
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            while(keys.hasNext()) {
+            while (keys.hasNext()) {
                 String key = keys.next();
 
                 JSONArray obj = (JSONArray) jsonRqObj.get(key);
@@ -541,7 +512,6 @@ public class SaffronAPI{
 
             mongo.close();
 
-
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
@@ -551,7 +521,6 @@ public class SaffronAPI{
         return Response.ok("Topics for run ID: " + name + " Updated").build();
     }
 
-
     @PUT
     @Path("/{param}/topics/{topic_id}")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -560,8 +529,6 @@ public class SaffronAPI{
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
     }
-
-
 
     @GET
     @Path("/{param}/authortopics/")
@@ -586,7 +553,6 @@ public class SaffronAPI{
 
     }
 
-
     @GET
     @Path("/{param}/authortopics/{topic_id}")
     public Response getAuthorTopics(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
@@ -610,7 +576,6 @@ public class SaffronAPI{
         return Response.ok("OK").build();
     }
 
-
     @GET
     @Path("/{param}/authorsimilarity/")
     public Response getAuthorSimilarity(@PathParam("param") String name) {
@@ -626,7 +591,6 @@ public class SaffronAPI{
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
-
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
@@ -634,10 +598,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
-
 
     @GET
     @Path("/{param}/authorsimilarity/{topic1}/{topic2}")
@@ -654,7 +615,6 @@ public class SaffronAPI{
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
-
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
@@ -662,9 +622,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
 
     @GET
     @Path("/{param}/topiccorrespondence/")
@@ -688,10 +646,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
-
 
     @GET
     @Path("/{param}/topiccorrespondence/{topic_id}")
@@ -714,7 +669,6 @@ public class SaffronAPI{
         }
 
         return Response.ok("OK").build();
-
 
     }
 
@@ -740,9 +694,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
 
     @GET
     @Path("/{param}/topicextraction/")
@@ -766,10 +718,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
-
 
     @GET
     @Path("/{param}/topicextraction/{topic_id}")
@@ -793,9 +742,7 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
-
     }
-
 
     @GET
     @Path("/{param}/topicsimilarity/")
@@ -823,7 +770,6 @@ public class SaffronAPI{
             returnEntity.setTopics(topicsResponse);
             mongo.close();
 
-
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -833,7 +779,6 @@ public class SaffronAPI{
         }
 
         return Response.ok("OK").build();
-
 
     }
 
@@ -852,7 +797,6 @@ public class SaffronAPI{
             returnEntity.setTopics(topicsResponse);
             mongo.close();
 
-
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -862,7 +806,6 @@ public class SaffronAPI{
         }
 
         return Response.ok("OK").build();
-
 
     }
 
@@ -881,7 +824,6 @@ public class SaffronAPI{
             returnEntity.setTopics(topicsResponse);
             mongo.close();
 
-
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -892,8 +834,85 @@ public class SaffronAPI{
 
         return Response.ok("OK").build();
 
+    }
+
+    @POST
+    @Path("/new/zip/{saffronDatasetName}")
+    @Consumes("*/*")
+    public Response startWithZip(@PathParam("saffronDatasetName") String saffronDatasetName, InputStream inputStream) throws IOException {
+        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
+
+            File tmpFile = File.createTempFile("corpus", ".zip");
+            tmpFile.deleteOnExit();
+            byte[] buf = new byte[4096];
+            try (InputStream is = inputStream; FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                int i = 0;
+                while ((i = is.read(buf)) >= 0) {
+
+                    fos.write(buf, 0, i);
+                }
+            }
+            getExecutor().startWithZip(tmpFile, false, saffronDatasetName);
+            return Response.ok().build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
+        }
+    }
+
+    @POST
+    @Path("/new/json/{saffronDatasetName}")
+    public Response startWithJson(@PathParam("saffronDatasetName") String saffronDatasetName, InputStream inputStream) throws IOException {
+        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
+
+            File tmpFile = File.createTempFile("corpus", ".json");
+            tmpFile.deleteOnExit();
+            byte[] buf = new byte[4096];
+            try (InputStream is = inputStream; FileOutputStream fos = new FileOutputStream(tmpFile)) {
+                int i = 0;
+                while ((i = is.read(buf)) >= 0) {
+                    fos.write(buf, 0, i);
+                }
+            }
+            getExecutor().startWithJson(tmpFile, false, saffronDatasetName);
+            return Response.ok().build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
+        }
+    }
+
+    @GET
+    @Path("/new/crawl/{saffronDatasetName}")
+    public Response startWithCrawl(@PathParam("saffronDatasetName") String saffronDatasetName,
+            @QueryParam("url") String url, @QueryParam("max_pages") int maxPages,
+            @DefaultValue("true") @QueryParam("domain") boolean domain) throws IOException {
+        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
+            getExecutor().startWithCrawl(url, maxPages, domain, false, saffronDatasetName);
+            return Response.ok().build();
+        } else {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
+        }
+    }
+
+    @GET
+    @JSONP
+    @Path("/status/{saffronDatasetName}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response executeStatus(@PathParam("saffronDatasetName") String saffronDatasetName) throws Exception {
+        try {
+            Executor.Status status = getExecutor().getStatus(saffronDatasetName);
+            if (status != null) {
+                return Response.ok(new ObjectMapper().writeValueAsString(status)).build();
+            } else {
+                return Response.status(Response.Status.NOT_FOUND).build();
+            }
+        } catch (Exception x) {
+            x.printStackTrace();
+            throw x;
+        }
 
     }
 
-
+    private Executor getExecutor() {
+        return Launcher.executor;
+    }
 }

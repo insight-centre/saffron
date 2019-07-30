@@ -11,7 +11,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.gson.JsonObject;
 import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
 import org.apache.commons.io.FileUtils;
@@ -42,6 +41,7 @@ import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -97,131 +97,20 @@ public class Executor extends AbstractHandler {
         try {
             if ("/execute".equals(target)) {
                 String name = hsr.getParameter("name");
-                if (corpus != null && statuses.containsKey(name) && statuses.get(name).advanced) {
-                    response.setContentType("text/html");
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    baseRequest.setHandled(true);
-                    String page = FileUtils.readFileToString(new File("static/advanced.html"));
-                    page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
-                    page = page.replace("{{name}}", hsr.getParameter("name"));
-                    response.getWriter().print(page);
-                } else {
-                    final String saffronDatasetName = hsr.getParameter("name");
-                    response.setContentType("text/html");
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/executing.html"));
-                    Writer writer = new StringWriter();
-                    char[] buf = new char[4096];
-                    int i = 0;
-                    while ((i = reader.read(buf)) >= 0) {
-                        writer.write(buf, 0, i);
-                    }
-                    response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                }
+                doExecute(name, response, baseRequest, hsr);
             } else if (corpus != null && (target.startsWith("/execute/advanced/"))) {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
-                BufferedReader r = hsr.getReader();
-                StringBuilder sb = new StringBuilder();
-
-                final Configuration newConfig;
-                try {
-                    String line;
-                    while ((line = r.readLine()) != null) {
-                        sb.append(line).append("\n");
-                    }
-                    newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
-                } catch (Exception x) {
-                    x.printStackTrace();
+                if (doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest)) {
                     return;
                 }
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, true);
-                        } catch (IOException x) {
-                            Status _status = statuses.get(saffronDatasetName);
-                            _status.fail(x.getMessage(), x);
-                        }
-                    }
-                }).start();
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
 
-            }  else if (target.startsWith("/api/v1/run/rerun")) {
+            } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                Status _status = makeStatus();
-                _status.name = saffronDatasetName;
-                statuses.put(saffronDatasetName, _status);
-                response.setContentType("text/html");
-                response.setStatus(HttpServletResponse.SC_OK);
-                baseRequest.setHandled(true);
-                FileReader reader = new FileReader(new File("static/executing.html"));
-                Writer writer = new StringWriter();
-                char[] buf = new char[4096];
-                int p = 0;
-                while ((p = reader.read(buf)) >= 0) {
-                    writer.write(buf, 0, p);
-                }
-                response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-
-                String mongoUrl = System.getenv("MONGO_URL");
-                String mongoPort = System.getenv("MONGO_PORT");
-                String mongoDbName = System.getenv("MONGO_DB_NAME");
-
-                MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-                FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
-                final Configuration newConfig =
-                        new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
-                List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
-                final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
-                for (Document doc : docs) {
-                    JSONObject jsonObj = new JSONObject(doc.toJson());
-                    JSONArray docList = (JSONArray) jsonObj.get("documents");
-                    for (int i = 0; i < docList.length(); i++) {
-                        JSONObject obj = (JSONObject) docList.get(i);
-                        List<Author> authors = new ArrayList<>();
-                        JSONArray authorList = (JSONArray) obj.get("authors");
-                        HashMap<String,String> result =
-                            new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
-                        for (int j = 0; j < authorList.length(); j++) {
-                            authors.add((Author) authorList.get(j));
-                        }
-                        org.insightcentre.nlp.saffron.data.Document docCorp
-                                = new org.insightcentre.nlp.saffron.data.Document(
-                                new SaffronPath(""),
-                                obj.getString("id"),
-                                new URL("http://"+mongoUrl+"/"+mongoPort),
-                                obj.getString("name"),
-                                obj.getString("mime_type"),
-                                authors,
-                                result,
-                                obj.get("metadata").toString());
-                        other.addDocument(docCorp);
-                    }
-                }
-                corpus = other;
-
-                new Thread(new Runnable() {
-
-                    @Override
-                    public void run() {
-                        _status.stage = 1;
-                        try {
-                            execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, false);
-                        } catch (IOException x) {
-                            Status _status = statuses.get(saffronDatasetName);
-                            _status.fail(x.getMessage(), x);
-                        }
-                    }
-                }).start();
-            }
-
-
-            if ("/execute/status".equals(target)) {
+                doRerun(saffronDatasetName, response, baseRequest);
+            } else if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
-                if (statuses.containsKey(saffronDatasetName)) {
+                Status status = getStatus(saffronDatasetName);
+                if (status != null) {
                     response.setContentType("application/json");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -238,7 +127,134 @@ public class Executor extends AbstractHandler {
         }
     }
 
-    void startWithZip(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
+    public Status getStatus(String saffronDatasetName) throws IOException {
+        return statuses.get(saffronDatasetName);
+    }
+
+    private void doRerun(final String saffronDatasetName, HttpServletResponse response, Request baseRequest) throws IOException, FileNotFoundException, NumberFormatException, JSONException {
+        Status _status = makeStatus();
+        _status.name = saffronDatasetName;
+        statuses.put(saffronDatasetName, _status);
+        response.setContentType("text/html");
+        response.setStatus(HttpServletResponse.SC_OK);
+        baseRequest.setHandled(true);
+        FileReader reader = new FileReader(new File("static/executing.html"));
+        Writer writer = new StringWriter();
+        char[] buf = new char[4096];
+        int p = 0;
+        while ((p = reader.read(buf)) >= 0) {
+            writer.write(buf, 0, p);
+        }
+        response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+
+        String mongoUrl = System.getenv("MONGO_URL");
+        String mongoPort = System.getenv("MONGO_PORT");
+        String mongoDbName = System.getenv("MONGO_DB_NAME");
+
+        MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+        FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
+        final Configuration newConfig
+                = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+        List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
+        final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
+        for (Document doc : docs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            JSONArray docList = (JSONArray) jsonObj.get("documents");
+            for (int i = 0; i < docList.length(); i++) {
+                JSONObject obj = (JSONObject) docList.get(i);
+                List<Author> authors = new ArrayList<>();
+                JSONArray authorList = (JSONArray) obj.get("authors");
+                HashMap<String, String> result
+                        = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
+                for (int j = 0; j < authorList.length(); j++) {
+                    authors.add((Author) authorList.get(j));
+                }
+                org.insightcentre.nlp.saffron.data.Document docCorp
+                        = new org.insightcentre.nlp.saffron.data.Document(
+                                new SaffronPath(""),
+                                obj.getString("id"),
+                                new URL("http://" + mongoUrl + "/" + mongoPort),
+                                obj.getString("name"),
+                                obj.getString("mime_type"),
+                                authors,
+                                result,
+                                obj.get("metadata").toString());
+                other.addDocument(docCorp);
+            }
+        }
+        corpus = other;
+
+        new Thread(new Runnable() {
+
+            @Override
+            public void run() {
+                _status.stage = 1;
+                try {
+                    execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, false);
+                } catch (IOException x) {
+                    Status _status = statuses.get(saffronDatasetName);
+                    _status.fail(x.getMessage(), x);
+                }
+            }
+        }).start();
+    }
+
+    private boolean doAdvancedExecute(HttpServletRequest hsr, final String saffronDatasetName, HttpServletResponse response, Request baseRequest) throws IOException {
+        BufferedReader r = hsr.getReader();
+        StringBuilder sb = new StringBuilder();
+        final Configuration newConfig;
+        try {
+            String line;
+            while ((line = r.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+        } catch (Exception x) {
+            x.printStackTrace();
+            return true;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    execute(corpus, newConfig, data.get(saffronDatasetName), saffronDatasetName, true);
+                } catch (IOException x) {
+                    Status _status = statuses.get(saffronDatasetName);
+                    _status.fail(x.getMessage(), x);
+                }
+            }
+        }).start();
+        response.setStatus(HttpServletResponse.SC_OK);
+        baseRequest.setHandled(true);
+        return false;
+    }
+
+    public void doExecute(String name, HttpServletResponse response, Request baseRequest, HttpServletRequest hsr) throws IOException {
+        if (corpus != null && statuses.containsKey(name) && statuses.get(name).advanced) {
+            response.setContentType("text/html");
+            response.setStatus(HttpServletResponse.SC_OK);
+            baseRequest.setHandled(true);
+            String page = FileUtils.readFileToString(new File("static/advanced.html"));
+            page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
+            page = page.replace("{{name}}", hsr.getParameter("name"));
+            response.getWriter().print(page);
+        } else {
+            final String saffronDatasetName = hsr.getParameter("name");
+            response.setContentType("text/html");
+            response.setStatus(HttpServletResponse.SC_OK);
+            baseRequest.setHandled(true);
+            FileReader reader = new FileReader(new File("static/executing.html"));
+            Writer writer = new StringWriter();
+            char[] buf = new char[4096];
+            int i = 0;
+            while ((i = reader.read(buf)) >= 0) {
+                writer.write(buf, 0, i);
+            }
+            response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+        }
+    }
+
+    public void startWithZip(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
@@ -265,25 +281,26 @@ public class Executor extends AbstractHandler {
                 }
                 try {
                     _status.close();
-                } catch(IOException x) {}
+                } catch (IOException x) {
+                }
             }
         }).start();
     }
 
-    private Status makeStatus()  {
+    private Status makeStatus() {
         try {
-            if(logFile != null && !logFile.exists()) {
+            if (logFile != null && !logFile.exists()) {
                 PrintWriter out = new PrintWriter(logFile);
                 out.close();
             }
             return new Status(logFile == null ? null : new PrintWriter(new FileWriter(logFile, true)));
-        } catch(IOException x) {
+        } catch (IOException x) {
             System.err.println("Could not create logging file: " + x.getMessage());
             return new Status(null);
         }
     }
 
-    void startWithCrawl(final String url, final int maxPages, final boolean domain,
+    public void startWithCrawl(final String url, final int maxPages, final boolean domain,
             final boolean advanced, final String saffronDatasetName) {
         final Status _status = makeStatus();
         _status.name = saffronDatasetName;
@@ -310,13 +327,14 @@ public class Executor extends AbstractHandler {
                     _status.fail(x.getMessage(), x);
                 }
                 try {
-                _status.close();
-                } catch(IOException x) {}
+                    _status.close();
+                } catch (IOException x) {
+                }
             }
         }).start();
     }
 
-    void startWithJson(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
+    public void startWithJson(final File tmpFile, final boolean advanced, final String saffronDatasetName) {
         final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
@@ -339,7 +357,8 @@ public class Executor extends AbstractHandler {
                 }
                 try {
                     _status.close();
-                } catch(IOException x) {}
+                } catch (IOException x) {
+                }
             }
         }).start();
     }
@@ -359,21 +378,20 @@ public class Executor extends AbstractHandler {
         Status _status = statuses.get(saffronDatasetName);
         _status.advanced = false;
         BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
-        if(bwList == null) {
+        if (bwList == null) {
             bwList = new BlackWhiteList();
 
         }
         scaleThreads(config);
 
-
         ObjectMapper mapper = new ObjectMapper();
         ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
 
-
         final File datasetFolder = new File(parentDirectory, saffronDatasetName);
-        if(!datasetFolder.exists()) {
-            if(!datasetFolder.mkdirs())
+        if (!datasetFolder.exists()) {
+            if (!datasetFolder.mkdirs()) {
                 System.err.println("Could not make dataset folder, this run is likely to fail!");
+            }
         }
         ow.writeValue(new File(datasetFolder, "config.json"), config);
 
@@ -392,7 +410,6 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Writing extracted topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
-
 
         _status.setStatusMessage("Writing document topic correspondence");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
@@ -418,7 +435,6 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Saving linked topics");
         ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
-
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
@@ -468,7 +484,7 @@ public class Executor extends AbstractHandler {
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
-        for(Taxonomy t : graph.children) {
+        for (Taxonomy t : graph.children) {
             newChildren.add(t.deepCopy());
         }
         Taxonomy topRootGraph = new Taxonomy("EMPTY_ROOT", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
@@ -510,10 +526,9 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
-        if(!mongo.getTopics(datasetName).iterator().hasNext()) {
+        if (!mongo.getTopics(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();
-        }
-        else {
+        } else {
             return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
 
         }
@@ -539,8 +554,12 @@ public class Executor extends AbstractHandler {
 
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
-            if(out != null) out.printf("[STAGE %d] %s\n", stage, statusMessage);    
-            if(out != null) out.flush();
+            if (out != null) {
+                out.printf("[STAGE %d] %s\n", stage, statusMessage);
+            }
+            if (out != null) {
+                out.flush();
+            }
             this.statusMessage2 = statusMessage;
         }
 
@@ -550,29 +569,45 @@ public class Executor extends AbstractHandler {
             setStatusMessage("Failed: " + message);
             data.remove(name);
             cause.printStackTrace();
-            if(out != null) cause.printStackTrace(out);
-            if(out != null) out.flush();
+            if (out != null) {
+                cause.printStackTrace(out);
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void log(String message) {
             System.err.println(message);
-            if(out != null) out.println(message);
-            if(out != null) out.flush();
+            if (out != null) {
+                out.println(message);
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void endTick() {
             System.err.println();
-            if(out != null) out.println();
-            if(out != null) out.flush();
+            if (out != null) {
+                out.println();
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void tick() {
             System.err.print(".");
-            if(out != null) out.print(".");
-            if(out != null) out.flush();
+            if (out != null) {
+                out.print(".");
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
