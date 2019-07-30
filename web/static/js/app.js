@@ -249,13 +249,24 @@ angular.module('app').component('edittopics', {
         // reject one or multiple topics only in the UI
         $scope.revertTopicDecision = function($event, topic){
             $event.preventDefault();
-            ctrl.topics.forEach(function(element) {
-                if (element.topic_string === topic.topic_string) {
-                    element.status = "none";
-                    element.checked = false;
-                    $scope.checkStatus(element.topic_id,false);
-                }
-            }, topic);
+            if (topic == null) {
+                angular.forEach(ctrl.topics,function(element){
+                    if (element.checked === true) {
+                        element.status = "none";
+                        element.checked = false;
+                    }
+                });
+                ctrl.checkedStatus = false;
+                $scope.checkedAll = false;
+            } else {
+                ctrl.topics.forEach(function(element) {
+                    if (element.topic_string === topic.topic_string) {
+                        element.status = "none";
+                        element.checked = false;
+                        $scope.checkStatus(element.topic_id,false);
+                    }
+                }, topic);
+            }
         };
 
         $scope.showConfirm = function() {
