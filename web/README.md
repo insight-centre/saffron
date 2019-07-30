@@ -112,5 +112,5 @@ Y> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/ma
 * **GET /run/status/{saffron-run-id}**
 
 > Get the status of an executing run
-> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/104-api-execute/examples/api/status_response.json)
+> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/status_response.json)
 
