@@ -68,7 +68,7 @@ API Routes in place:
 > This POST request will change topic status (Accepted/Rejected/None) for a given set of saffron topics and for a given saffron run ID.  
 
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rq.json)
-> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rs.json)
+Y> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rs.json)
 
 ---
  
@@ -85,3 +85,32 @@ API Routes in place:
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/issue92/examples/api/post_change_relationship_request.json)
  
 ---
+
+* **POST /run/new/zip/{saffron-run-id}**
+
+> This will start the run with a given ZIP file
+> The request body should be the ZIP file
+
+---
+
+* **POST /run/new/json/{saffron-run-id}**
+
+> This will start the run with a JSON file
+> The request body should be the JSON file
+
+----
+
+* **GET /run/new/crawl/{saffron-run-id}?url={url}&max_pages={max_pages}&domain={true|false}**
+
+> This will start the run with a crawler for a website
+> `url`: The URL to start crawling from
+> `max_pages`: The maximum number of pages to crawl
+> `domain`: Whether to limit the search only to the initial domain (default=true)
+
+----
+
+* **GET /run/status/{saffron-run-id}**
+
+> Get the status of an executing run
+> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/104-api-execute/examples/api/status_response.json)
+
