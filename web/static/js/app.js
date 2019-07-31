@@ -313,7 +313,7 @@ angular.module('app').component('edittopics', {
                 function (response) {
                     console.log(response);
                     console.log("Topics' status update successfully");
-                    $window.location.href = '/' + saffronDatasetName + '/edit/parents';
+                    $window.location.href = '/' + saffronDatasetName + '/edit';
                 },
                 function (response) {
                     console.log(response);
@@ -408,10 +408,6 @@ angular.module('app').component('editparents', {
                 }
             );
 
-        };
-
-        $scope.confirmParents = function() {
-            $window.location.href = '/' + saffronDatasetName + '/edit';
         };
 
         $scope.loadTopics();
