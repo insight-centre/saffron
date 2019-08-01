@@ -1,48 +1,67 @@
 package org.insightcentre.saffron.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
-import com.google.common.io.Files;
+import static org.insightcentre.nlp.saffron.authors.Consolidate.applyConsolidation;
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.Closeable;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.gson.JsonObject;
-import com.mongodb.MongoException;
-import com.mongodb.client.FindIterable;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.authors.Consolidate;
-import static org.insightcentre.nlp.saffron.authors.Consolidate.applyConsolidation;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.Model;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
-
 import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.io.Files;
+import com.mongodb.MongoException;
+import com.mongodb.client.FindIterable;
 
 /**
  *
@@ -183,11 +202,11 @@ public class Executor extends AbstractHandler {
                         JSONObject obj = (JSONObject) docList.get(i);
                         List<Author> authors = new ArrayList<>();
                         JSONArray authorList = (JSONArray) obj.get("authors");
-                        HashMap<String,String> result =
-                            new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
                         for (int j = 0; j < authorList.length(); j++) {
-                            authors.add((Author) authorList.get(j));
+                        	authors.add(new ObjectMapper().readValue(authorList.get(j).toString(), Author.class));
                         }
+                        HashMap<String,String> result =
+                                new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
                         org.insightcentre.nlp.saffron.data.Document docCorp
                                 = new org.insightcentre.nlp.saffron.data.Document(
                                 new SaffronPath(""),
@@ -406,7 +425,7 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Consolidating author names");
         Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
 
-        _status.setStatusMessage("Applying consoliation to corpus");
+        _status.setStatusMessage("Applying consolidation to corpus");
         applyConsolidation(searcher, consolidation, _status);
         data.setCorpus(searcher);
 
@@ -496,7 +515,7 @@ public class Executor extends AbstractHandler {
             mongo.addCorpus(saffronDatasetName, new Date(), corpus);
 
         } catch (MongoException ex) {
-            System.out.println("MongoDB not available - starting execution in local mode");
+            System.out.println("There was an operation error on MongoDB - starting execution in local mode");
         }
 
         _status.setStatusMessage("Done");
