@@ -359,24 +359,26 @@ angular.module('app').component('editparents', {
             }
         };
 
-        $scope.confirmParent = function(topic) {
+        $scope.changeParentStatus = function(topic, status) {
+            ctrl.activeTopic = null;
+            
             var requestData = {
               "topics": [
                 {
                   "topic_child": topic.topic_id,
                   "topic_parent": topic.parent.topic_id,
-                  "status": "accepted"
+                  "status": status
                 }
               ]
             };
 
             $http.post(apiUrlWithSaffron + "topics/updaterelationship", requestData).then(
                 function (response) {
-                    topic.status = "accepted";
+                    topic.status = status;
                 },
                 function (error) {
                     ctrl.message = {
-                    "text": "An error has ocurred while approving the parent of '" + topic.topic_string + "'. Try again later or contact the administration.",
+                    "text": "An error has ocurred while changing the status of '" + topic.topic_string + "' parent relationship. Try again later or contact the administration.",
                     "type": "danger"
                     }
                 }
