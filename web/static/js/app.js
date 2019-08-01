@@ -349,7 +349,8 @@ angular.module('app').component('editparents', {
                 "topic_string": topic.root,
                 "branch": parent_branch,
                 "topic_id": topic.root,
-                "parent": parent 
+                "parent": parent,
+                "status": topic.status
             }
             ctrl.topics.push(current_topic);
 
@@ -357,6 +358,32 @@ angular.module('app').component('editparents', {
                 $scope.getChildren(topic.children[i], parent_branch == "" ? topic.root : parent_branch + " > " + topic.root, current_topic);
             }
         };
+
+        $scope.changeParentStatus = function(topic, status) {
+            ctrl.activeTopic = null;
+            
+            var requestData = {
+              "topics": [
+                {
+                  "topic_child": topic.topic_id,
+                  "topic_parent": topic.parent.topic_id,
+                  "status": status
+                }
+              ]
+            };
+
+            $http.post(apiUrlWithSaffron + "topics/updaterelationship", requestData).then(
+                function (response) {
+                    topic.status = status;
+                },
+                function (error) {
+                    ctrl.message = {
+                    "text": "An error has ocurred while changing the status of '" + topic.topic_string + "' parent relationship. Try again later or contact the administration.",
+                    "type": "danger"
+                    }
+                }
+            )
+        }
 
         $scope.changeParent = function(topic, new_parent) {
 
