@@ -249,13 +249,24 @@ angular.module('app').component('edittopics', {
         // reject one or multiple topics only in the UI
         $scope.revertTopicDecision = function($event, topic){
             $event.preventDefault();
-            ctrl.topics.forEach(function(element) {
-                if (element.topic_string === topic.topic_string) {
-                    element.status = "none";
-                    element.checked = false;
-                    $scope.checkStatus(element.topic_id,false);
-                }
-            }, topic);
+            if (topic == null) {
+                angular.forEach(ctrl.topics,function(element){
+                    if (element.checked === true) {
+                        element.status = "none";
+                        element.checked = false;
+                    }
+                });
+                ctrl.checkedStatus = false;
+                $scope.checkedAll = false;
+            } else {
+                ctrl.topics.forEach(function(element) {
+                    if (element.topic_string === topic.topic_string) {
+                        element.status = "none";
+                        element.checked = false;
+                        $scope.checkStatus(element.topic_id,false);
+                    }
+                }, topic);
+            }
         };
 
         $scope.showConfirm = function() {
@@ -302,7 +313,7 @@ angular.module('app').component('edittopics', {
                 function (response) {
                     console.log(response);
                     console.log("Topics' status update successfully");
-                    $window.location.href = '/' + saffronDatasetName + '/edit/parents';
+                    $window.location.href = '/' + saffronDatasetName + '/edit';
                 },
                 function (response) {
                     console.log(response);
@@ -338,7 +349,8 @@ angular.module('app').component('editparents', {
                 "topic_string": topic.root,
                 "branch": parent_branch,
                 "topic_id": topic.root,
-                "parent": parent 
+                "parent": parent,
+                "status": topic.status
             }
             ctrl.topics.push(current_topic);
 
@@ -346,6 +358,32 @@ angular.module('app').component('editparents', {
                 $scope.getChildren(topic.children[i], parent_branch == "" ? topic.root : parent_branch + " > " + topic.root, current_topic);
             }
         };
+
+        $scope.changeParentStatus = function(topic, status) {
+            ctrl.activeTopic = null;
+            
+            var requestData = {
+              "topics": [
+                {
+                  "topic_child": topic.topic_id,
+                  "topic_parent": topic.parent.topic_id,
+                  "status": status
+                }
+              ]
+            };
+
+            $http.post(apiUrlWithSaffron + "topics/updaterelationship", requestData).then(
+                function (response) {
+                    topic.status = status;
+                },
+                function (error) {
+                    ctrl.message = {
+                    "text": "An error has ocurred while changing the status of '" + topic.topic_string + "' parent relationship. Try again later or contact the administration.",
+                    "type": "danger"
+                    }
+                }
+            )
+        }
 
         $scope.changeParent = function(topic, new_parent) {
 
@@ -383,7 +421,7 @@ angular.module('app').component('editparents', {
                 function (response) {
                     if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
                         ctrl.message = {
-                            "text": "Circular inheritance not allowed. Choose an antecedent or a topic on a parallel branch as a parent instead.",
+                            "text": "It is not possible to change the parent of a topic to one of its children: circular inheritance problem. Choose an antecedent parent or a topic in a parallel branch instead.",
                             "type": "error"
                         }
                     } else {
@@ -397,10 +435,6 @@ angular.module('app').component('editparents', {
                 }
             );
 
-        };
-
-        $scope.confirmParents = function() {
-            $window.location.href = '/' + saffronDatasetName + '/edit';
         };
 
         $scope.loadTopics();

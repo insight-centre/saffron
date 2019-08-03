@@ -550,7 +550,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopy());
             }
             newChildren.add(newTaxo);
-            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, newParentTaxo.status);
         }
 
         for(Taxonomy t : newParentTaxo.children) {
@@ -561,7 +561,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopyNewTaxo(newParent, newTaxo, t));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, newParentTaxo.status);
     }
 
     /**
@@ -600,7 +600,9 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             if (!t.root.equals(topicString)) {
                 if (t.root.equals(newParent)){
-
+                    if (this.root.equals(newParent)) {
+                        t.setStatus(Status.none);
+                    }
                     for (Taxonomy newChild:newParentTaxo.children){
                         if (newChild.root.equals(topicString)){
                             t.children.add(newChild);
@@ -609,6 +611,9 @@ public class Taxonomy {
                     }
 
                 } else {
+                    if (this.root.equals(newParent)) {
+                        t.setStatus(Status.none);
+                    }
                     newChildren.add(t.deepCopyNewParent(topicString, newParent, newTaxo, newParentTaxo));
                 }
 

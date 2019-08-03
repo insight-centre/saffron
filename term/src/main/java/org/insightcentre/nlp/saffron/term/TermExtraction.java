@@ -384,7 +384,7 @@ public class TermExtraction {
             ConcurrentLinkedQueue<DocumentTopic> dts,
             CasingStats casing, Set<String> stopWords) {
         Set<String> ts2 = new HashSet<>(ts);
-        List<DocumentTopic> rval = new ArrayList<>();
+        Set<DocumentTopic> rval = new HashSet<>();
         for (DocumentTopic dt : dts) {
             if (ts2.contains(dt.topic_string) && isProperTopic(dt.topic_string, stopWords)) {
                 rval.add(new DocumentTopic(dt.document_id,
@@ -392,7 +392,7 @@ public class TermExtraction {
                         dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
             }
         }
-        return rval;
+        return new ArrayList<DocumentTopic>(rval);
     }
 
     private static boolean isProperTopic(String rootSequence, Set<String> stopWords) {
