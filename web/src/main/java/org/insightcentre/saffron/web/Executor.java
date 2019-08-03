@@ -25,8 +25,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.mongodb.MongoException;
-import com.mongodb.client.FindIterable;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
@@ -65,6 +63,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
 import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
+import java.io.FileNotFoundException;
 
 /**
  *
