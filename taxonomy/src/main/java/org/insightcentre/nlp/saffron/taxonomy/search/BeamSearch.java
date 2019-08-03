@@ -36,7 +36,7 @@ public class BeamSearch implements TaxonomySearch {
             soln = soln.add(sp.top, sp.bottom,
                     topicMap.get(sp.top).score,
                     topicMap.get(sp.bottom).score,
-                    score.deltaScore(sp));
+                    score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
             score = score.next(sp.top, sp.bottom, soln);
             whiteHeads.add(sp.bottom);
@@ -60,7 +60,7 @@ public class BeamSearch implements TaxonomySearch {
                         if (next.canPush(totalScore)) {
                             Solution s = prevSoln.soln.add(t2, t1,
                                     topicMap.get(t2).score,
-                                    topicMap.get(t1).score, linkScore);
+                                    topicMap.get(t1).score, linkScore, false);
                             if (s != null) {
                                 Soln candidate = new Soln(s,
                                         prevSoln.score.next(t2, t1, s),

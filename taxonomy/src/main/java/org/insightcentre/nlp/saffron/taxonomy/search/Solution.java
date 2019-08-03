@@ -55,10 +55,13 @@ public class Solution {
      * @param topScore The score of the top topic
      * @param bottomScore The score of the bottom topic
      * @param linkScore The link score
+     * @param accepted Is this an accepted (whitelisted) term
      * @return
      */
     public Solution add(final String top, final String bottom,
-                        final double topScore, final double bottomScore, final double linkScore) {
+                        final double topScore, final double bottomScore, 
+                        final double linkScore,
+                        final boolean accepted) {
 
         if (heads.containsKey(bottom)) {
 
@@ -77,7 +80,7 @@ public class Solution {
             }
             // top is not yet in taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), Status.none);
+            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), accepted ? Status.accepted : Status.none);
             newHeads.remove(bottom);
             newHeads.put(top, t2);
             return new Solution(newHeads, topics, size + 1);
@@ -94,7 +97,7 @@ public class Solution {
                     Map<String, Taxonomy> newHeads = new HashMap<>(heads);
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top,
-                                    new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), Status.none)));
+                                    new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none)));
                     return new Solution(newHeads, topics, size + 1);
                 }
             }
@@ -102,7 +105,7 @@ public class Solution {
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
             Taxonomy t = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<Taxonomy>() {
                 {
-                    add(new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), Status.none));
+                    add(new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none));
                 }
             }, Status.none);
             newHeads.put(top, t);
@@ -146,7 +149,7 @@ public class Solution {
                 newChildren.add(insertIntoTaxo(t, top, bottom));
             }
         }
-        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, "", "", newChildren, Status.none);
+        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, "", "", newChildren, taxo.status);
     }
 
     /**
