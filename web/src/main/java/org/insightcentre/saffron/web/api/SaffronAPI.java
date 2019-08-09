@@ -361,10 +361,10 @@ public class SaffronAPI {
                         }
 
                         newParent = newParent.addChild(topic, newParent, oldParentString);
-                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, newParentString, topic, newParent);
+                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, oldParentString, newParentString, topic, newParent);
                         finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
                         //finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(newParentString, Status.accepted);
-                        //finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
+                        finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
                         returnJson.put("id", name);
                         returnJson.put("success", true);
                         returnJson.put("new_parent", newParentString);
@@ -497,7 +497,7 @@ public class SaffronAPI {
                     if (!status.equals(Status.rejected.toString())) {
                         if (status.equals(Status.accepted.toString())) {
                             finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);
-                            finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.accepted);
+                            //finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.accepted);
 
                         } else {
                             finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.none);
