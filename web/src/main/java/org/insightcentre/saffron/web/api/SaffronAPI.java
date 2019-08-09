@@ -49,7 +49,7 @@ public class SaffronAPI {
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRuns(InputStream incomingData) {
+    public Response getAllRuns() {
         List<BaseResponse> runsResponse = new ArrayList<>();
 
         MongoDBHandler mongo = getMongoDBHandler();
