@@ -430,8 +430,6 @@ public class Executor extends AbstractHandler {
             bwList = new BlackWhiteList();
 
         }
-
-        
         scaleThreads(config);
 
         ObjectMapper mapper = new ObjectMapper();
