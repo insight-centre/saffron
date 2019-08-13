@@ -10,11 +10,15 @@ import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.mongodb.client.FindIterable;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
+import org.bson.Document;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 /**
  *
@@ -49,17 +53,58 @@ public class NewRun extends AbstractHandler {
                 && !"new".equals(saffronDatasetName)
                 && !"static".equals(saffronDatasetName)
                 && saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*")) {
-            if (executor.newDataSet(saffronDatasetName)) {
-                return saffronDatasetName;
-            } else {
-                baseRequest.setHandled(true);
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+            System.out.println();
+            boolean isFileBased = true;
 
+            if (isDBConfigured()){
+                isFileBased = false;
             }
+            if (isFileBased) {
+                if (executor.newDataSet(saffronDatasetName)) {
+                    return saffronDatasetName;
+                } else {
+                    baseRequest.setHandled(true);
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+                }
+            } else {
+                MongoDBHandler mongo = getMongoDBHandler();
+                FindIterable<Document> docs = mongo.getRun(saffronDatasetName);
+                boolean isdatasetNamePresent = false;
+                for(Document doc:docs) {
+                    isdatasetNamePresent = true;
+                }
+                if (!isdatasetNamePresent) {
+                    return saffronDatasetName;
+                } else {
+                    baseRequest.setHandled(true);
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+                }
+            }
+
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No or Bad Dataset Name (Must be non-empty string matching [A-Za-z][A-Za-z0-9_-]* and not 'train', 'execute', 'static' or 'new' but was " + saffronDatasetName + ")");
         }
         return null;
+    }
+
+    private boolean isDBConfigured() {
+        //TODO: Needs refactoring for generic usage
+        String mongoUrl = System.getenv("MONGO_URL");
+        String mongoPort = System.getenv("MONGO_PORT");
+        String mongoDbName = System.getenv("MONGO_DB_NAME");
+        try{
+            new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private MongoDBHandler getMongoDBHandler() {
+        String mongoUrl = System.getenv("MONGO_URL");
+        String mongoPort = System.getenv("MONGO_PORT");
+        String mongoDbName = System.getenv("MONGO_DB_NAME");
+        return new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
     }
 
     @Override
