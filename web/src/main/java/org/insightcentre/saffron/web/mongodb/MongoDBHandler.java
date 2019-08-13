@@ -80,7 +80,6 @@ public class MongoDBHandler implements Closeable {
     public boolean addRun(String id, Date date, Configuration config) {
         Gson gson = new Gson();
         String json = gson.toJson(config);
-        System.out.println(json);
         Document document = new Document();
         document.put("id", id);
         document.put("run_date", date);
