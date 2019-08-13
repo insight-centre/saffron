@@ -25,6 +25,7 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.mongodb.util.JSON;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
@@ -35,6 +36,7 @@ import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
 import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
@@ -174,8 +176,30 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
         FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
-        final Configuration newConfig
-                = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+        FindIterable<Document> run = mongo.getRun(saffronDatasetName);
+        JSONObject configObj = new JSONObject();
+        for (Document doc : run) {
+            configObj = new JSONObject(doc.toJson());
+        }
+        String confJson = (String) configObj.get("config");
+        JSONObject config = new JSONObject(confJson);
+        JSONObject termExtractionConfig = (JSONObject) config.get("termExtraction");
+        JSONObject authorTopicConfig = (JSONObject) config.get("authorTopic");
+        JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
+        JSONObject topicSimConfig = (JSONObject) config.get("topicSim");
+        JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        TermExtractionConfiguration terms =
+                new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
+        System.out.println(terms);
+//        System.out.println(authorTopicConfig);
+//        System.out.println(authorSimConfig);
+//        System.out.println(topicSimConfig);
+//        System.out.println(taxonomyConfig);
+
+//        final Configuration newConfig
+//                = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+        final Configuration newConfig = new Configuration();
+
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
         for (Document doc : docs) {
@@ -501,7 +525,6 @@ public class Executor extends AbstractHandler {
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
         _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
-        System.out.println("topicMap" + topicMap);
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
@@ -522,7 +545,7 @@ public class Executor extends AbstractHandler {
 
             MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
             mongo.deleteRun(saffronDatasetName);
-            mongo.addRun(saffronDatasetName, new Date());
+            mongo.addRun(saffronDatasetName, new Date(), config);
             mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
             mongo.addTopics(saffronDatasetName, new Date(), topics);
             mongo.addTopicExtraction(saffronDatasetName, new Date(), res.topics);

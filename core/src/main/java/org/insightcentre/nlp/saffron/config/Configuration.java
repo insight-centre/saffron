@@ -15,5 +15,10 @@ public class Configuration {
     public TopicSimilarityConfiguration topicSim = new TopicSimilarityConfiguration();
     /** The configuration for the taxonomy extraction process */
     public TaxonomyExtractionConfiguration taxonomy = new TaxonomyExtractionConfiguration();
+
+    @Override
+    public String toString() {
+        return String.format("{ %s }", termExtraction.toString(), authorTopic.toString(), authorSim.toString(), topicSim.toString(), taxonomy.toString());
+    }
     
 }

@@ -2,6 +2,7 @@ package org.insightcentre.saffron.web.mongodb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.gson.Gson;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -16,6 +17,7 @@ import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 
 import org.bson.conversions.Bson;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -75,10 +77,14 @@ public class MongoDBHandler implements Closeable {
         return this.dbName;
     }
 
-    public boolean addRun(String id, Date date) {
+    public boolean addRun(String id, Date date, Configuration config) {
+        Gson gson = new Gson();
+        String json = gson.toJson(config);
+        System.out.println(json);
         Document document = new Document();
         document.put("id", id);
         document.put("run_date", date);
+        document.put("config", json);
         runCollection.insertOne(document);
         return true;
     }
@@ -101,9 +107,8 @@ public class MongoDBHandler implements Closeable {
         taxonomyCollection.findOneAndDelete(and(eq("id", name)));
     }
 
-    public List<DocumentTopic> getRun(String runId) {
-        List<DocumentTopic> docs = new ArrayList<DocumentTopic>();
-        return docs;
+    public FindIterable<Document> getRun(String runId) {
+        return runCollection.find(and(eq("id", runId)));
     }
 
 
