@@ -68,7 +68,7 @@ public class ProcessWikipedia {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-        }, null, null);
+        }, null, null, Collections.EMPTY_SET);
 
         mapper.writerWithDefaultPrettyPrinter().writeValue(new File(args[2]), stats);
     }

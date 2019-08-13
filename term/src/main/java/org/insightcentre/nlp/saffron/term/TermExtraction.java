@@ -68,7 +68,7 @@ public class TermExtraction {
     private final File refFile;
     private final int maxTopics;
     private final Feature keyFeature;
-    private final Set<String> blacklist;
+    private final Set<String> configBlacklist;
     private final boolean oneTopicPerDoc;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
@@ -91,7 +91,7 @@ public class TermExtraction {
         this.refFile = null;
         this.maxTopics = 100;
         this.keyFeature = Feature.comboBasic;
-        this.blacklist = Collections.EMPTY_SET;
+        this.configBlacklist = Collections.EMPTY_SET;
         this.oneTopicPerDoc = false;
     }
 
@@ -121,7 +121,7 @@ public class TermExtraction {
         this.refFile = refFile;
         this.maxTopics = maxTopics;
         this.keyFeature = keyFeature;
-        this.blacklist = blacklist;
+        this.configBlacklist = blacklist;
         this.oneTopicPerDoc = oneTopicPerDoc;
     }
 
@@ -182,7 +182,7 @@ public class TermExtraction {
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
         this.maxTopics = config.maxTopics;
         this.keyFeature = config.baseFeature;
-        this.blacklist = config.blacklist;
+        this.configBlacklist = config.blacklist;
         this.oneTopicPerDoc = config.oneTopicPerDoc;
     }
 
@@ -198,7 +198,7 @@ public class TermExtraction {
 
     public FrequencyStats extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTopic> docTopics,
-            CasingStats casing)
+            CasingStats casing, Set<String> blackList)
             throws SearchException, InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
@@ -210,7 +210,7 @@ public class TermExtraction {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTopics, casing, lowercaseAll(blacklist)));
+                    summary, docTopics, casing, lowercaseAll(blackList)));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -273,10 +273,11 @@ public class TermExtraction {
     }
 
     public Result extractTopics(final Corpus searcher, final Set<String> whiteList, final Set<String> blackList, SaffronListener log) {
+        blackList.addAll(configBlacklist);
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
-            final FrequencyStats freqs = extractStats(searcher, dts, casing);
+            final FrequencyStats freqs = extractStats(searcher, dts, casing, blackList);
             Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
                 @Override
                 protected FrequencyStats init() {
@@ -289,9 +290,9 @@ public class TermExtraction {
                         } else if (refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
                         } else if (refFile.getName().endsWith(".zip")) {
-                            return extractStats(CorpusTools.fromZIP(refFile), null, null);
+                            return extractStats(CorpusTools.fromZIP(refFile), null, null, blackList);
                         } else if (refFile.getName().endsWith(".tar.gz")) {
-                            return extractStats(CorpusTools.fromTarball(refFile), null, null);
+                            return extractStats(CorpusTools.fromTarball(refFile), null, null, blackList);
                         } else {
                             throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
