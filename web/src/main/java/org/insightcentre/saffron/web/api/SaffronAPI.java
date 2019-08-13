@@ -369,6 +369,7 @@ public class SaffronAPI {
                         returnJson.put("success", true);
                         returnJson.put("new_parent", newParentString);
                         returnJsonArray.put(returnJson);
+                        mongo.updateTopic(name, topicString, "accepted");
                     } else {
                         Taxonomy topic = originalTaxo.descendent(topicString);
                         topic.setRoot(newTopicString);
@@ -497,13 +498,14 @@ public class SaffronAPI {
                     if (!status.equals(Status.rejected.toString())) {
                         if (status.equals(Status.accepted.toString())) {
                             finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);
-                            //finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.accepted);
-
+                            mongo.updateTopic(name, topicChild, status);
                         } else {
                             finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.none);
+                            mongo.updateTopic(name, topicChild, "none");
                             finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
                         }
                         mongo.updateTaxonomy(name, new Date(), finalTaxon);
+
 
                     }
 
