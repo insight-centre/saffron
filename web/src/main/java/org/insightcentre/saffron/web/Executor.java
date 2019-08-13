@@ -403,6 +403,7 @@ public class Executor extends AbstractHandler {
             bwList = new BlackWhiteList();
 
         }
+        config.termExtraction.
         scaleThreads(config);
 
         ObjectMapper mapper = new ObjectMapper();
