@@ -34,7 +34,7 @@ import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
-import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.*;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
@@ -174,8 +174,35 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
         FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
-        final Configuration newConfig
-                = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+        FindIterable<Document> run = mongo.getRun(saffronDatasetName);
+        JSONObject configObj = new JSONObject();
+        for (Document doc : run) {
+            configObj = new JSONObject(doc.toJson());
+        }
+        String confJson = (String) configObj.get("config");
+        JSONObject config = new JSONObject(confJson);
+        JSONObject termExtractionConfig = (JSONObject) config.get("termExtraction");
+        JSONObject authorTopicConfig = (JSONObject) config.get("authorTopic");
+        JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
+        JSONObject topicSimConfig = (JSONObject) config.get("topicSim");
+        JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        final Configuration newConfig = new Configuration();
+        TermExtractionConfiguration terms =
+                new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
+        AuthorTopicConfiguration authorTopic =
+                new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
+        AuthorSimilarityConfiguration authorSimilarityConfiguration =
+                new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
+        TopicSimilarityConfiguration topicSimilarityConfiguration =
+                new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
+        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration =
+                new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        newConfig.authorSim = authorSimilarityConfiguration;
+        newConfig.authorTopic = authorTopic;
+        newConfig.taxonomy = taxonomyExtractionConfiguration;
+        newConfig.termExtraction = terms;
+        newConfig.topicSim = topicSimilarityConfiguration;
+  
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
         for (Document doc : docs) {
@@ -502,7 +529,6 @@ public class Executor extends AbstractHandler {
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
         _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
-        System.out.println("topicMap" + topicMap);
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
@@ -523,7 +549,7 @@ public class Executor extends AbstractHandler {
 
             MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
             mongo.deleteRun(saffronDatasetName);
-            mongo.addRun(saffronDatasetName, new Date());
+            mongo.addRun(saffronDatasetName, new Date(), config);
             mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
             mongo.addTopics(saffronDatasetName, new Date(), topics);
             mongo.addTopicExtraction(saffronDatasetName, new Date(), res.topics);
@@ -534,7 +560,7 @@ public class Executor extends AbstractHandler {
             mongo.addCorpus(saffronDatasetName, new Date(), corpus);
 
         } catch (MongoException ex) {
-            System.out.println("There was an operation error on MongoDB - starting execution in local mode");
+            System.out.println("MongoDB not available - starting execution in local mode");
         }
 
         _status.setStatusMessage("Done");
@@ -548,9 +574,10 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
-        if (!mongo.getTopics(datasetName).iterator().hasNext()) {
+        if(!mongo.getTopics(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();
-        } else {
+        }
+        else {
             return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
 
         }
@@ -576,12 +603,8 @@ public class Executor extends AbstractHandler {
 
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
-            if (out != null) {
-                out.printf("[STAGE %d] %s\n", stage, statusMessage);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.printf("[STAGE %d] %s\n", stage, statusMessage);
+            if(out != null) out.flush();
             this.statusMessage2 = statusMessage;
         }
 
@@ -591,45 +614,29 @@ public class Executor extends AbstractHandler {
             setStatusMessage("Failed: " + message);
             data.remove(name);
             cause.printStackTrace();
-            if (out != null) {
-                cause.printStackTrace(out);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) cause.printStackTrace(out);
+            if(out != null) out.flush();
         }
 
         @Override
         public void log(String message) {
             System.err.println(message);
-            if (out != null) {
-                out.println(message);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.println(message);
+            if(out != null) out.flush();
         }
 
         @Override
         public void endTick() {
             System.err.println();
-            if (out != null) {
-                out.println();
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.println();
+            if(out != null) out.flush();
         }
 
         @Override
         public void tick() {
             System.err.print(".");
-            if (out != null) {
-                out.print(".");
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.print(".");
+            if(out != null) out.flush();
         }
 
         @Override
