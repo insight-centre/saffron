@@ -152,15 +152,23 @@ angular.module('app').component('edittopics', {
         $http.get(apiUrlWithSaffron + 'topics').then(
             function (response) {
                 ctrl.topics =  [];
+                ctrl.rejected = [];
                 for (let t = 0; t < response.data.length; t++) {
                     if (response.data[t].status !== "rejected") {
                         ctrl.topics.push({
                             "topic_string": response.data[t].topicString,
                             "topic_id": response.data[t].id,
-                            "status": response.data[t].status,
-                            "pos": (t + 1)
+                            "status": response.data[t].status
                         });
-                    }                
+                    } else {
+                        ctrl.rejected.push({
+                            "topic_string": response.data[t].topicString,
+                            "topic_id": response.data[t].id,
+                            "status": response.data[t].status,
+                            "left": ctrl.rejected.length % 2 == 0,
+                            "right": ctrl.rejected.length % 2 > 0
+                        });
+                    }             
                 }
             },
 
