@@ -63,6 +63,14 @@ public class TermExtractionConfiguration {
      * if necessary)
      */
 
+    public void setCorpus(SaffronPath corpus) {
+        this.corpus = corpus;
+    }
+
+    public SaffronPath getCorpus() {
+        return this.corpus;
+    }
+
     public void setPosModel(SaffronPath posModel) {
         this.posModel = posModel;
     }

@@ -1,8 +1,9 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonValue;
+
 import java.io.File;
 import java.util.Objects;
 
@@ -10,13 +11,28 @@ import java.util.Objects;
  * A path that can be interpolated with saffron.home
  * @author John McCrae
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public class SaffronPath {
-    private final String path;
+
+    @JsonProperty("path")
+    private String path;
+
+    // for deserialisation
+    public SaffronPath() {}
+
 
     @JsonCreator
     public SaffronPath(String path) {
         this.path = path;
+    }
+
+
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public String getPath() {
+        return this.path;
     }
     
     public static SaffronPath fromFile(File file) {
@@ -26,7 +42,7 @@ public class SaffronPath {
     public File toFile() {
         return new File(resolve(path));
     }
-    
+
     public static String resolve(String path) {
         String saffronPath = System.getenv("SAFFRON_HOME");
         if(saffronPath == null) {

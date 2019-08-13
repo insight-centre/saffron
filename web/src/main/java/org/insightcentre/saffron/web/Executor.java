@@ -25,7 +25,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.mongodb.util.JSON;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
@@ -35,8 +34,7 @@ import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
-import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.*;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
@@ -188,18 +186,23 @@ public class Executor extends AbstractHandler {
         JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
         JSONObject topicSimConfig = (JSONObject) config.get("topicSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms =
                 new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
-        System.out.println(terms);
-//        System.out.println(authorTopicConfig);
-//        System.out.println(authorSimConfig);
-//        System.out.println(topicSimConfig);
-//        System.out.println(taxonomyConfig);
-
-//        final Configuration newConfig
-//                = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
-        final Configuration newConfig = new Configuration();
-
+        AuthorTopicConfiguration authorTopic =
+                new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
+        AuthorSimilarityConfiguration authorSimilarityConfiguration =
+                new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
+        TopicSimilarityConfiguration topicSimilarityConfiguration =
+                new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
+        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration =
+                new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        newConfig.authorSim = authorSimilarityConfiguration;
+        newConfig.authorTopic = authorTopic;
+        newConfig.taxonomy = taxonomyExtractionConfiguration;
+        newConfig.termExtraction = terms;
+        newConfig.topicSim = topicSimilarityConfiguration;
+  
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
         for (Document doc : docs) {
@@ -556,7 +559,7 @@ public class Executor extends AbstractHandler {
             mongo.addCorpus(saffronDatasetName, new Date(), corpus);
 
         } catch (MongoException ex) {
-            System.out.println("There was an operation error on MongoDB - starting execution in local mode");
+            System.out.println("MongoDB not available - starting execution in local mode");
         }
 
         _status.setStatusMessage("Done");
@@ -570,9 +573,10 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
-        if (!mongo.getTopics(datasetName).iterator().hasNext()) {
+        if(!mongo.getTopics(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();
-        } else {
+        }
+        else {
             return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
 
         }
@@ -598,12 +602,8 @@ public class Executor extends AbstractHandler {
 
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
-            if (out != null) {
-                out.printf("[STAGE %d] %s\n", stage, statusMessage);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.printf("[STAGE %d] %s\n", stage, statusMessage);
+            if(out != null) out.flush();
             this.statusMessage2 = statusMessage;
         }
 
@@ -613,45 +613,29 @@ public class Executor extends AbstractHandler {
             setStatusMessage("Failed: " + message);
             data.remove(name);
             cause.printStackTrace();
-            if (out != null) {
-                cause.printStackTrace(out);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) cause.printStackTrace(out);
+            if(out != null) out.flush();
         }
 
         @Override
         public void log(String message) {
             System.err.println(message);
-            if (out != null) {
-                out.println(message);
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.println(message);
+            if(out != null) out.flush();
         }
 
         @Override
         public void endTick() {
             System.err.println();
-            if (out != null) {
-                out.println();
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.println();
+            if(out != null) out.flush();
         }
 
         @Override
         public void tick() {
             System.err.print(".");
-            if (out != null) {
-                out.print(".");
-            }
-            if (out != null) {
-                out.flush();
-            }
+            if(out != null) out.print(".");
+            if(out != null) out.flush();
         }
 
         @Override
