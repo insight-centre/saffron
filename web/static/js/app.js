@@ -335,7 +335,7 @@ angular.module('app').component('edittopics', {
 
 angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
-    controller: function ($http, $scope, $window, $location, sharedProperties) {
+    controller: function ($http, $scope) {
         var ctrl = this;
         ctrl.message = null;
        
@@ -349,7 +349,7 @@ angular.module('app').component('editparents', {
                     console.log(error);
                     console.log("Failed to get taxonomy structure");
                 }
-            );
+            );          
         }
         
         $scope.getChildren = function(topic, parent_branch, parent) {
@@ -413,7 +413,6 @@ angular.module('app').component('editparents', {
                         "new_parent": new_parent.topic_string
                     }]
                 };
-                console.log(requestData);
 
             $http.post(apiUrlWithSaffron + 'topics/changeroot', requestData).then(
                 function (response) {
@@ -427,7 +426,7 @@ angular.module('app').component('editparents', {
                         "topic": requestData.topics[0].id
                     }
                     ctrl.activeTopic = null;
-                    $scope.loadTopics();
+                    $scope.loadTopics();             
                 },
                 function (response) {
                     if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
@@ -435,7 +434,7 @@ angular.module('app').component('editparents', {
                             "text": "It is not possible to change the parent of a topic to one of its children: circular inheritance problem. Choose an antecedent parent or a topic in a parallel branch instead.",
                             "type": "error",
                             "topic": requestData.topics[0].id
-                        }
+                        };
                     } else {
                         ctrl.message = {
                             "text": "An error has occurred. Please try again later or contact the administration.",
