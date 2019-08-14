@@ -335,7 +335,7 @@ angular.module('app').component('edittopics', {
 
 angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
-    controller: function ($http, $scope, $window, $location, sharedProperties) {
+    controller: function ($http, $scope) {
         var ctrl = this;
         ctrl.message = null;
        
@@ -349,7 +349,7 @@ angular.module('app').component('editparents', {
                     console.log(error);
                     console.log("Failed to get taxonomy structure");
                 }
-            );
+            );          
         }
         
         $scope.getChildren = function(topic, parent_branch, parent) {
@@ -387,7 +387,8 @@ angular.module('app').component('editparents', {
                 function (error) {
                     ctrl.message = {
                     "text": "An error has ocurred while changing the status of '" + topic.topic_string + "' parent relationship. Try again later or contact the administration.",
-                    "type": "danger"
+                    "type": "danger",
+                    "topic": requestData.topics[0].id
                     }
                 }
             )
@@ -398,7 +399,8 @@ angular.module('app').component('editparents', {
             if (topic.parent == new_parent) {
                 ctrl.message = {
                     "text": "'" + topic.topic_string + "' parent kept the same.",
-                    "type": "warning"
+                    "type": "warning",
+                    "topic": requestData.topics[0].id
                 }
                 ctrl.activeTopic = null;
                 return;
@@ -411,7 +413,6 @@ angular.module('app').component('editparents', {
                         "new_parent": new_parent.topic_string
                     }]
                 };
-                console.log(requestData);
 
             $http.post(apiUrlWithSaffron + 'topics/changeroot', requestData).then(
                 function (response) {
@@ -421,25 +422,27 @@ angular.module('app').component('editparents', {
                     //Reload topics
                     ctrl.message = {
                         "text": "'" + topic.topic_string + "' parent successfuly changed from '" + topic.parent.topic_string + "' to '" + new_parent.topic_string +"'",
-                        "type": "success"
+                        "type": "success",
+                        "topic": requestData.topics[0].id
                     }
                     ctrl.activeTopic = null;
-                    $scope.loadTopics();
+                    $scope.loadTopics();             
                 },
                 function (response) {
                     if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
                         ctrl.message = {
                             "text": "It is not possible to change the parent of a topic to one of its children: circular inheritance problem. Choose an antecedent parent or a topic in a parallel branch instead.",
-                            "type": "error"
-                        }
+                            "type": "error",
+                            "topic": requestData.topics[0].id
+                        };
                     } else {
                         ctrl.message = {
                             "text": "An error has occurred. Please try again later or contact the administration.",
-                            "type": "error"
+                            "type": "error",
+                            "topic": requestData.topics[0].id
                         }
                     }
                     ctrl.activeTopic = null;
-                    console.log("Failed to update topic parent");
                 }
             );
 
