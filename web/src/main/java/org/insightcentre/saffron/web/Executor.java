@@ -531,13 +531,11 @@ public class Executor extends AbstractHandler {
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
-        for (Taxonomy t : graph.children) {
-            newChildren.add(t.deepCopy());
-        }
-        Taxonomy topRootGraph = new Taxonomy("EMPTY_ROOT", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
+        newChildren.add(graph.deepCopy());
+        Taxonomy topRootGraph = new Taxonomy("HEAD_TOPIC", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
         _status.setStatusMessage("Saving taxonomy");
 
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
+        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
         data.setTaxonomy(graph);
 
         try {
@@ -555,7 +553,7 @@ public class Executor extends AbstractHandler {
             mongo.addAuthorTopics(saffronDatasetName, new Date(), topics);
             mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
             mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
-            mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
+            mongo.addTaxonomy(saffronDatasetName, new Date(), topRootGraph);
             mongo.addCorpus(saffronDatasetName, new Date(), corpus);
 
         } catch (MongoException ex) {
