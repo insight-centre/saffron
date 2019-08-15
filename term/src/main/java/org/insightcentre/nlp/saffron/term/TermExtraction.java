@@ -182,7 +182,10 @@ public class TermExtraction {
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
         this.maxTopics = config.maxTopics;
         this.keyFeature = config.baseFeature;
-        this.configBlacklist = config.blacklist;
+        this.configBlacklist = config.blacklist == null ? new HashSet<>() : config.blacklist;
+        if(config.blacklistFile != null) {
+            loadBlacklistFromFile (this.configBlacklist, config.blacklistFile);
+        }
         this.oneTopicPerDoc = config.oneTopicPerDoc;
     }
 
@@ -526,6 +529,18 @@ public class TermExtraction {
             }
         }
         return acceptedTopics;
+    }
+
+    private void loadBlacklistFromFile(Set<String> configBlacklist, SaffronPath blacklistFile) {
+        try(BufferedReader r = new BufferedReader(new FileReader(blacklistFile.toFile()))) {
+            String line;
+            while((line = r.readLine()) != null) {
+                configBlacklist.add(line);
+            }
+        } catch(IOException x) {
+            System.err.println("Could not load black list file");
+            throw new RuntimeException(x);
+        }
     }
 
     public static class Result {
