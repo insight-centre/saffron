@@ -53,33 +53,40 @@ public class NewRun extends AbstractHandler {
                 && !"new".equals(saffronDatasetName)
                 && !"static".equals(saffronDatasetName)
                 && saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*")) {
-            System.out.println();
-            boolean isFileBased = true;
-
-            if (isDBConfigured()){
-                isFileBased = false;
-            }
-            if (isFileBased) {
-                if (executor.newDataSet(saffronDatasetName)) {
-                    return saffronDatasetName;
-                } else {
-                    baseRequest.setHandled(true);
-                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
-                }
+            if (executor.newDataSet(saffronDatasetName)) {
+                return saffronDatasetName;
             } else {
-                MongoDBHandler mongo = getMongoDBHandler();
-                FindIterable<Document> docs = mongo.getRun(saffronDatasetName);
-                boolean isdatasetNamePresent = false;
-                for(Document doc:docs) {
-                    isdatasetNamePresent = true;
-                }
-                if (!isdatasetNamePresent) {
-                    return saffronDatasetName;
-                } else {
-                    baseRequest.setHandled(true);
-                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
-                }
+                baseRequest.setHandled(true);
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+
             }
+
+//            boolean isFileBased = true;
+//
+//            if (isDBConfigured()){
+//                isFileBased = false;
+//            }
+//            if (isFileBased) {
+//                if (executor.newDataSet(saffronDatasetName)) {
+//                    return saffronDatasetName;
+//                } else {
+//                    baseRequest.setHandled(true);
+//                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+//                }
+//            } else {
+//                MongoDBHandler mongo = getMongoDBHandler();
+//                FindIterable<Document> docs = mongo.getRun(saffronDatasetName);
+//                boolean isdatasetNamePresent = false;
+//                for(Document doc:docs) {
+//                    isdatasetNamePresent = true;
+//                }
+//                if (!isdatasetNamePresent) {
+//                    return saffronDatasetName;
+//                } else {
+//                    baseRequest.setHandled(true);
+//                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
+//                }
+//            }
 
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No or Bad Dataset Name (Must be non-empty string matching [A-Za-z][A-Za-z0-9_-]* and not 'train', 'execute', 'static' or 'new' but was " + saffronDatasetName + ")");
