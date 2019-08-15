@@ -423,6 +423,7 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronData data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
+        System.out.println(data);
         Status _status = statuses.get(saffronDatasetName);
         _status.advanced = false;
         BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
