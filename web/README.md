@@ -68,7 +68,7 @@ API Routes in place:
 > This POST request will change topic status (Accepted/Rejected/None) for a given set of saffron topics and for a given saffron run ID.  
 
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rq.json)
-Y> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rs.json)
+> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rs.json)
 
 ---
  
