@@ -518,4 +518,92 @@ public class TermExtractionTest {
         assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("great time")));
         assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time") && t.status == Status.accepted));
     }
+    
+    @Test
+    public void testTermExtractionWithImproperTerms() {
+        System.out.println("extractStatsBlackWhite");
+        final POSTagger tagger = new POSTagger() {
+            @Override
+            public String[] tag(String[] strings) {
+                String[] x = new String[strings.length];
+                for (int i = 0; i < strings.length; i++) {
+                    if ("401k".equals(strings[i]) || "plan".equals(strings[i])) {
+                        x[i] = "NN";
+                    } else if ("good".equals(strings[i])) {
+                        x[i] = "JJ";
+                    } else {
+                        x[i] = "DT";
+                    }
+                }
+                return x;
+            }
+
+            @Override
+            public String[] tag(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] strings) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+        Tokenizer _tokenizer = new Tokenizer() {
+            @Override
+            public String[] tokenize(String string) {
+                return string.split(" ");
+            }
+
+            @Override
+            public Span[] tokenizePos(String string) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        Corpus searcher = new Corpus() {
+            @Override
+            public Iterable<Document> getDocuments() {
+                return Arrays.asList(new Document[]{
+                    mkDoc("a good 401k plan")
+                });
+            }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+            
+        };
+        
+        TermExtractionConfiguration config = new TermExtractionConfiguration();
+        TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
+            @Override
+            protected POSTagger initialValue() {
+                return tagger;
+            }
+
+        }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
+                config.preceedingTokens, config.headTokens, config.middleTokens, 
+            config.ngramMin, config.ngramMax, config.headTokenFinal, 
+            config.method, config.features, 
+            null, 2, config.baseFeature, config.blacklist, 
+            config.oneTopicPerDoc);
+        Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
+        
+        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("plan")));
+        assert(!res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("401k plan")));
+
+    }
 }
