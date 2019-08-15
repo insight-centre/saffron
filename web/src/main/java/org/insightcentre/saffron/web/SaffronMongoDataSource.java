@@ -46,6 +46,8 @@ public class SaffronMongoDataSource implements SaffronDataSource {
 
     private final Map<String, SaffronDataImpl> data = new HashMap<>();
 
+    public final String type = "mongodb";
+
     private static class SaffronDataImpl {
 
         private Taxonomy taxonomy;
@@ -311,11 +313,11 @@ public class SaffronMongoDataSource implements SaffronDataSource {
                     && corpus != null;
         }
 
-        public void setCorpus(DocumentSearcher corpus) {
+        public void setCorpus(JSONObject corpus) {
             this.corpus = new HashMap<>();
             this.corpusByAuthor = new HashMap<>();
             this.authors = new HashMap<>();
-            for (Document d : corpus.getDocuments()) {
+            for (Document d : (ArrayList<Document>)corpus.get("documents")) {
                 this.corpus.put(d.id, d);
                 for (Author a : d.getAuthors()) {
                     if (!corpusByAuthor.containsKey(a.id)) {
@@ -327,7 +329,7 @@ public class SaffronMongoDataSource implements SaffronDataSource {
                     }
                 }
             }
-            this.searcher = corpus;
+            //this.searcher = corpus;
         }
 
         public DocumentSearcher getSearcher() {
@@ -552,12 +554,9 @@ public class SaffronMongoDataSource implements SaffronDataSource {
         MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
         System.out.print("ID = " + runId);
 
-        Iterable<org.bson.Document> docs = mongo.getRun(runId);
-        for (org.bson.Document doc : docs) {
-            JSONObject jsonObj = new JSONObject(doc.toJson());
-            Taxonomy graph = Taxonomy.fromJsonString(jsonObj.toString());
-            saffron.setTaxonomy(graph);
-        }
+        Taxonomy docs = mongo.getTaxonomy(runId);
+        saffron.setTaxonomy(docs);
+
 
         Iterable<org.bson.Document> authorSimDocs = mongo.getAuthorSimilarity(runId);
         List<AuthorAuthor> authorSim = new ArrayList<>();
@@ -598,56 +597,11 @@ public class SaffronMongoDataSource implements SaffronDataSource {
         Iterable<org.bson.Document> corpus = mongo.getCorpus(runId);
         for (org.bson.Document doc : topicsDocs) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
+            saffron.setCorpus(jsonObj);
             saffron.setTopics((List<Topic>) mapper.readValue(jsonObj.toString(),
                     tf.constructCollectionType(List.class, Topic.class)));
         }
 
-//        File authorSimFile = new File(directory, "author-sim.json");
-//        if (!authorSimFile.exists()) {
-//            throw new FileNotFoundException("Could not find author-sim.json");
-//        }
-//
-//        saffron.setAuthorSim((List<AuthorAuthor>) mapper.readValue(authorSimFile,
-//                tf.constructCollectionType(List.class, AuthorAuthor.class)));
-//
-//        File topicSimFile = new File(directory, "topic-sim.json");
-//        if (!topicSimFile.exists()) {
-//            throw new FileNotFoundException("Could not find topic-sim.json");
-//        }
-//
-//        saffron.setTopicSim((List<TopicTopic>) mapper.readValue(topicSimFile,
-//                tf.constructCollectionType(List.class, TopicTopic.class)));
-//
-//        File authorTopicFile = new File(directory, "author-topics.json");
-//        if (!authorTopicFile.exists()) {
-//            throw new FileNotFoundException("Could not find author-topics.json");
-//        }
-//
-//        saffron.setAuthorTopics((List<AuthorTopic>) mapper.readValue(authorTopicFile,
-//                tf.constructCollectionType(List.class, AuthorTopic.class)));
-//
-//        File docTopicsFile = new File(directory, "doc-topics.json");
-//        if (!docTopicsFile.exists()) {
-//            throw new FileNotFoundException("Could not find doc-topics.json");
-//        }
-//
-//        saffron.setDocTopics((List<DocumentTopic>) mapper.readValue(docTopicsFile,
-//                tf.constructCollectionType(List.class, DocumentTopic.class)));
-//
-//        File topicsFile = new File(directory, "topics.json");
-//        if (!topicsFile.exists()) {
-//            throw new FileNotFoundException("Could not find topics.json");
-//        }
-//
-//        saffron.setTopics((List<Topic>) mapper.readValue(topicsFile,
-//                tf.constructCollectionType(List.class, Topic.class)));
-//
-//        File indexFile = new File(directory, "index");
-//        if (!indexFile.exists()) {
-//            throw new FileNotFoundException("Could not find index");
-//        }
-//
-//        saffron.setCorpus(DocumentSearcherFactory.load(indexFile));
 
 
         data.put(runId, saffron);
@@ -749,12 +703,12 @@ public class SaffronMongoDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<DocumentTopic> getRun(String runId) {
+    public String getRun(String runId) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
-            return Collections.EMPTY_LIST;
+            return "";
         }
-        return saffron.docTopics;
+        return saffron.id;
     }
 
     @Override
@@ -795,6 +749,8 @@ public class SaffronMongoDataSource implements SaffronDataSource {
         }
         return saffron.getDocTopics();
     }
+
+
 
     @Override
     public List<String> getTaxoParents(String runId, String topic_string) {
@@ -987,6 +943,11 @@ public class SaffronMongoDataSource implements SaffronDataSource {
 
     @Override
     public void setCorpus(String runId, DocumentSearcher corpus) {
+
+    }
+
+    @Override
+    public void setCorpus(String runId, JSONObject corpus) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

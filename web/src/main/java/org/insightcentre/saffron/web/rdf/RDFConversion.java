@@ -16,7 +16,7 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
-import org.insightcentre.saffron.web.SaffronData;
+import org.insightcentre.saffron.web.SaffronDataSource;
 
 
 /**
@@ -33,14 +33,14 @@ public class RDFConversion {
         }
     }
     
-    public static Model documentToRDF(Document d, SaffronData data) {
+    public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         
-        return documentToRDF(d, data, model, null);
+        return documentToRDF(d, data, datasetName, model, null);
         
     }
     
-    public static Model documentToRDF(Document d, SaffronData data, Model model, String base) {
+    public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName, Model model, String base) {
 
         Resource res = model.createResource(base == null ? "" : base + "/rdf/doc/" + encode(d.id))
                 .addProperty(RDF.type, FOAF.Document);
@@ -54,7 +54,7 @@ public class RDFConversion {
             res.addLiteral(DCTerms.type, d.getMimeType());
         }
 
-        for (DocumentTopic dt : data.getTopicByDoc(d.id)) {
+        for (DocumentTopic dt : data.getTopicByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
                     base == null ? "../topic/" + encode(dt.topic_string) 
                             : base + "/rdf/topic/" + encode(dt.topic_string)));
@@ -67,12 +67,12 @@ public class RDFConversion {
         return model;
     }
 
-    public static Model topicToRDF(Topic t, SaffronData data) {
+    public static Model topicToRDF(Topic t, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        return topicToRDF(t, data, model, null);
+        return topicToRDF(t, data, datasetName, model, null);
     }
     
-    public static Model topicToRDF(Topic t, SaffronData data, Model model, String base) {
+    public static Model topicToRDF(Topic t, SaffronDataSource data, String datasetName, Model model, String base) {
         Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.topicString))
                 .addProperty(RDF.type, SKOS.Concept)
                 .addProperty(RDFS.label, t.topicString)
@@ -90,14 +90,14 @@ public class RDFConversion {
                             model.createTypedLiteral(mv.occurrences)));
         }
         
-        for(AuthorTopic at : data.getAuthorByTopic(t.topicString)) {
+        for(AuthorTopic at : data.getAuthorByTopic(datasetName, t.topicString)) {
             res.addProperty(SAFFRON.author, 
                     model.createResource(base == null ?
                             "../author/" + encode(at.author_id)
                             : base + "/rdf/author/" + encode(at.author_id)));
         }
         
-        for(TopicTopic tt : data.getTopicByTopic1(t.topicString, null)) {
+        for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.topicString, null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
                             base == null ? encode(tt.topic2)
@@ -111,12 +111,12 @@ public class RDFConversion {
         return model;
     }
     
-    public static Model authorToRdf(Author author, SaffronData data) {
+    public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        return authorToRdf(author, data, model, null);
+        return authorToRdf(author, data, datasetName, model, null);
     }
     
-    public static Model authorToRdf(Author author, SaffronData data, Model model, String base) {
+    public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName, Model model, String base) {
 
         Resource res = model.createResource(base == null ? "" 
                 : base + "/rdf/author/" + encode(author.id))
@@ -127,17 +127,17 @@ public class RDFConversion {
         		res.addLiteral(FOAF.nick, variant);
         	}
         }
-        for(AuthorAuthor aa : data.getAuthorSimByAuthor1(author.id)) {
+        for(AuthorAuthor aa : data.getAuthorSimByAuthor1(datasetName, author.id)) {
             res.addProperty(SAFFRON.relatedAuthor, model.createResource(
                     base == null ? encode(aa.author2_id)
                             : base + "/rdf/author/" + aa.author2_id));
         }
-        for(AuthorTopic at : data.getTopicByAuthor(author.id)) {
+        for(AuthorTopic at : data.getTopicByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTopic, model.createResource(
                     base == null ? "../topic/" + encode(at.topic_id) 
                             : base + "/rdf/topic/" + encode(at.topic_id)));
         }
-        for(Document d : data.getDocsByAuthor(author.id)) {
+        for(Document d : data.getDocsByAuthor(datasetName, author.id)) {
             res.addProperty(FOAF.made, base == null ? 
                     "../doc/" + encode(d.id)
                     : base + "/rdf/doc/" + encode(d.id));
@@ -151,16 +151,16 @@ public class RDFConversion {
         
     }
     
-    public static Model allToRdf(String base, SaffronData data) {
+    public static Model allToRdf(String base, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        for(Document doc : data.getDocuments()) {
-            documentToRDF(doc, data, model, base);
+        for(Document doc : data.getAllDocuments(datasetName)) {
+            documentToRDF(doc, data, datasetName, model, base);
         }
-        for(Author auth : data.getAuthors()) {
-            authorToRdf(auth, data, model, base);
+        for(Author auth : data.getAllAuthors(datasetName)) {
+            authorToRdf(auth, data, datasetName, model, base);
         }
-        for(Topic topic : data.getTopics()) {
-            topicToRDF(topic, data, model, base);
+        for(Topic topic : data.getAllTopics(datasetName)) {
+            topicToRDF(topic, data, datasetName, model, base);
         }
         return model;
     }

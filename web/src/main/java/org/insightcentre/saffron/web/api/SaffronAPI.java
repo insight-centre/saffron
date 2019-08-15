@@ -30,21 +30,15 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRun(@PathParam("param") String name) {
         MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> runs;
+        Taxonomy taxonomy;
         try {
-            runs = mongo.getTaxonomy(name);
-            for (Document doc : runs) {
-                return Response.ok(doc.toJson()).build();
-            }
+            taxonomy = mongo.getTaxonomy(name);
             mongo.close();
-
+            return Response.ok(taxonomy.toString()).build();
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
-
-        return Response.ok("OK").build();
-
     }
 
     @GET
@@ -177,13 +171,12 @@ public class SaffronAPI {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            FindIterable<Document> runs = mongo.getTaxonomy(runId);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
-            }
-
+            originalTaxo = mongo.getTaxonomy(runId);
+//            for (org.bson.Document doc : runs) {
+//                JSONObject jsonObj = new JSONObject(doc.toJson());
+//                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+//
+//            }
             Taxonomy descendent = originalTaxo.descendent(topic_id);
             String json = new Gson().toJson(descendent);
             mongo.close();
@@ -207,12 +200,12 @@ public class SaffronAPI {
         try {
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            FindIterable<Document> runs = mongo.getTaxonomy(runId);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
-            }
+            originalTaxo = mongo.getTaxonomy(runId);
+//            for (org.bson.Document doc : runs) {
+//                JSONObject jsonObj = new JSONObject(doc.toJson());
+//                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+//
+//            }
             Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
             String json = new Gson().toJson(antecendent);
             mongo.close();
@@ -245,7 +238,7 @@ public class SaffronAPI {
         TopicsResponse resp = new TopicsResponse();
         FindIterable<Document> topics;
 
-        topics = mongo.deleteTopic(name, topicId);
+        mongo.deleteTopic(name, topicId);
 
         return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
@@ -262,25 +255,19 @@ public class SaffronAPI {
 
         MongoDBHandler mongo = getMongoDBHandler();
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-        FindIterable<Document> runs = mongo.getTaxonomy(name);
+        Taxonomy originalTaxo = mongo.getTaxonomy(name);
 
         try {
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                Taxonomy originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
 
-                if (status.equals("rejected")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.rejected);
-                } else if (status.equals("accepted")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.accepted);
-                } else if (status.equals("none")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
-                }
-
-                mongo.updateTopic(name, topicId, status);
-                mongo.updateTopicSimilarity(name, topicId, topic_id2, status);
+            if (status.equals("rejected")) {
+                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.rejected);
+            } else if (status.equals("accepted")) {
+                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.accepted);
+            } else if (status.equals("none")) {
+                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
             }
-
+            mongo.updateTopic(name, topicId, status);
+            mongo.updateTopicSimilarity(name, topicId, topic_id2, status);
             mongo.updateTaxonomy(name, new Date(), finalTaxon);
             mongo.close();
         } catch (Exception e) {
@@ -331,14 +318,8 @@ public class SaffronAPI {
         try {
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            FindIterable<Document> runs = mongo.getTaxonomy(name);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
-            }
+            originalTaxo = mongo.getTaxonomy(name);
             JSONObject returnJson = new JSONObject();
-
             JSONArray returnJsonArray = new JSONArray();
             while (keys.hasNext()) {
                 String key = keys.next();
@@ -426,12 +407,7 @@ public class SaffronAPI {
                     JSONObject json = obj.getJSONObject(i);
                     String topicString = json.get("topic").toString();
                     String status = json.get("status").toString();
-                    FindIterable<Document> runs = mongo.getTaxonomy(name);
-                    for (org.bson.Document doc : runs) {
-                        JSONObject jsonObj = new JSONObject(doc.toJson());
-                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
-                    }
+                    originalTaxo = mongo.getTaxonomy(name);
                     Taxonomy topic = originalTaxo.descendent(topicString);
                     Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
 //                    if (!status.equals("none")) {
@@ -490,11 +466,7 @@ public class SaffronAPI {
                     String topicChild = json.get("topic_child").toString();
                     String topicParent = json.get("topic_parent").toString();
                     String status = json.get("status").toString();
-                    FindIterable<Document> runs = mongo.getTaxonomy(name);
-                    for (org.bson.Document doc : runs) {
-                        JSONObject jsonObj = new JSONObject(doc.toJson());
-                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-                    }
+                    originalTaxo = mongo.getTaxonomy(name);
                     if (!status.equals(Status.rejected.toString())) {
                         if (status.equals(Status.accepted.toString())) {
                             finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);

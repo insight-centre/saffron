@@ -31,7 +31,7 @@ import javax.ws.rs.ApplicationPath;
 public class Launcher {
 
     public static Executor executor;
-    
+
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
         p.printHelpOn(System.err);

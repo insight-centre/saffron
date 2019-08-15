@@ -31,6 +31,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.json.JSONObject;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web
@@ -41,6 +42,8 @@ import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 public class SaffronInMemoryDataSource implements SaffronDataSource {
 
     private final Map<String, SaffronDataImpl> data = new HashMap<>();
+
+    public final String type = "file";
 
     private static class SaffronDataImpl {
 
@@ -655,12 +658,12 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<DocumentTopic> getRun(String runId) {
+    public String getRun(String runId) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
-            return Collections.EMPTY_LIST;
+            return "";
         }
-        return saffron.docTopics;
+        return saffron.id;
     }
 
     @Override
@@ -701,6 +704,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
         return saffron.getDocTopics();
     }
+
 
     @Override
     public List<String> getTaxoParents(String runId, String topic_string) {
@@ -898,6 +902,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         saffron.setCorpus(corpus);
+    }
+
+    @Override
+    public void setCorpus(String runId, JSONObject corpus) {
+
     }
 
     @Override

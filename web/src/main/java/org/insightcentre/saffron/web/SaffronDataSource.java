@@ -15,6 +15,7 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.json.JSONObject;
 
 /**
  * Interface for accessing Saffron data storage, used by the API
@@ -94,11 +95,13 @@ public interface SaffronDataSource extends Closeable {
 
     void deleteTopic(String runId, String topic);
 
-    List<DocumentTopic> getRun(String runId);
+    String getRun(String runId);
 
     Taxonomy getTaxonomy(String runId);
 
     List<DocumentTopic> getDocTopics(String runId);
+
+    //public List<String> getAllRuns();
 
     public List<String> getTaxoParents(String runId, String topic_string);
 
@@ -143,6 +146,8 @@ public interface SaffronDataSource extends Closeable {
     public void setDocTopics(String runId, List<DocumentTopic> docTopics);
 
     public void setCorpus(String runId, DocumentSearcher corpus);
+
+    void setCorpus(String runId, JSONObject corpus);
 
     public void setTopics(String runId, Collection<Topic> _topics);
 

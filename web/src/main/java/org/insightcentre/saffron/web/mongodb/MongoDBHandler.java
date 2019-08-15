@@ -1,7 +1,6 @@
 package org.insightcentre.saffron.web.mongodb;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.gson.Gson;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
@@ -10,7 +9,6 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
-import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.combine;
@@ -18,22 +16,19 @@ import static com.mongodb.client.model.Updates.set;
 
 import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.saffron.web.SaffronDataSource;
 import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
 
-import java.io.Closeable;
-import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
-public class MongoDBHandler implements Closeable {
+public class MongoDBHandler implements SaffronDataSource {
 
     private final String url;
     private final int port;
@@ -106,8 +101,15 @@ public class MongoDBHandler implements Closeable {
         taxonomyCollection.findOneAndDelete(and(eq("id", name)));
     }
 
-    public FindIterable<Document> getRun(String runId) {
-        return runCollection.find(and(eq("id", runId)));
+    @Override
+    public String getRun(String runId) {
+        JSONObject jsonObj = new JSONObject();
+        Iterable<org.bson.Document> docs = runCollection.find(and(eq("id", runId)));
+        for (org.bson.Document doc : docs) {
+            jsonObj = new JSONObject(doc.toJson());
+
+        }
+        return jsonObj.toString();
     }
 
 
@@ -157,6 +159,11 @@ public class MongoDBHandler implements Closeable {
         return true;
     }
 
+    @Override
+    public boolean addRun(String id, Date date) {
+        return false;
+    }
+
     public FindIterable<Document> getDocumentTopicCorrespondence(String runId) {
         Document document = new Document();
         document.put("run", runId);
@@ -203,7 +210,7 @@ public class MongoDBHandler implements Closeable {
         return docs;
     }
 
-    public FindIterable<Document> deleteTopic(String runId, String topic) {
+    public void deleteTopic(String runId, String topic) {
 
         BasicDBObject updateFields = new BasicDBObject();
         updateFields.append("run", runId);
@@ -211,9 +218,7 @@ public class MongoDBHandler implements Closeable {
         BasicDBObject setQuery = new BasicDBObject();
         setQuery.append("$set", updateFields);
         topicsCollection.findOneAndDelete(and(eq("run", runId), (eq("topic", topic))));
-        FindIterable<Document> docs = topicsCollection.find(eq("run", runId));
 
-        return docs;
     }
 
 
@@ -352,10 +357,170 @@ public class MongoDBHandler implements Closeable {
     }
 
 
-
-    public FindIterable<Document> getTaxonomy(String runId) {
+    @Override
+    public Taxonomy getTaxonomy(String runId)  {
         FindIterable<Document> docs = taxonomyCollection.find(eq("id", runId));
-        return docs;
+        Taxonomy graph = new Taxonomy("", 0, 0, "", "", new ArrayList<>(), Status.none);
+        for (org.bson.Document doc : docs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            try {
+                graph = Taxonomy.fromJsonString(jsonObj.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return graph;
+    }
+
+
+    @Override
+    public List<DocumentTopic> getDocTopics(String runId) {
+        return null;
+    }
+
+    @Override
+    public List<String> getTaxoParents(String runId, String topic_string) {
+        return null;
+    }
+
+    @Override
+    public List<TopicAndScore> getTaxoChildrenScored(String runId, String topic_string) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorAuthor> getAuthorSimByAuthor1(String runId, String author1) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorAuthor> getAuthorSimByAuthor2(String runId, String author1) {
+        return null;
+    }
+
+    @Override
+    public List<Author> authorAuthorToAuthor1(String runId, List<AuthorAuthor> aas) {
+        return null;
+    }
+
+    @Override
+    public List<Author> authorAuthorToAuthor2(String runId, List<AuthorAuthor> aas) {
+        return null;
+    }
+
+    @Override
+    public List<String> getTaxoChildren(String runId, String topic_string) {
+        return null;
+    }
+
+    @Override
+    public List<TopicTopic> getTopicByTopic1(String runId, String topic1, List<String> _ignore) {
+        return null;
+    }
+
+    @Override
+    public List<TopicTopic> getTopicByTopic2(String runId, String topic2) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorTopic> getTopicByAuthor(String runId, String author) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorTopic> getAuthorByTopic(String runId, String topic) {
+        return null;
+    }
+
+    @Override
+    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTopic> ats) {
+        return null;
+    }
+
+    @Override
+    public List<DocumentTopic> getTopicByDoc(String runId, String doc) {
+        return null;
+    }
+
+    @Override
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String topic) {
+        return null;
+    }
+
+    @Override
+    public Topic getTopic(String runId, String topic) {
+        return null;
+    }
+
+    @Override
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String runId, String authorId) {
+        return null;
+    }
+
+    @Override
+    public Collection<String> getTopTopics(String runId, int from, int to) {
+        return null;
+    }
+
+    @Override
+    public Author getAuthor(String runId, String authorId) {
+        return null;
+    }
+
+    @Override
+    public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId) {
+        return null;
+    }
+
+    @Override
+    public DocumentSearcher getSearcher(String runId) {
+        return null;
+    }
+
+    @Override
+    public void setDocTopics(String runId, List<DocumentTopic> docTopics) {
+
+    }
+
+    @Override
+    public void setCorpus(String runId, DocumentSearcher corpus) {
+
+    }
+
+    @Override
+    public void setCorpus(String runId, JSONObject corpus) {
+
+    }
+
+    @Override
+    public void setTopics(String runId, Collection<Topic> _topics) {
+
+    }
+
+    @Override
+    public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics) {
+
+    }
+
+    @Override
+    public void setTopicSim(String runId, List<TopicTopic> topicSim) {
+
+    }
+
+    @Override
+    public void setAuthorSim(String runId, List<AuthorAuthor> authorSim) {
+
+    }
+
+    @Override
+    public void setTaxonomy(String runId, Taxonomy taxonomy) {
+
+    }
+
+    @Override
+    public void remove(String runId) {
+
     }
 
 
@@ -480,6 +645,66 @@ public class MongoDBHandler implements Closeable {
 
         topicsCollection.findOneAndUpdate(condition, update, findOptions);
         return true;
+    }
+
+    @Override
+    public boolean containsKey(String id) {
+        return false;
+    }
+
+    @Override
+    public boolean isLoaded(String id) {
+        return false;
+    }
+
+    @Override
+    public Iterable<String> runs() {
+        return null;
+    }
+
+    @Override
+    public Taxonomy getTaxoDescendent(String runId, String topicString) {
+        return null;
+    }
+
+    @Override
+    public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName) {
+        return null;
+    }
+
+    @Override
+    public Iterable<Author> getAllAuthors(String datasetName) {
+        return null;
+    }
+
+    @Override
+    public Iterable<Topic> getAllTopics(String datasetName) {
+        return null;
+    }
+
+    @Override
+    public Date getDate(String doc) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorTopic> getAllAuthorTopics(String name) {
+        return null;
+    }
+
+    @Override
+    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String topicId) {
+        return null;
+    }
+
+    @Override
+    public Iterable<TopicTopic> getAllTopicSimilarities(String name) {
+        return null;
+    }
+
+    @Override
+    public Iterable<TopicTopic> getTopicByTopics(String name, String topic1, String topic2) {
+        return null;
     }
 
 

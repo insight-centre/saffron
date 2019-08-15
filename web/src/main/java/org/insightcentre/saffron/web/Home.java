@@ -17,10 +17,10 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
  * @author John McCrae
  */
 public class Home extends AbstractHandler {
-    private final Map<String, SaffronData> sites;
+    private final SaffronDataSource sites;
     private final File parentDirectory;
 
-    public Home(Map<String, SaffronData> sites, File parentDirectory) {
+    public Home(SaffronDataSource sites, File parentDirectory) {
         this.sites = sites;
         this.parentDirectory = parentDirectory;
     }
@@ -42,7 +42,7 @@ public class Home extends AbstractHandler {
                 }
                 String content = writer.toString();
                 StringBuilder sitesTxt = new StringBuilder();
-                for(String s : sites.keySet()) {
+                for(String s : sites.runs()) {
                     if(sitesTxt.length() != 0) {
                         sitesTxt.append(",");
                     }
