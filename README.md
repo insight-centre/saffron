@@ -57,11 +57,10 @@ Then open the following url in a browser
 Web Interface with Mongo DB integration 
 =======================================
 
-Install MongoDB with the defaults set and start up. Once started, open a Mongo 
-session by typing 'mongo' on a terminal. Create a saffron database by typing:
-
-    use saffron
-
+Install MongoDB with the defaults set (see [instructions](https://docs.mongodb.com/manual/installation/#mongodb-community-edition-installation-tutorials)) and start up by typing in a terminal: 
+   
+    sudo mongod 
+    
 To change the Mongo HOST and PORT, simply edit the following file
 
     ./saffron-web.sh
@@ -70,8 +69,12 @@ And edit the following:
 
     export MONGO_URL=localhost
     export MONGO_PORT=27017
+    
+You can specify the name of the database by editing in the same file: 
 
-Start the Saffron Web server simply choose a directory for Saffron to create
+    export MONGO_DB_NAME = saffron_test
+
+To start the Saffron Web server, simply choose a directory for Saffron to create
 the models and run the command as follows
 
     ./saffron-web.sh
