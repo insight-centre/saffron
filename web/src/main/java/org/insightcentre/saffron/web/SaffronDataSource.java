@@ -7,7 +7,10 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -33,17 +36,6 @@ public interface SaffronDataSource extends Closeable {
      */
     boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim);
 
-    /**
-     * Add a list of topics?
-     * @param id The ID of the run
-     * @param date The timestamp
-     * @param topics The topics to add
-     * @return True if successful
-     * @deprecated Andy, shouldn't this be addTopics?
-     */
-    default boolean addAuthorTopics(String id, Date date, List<Topic> topics) {
-        return addTopics(id, date, topics);
-    }
 
     /**
      * Add a document topic
@@ -60,7 +52,7 @@ public interface SaffronDataSource extends Closeable {
      * @param date The timestamp
      * @return  True if successful
      */
-    boolean addRun(String id, Date date);
+    boolean addRun(String id, Date date, Configuration config);
 
     /**
      * Update the current taxonomy
@@ -147,9 +139,9 @@ public interface SaffronDataSource extends Closeable {
 
     public void setCorpus(String runId, DocumentSearcher corpus);
 
-    void setCorpus(String runId, JSONObject corpus);
+    void setCorpus(String runId, Corpus corpus);
 
-    public void setTopics(String runId, Collection<Topic> _topics);
+    public void setTopics(String runId, List<Topic> _topics);
 
     public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics);
 
@@ -181,7 +173,7 @@ public interface SaffronDataSource extends Closeable {
      * @param id The id of the dataset
      * @return True if the dataset exists
      */
-    boolean containsKey(String id);
+    boolean containsKey(String id) throws IOException;
 
     /**
      * Is the dataset loaded?

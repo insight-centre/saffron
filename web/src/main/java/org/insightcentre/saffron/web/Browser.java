@@ -53,27 +53,25 @@ import org.json.JSONObject;
  */
 public class Browser extends AbstractHandler {
 
-    final public static SaffronMongoDataSource saffron = new SaffronMongoDataSource();
+
+
+    static String mongoUrl = System.getenv("MONGO_URL");
+    static String mongoPort = System.getenv("MONGO_PORT");
+    static String mongoDbName = System.getenv("MONGO_DB_NAME");
+
+    protected final MongoDBHandler saffron = new MongoDBHandler(
+            mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
     public Browser(File dir) throws IOException {
 
         if(saffron.type.equals("mongodb")) {
-            String mongoUrl = System.getenv("MONGO_URL");
-            String mongoPort = System.getenv("MONGO_PORT");
-            String mongoDbName = System.getenv("MONGO_DB_NAME");
 
-            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-            FindIterable<org.bson.Document> runs = mongo.getAllRuns();
-            for (org.bson.Document doc : runs) {
-                JSONObject configObj = new JSONObject(doc);
-                configObj.get("id").toString();
-                saffron.fromMongo(configObj.get("id").toString());
-                System.out.println("Here");
-                System.out.println(saffron);
+           FindIterable<org.bson.Document> runs = saffron.getAllRuns();
+           for (org.bson.Document doc : runs) {
+               JSONObject configObj = new JSONObject(doc);
+               configObj.get("id").toString();
+               saffron.fromMongo(configObj.get("id").toString());
             }
-
-            mongo.close();
-
         }
         else {
             if (dir.exists()) {

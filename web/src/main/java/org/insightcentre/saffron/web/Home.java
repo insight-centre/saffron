@@ -30,27 +30,27 @@ public class Home extends AbstractHandler {
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
         if(target == null || "".equals(target) || "/".equals(target)) {
+
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
                 FileReader reader = new FileReader(new File("static/home.html"));
                 StringWriter writer = new StringWriter();
-                char[] buf = new char[4096];
-                int i = 0;
-                while ((i = reader.read(buf)) >= 0) {
-                    writer.write(buf, 0, i);
-                }
-                String content = writer.toString();
-                StringBuilder sitesTxt = new StringBuilder();
-                for(String s : sites.runs()) {
-                    if(sitesTxt.length() != 0) {
-                        sitesTxt.append(",");
+                try {
+                    char[] buf = new char[4096];
+                    int i = 0;
+                    while ((i = reader.read(buf)) >= 0) {
+                        writer.write(buf, 0, i);
                     }
-                    sitesTxt.append("\"").append(s).append("\"");
+                    String content = writer.toString();
+                    StringBuilder sitesTxt = new StringBuilder();
+                    content = content.replaceAll("\\{\\{sites\\}\\}", sitesTxt.toString());
+                    Writer out = response.getWriter();
+                    out.write(content);
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-                content = content.replaceAll("\\{\\{sites\\}\\}", sitesTxt.toString());
-                Writer out = response.getWriter();
-                out.write(content);
+
         } else if("/delete".equals(target)) {
             final String site = request.getQueryString();
             if(site != null && site.matches("[A-Za-z][A-Za-z0-9_-]*")) {

@@ -14,4 +14,5 @@ export SAFFRON_HOME=$DIR
 export MONGO_URL=localhost
 export MONGO_PORT=27017
 export MONGO_DB_NAME=saffron_test
-mvn -q exec:java -f pom.xml -Dexec.args="$*"
+export STORE_LOCAL_COPY=false
+mvnDebug -q exec:java -f pom.xml -Dexec.args="$*"

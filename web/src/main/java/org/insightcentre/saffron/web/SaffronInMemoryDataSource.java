@@ -20,11 +20,9 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+
+import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -535,32 +533,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         this.data.put(name, saffron);
     }
 
-    //    /**
-//     * Load the Saffron data from mongo
-//     *
-//     * @param runId The runId for the saffron instance
-//     * @return An initializes object
-//     * @throws IOException
-//     */
-//    public void fromMongo(String runId) throws IOException {
-//
-//        final ObjectMapper mapper = new ObjectMapper();
-//        final TypeFactory tf = mapper.getTypeFactory();
-//        final SaffronDataImpl saffron = new SaffronDataImpl(runId);
-//
-//        MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
-//        System.out.print("ID = " + runId);
-//
-//        Iterable<org.bson.Document> docs = mongo.getTaxonomyIterable(runId);
-//        for (org.bson.Document doc : docs) {
-//            JSONObject jsonObj = new JSONObject(doc.toJson());
-//            Taxonomy graph = Taxonomy.fromJsonString(jsonObj.toString());
-//            saffron.setTaxonomy(graph);
-//
-//        }
-//
-//        data.put(runId, saffron);
-//    }
+
     @Override
     public boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim) {
         SaffronDataImpl saffron = data.get(id);
@@ -584,7 +557,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public boolean addRun(String id, Date date) {
+    public boolean addRun(String id, Date date, Configuration config) {
         if(!data.containsKey(id)) {
             data.put(id, new SaffronDataImpl(id));
         }
@@ -904,13 +877,17 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setCorpus(corpus);
     }
 
+
+
+
+
     @Override
-    public void setCorpus(String runId, JSONObject corpus) {
+    public void setCorpus(String runId, Corpus corpus) {
 
     }
 
     @Override
-    public void setTopics(String runId, Collection<Topic> _topics) {
+    public void setTopics(String runId, List<Topic> _topics) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

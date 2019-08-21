@@ -70,7 +70,6 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
-        System.out.println("extractTaxonomy");
         HashMap<String, Topic> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);

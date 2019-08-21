@@ -43,16 +43,13 @@ public class BlackWhiteList {
         Set<String> topicBlackList = new HashSet<>();
 
         for (Document t : allTopics) {
-            System.out.println("HERE3" + t.getString("status"));
             if (t.getString("status").equals("accepted")) {
-                System.out.println("HERE4");
                 topicWhiteList.add(t.getString("topic"));
 
                 if (!t.getString("topic").equals(t.getString("original_topic"))) {
                     topicBlackList.add(t.getString("original_topic"));
                 }
             } else if (t.getString("status").equals("rejected")) {
-                System.out.println("HERE4");
                 topicBlackList.add(t.getString("topic"));
             }
         }

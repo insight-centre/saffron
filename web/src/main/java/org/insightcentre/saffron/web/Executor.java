@@ -77,6 +77,7 @@ public class Executor extends AbstractHandler {
     private Corpus corpus;
     private Configuration defaultConfig;
     private final File logFile;
+    static String storeCopy = System.getenv("STORE_LOCAL_COPY");
     //private Configuration config;
 
     public Executor(SaffronDataSource data, File directory, File logFile) {
@@ -99,11 +100,11 @@ public class Executor extends AbstractHandler {
      * @param name The name
      * @return True if a new dataset was created
      */
-    public boolean newDataSet(String name) {
+    public boolean newDataSet(String name) throws IOException {
         if (data.containsKey(name)) {
             return false;
         } else {
-            data.addRun(name, new Date());
+            data.addRun(name, new Date(), this.defaultConfig);
             return true;
         }
     }
@@ -420,7 +421,8 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        System.out.println(data);
+        data.deleteRun(saffronDatasetName);
+        data.addRun(saffronDatasetName, new Date(), config);
         Status _status = statuses.get(saffronDatasetName);
         _status.advanced = false;
         BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
@@ -455,10 +457,12 @@ public class Executor extends AbstractHandler {
         //res.normalize();
 
         _status.setStatusMessage("Writing extracted topics");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
 
         _status.setStatusMessage("Writing document topic correspondence");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
 
         data.setDocTopics(saffronDatasetName, res.docTopics);
 
@@ -471,16 +475,17 @@ public class Executor extends AbstractHandler {
 
         _status.setStatusMessage("Applying consolidation to corpus");
         applyConsolidation(searcher, consolidation, _status);
-        data.setCorpus(saffronDatasetName, searcher);
+        data.setCorpus(saffronDatasetName, corpus);
 
         _status.stage++;
         _status.setStatusMessage("Linking to DBpedia");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
         List<Topic> topics = new ArrayList<>(res.topics);
-        data.setTopics(saffronDatasetName, res.topics);
+        data.setTopics(saffronDatasetName, topics);
 
         _status.setStatusMessage("Saving linked topics");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
@@ -488,7 +493,8 @@ public class Executor extends AbstractHandler {
         Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
 
         data.setAuthorTopics(saffronDatasetName, authorTopics);
 
@@ -498,7 +504,8 @@ public class Executor extends AbstractHandler {
         final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving topic connections");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
 
         data.setTopicSim(saffronDatasetName, topicSimilarity);
 
@@ -508,7 +515,8 @@ public class Executor extends AbstractHandler {
         final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics, _status);
 
         _status.setStatusMessage("Saving author connections");
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
 
         data.setAuthorSim(saffronDatasetName, authorSim);
 
@@ -535,30 +543,12 @@ public class Executor extends AbstractHandler {
         Taxonomy topRootGraph = new Taxonomy("EMPTY_ROOT", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
         _status.setStatusMessage("Saving taxonomy");
 
-        ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
         data.setTaxonomy(saffronDatasetName, graph);
 
-        try {
 
-            String mongoUrl = System.getenv("MONGO_URL");
-            String mongoPort = System.getenv("MONGO_PORT");
-            String mongoDbName = System.getenv("MONGO_DB_NAME");
 
-            MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-            mongo.deleteRun(saffronDatasetName);
-            mongo.addRun(saffronDatasetName, new Date(), config);
-            mongo.addDocumentTopicCorrespondence(saffronDatasetName, new Date(), res.docTopics);
-            mongo.addTopics(saffronDatasetName, new Date(), topics);
-            mongo.addTopicExtraction(saffronDatasetName, new Date(), res.topics);
-            mongo.addAuthorTopics(saffronDatasetName, new Date(), topics);
-            mongo.addAuthorSimilarity(saffronDatasetName, new Date(), authorSim);
-            mongo.addTopicsSimilarity(saffronDatasetName, new Date(), topicSimilarity);
-            mongo.addTaxonomy(saffronDatasetName, new Date(), graph);
-            mongo.addCorpus(saffronDatasetName, new Date(), corpus);
-
-        } catch (MongoException ex) {
-            System.out.println("MongoDB not available - starting execution in local mode");
-        }
 
         _status.setStatusMessage("Done");
         _status.completed = true;
