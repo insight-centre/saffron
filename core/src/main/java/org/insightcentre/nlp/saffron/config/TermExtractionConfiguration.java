@@ -59,6 +59,10 @@ public class TermExtractionConfiguration {
      */
     public Set<String> blacklist = Collections.EMPTY_SET;
     /**
+     * A file containing a list of black terms
+     */
+    public SaffronPath blacklistFile;
+    /**
      * If set always output at least one topic for each input document (overrides maxTopics
      * if necessary)
      */

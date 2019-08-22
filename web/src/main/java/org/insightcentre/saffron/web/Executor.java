@@ -537,17 +537,13 @@ public class Executor extends AbstractHandler {
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
-        for (Taxonomy t : graph.children) {
-            newChildren.add(t.deepCopy());
-        }
-        Taxonomy topRootGraph = new Taxonomy("EMPTY_ROOT", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
+        newChildren.add(graph.deepCopy());
+        Taxonomy topRootGraph = new Taxonomy("HEAD_TOPIC", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
         _status.setStatusMessage("Saving taxonomy");
 
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
-        data.setTaxonomy(saffronDatasetName, graph);
-
-
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
+        data.setTaxonomy(saffronDatasetName, topRootGraph);
 
 
         _status.setStatusMessage("Done");
