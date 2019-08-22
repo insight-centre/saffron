@@ -15,9 +15,9 @@ import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.saffron.web.*;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
-import org.insightcentre.saffron.web.mongodb.MongoUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -25,6 +25,9 @@ import org.json.JSONObject;
 public class SaffronAPI {
 
     private final org.insightcentre.saffron.web.api.APIUtils APIUtils = new APIUtils();
+    
+    //FIXME The REST interface should not know or care about MongoDB configuration.
+    // This information should be restricted to Model layers dealing exclusively with MongoDB
     static String mongoUrl = System.getenv("MONGO_URL");
     static String mongoPort = System.getenv("MONGO_PORT");
     static String mongoDbName = System.getenv("MONGO_DB_NAME");
@@ -372,46 +375,33 @@ public class SaffronAPI {
     @Path("/{param}/topics/update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopic(@PathParam("param") String name, InputStream incomingData) {
+    public Response updateTopic(@PathParam("param") String runId, InputStream incomingData) {
 
-
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-        Iterator<String> keys = jsonRqObj.keys();
-
-        try {
-
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            while (keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicString = json.get("topic").toString();
-                    String status = json.get("status").toString();
-                    originalTaxo = saffron.getTaxonomy(name);
-                    finalTaxon = TaxonomyUtils.updateTopicStatusAndRelations(originalTaxo, topicString, status);
-                    MongoUtils.updateTopicAndTaxonomy(name, finalTaxon, topicString, status, saffron);
-                }
-            }
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
-
-        }
-
-        return Response.ok("Topics for run ID: " + name + " Updated").build();
+    	/*
+    	 * 1 - Read and validate JSON input
+    	 * 2 - If everything is ok continue, otherwise send an error code
+    	 * 3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how the changes are made.
+    	 * 4 - If everything is ok return an OK code, otherwise send an error code
+    	*/
+    	
+    	//1 - Read and validate JSON input
+    	
+    	List<Topic> topics = null;
+		try {
+			topics = Arrays.asList(new ObjectMapper().readValue(incomingData, Topic[].class));
+		} catch (Exception e) {
+			//2 - If everything is ok continue, otherwise send an error code
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
+		}
+		
+		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
+		SaffronService.updateTopicStatus(runId, topics);		
+		
+		//4 - If everything is ok return an OK code, otherwise send an error code
+		return Response.ok("Topics for run ID: " + runId + " Updated").build();
     }
 
-
-
-
-    @POST
+	@POST
     @JSONP
     @Path("/{param}/topics/updaterelationship")
     @Consumes(MediaType.APPLICATION_JSON)

@@ -215,9 +215,22 @@ public class Taxonomy {
      * @param topic The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
-    public Taxonomy removeChild(String topic, Taxonomy taxonomy) {
+    public Taxonomy removeChild(String topicString, Taxonomy taxonomy) {
 
-        List<Taxonomy> newChildren = new ArrayList<>();
+    	Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+		
+        Taxonomy topic = taxonomy.descendent(topicString);
+        Taxonomy topicParent = taxonomy.antecendent(topicString, "", topic, null);
+
+
+            finalTaxon = taxonomy.deepCopyMoveChildTopics(topicString, topic, topicParent);
+            // If we are at top root, just use the resulting taxonomy
+            if (!finalTaxon.root.equals(taxonomy.root)) {
+                finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, taxonomy);
+            }
+        return finalTaxon;
+		
+        /*List<Taxonomy> newChildren = new ArrayList<>();
         Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
         for(Taxonomy childTaxo : taxonomy.getChildren()) {
             if(!childTaxo.root.equals(parent.root)){
@@ -233,6 +246,7 @@ public class Taxonomy {
 
         }
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        */
     }
 
     /**
