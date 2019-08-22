@@ -341,7 +341,9 @@ public class MongoDBHandler implements SaffronDataSource {
                 for (int i=0;i<documentArray.length();i++){
 
                     JSONObject obj = documentArray.getJSONObject(i);
-                    String contents = obj.getString("contents");
+                    String contents = "";
+                    if (obj.has("contents"))
+                        contents = obj.getString("contents");
                     SaffronPath path = new SaffronPath();
                     path.setPath(obj.getString("id"));
                     List<Author> authors = new ArrayList<>();
@@ -768,9 +770,9 @@ public class MongoDBHandler implements SaffronDataSource {
 
     public boolean addAuthorTopics(String id, Date date, Collection<AuthorTopic> topics) {
         Document document = new Document();
-
+        int[] idx = { 0 };
         topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topic_id);
+            document.put("_id", id + "_" + name.topic_id + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
             document.put("author_topic", name.topic_id);
