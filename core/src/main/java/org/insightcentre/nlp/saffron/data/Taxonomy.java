@@ -220,37 +220,29 @@ public class Taxonomy {
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
     public Taxonomy removeChild(String topicString, Taxonomy taxonomy) {
+    	
+    	//TODO If someone is trying to remove the root it defeats the purpose of "removeChild"
+    	//therefore it should throw an exception
+    	if (topicString.equals(taxonomy.root))
+    		return taxonomy;
 
     	Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 		
         Taxonomy topic = taxonomy.descendent(topicString);
+        //TODO If the topic does not exist it should perhaps throw an Exception (TopicNotFound)
+        if (topic == null)
+        	return taxonomy;
+        
         Taxonomy topicParent = taxonomy.antecendent(topicString, "", topic, null);
 
-
-            finalTaxon = taxonomy.deepCopyMoveChildTopics(topicString, topic, topicParent);
-            // If we are at top root, just use the resulting taxonomy
-            if (!finalTaxon.root.equals(taxonomy.root)) {
-                finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, taxonomy);
-            }
-        return finalTaxon;
-		
-        /*List<Taxonomy> newChildren = new ArrayList<>();
-        Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
-        for(Taxonomy childTaxo : taxonomy.getChildren()) {
-            if(!childTaxo.root.equals(parent.root)){
-                newChildren.add(childTaxo);
-            } else if (childTaxo.root.equals(parent.root)){
-                for(Taxonomy removal : parent.getChildren()) {
-
-                    if (!removal.root.equals(topic)) {
-                        newChildren.add(childTaxo);
-                    }
-                }
-            }
-
+        
+        finalTaxon = taxonomy.deepCopyMoveChildTopics(topicString, topic, topicParent);
+        // If we are at top root, just use the resulting taxonomy
+        if (!finalTaxon.root.equals(taxonomy.root)) {
+            finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, taxonomy);
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
-        */
+        
+        return finalTaxon;
     }
 
     /**
