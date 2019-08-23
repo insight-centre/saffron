@@ -338,7 +338,7 @@ public class TaxonomyTest {
     /**
      * The removeChild command should never remove the root node
      */
-    @Test(expected = Exception.class)
+    @Test
     public void testRemoveRoot() {
     	//prepare
     	
@@ -378,9 +378,9 @@ public class TaxonomyTest {
 				.root("greatgrandmother")
 				.addChild(
 					new Taxonomy.Builder().root("mother")
-					.addChild(new Taxonomy.Builder().root("kid1").build())
 					.addChild(new Taxonomy.Builder().root("aunt").build())
-					.addChild(new Taxonomy.Builder().root("uncle").build())							
+					.addChild(new Taxonomy.Builder().root("uncle").build())	
+					.addChild(new Taxonomy.Builder().root("kid1").build())						
 					.addChild(new Taxonomy.Builder().root("kid2").build())
 					.build()
 				)
