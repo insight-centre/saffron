@@ -49,6 +49,7 @@ public class Taxonomy {
     private Taxonomy() {
     	score = 0.0;
     	linkScore = 0.0;
+    	children = new ArrayList<Taxonomy>();
     }
 
     @JsonCreator
@@ -800,8 +801,6 @@ public class Taxonomy {
     	}
     	
     	public Builder addChild(Taxonomy childBranch) {
-    		if (taxonomy.children == null)
-    			taxonomy.children = new ArrayList<Taxonomy>();
     		taxonomy.children.add(childBranch);
     		
     		return this;
