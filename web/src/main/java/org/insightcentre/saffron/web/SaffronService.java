@@ -5,18 +5,21 @@ import java.util.List;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
+/**
+ * Service to connect with other Saffron components and
+ * perform overall operations
+ * 
+ * @author Bianca Pereira
+ *
+ */
 public class SaffronService {
 	
-	private static String mongoUrl = System.getenv("MONGO_URL");
-    private static String mongoPort = System.getenv("MONGO_PORT");
-    private static String mongoDbName = System.getenv("MONGO_DB_NAME");
-    
-    //FIXME This should not be hardcoded like that. The user should be able to choose which SaffronDataSource they wish
-  	private static SaffronDataSource dataSource = new MongoDBHandler(
-              mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+	private SaffronDataSource dataSource;
 
+    public SaffronService(SaffronDataSource dataSource) {
+    	this.dataSource = dataSource;
+    }
     
 	/**
 	 * Update the revision status of multiple topics in a given taxonomy.
@@ -24,7 +27,7 @@ public class SaffronService {
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
 	 * @param topics - the topics to be modified
 	 */
-	public static void updateTopicStatus(String taxonomyId, List<Topic> topics) {
+	public void updateTopicStatus(String taxonomyId, List<Topic> topics) {
     	for(Topic topic: topics){
 			updateTopicStatus(taxonomyId,topic);
 		}		
@@ -36,7 +39,7 @@ public class SaffronService {
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
 	 * @param topic - the topic to be modified
 	 */
-	public static void updateTopicStatus(String taxonomyId, Topic topic) {
+	public void updateTopicStatus(String taxonomyId, Topic topic) {
 		/*
 		 * 1 - Change topic status in the database.
 		 * 2 - If new status = "rejected" then

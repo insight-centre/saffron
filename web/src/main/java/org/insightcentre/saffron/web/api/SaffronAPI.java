@@ -1,25 +1,44 @@
 package org.insightcentre.saffron.web.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.ws.rs.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.List;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
-
 import javax.ws.rs.core.Response;
-import java.io.*;
-import java.util.*;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.mongodb.client.FindIterable;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.saffron.web.*;
+import org.insightcentre.saffron.web.Executor;
+import org.insightcentre.saffron.web.Launcher;
+import org.insightcentre.saffron.web.SaffronService;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.mongodb.client.FindIterable;
 
 @Path("/api/v1/run")
 public class SaffronAPI {
@@ -34,6 +53,8 @@ public class SaffronAPI {
 
     protected final MongoDBHandler saffron = new MongoDBHandler(
             mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+    
+    protected final SaffronService saffronService = new SaffronService(saffron);
 
     @GET
     @JSONP
@@ -395,7 +416,7 @@ public class SaffronAPI {
 		}
 		
 		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
-		SaffronService.updateTopicStatus(runId, topics);		
+		saffronService.updateTopicStatus(runId, topics);		
 		
 		//4 - If everything is ok return an OK code, otherwise send an error code
 		return Response.ok("Topics for run ID: " + runId + " Updated").build();
