@@ -278,7 +278,7 @@ public class SaffronAPI {
             }
             saffron.updateTopic(name, topicId, status);
             saffron.updateTopicSimilarity(name, topicId, topic_id2, status);
-            saffron.updateTaxonomy(name, new Date(), finalTaxon);
+            saffron.updateTaxonomy(name, finalTaxon);
             //saffron.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -358,7 +358,7 @@ public class SaffronAPI {
                     }
                 }
             }
-            saffron.updateTaxonomy(name, new Date(), finalTaxon);
+            saffron.updateTaxonomy(name, finalTaxon);
             return Response.ok(returnJsonArray.toString()).build();
 
         } catch (Exception x) {
@@ -438,7 +438,7 @@ public class SaffronAPI {
                             saffron.updateTopic(name, topicChild, "none");
                             finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
                         }
-                        saffron.updateTaxonomy(name, new Date(), finalTaxon);
+                        saffron.updateTaxonomy(name, finalTaxon);
                     }
                 }
             }

@@ -153,8 +153,9 @@ public interface SaffronDataSource extends Closeable {
 
     public void remove(String runId);
 
-    boolean updateTaxonomy(String id, Date date, Taxonomy graph);
+    boolean updateTaxonomy(String id, Taxonomy graph);
 
+    //FIXME It should be called "updateStatus" instead
     boolean updateTopic(String id, String topic, String status);
 
     boolean updateTopicName(String id, String topic, String newTopic, String status);

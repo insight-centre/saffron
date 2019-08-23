@@ -640,7 +640,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public boolean updateTaxonomy(String runId, Date date, Taxonomy graph) {
+    public boolean updateTaxonomy(String runId, Taxonomy graph) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             return false;

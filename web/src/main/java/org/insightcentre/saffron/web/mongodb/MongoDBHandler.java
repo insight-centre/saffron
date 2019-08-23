@@ -883,12 +883,12 @@ public class MongoDBHandler implements SaffronDataSource {
 
     }
 
-    public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
+    public boolean updateTaxonomy(String id, Taxonomy graph) {
         Document doc = new Document();
         doc.append("id", id);
         try {
             taxonomyCollection.findOneAndDelete(doc);
-            this.addTaxonomy(id, date, graph);
+            this.addTaxonomy(id, new Date(), graph);
             return true;
         } catch (Exception e){
             e.printStackTrace();

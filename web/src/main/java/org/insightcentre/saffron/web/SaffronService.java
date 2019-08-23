@@ -1,6 +1,5 @@
 package org.insightcentre.saffron.web;
 
-import java.util.Date;
 import java.util.List;
 
 import org.insightcentre.nlp.saffron.data.Status;
@@ -51,7 +50,7 @@ public class SaffronService {
 		if (topic.status.equals(Status.rejected)) {
 			Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
 			taxonomy = taxonomy.removeChild(topic.topicString, taxonomy);
-			dataSource.updateTaxonomy(taxonomyId, new Date(), taxonomy);
+			dataSource.updateTaxonomy(taxonomyId, taxonomy);
 		}	
 	}
 }
