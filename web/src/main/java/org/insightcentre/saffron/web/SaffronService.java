@@ -81,7 +81,7 @@ public class SaffronService {
 		//2 - If new status = "rejected" then
 		if (topic.status.equals(Status.rejected)) {
 			Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
-			taxonomy = taxonomy.removeChild(topic.topicString, taxonomy);
+			taxonomy.removeChild(topic.topicString);
 			boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
 			if(!taxonomyUpdated)
 				throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");

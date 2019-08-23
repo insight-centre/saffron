@@ -341,12 +341,27 @@ public class TaxonomyTest {
     @Test
     public void testRemoveRoot() {
     	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build(); 
     	
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("greatgrandmother", inputTaxonomy);
+    	inputTaxonomy.removeChild("greatgrandmother");
     	
     	//evaluate
-    	assertEquals(inputTaxonomy,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
     
     @Test
@@ -365,10 +380,10 @@ public class TaxonomyTest {
 			.build();   
     	
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("mother", inputTaxonomy);
+    	inputTaxonomy.removeChild("mother");
     	
     	//evaluate
-    	assertEquals(expected,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
     
     @Test
@@ -378,19 +393,19 @@ public class TaxonomyTest {
 				.root("greatgrandmother")
 				.addChild(
 					new Taxonomy.Builder().root("mother")
-					.addChild(new Taxonomy.Builder().root("aunt").build())
-					.addChild(new Taxonomy.Builder().root("uncle").build())	
 					.addChild(new Taxonomy.Builder().root("kid1").build())						
 					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.addChild(new Taxonomy.Builder().root("aunt").build())
+					.addChild(new Taxonomy.Builder().root("uncle").build())	
 					.build()
 				)
 			.build();
   
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("grandmother", inputTaxonomy);
+    	inputTaxonomy.removeChild("grandmother");
     	
     	//evaluate
-    	assertEquals(expected,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
     
     @Test
@@ -412,10 +427,10 @@ public class TaxonomyTest {
 			.build();
     	
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("kid2", inputTaxonomy);
+    	inputTaxonomy.removeChild("kid2");
     	
     	//evaluate
-    	assertEquals(expected,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
     
     @Test
@@ -437,20 +452,35 @@ public class TaxonomyTest {
 			.build();
     	
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("uncle", inputTaxonomy);
+    	inputTaxonomy.removeChild("uncle");
     	
     	//evaluate
-    	assertEquals(expected,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
     
     @Test
     public void testRemoveInexistentNode() {
     	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build(); 
     	
     	//call
-    	Taxonomy actual = inputTaxonomy.removeChild("random", inputTaxonomy);
+    	inputTaxonomy.removeChild("random");
     	
     	//evaluate
-    	assertEquals(inputTaxonomy,actual);
+    	assertEquals(expected,inputTaxonomy);
     }
 }

@@ -219,30 +219,21 @@ public class Taxonomy {
      * @param topic The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
-    public Taxonomy removeChild(String topicString, Taxonomy taxonomy) {
+    public void removeChild(String topicString) {
     	
-    	//TODO If someone is trying to remove the root it defeats the purpose of "removeChild"
-    	//therefore it should throw an exception
-    	if (topicString.equals(taxonomy.root))
-    		return taxonomy;
-
-    	Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-		
-        Taxonomy topic = taxonomy.descendent(topicString);
-        //TODO If the topic does not exist it should perhaps throw an Exception (TopicNotFound)
-        if (topic == null)
-        	return taxonomy;
-        
-        Taxonomy topicParent = taxonomy.antecendent(topicString, "", topic, null);
-
-        
-        finalTaxon = taxonomy.deepCopyMoveChildTopics(topicString, topic, topicParent);
-        // If we are at top root, just use the resulting taxonomy
-        if (!finalTaxon.root.equals(taxonomy.root)) {
-            finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, taxonomy);
-        }
-        
-        return finalTaxon;
+    	for(Taxonomy child: this.getChildren()) {
+    		if(child.getRoot().equals(topicString)) {
+    			List<Taxonomy> newChildren = this.getChildren();
+    			for (Taxonomy grandchild: child.getChildren()) {
+    				newChildren.add(grandchild);
+    			}
+    			newChildren.remove(child);
+    			this.children = newChildren;
+    			return;
+    		} else {
+    			child.removeChild(topicString);
+    		}
+    	}
     }
 
     /**

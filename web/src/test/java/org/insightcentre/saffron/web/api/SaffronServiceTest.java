@@ -85,20 +85,19 @@ public class SaffronServiceTest {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
-		Taxonomy taxonomyBefore = mock(Taxonomy.class);
-		Taxonomy taxonomyAfter = mock(Taxonomy.class);
+		Taxonomy taxonomy = mock(Taxonomy.class);
 		
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
-		when(mongo.getTaxonomy(runId)).thenReturn(taxonomyBefore);
-		when(taxonomyBefore.removeChild(input.topicString, taxonomyBefore)).thenReturn(taxonomyAfter);
-		when(mongo.updateTaxonomy(runId, taxonomyAfter)).thenReturn(true);
+		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
+		doNothing().when(taxonomy).removeChild(input.topicString);
+		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(true);
 		
 		//Call
 		service.updateTopicStatus(runId,input);		
 		
 		//Evaluate
 		verify(mongo).updateTopic(runId, input.topicString, input.status.toString());
-		verify(mongo).updateTaxonomy(runId, taxonomyAfter);
+		verify(mongo).updateTaxonomy(runId, taxonomy);
 	}
 	
 	/**
@@ -171,13 +170,12 @@ public class SaffronServiceTest {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
-		Taxonomy taxonomyBefore = mock(Taxonomy.class);
-		Taxonomy taxonomyAfter = mock(Taxonomy.class);
+		Taxonomy taxonomy = mock(Taxonomy.class);
 		
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
-		when(mongo.getTaxonomy(runId)).thenReturn(taxonomyBefore);
-		when(taxonomyBefore.removeChild(input.topicString, taxonomyBefore)).thenReturn(taxonomyAfter);
-		when(mongo.updateTaxonomy(runId, taxonomyAfter)).thenReturn(false);
+		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
+		doNothing().when(taxonomy).removeChild(input.topicString);
+		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(false);
 		
 		try{
 			//Call
@@ -185,7 +183,7 @@ public class SaffronServiceTest {
 		} catch (Exception e) {		
 			//Evaluate
 			verify(mongo).updateTopic(runId, input.topicString, input.status.toString());
-			verify(mongo).updateTaxonomy(runId, taxonomyAfter);
+			verify(mongo).updateTaxonomy(runId, taxonomy);
 			//TODO It should verify if the status change for the topic was reverted to the original state since the overall operation failed
 			throw e;
 		}
