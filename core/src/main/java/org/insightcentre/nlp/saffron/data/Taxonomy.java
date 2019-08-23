@@ -46,7 +46,10 @@ public class Taxonomy {
 
     public List<Taxonomy> parent;
 
-
+    private Taxonomy() {
+    	score = 0.0;
+    	linkScore = 0.0;
+    }
 
     @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -766,5 +769,46 @@ public class Taxonomy {
     @Override
     public String toString() {
         return String.format("%s (%.4f) { %s }", root, score, children.toString());
+    }
+    
+    public static class Builder{
+    	
+    	private Taxonomy taxonomy;
+    	
+    	public Builder() {
+    		taxonomy = new Taxonomy();
+    	}
+    	
+    	public Builder root(String root) {
+    		taxonomy.root = root;
+    		return this;
+    	}
+    	
+    	public Builder originalParent(String originalParent) {
+    		taxonomy.originalParent = originalParent;
+    		return this;
+    	}
+    	
+    	public Builder originalTopic(String originalTopic) {
+    		taxonomy.originalTopic = originalTopic;
+    		return this;
+    	}
+    	
+    	public Builder status(Status status) {
+    		taxonomy.status = status;
+    		return this;
+    	}
+    	
+    	public Builder addChild(Taxonomy childBranch) {
+    		if (taxonomy.children == null)
+    			taxonomy.children = new ArrayList<Taxonomy>();
+    		taxonomy.children.add(childBranch);
+    		
+    		return this;
+    	}
+    	
+    	public Taxonomy build() {
+    		return taxonomy;
+    	}
     }
 }
