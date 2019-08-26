@@ -387,6 +387,34 @@ public class TaxonomyTest {
     }
     
     @Test
+    public void testRemoveRootChildLeafNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	inputTaxonomy.children.add(new Taxonomy.Builder().root("childless").build());
+    	
+    	//call
+    	inputTaxonomy.removeChild("childless");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
     public void testRemoveRootGrandchildBranchNode() {
     	//prepare
     	Taxonomy expected = new Taxonomy.Builder()
