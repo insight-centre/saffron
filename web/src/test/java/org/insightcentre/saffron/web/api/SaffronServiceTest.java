@@ -1,10 +1,14 @@
 package org.insightcentre.saffron.web.api;
 
 import static org.junit.Assert.assertNotNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +17,7 @@ import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.saffron.web.SaffronService;
+import org.insightcentre.saffron.web.exceptions.InvalidOperationException;
 import org.insightcentre.saffron.web.exceptions.InvalidValueException;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.junit.Before;
@@ -40,7 +45,7 @@ public class SaffronServiceTest {
     }
 	
 	/**
-	 * Topic has its status changed to "accepted"
+	 * Topic has its status changed from "none" to "accepted"
 	 */
 	@Test
 	public void testUpdateTopicStatus() {
@@ -48,25 +53,7 @@ public class SaffronServiceTest {
 		Topic input = new Topic.Builder("topic_string").status(Status.accepted).build();
 		String runId = "runId";
 		
-		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
-		
-		//Call
-		service.updateTopicStatus(runId,input);		
-		
-		//Evaluate
-		verify(mongo).updateTopic(runId, input.topicString, input.status.toString());
-		verify(mongo, never()).updateTaxonomy(Mockito.anyString(),Mockito.any(Taxonomy.class));
-	}	
-	
-	/**
-	 * Topic has its status changed to "none"
-	 */
-	@Test
-	public void testUpdateTopicStatus2() {
-		//Prepare
-		Topic input = new Topic.Builder("topic_string").status(Status.none).build();
-		String runId = "runId";
-		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		
 		//Call
@@ -78,7 +65,27 @@ public class SaffronServiceTest {
 	}
 	
 	/**
-	 * Topic has its status changed to "rejected"
+	 * Topic has its status changed from "accepted" to "none"
+	 */
+	@Test
+	public void testUpdateTopicStatus2() {
+		//Prepare
+		Topic input = new Topic.Builder("topic_string").status(Status.none).build();
+		String runId = "runId";
+		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.accepted).build());
+		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
+		
+		//Call
+		service.updateTopicStatus(runId,input);		
+		
+		//Evaluate
+		verify(mongo).updateTopic(runId, input.topicString, input.status.toString());
+		verify(mongo, never()).updateTaxonomy(Mockito.anyString(),Mockito.any(Taxonomy.class));
+	}
+	
+	/**
+	 * Topic has its status changed from "accepted" to "rejected"
 	 */
 	@Test
 	public void testUpdateTopicStatus3() {
@@ -87,6 +94,7 @@ public class SaffronServiceTest {
 		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.accepted).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
 		doNothing().when(taxonomy).removeChild(input.topicString);
@@ -101,10 +109,106 @@ public class SaffronServiceTest {
 	}
 	
 	/**
+	 * Topic has its status changed from "none" to "rejected"
+	 */
+	@Test
+	public void testUpdateTopicStatus4() {
+		//Prepare
+		String runId = "runId";
+		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
+		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
+		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
+		doNothing().when(taxonomy).removeChild(input.topicString);
+		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(true);
+		
+		//Call
+		service.updateTopicStatus(runId,input);		
+		
+		//Evaluate
+		verify(mongo).updateTopic(runId, input.topicString, input.status.toString());
+		verify(mongo).updateTaxonomy(runId, taxonomy);
+	}
+	
+	/**
+	 * Topic has its status changed from "rejected" to "none"
+	 */
+	@Test(expected=InvalidOperationException.class)
+	public void testUpdateTopicStatus5() {
+		//Prepare
+		String runId = "runId";
+		Topic input = new Topic.Builder("mother").status(Status.none).build();
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		
+		try {
+			//Call
+			service.updateTopicStatus(runId,input);		
+		} catch (InvalidOperationException e) {
+			//Evaluate
+			verify(mongo, never()).updateTopic(runId, input.topicString, input.status.toString());
+			verify(mongo, never()).updateTaxonomy(runId, taxonomy);
+			
+			throw e;
+		}
+	}
+	
+	/**
+	 * Topic has its status changed from "rejected" to "accepted"
+	 */
+	@Test(expected=InvalidOperationException.class)
+	public void testUpdateTopicStatus6() {
+		//Prepare
+		String runId = "runId";
+		Topic input = new Topic.Builder("mother").status(Status.accepted).build();
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		
+		try {
+			//Call
+			service.updateTopicStatus(runId,input);		
+		} catch (InvalidOperationException e) {
+			//Evaluate
+			verify(mongo, never()).updateTopic(runId, input.topicString, input.status.toString());
+			verify(mongo, never()).updateTaxonomy(runId, taxonomy);
+			
+			throw e;
+		}
+	}
+	
+	/**
+	 * Topic has its status changed from "rejected" to "rejected"
+	 */
+	@Test(expected=InvalidOperationException.class)
+	public void testUpdateTopicStatus7() {
+		//Prepare
+		String runId = "runId";
+		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		
+		try {
+			//Call
+			service.updateTopicStatus(runId,input);		
+		} catch (InvalidOperationException e) {
+			//Evaluate
+			verify(mongo, never()).updateTopic(runId, input.topicString, input.status.toString());
+			verify(mongo, never()).updateTaxonomy(runId, taxonomy);
+			
+			throw e;
+		}
+	}
+	
+	/**
 	 * Topic has an invalid string
 	 */
 	@Test(expected = InvalidValueException.class)
-	public void testUpdateTopicStatus4() {
+	public void testUpdateTopicStatus8() {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("").status(Status.rejected).build();
@@ -124,7 +228,7 @@ public class SaffronServiceTest {
 	 * Topic has an invalid status
 	 */
 	@Test(expected = InvalidValueException.class)
-	public void testUpdateTopicStatus5() {
+	public void testUpdateTopicStatus9() {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("mother").status(null).build();
@@ -144,7 +248,7 @@ public class SaffronServiceTest {
 	 * Something went wrong in Database when updating the topic
 	 */
 	@Test(expected = Exception.class)
-	public void testUpdateTopicStatus6() {
+	public void testUpdateTopicStatus10() {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("mother").status(Status.accepted).build();
@@ -166,12 +270,13 @@ public class SaffronServiceTest {
 	 * Something went wrong in Database when updating the taxonomy
 	 */
 	@Test(expected = Exception.class)
-	public void testUpdateTopicStatus7() {
+	public void testUpdateTopicStatus11() {
 		//Prepare
 		String runId = "runId";
 		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
 		doNothing().when(taxonomy).removeChild(input.topicString);
