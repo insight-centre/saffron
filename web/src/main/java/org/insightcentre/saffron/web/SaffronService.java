@@ -5,6 +5,7 @@ import java.util.List;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.saffron.web.exceptions.InvalidOperationException;
 import org.insightcentre.saffron.web.exceptions.InvalidValueException;
 
 /**
@@ -72,6 +73,10 @@ public class SaffronService {
 			exception.addParameterValue("topic.status", topic.status);
 			throw exception;
 		}
+		
+		Topic dbTopic = dataSource.getTopic(taxonomyId, topic.topicString);
+		if (dbTopic.status.equals(Status.rejected))
+			throw new InvalidOperationException("The status of a 'rejected' topic cannot be modified.");
 		
 		// 1 - Change topic status in the database.
 		boolean topicUpdated = dataSource.updateTopic(taxonomyId, topic.topicString, topic.status.toString());
