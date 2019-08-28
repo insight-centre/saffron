@@ -404,19 +404,44 @@ public class SaffronAPI {
     	 * 3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how the changes are made.
     	 * 4 - If everything is ok return an OK code, otherwise send an error code
     	*/
-    	
+
     	//1 - Read and validate JSON input
-    	
-    	List<Topic> topics = null;
+    	/*List<Topic> topics = null;
 		try {
 			topics = Arrays.asList(new ObjectMapper().readValue(incomingData, Topic[].class));
 		} catch (Exception e) {
 			//2 - If everything is ok continue, otherwise send an error code
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
-		}
+		}*/
+		
+    	List<Topic> topics = new ArrayList<Topic>();
+    			
+    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
+    	JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+    	Iterator<String> keys = jsonRqObj.keys();
+    	while (keys.hasNext()) {
+    		String key = keys.next();
+    		
+	    	JSONArray obj = (JSONArray) jsonRqObj.get(key);
+	    	for (int i = 0; i < obj.length(); i++) {
+	    		JSONObject json = obj.getJSONObject(i);
+                String topicString = json.get("topic").toString();
+                String status = json.get("status").toString();
+                try {
+                	topics.add(new Topic.Builder(topicString).status(Status.valueOf(status)).build());
+                } catch (Exception e) {
+        			//2 - If everything is ok continue, otherwise send an error code
+        			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
+        		}
+	    	}
+    	}
 		
 		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
-		saffronService.updateTopicStatus(runId, topics);		
+    	try {
+    		saffronService.updateTopicStatus(runId, topics);
+    	} catch (Exception e) {
+    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+    	}
 		
 		//4 - If everything is ok return an OK code, otherwise send an error code
 		return Response.ok("Topics for run ID: " + runId + " Updated").build();
