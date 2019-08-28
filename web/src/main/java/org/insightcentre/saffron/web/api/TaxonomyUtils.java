@@ -30,23 +30,4 @@ public class TaxonomyUtils {
         finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
         return finalTaxon;
     }
-
-
-    public static Taxonomy updateTopicStatusAndRelations(Taxonomy originalTaxo, String topicString, String status) {
-        Taxonomy finalTaxon;
-        Taxonomy topic = originalTaxo.descendent(topicString);
-        Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
-        if (status.equals("rejected")) {
-
-            finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
-            // If we are at top root, just use the resulting taxonomy
-            if (!finalTaxon.root.equals(originalTaxo.root)) {
-                finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
-            }
-
-        } else {
-            finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
-        }
-        return finalTaxon;
-    }
 }

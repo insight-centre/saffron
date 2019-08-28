@@ -110,6 +110,8 @@ public class TaxonomyTest {
 		+ "]"
 	+ "}";
 	
+	private Taxonomy inputTaxonomy;
+	
     public TaxonomyTest() {
     }
 
@@ -123,6 +125,21 @@ public class TaxonomyTest {
 
     @Before
     public void setUp() {
+    	inputTaxonomy = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
     }
 
     @After
@@ -316,5 +333,182 @@ public class TaxonomyTest {
     			+ "\"children\": []}", Taxonomy.class);
     	
     	assertEquals("The number of branch nodes is different from expected", 0,taxonomy.numberOfBranchNodes());
+    }
+    
+    /**
+     * The removeChild command should never remove the root node
+     */
+    @Test
+    public void testRemoveRoot() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build(); 
+    	
+    	//call
+    	inputTaxonomy.removeChild("greatgrandmother");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveRootChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(new Taxonomy.Builder().root("kid1").build())
+				.addChild(
+						new Taxonomy.Builder().root("grandmother")
+							.addChild(new Taxonomy.Builder().root("aunt").build())
+							.addChild(new Taxonomy.Builder().root("uncle").build())
+						.build()
+				)
+				.addChild(new Taxonomy.Builder().root("kid2").build())
+			.build();   
+    	
+    	//call
+    	inputTaxonomy.removeChild("mother");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveRootChildLeafNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	inputTaxonomy.children.add(new Taxonomy.Builder().root("childless").build());
+    	
+    	//call
+    	inputTaxonomy.removeChild("childless");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveRootGrandchildBranchNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())						
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.addChild(new Taxonomy.Builder().root("aunt").build())
+					.addChild(new Taxonomy.Builder().root("uncle").build())	
+					.build()
+				)
+			.build();
+  
+    	//call
+    	inputTaxonomy.removeChild("grandmother");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveRootGrandchildLeafNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.removeChild("kid2");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveLeafNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.removeChild("uncle");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveInexistentNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build(); 
+    	
+    	//call
+    	inputTaxonomy.removeChild("random");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
     }
 }

@@ -32,6 +32,7 @@ import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -523,9 +524,25 @@ public class MongoDBHandler implements SaffronDataSource {
         this.taxonomyCollection = database.getCollection(collectionName + "_taxonomy");
         this.corpusCollection = database.getCollection(collectionName + "_corpus");
 
+        this.initialiseInMemoryDatabase();
     }
 
-    /**
+    private void initialiseInMemoryDatabase() {
+    	FindIterable<org.bson.Document> runs = this.getAllRuns();
+        for (org.bson.Document doc : runs) {
+            JSONObject configObj = new JSONObject(doc);
+            configObj.get("id").toString();
+            try {
+				this.fromMongo(configObj.get("id").toString());
+			} catch (JSONException e) {
+				throw new RuntimeException("An error has ocurring while loading database into memory", e);
+			} catch (IOException e) {
+				throw new RuntimeException("An error has ocurring while loading database into memory", e);
+			}
+         }		
+	}
+
+	/**
      * Load the Saffron data from mongo
      *
      * @param runId The runId for the saffron instance
@@ -885,12 +902,12 @@ public class MongoDBHandler implements SaffronDataSource {
 
     }
 
-    public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
+    public boolean updateTaxonomy(String id, Taxonomy graph) {
         Document doc = new Document();
         doc.append("id", id);
         try {
             taxonomyCollection.findOneAndDelete(doc);
-            this.addTaxonomy(id, date, graph);
+            this.addTaxonomy(id, new Date(), graph);
             return true;
         } catch (Exception e){
             e.printStackTrace();

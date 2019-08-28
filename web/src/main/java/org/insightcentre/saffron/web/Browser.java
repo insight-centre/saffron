@@ -53,8 +53,8 @@ import org.json.JSONObject;
  */
 public class Browser extends AbstractHandler {
 
-
-
+	//FIXME: The MongoDB configurations should not be encapsulated within the MongoDBHandler
+	// and provided by a centralised Config class
     static String mongoUrl = System.getenv("MONGO_URL");
     static String mongoPort = System.getenv("MONGO_PORT");
     static String mongoDbName = System.getenv("MONGO_DB_NAME");
@@ -64,16 +64,8 @@ public class Browser extends AbstractHandler {
 
     public Browser(File dir) throws IOException {
 
-        if(saffron.type.equals("mongodb")) {
-
-           FindIterable<org.bson.Document> runs = saffron.getAllRuns();
-           for (org.bson.Document doc : runs) {
-               JSONObject configObj = new JSONObject(doc);
-               configObj.get("id").toString();
-               saffron.fromMongo(configObj.get("id").toString());
-            }
-        }
-        else {
+        if(!saffron.type.equals("mongodb")) {
+        	//FIXME It should ask the "FileDatabase" that implements SaffronDataSource to initialise itself
             if (dir.exists()) {
                 for (File subdir : dir.listFiles()) {
                     if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {

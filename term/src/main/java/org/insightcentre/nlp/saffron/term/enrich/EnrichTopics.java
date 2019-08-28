@@ -36,6 +36,7 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
@@ -171,7 +172,7 @@ public class EnrichTopics {
             for (String topic : topicStrings) {
                 topics.add(new Topic(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
                         (double) summary.docFrequency.getInt(topic) / corpus.size(),
-                        Collections.EMPTY_LIST));
+                        Collections.EMPTY_LIST, Status.none.toString()));
             }
 
             TFIDF.addTfidf(docTopics);

@@ -46,7 +46,11 @@ public class Taxonomy {
 
     public List<Taxonomy> parent;
 
-
+    private Taxonomy() {
+    	score = 0.0;
+    	linkScore = 0.0;
+    	children = new ArrayList<Taxonomy>();
+    }
 
     @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -215,24 +219,21 @@ public class Taxonomy {
      * @param topic The name to search for
      * @return A taxonomy whose root is name or null if no taxonomy is found
      */
-    public Taxonomy removeChild(String topic, Taxonomy taxonomy) {
-
-        List<Taxonomy> newChildren = new ArrayList<>();
-        Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
-        for(Taxonomy childTaxo : taxonomy.getChildren()) {
-            if(!childTaxo.root.equals(parent.root)){
-                newChildren.add(childTaxo);
-            } else if (childTaxo.root.equals(parent.root)){
-                for(Taxonomy removal : parent.getChildren()) {
-
-                    if (!removal.root.equals(topic)) {
-                        newChildren.add(childTaxo);
-                    }
-                }
-            }
-
-        }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    public void removeChild(String topicString) {
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		if(child.getRoot().equals(topicString)) {
+    			List<Taxonomy> newChildren = this.getChildren();
+    			for (Taxonomy grandchild: child.getChildren()) {
+    				newChildren.add(grandchild);
+    			}
+    			newChildren.remove(child);
+    			this.children = newChildren;
+    			return;
+    		} else {
+    			child.removeChild(topicString);
+    		}
+    	}
     }
 
     /**
@@ -752,5 +753,44 @@ public class Taxonomy {
     @Override
     public String toString() {
         return String.format("%s (%.4f) { %s }", root, score, children.toString());
+    }
+    
+    public static class Builder{
+    	
+    	private Taxonomy taxonomy;
+    	
+    	public Builder() {
+    		taxonomy = new Taxonomy();
+    	}
+    	
+    	public Builder root(String root) {
+    		taxonomy.root = root;
+    		return this;
+    	}
+    	
+    	public Builder originalParent(String originalParent) {
+    		taxonomy.originalParent = originalParent;
+    		return this;
+    	}
+    	
+    	public Builder originalTopic(String originalTopic) {
+    		taxonomy.originalTopic = originalTopic;
+    		return this;
+    	}
+    	
+    	public Builder status(Status status) {
+    		taxonomy.status = status;
+    		return this;
+    	}
+    	
+    	public Builder addChild(Taxonomy childBranch) {
+    		taxonomy.children.add(childBranch);
+    		
+    		return this;
+    	}
+    	
+    	public Taxonomy build() {
+    		return taxonomy;
+    	}
     }
 }

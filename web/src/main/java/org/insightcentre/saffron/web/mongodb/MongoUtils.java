@@ -37,7 +37,7 @@ public class MongoUtils {
 
     public static void updateTopicAndTaxonomy(String name, Taxonomy finalTaxon, String topicString, String status, MongoDBHandler handler) {
         handler.updateTopic(name, topicString, status);
-        handler.updateTaxonomy(name, new Date(), finalTaxon);
+        handler.updateTaxonomy(name, finalTaxon);
     }
 
 }
