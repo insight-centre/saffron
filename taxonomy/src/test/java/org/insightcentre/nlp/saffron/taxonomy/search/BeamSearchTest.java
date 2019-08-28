@@ -62,7 +62,7 @@ public class BeamSearchTest {
     }
 
     private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST));
+        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
 
     /**
