@@ -37,7 +37,7 @@ public class SaffronService {
     			updateTopicStatus(taxonomyId,topic);
     		} catch (Exception e) {
     			if (agException == null)
-    				agException = new RuntimeException("some topics were not updated");
+    				agException = new RuntimeException("Some topics were not updated: " + e.getMessage());
     			agException.addSuppressed(e);
     		}
 		}
