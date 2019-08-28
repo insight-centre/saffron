@@ -490,7 +490,8 @@ public class TermExtraction {
             final Topic topic = new Topic(casing.trueCase(t),
                     stats.termFrequency.getInt(t),
                     stats.docFrequency.getInt(t), scores.getDouble(t),
-                    Collections.EMPTY_LIST);
+                    Collections.EMPTY_LIST,
+                    Status.none.toString());
             topics.add(topic);
             if (whiteList.contains(t)) {
                 topic.status = Status.accepted;

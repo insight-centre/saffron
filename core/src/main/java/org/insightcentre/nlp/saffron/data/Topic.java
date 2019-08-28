@@ -59,7 +59,8 @@ public class Topic implements Comparable<Topic> {
             @JsonProperty(value = "occurrences") int occurrences,
             @JsonProperty(value = "matches") int matches,
             @JsonProperty(value = "score") double score,
-            @JsonProperty(value = "mv_list") List<MorphologicalVariation> mvList) {
+            @JsonProperty(value = "mv_list") List<MorphologicalVariation> mvList,
+            @JsonProperty(value = "status") String status) {
         super();
         this.topicString = topic_string;
         this.occurrences = occurrences;
@@ -67,6 +68,14 @@ public class Topic implements Comparable<Topic> {
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
         this.originalTopic = topic_string;
+        try {
+        	if (status != null)
+        		this.status = Status.valueOf(status);
+        	else
+        		this.status = Status.none;
+        } catch (IllegalArgumentException e) {
+        	this.status = Status.none;
+        }
     }
 
     public void addMorphologicalVariation(MorphologicalVariation mv) {
