@@ -5,8 +5,8 @@ import java.util.List;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.saffron.web.exceptions.InvalidOperationException;
-import org.insightcentre.saffron.web.exceptions.InvalidValueException;
+import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
+import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
 /**
  * Service to connect with other Saffron components and
