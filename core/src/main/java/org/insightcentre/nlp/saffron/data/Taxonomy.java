@@ -15,6 +15,7 @@ import java.util.Queue;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
+import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -126,6 +127,10 @@ public class Taxonomy {
     	 * 1 - If status = "rejected", reject the operation.
     	 * 2 - Otherwise, traverse the taxonomy until finding "childTopic" then change the status of "childTopic"
     	 */
+    	if (childTopic == null || childTopic.equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	if (status == null)
+    		throw new InvalidValueException("The status of parent-child relation cannot be null.");
 		if (status.equals(Status.rejected))
 			throw new InvalidOperationException("Parent-child relations cannot be rejected. Choose a new parent instead.");
 		
