@@ -14,6 +14,8 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,9 +28,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * A taxonomy of topics
  * 
  * @author John McCrae &lt;john@mccr.ae&gt;
+ * @author Bianca Pereira
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
+	
+	/** Identifier for taxonomies with a virtual root **/
+	//FIXME Create VirtualRootTaxonomy subclass where the virtual root is included
+	// when the taxonomy object is constructed
+	public static final String VIRTUAL_ROOT = "HEAD_TOPIC";
+	
     /** The topic string of this node in the taxonomy */
     public String root;
     /** The original parent node of this node in the taxonomy */
@@ -87,7 +96,7 @@ public class Taxonomy {
     }
 
     /**
-     * Get the string for the root topic
+     * Get the status of the relation between the root topic and its parent
      * @return 
      */
     public Status getStatus() {
@@ -96,13 +105,38 @@ public class Taxonomy {
 
 
     /**
-     * Set the string for the root topic
+     * Set the status of the relation between the the root topic and its parent
      * @return
      */
     public void setStatus(Status status) {
 
         this.status = status;
     }
+    
+    /**
+     * Traverse the taxonomy and modify the status of a parent-child relationship.
+     * 
+     * @param childTopic - the child topic
+     * @param status - the new status
+     * @throws InvalidOperationException - thrown in case of a "rejected" status. Taxonomy is a single connected
+     *   component, therefore parent-child relations cannot be rejected.
+     */
+    public void setParentChildStatus(String childTopic, Status status) throws InvalidOperationException {
+    	/*
+    	 * 1 - If status = "rejected", reject the operation.
+    	 * 2 - Otherwise, traverse the taxonomy until finding "childTopic" then change the status of "childTopic"
+    	 */
+		if (status.equals(Status.rejected))
+			throw new InvalidOperationException("Parent-child relations cannot be rejected. Choose a new parent instead.");
+		
+		for(Taxonomy child: this.children) {
+			if (child.getRoot().equals(childTopic)) {
+				child.setStatus(status);
+			} else {
+				child.setParentChildStatus(childTopic, status);
+			}
+		}
+	}
 
     /**
      * Get the string for the root topic
@@ -202,7 +236,7 @@ public class Taxonomy {
           if(this.root.equals(name)){
             return previousTaxo;
           }
-          for(Taxonomy child : children) {
+          for(Taxonomy child : this.getChildren()) {
               Taxonomy d = child.antecendent(name, previous, this, child);
               if (d != null)
                 return d;
@@ -211,8 +245,25 @@ public class Taxonomy {
     }
 
 
-
-
+    /**
+     * Get the parent of a given topic or {@code null} if child topic does not exist in
+     * the taxonomy
+     * @param topicChild - the child topic
+     * @return a {@link String} representing the parent as in the taxonomy, or {@code null} if
+     * child does not exist
+     */
+    public String getParent(String topicChild) {
+    	for(Taxonomy child: this.getChildren()) {
+    		if (child.getRoot().equals(topicChild))
+    			return this.getRoot();
+    		else {
+    			String parent = child.getParent(topicChild);
+    			if (parent != null)
+    				return parent;
+    		}
+    	}
+		return null;
+	}
 
     /**
      * Search this taxonomy for a taxonomy with a given root

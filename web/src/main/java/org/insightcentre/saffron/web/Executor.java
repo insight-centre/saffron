@@ -538,7 +538,7 @@ public class Executor extends AbstractHandler {
         // Insert HEAD_TOPIC into top of solution
         List<Taxonomy> newChildren = new ArrayList<>();
         newChildren.add(graph.deepCopy());
-        Taxonomy topRootGraph = new Taxonomy("HEAD_TOPIC", 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
+        Taxonomy topRootGraph = new Taxonomy(Taxonomy.VIRTUAL_ROOT, 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
         _status.setStatusMessage("Saving taxonomy");
 
         if (storeCopy.equals("true"))

@@ -2,6 +2,7 @@ package org.insightcentre.saffron.web;
 
 import java.util.List;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -92,5 +93,90 @@ public class SaffronService {
 				throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
 				//TODO It should revert the topic update in this case
 		}	
+	}
+	
+	/**
+	 * Update multiple parent-child relationships in a given taxonomy.
+	 * 
+	 * @param taxonomyId - the identifier of the taxonomy to be modified
+	 * @param parentChildStatusMap - the relations to be changed. Tuples of type <Parent,Child,status>
+	 */
+	public void updateParentRelationshipStatus(String taxonomyId, List<Pair<String,String>> parentChildStatusList) {
+		RuntimeException agException = null;
+		
+		for(Pair tuple: parentChildStatusList) {
+			try {
+				updateParentRelationshipStatus(taxonomyId, tuple.getLeft().toString(), tuple.getRight().toString());
+    		} catch (Exception e) {
+    			if (agException == null)
+    				agException = new RuntimeException("Some parent-child relations were not updated: " + e.getMessage());
+    			agException.addSuppressed(e);
+    		}
+		}
+		
+		if (agException != null)
+    		throw agException;
+	}
+
+	/**
+	 * Update the status of a given parent-child relationship in a given taxonomy
+	 * 
+	 * @param taxonomyId - the identifier of the taxonomy to be modified
+	 * @param topicChild - the identifier for the child topic
+	 * @param status - the status to be modified
+	 */
+	public void updateParentRelationshipStatus(String taxonomyId, String topicChild, String status) {
+		/*
+		 * 1 - If new status = "rejected" then, throw InvalidOperationException (every node must have a parent) 
+		 * 2 - Change relation status in the database otherwise
+		 * 3 - If status = "accepted" then, change both topic status to "accepted"
+		 */
+		
+		if (taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}		
+		if (topicChild == null || topicChild.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The topicChild cannot be empty or null");
+			exception.addParameterValue("topicChild", topicChild);
+			throw exception;
+		}
+		if (status == null) {
+			InvalidValueException exception = new InvalidValueException("The status cannot be null");
+			exception.addParameterValue("status", status);
+			throw exception;
+		}
+		
+		if (status.equals(Status.rejected.toString())) {
+			//1 - If new status = "rejected" then, throw InvalidOperationException (every node must have a parent)
+			throw new InvalidOperationException("Parent-child relations cannot be rejected. Choose a new parent instead.");
+		} else if (!status.equals(Status.accepted.toString()) && !status.equals(Status.none.toString())) {
+			InvalidValueException exception = new InvalidValueException("Invalid status value");
+			exception.addParameterValue("status", status);
+			throw exception; 
+		}
+		
+		// 2 - Change relation status in the database otherwise
+		Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
+		taxonomy.setParentChildStatus(topicChild,Status.valueOf(status));
+		boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
+		if(!taxonomyUpdated)
+			throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
+		
+		// 3 - If relation status = "accepted" then, change both topic status to "accepted"
+		if (status.equals(Status.accepted.toString())) {
+			
+			boolean topicUpdated = dataSource.updateTopic(taxonomyId, topicChild, Status.accepted.toString());
+			if(!topicUpdated)
+				throw new RuntimeException("An error has ocurred when updating the status of the child topic in the database.");
+			
+			String parentString = taxonomy.getParent(topicChild);			
+			if (!parentString.equals(Taxonomy.VIRTUAL_ROOT)) {
+				topicUpdated = dataSource.updateTopic(taxonomyId, parentString, Status.accepted.toString());
+				if(!topicUpdated)
+					throw new RuntimeException("An error has ocurred when updating the status of the parent topic in the database.");
+			}
+		}		
 	}
 }
