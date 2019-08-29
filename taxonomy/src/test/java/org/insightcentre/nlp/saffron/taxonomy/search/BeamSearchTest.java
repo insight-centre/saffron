@@ -93,8 +93,7 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
-        for(int i = 0; i < 100; i++) {
-        System.out.println("extractTaxonomyWithBlackWhiteList " + i);
+        System.out.println("extractTaxonomyWithBlackWhiteList");
         HashMap<String, Topic> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);
@@ -118,7 +117,6 @@ public class BeamSearchTest {
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b") && t.status == Status.none));
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab") && t.status == Status.accepted));
-        }
     }
 
     @Test
