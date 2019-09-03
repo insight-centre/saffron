@@ -106,7 +106,7 @@ public class SaffronService {
 		
 		for(Pair tuple: parentChildStatusList) {
 			try {
-				updateParentRelationshipStatus(taxonomyId, tuple.getLeft().toString(), tuple.getRight().toString());
+				updateParentRelationshipStatus(taxonomyId, (String) tuple.getLeft(), (String) tuple.getRight());
     		} catch (Exception e) {
     			if (agException == null)
     				agException = new RuntimeException("Some parent-child relations were not updated: " + e.getMessage());
@@ -132,8 +132,8 @@ public class SaffronService {
 		 * 3 - If status = "accepted" then, change both topic status to "accepted"
 		 */
 		
-		if (taxonomyId == "") {
-			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+		if (taxonomyId == null || taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
 		}		
