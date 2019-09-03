@@ -2,6 +2,7 @@
 package org.insightcentre.nlp.saffron.data;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -823,4 +824,100 @@ public class TaxonomyTest {
     	}
     }
     */
+    
+    /*
+     * It is currently impossible to perform such check from within the Taxonomy object.
+     * The reason is that there is no way to identify the primary root from within the object.
+     */
+    /*@Test
+    public void getParentRoot() {
+    	//prepare
+    	
+    	//call
+    	
+    	//evaluate
+    }*/
+    
+    @Test
+    public void getParentRootChildBranchNode() {
+    	//prepare
+    	String expected = "greatgrandmother";
+    	
+    	//call
+    	String actual = inputTaxonomy.getParent("mother");
+    	
+    	//evaluate
+    	assertEquals(expected, actual);
+    }
+    
+    @Test
+    public void getParentRootChildLeafNode() {
+    	//prepare
+    	inputTaxonomy = new Taxonomy.Builder(inputTaxonomy).addChild(
+    				new Taxonomy.Builder().root("grandfather").build()
+    			).build();
+    	String expected = "greatgrandmother";
+    	
+    	//call
+    	String actual = inputTaxonomy.getParent("grandfather");
+    	
+    	//evaluate
+    	assertEquals(expected, actual);
+    }
+    
+    @Test
+    public void getParentNonRootChildBranchNode() {
+    	//prepare
+    	String expected = "mother";
+    	
+    	//call
+    	String actual = inputTaxonomy.getParent("grandmother");
+    	
+    	//evaluate
+    	assertEquals(expected, actual);
+    }
+    
+    @Test
+    public void getParentNonRootChildLeafNode() {
+    	//prepare
+    	String expected = "mother";
+    	
+    	//call
+    	String actual = inputTaxonomy.getParent("kid2");
+    	
+    	//evaluate
+    	assertEquals(expected, actual);
+    }
+    
+    @Test
+    public void getParentInexistentChild() {
+    	//prepare
+    	
+    	//call
+    	String actual = inputTaxonomy.getParent("inexistent");
+    	
+    	//evaluate
+    	assertNull(actual);
+    }
+    
+    @Test(expected=InvalidValueException.class)
+    public void getParentNullParameter() {
+    	//prepare
+    	
+    	//call
+    	inputTaxonomy.getParent(null);
+    	
+    	//evaluate
+    }
+    
+    @Test(expected=InvalidValueException.class)
+    public void getParentEmptyParameter() {
+    	//prepare
+    	
+    	//call
+    	inputTaxonomy.getParent("");
+    	
+    	//evaluate
+    }
+    
 }

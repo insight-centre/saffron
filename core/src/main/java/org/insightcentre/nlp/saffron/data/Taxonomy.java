@@ -258,6 +258,10 @@ public class Taxonomy {
      * child does not exist
      */
     public String getParent(String topicChild) {
+    	
+    	if(topicChild == null || topicChild.equals(""))
+    		throw new InvalidValueException("topic child cannot be null or empty");
+    	
     	for(Taxonomy child: this.getChildren()) {
     		if (child.getRoot().equals(topicChild))
     			return this.getRoot();
@@ -817,6 +821,10 @@ public class Taxonomy {
     	
     	public Builder() {
     		taxonomy = new Taxonomy();
+    	}
+    	
+    	public Builder(Taxonomy taxonomy) {
+    		this.taxonomy = taxonomy;
     	}
     	
     	public Builder root(String root) {
