@@ -169,8 +169,17 @@ public class Executor extends AbstractHandler {
         response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
 
         String mongoUrl = System.getenv("MONGO_URL");
+        if (mongoUrl == null) {
+            mongoUrl = "localhost";
+        }
         String mongoPort = System.getenv("MONGO_PORT");
+        if (mongoPort == null) {
+            mongoPort = "27017";
+        }
         String mongoDbName = System.getenv("MONGO_DB_NAME");
+        if (mongoDbName == null) {
+            mongoDbName = "saffron_test";
+        }
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
         FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
@@ -187,22 +196,22 @@ public class Executor extends AbstractHandler {
         JSONObject topicSimConfig = (JSONObject) config.get("topicSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
         final Configuration newConfig = new Configuration();
-        TermExtractionConfiguration terms =
-                new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
-        AuthorTopicConfiguration authorTopic =
-                new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
-        AuthorSimilarityConfiguration authorSimilarityConfiguration =
-                new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
-        TopicSimilarityConfiguration topicSimilarityConfiguration =
-                new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
-        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration =
-                new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        TermExtractionConfiguration terms
+                = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
+        AuthorTopicConfiguration authorTopic
+                = new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
+        AuthorSimilarityConfiguration authorSimilarityConfiguration
+                = new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
+        TopicSimilarityConfiguration topicSimilarityConfiguration
+                = new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
+        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
+                = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTopic = authorTopic;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.topicSim = topicSimilarityConfiguration;
-  
+
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
         for (Document doc : docs) {
@@ -541,8 +550,17 @@ public class Executor extends AbstractHandler {
         try {
 
             String mongoUrl = System.getenv("MONGO_URL");
+            if (mongoUrl == null) {
+                mongoUrl = "localhost";
+            }
             String mongoPort = System.getenv("MONGO_PORT");
+            if (mongoPort == null) {
+                mongoPort = "27017";
+            }
             String mongoDbName = System.getenv("MONGO_DB_NAME");
+            if (mongoDbName == null) {
+                mongoDbName = "saffron_test";
+            }
 
             MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
             mongo.deleteRun(saffronDatasetName);
@@ -566,18 +584,23 @@ public class Executor extends AbstractHandler {
 
     public BlackWhiteList extractBlackWhiteList(String datasetName) {
         String mongoUrl = System.getenv("MONGO_URL");
-        if(mongoUrl == null) mongoUrl = "localhost";
+        if (mongoUrl == null) {
+            mongoUrl = "localhost";
+        }
         String mongoPort = System.getenv("MONGO_PORT");
-        if(mongoPort == null) mongoPort = "27017";
+        if (mongoPort == null) {
+            mongoPort = "27017";
+        }
         String mongoDbName = System.getenv("MONGO_DB_NAME");
-        if(mongoDbName == null) mongoDbName = "saffron_test";
+        if (mongoDbName == null) {
+            mongoDbName = "saffron_test";
+        }
 
         MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
 
-        if(!mongo.getTopics(datasetName).iterator().hasNext()) {
+        if (!mongo.getTopics(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();
-        }
-        else {
+        } else {
             return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
 
         }
@@ -603,8 +626,12 @@ public class Executor extends AbstractHandler {
 
         public void setStatusMessage(String statusMessage) {
             System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
-            if(out != null) out.printf("[STAGE %d] %s\n", stage, statusMessage);
-            if(out != null) out.flush();
+            if (out != null) {
+                out.printf("[STAGE %d] %s\n", stage, statusMessage);
+            }
+            if (out != null) {
+                out.flush();
+            }
             this.statusMessage2 = statusMessage;
         }
 
@@ -614,34 +641,51 @@ public class Executor extends AbstractHandler {
             setStatusMessage("Failed: " + message);
             data.remove(name);
             cause.printStackTrace();
-            if(out != null) cause.printStackTrace(out);
-            if(out != null) out.flush();
+            if (out != null) {
+                cause.printStackTrace(out);
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void log(String message) {
             System.err.println(message);
-            if(out != null) out.println(message);
-            if(out != null) out.flush();
+            if (out != null) {
+                out.println(message);
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void endTick() {
             System.err.println();
-            if(out != null) out.println();
-            if(out != null) out.flush();
+            if (out != null) {
+                out.println();
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void tick() {
             System.err.print(".");
-            if(out != null) out.print(".");
-            if(out != null) out.flush();
+            if (out != null) {
+                out.print(".");
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void close() throws IOException {
-            out.close();
+            if(out != null)
+                out.close();
         }
     }
 
