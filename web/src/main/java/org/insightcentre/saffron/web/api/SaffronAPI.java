@@ -227,8 +227,17 @@ public class SaffronAPI {
 
     private MongoDBHandler getMongoDBHandler() {
         String mongoUrl = System.getenv("MONGO_URL");
+        if (mongoUrl == null) {
+            mongoUrl = "localhost";
+        }
         String mongoPort = System.getenv("MONGO_PORT");
+        if (mongoPort == null) {
+            mongoPort = "27017";
+        }
         String mongoDbName = System.getenv("MONGO_DB_NAME");
+        if (mongoDbName == null) {
+            mongoDbName = "saffron_test";
+        }
         return new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
     }
 
