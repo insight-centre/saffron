@@ -80,6 +80,11 @@ public class SaffronAPI {
         MongoDBHandler mongo = getMongoDBHandler();
         //SaffronData.fromMongo(name);
         mongo.deleteRun(name);
+
+        if (Launcher.home != null) {
+            Launcher.home.deleteSite(name);
+        }
+
         return Response.ok("Run " + name + " Deleted").build();
     }
 
@@ -247,7 +252,7 @@ public class SaffronAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public Response deleteTopic(@PathParam("param") String name,
-                                @PathParam("topic_id") String topicId) {
+            @PathParam("topic_id") String topicId) {
 
         MongoDBHandler mongo = getMongoDBHandler();
         List<TopicResponse> topicsResponse = new ArrayList<>();
@@ -265,9 +270,9 @@ public class SaffronAPI {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
     public Response rejectTopic(@PathParam("param") String name,
-                                @PathParam("topic_id") String topicId,
-                                @PathParam("topic_id") String topic_id2,
-                                @PathParam("status") String status) {
+            @PathParam("topic_id") String topicId,
+            @PathParam("topic_id") String topic_id2,
+            @PathParam("status") String status) {
 
         MongoDBHandler mongo = getMongoDBHandler();
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
@@ -514,7 +519,6 @@ public class SaffronAPI {
                             finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
                         }
                         mongo.updateTaxonomy(name, new Date(), finalTaxon);
-
 
                     }
 
@@ -894,8 +898,8 @@ public class SaffronAPI {
     @GET
     @Path("/new/crawl/{saffronDatasetName}")
     public Response startWithCrawl(@PathParam("saffronDatasetName") String saffronDatasetName,
-                                   @QueryParam("url") String url, @QueryParam("max_pages") int maxPages,
-                                   @DefaultValue("true") @QueryParam("domain") boolean domain) throws IOException {
+            @QueryParam("url") String url, @QueryParam("max_pages") int maxPages,
+            @DefaultValue("true") @QueryParam("domain") boolean domain) throws IOException {
         if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
             getExecutor().startWithCrawl(url, maxPages, domain, false, saffronDatasetName);
             return Response.ok().build();
