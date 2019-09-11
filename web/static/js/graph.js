@@ -59,6 +59,16 @@ function maxRecurse(root) {
     return m;
 }
 
+function minRecurse(root) {
+    var m = root.score;
+    if(root.children) {
+        root.children.forEach(function(child) {
+            m = Math.min(m, minRecurse(child));
+        });
+    }
+    return m;
+}
+
 function countAllChildren(root) {
     var indirectChildren = 0;
     if(root.children) {
@@ -79,6 +89,7 @@ function update() {
       links = d3.layout.tree().links(nodes);
 
   var ave = sumScore(root) / count(root);
+  var minScore = minRecurse(root);
   maxScore = maxRecurse(root);
   rootLabel = root.root;
 
@@ -86,6 +97,8 @@ function update() {
 
   //colorbrewer single hue orange (using first eight colors)
   var colorScale = d3.scale.quantize().domain([0,maxChildren]).range(["#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704"]);
+
+  var radiusScale = d3.scale.linear().domain([minScore, maxScore]).range([5, 15]);
 
   // Restart the force layout.
   force
@@ -153,7 +166,7 @@ function update() {
   nodeEnter.append("circle")
     .on("mouseover", fade(.2))
     .on("mouseout", fade2(1))
-    .attr("r", function(d) { return Math.max(Math.sqrt(d.score / ave * 10 || 4.5),5); })
+      .attr("r", function(d){return radiusScale(d.score);})
     .text(function(d) { return d.name; })
 
     node.select("circle")
