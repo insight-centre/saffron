@@ -98,7 +98,7 @@ function update() {
   //colorbrewer single hue orange (using first eight colors)
   var colorScale = d3.scale.quantize().domain([0,maxChildren]).range(["#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704"]);
 
-  var radiusScale = d3.scale.linear().domain([minScore, maxScore]).range([5, 15]);
+  var radiusScale = d3.scale.linear().domain([minScore, maxScore]).range([5, 25]);
 
   // Restart the force layout.
   force
@@ -161,6 +161,7 @@ function update() {
       .attr("y", function(d) { return d.orient === "bottom" ? 6 : d.orient === "top" ? -6 : null; })
       .text(function(d, i) { return i * 1000; })
       .attr("dy", ".35em")
+      .attr("dx", function(d){return radiusScale(d.score) / 2;})
       .text(function(d) { return "\u00a0\u00a0\u00a0" + d.root; });
 
   nodeEnter.append("circle")
