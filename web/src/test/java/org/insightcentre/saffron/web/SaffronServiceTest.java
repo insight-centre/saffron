@@ -98,7 +98,7 @@ public class SaffronServiceTest {
 		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.accepted).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
-		doNothing().when(taxonomy).removeChild(input.topicString);
+		doNothing().when(taxonomy).removeDescendent(input.topicString);
 		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(true);
 		
 		//Call
@@ -122,7 +122,7 @@ public class SaffronServiceTest {
 		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
-		doNothing().when(taxonomy).removeChild(input.topicString);
+		doNothing().when(taxonomy).removeDescendent(input.topicString);
 		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(true);
 		
 		//Call
@@ -280,7 +280,7 @@ public class SaffronServiceTest {
 		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
-		doNothing().when(taxonomy).removeChild(input.topicString);
+		doNothing().when(taxonomy).removeDescendent(input.topicString);
 		when(mongo.updateTaxonomy(runId, taxonomy)).thenReturn(false);
 		
 		try{
@@ -367,7 +367,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.accepted.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -377,9 +378,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		//call
 		service.updateParentRelationshipStatus(taxonomyId, topicChild, status);
@@ -388,7 +390,7 @@ public class SaffronServiceTest {
 		verify(mongo).updateTaxonomy(taxonomyId, taxonomy);
 		verify(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		verify(mongo).updateTopic(taxonomyId, topicChild, status);
-		verify(mongo).updateTopic(taxonomyId, topicParent, status);
+		verify(mongo).updateTopic(taxonomyId, topicParentString, status);
 	}
 
 	
@@ -400,7 +402,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.none.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -411,9 +414,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		//call
 		service.updateParentRelationshipStatus(taxonomyId, topicChild, status);
@@ -432,7 +436,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.rejected.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -443,9 +448,10 @@ public class SaffronServiceTest {
 		doThrow(new InvalidOperationException("")).when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		try {
 			//call
@@ -455,7 +461,7 @@ public class SaffronServiceTest {
 			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
 			verify(taxonomy, never()).setParentChildStatus(topicChild, Status.valueOf(status));
 			verify(mongo, never()).updateTopic(taxonomyId, topicChild, status);
-			verify(mongo, never()).updateTopic(taxonomyId, topicParent, status);
+			verify(mongo, never()).updateTopic(taxonomyId, topicParentString, status);
 			throw e;
 		}
 	}
@@ -469,7 +475,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.accepted.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -480,9 +487,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		//call
 		service.updateParentRelationshipStatus(taxonomyId, topicChild, status);
@@ -491,7 +499,7 @@ public class SaffronServiceTest {
 		verify(mongo).updateTaxonomy(taxonomyId, taxonomy);
 		verify(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		verify(mongo).updateTopic(taxonomyId, topicChild, status);
-		verify(mongo).updateTopic(taxonomyId, topicParent, status);
+		verify(mongo).updateTopic(taxonomyId, topicParentString, status);
 	}
 	
 	/**
@@ -667,7 +675,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.accepted.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -678,9 +687,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(false);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		try {
 			//call
@@ -703,7 +713,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.accepted.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -714,9 +725,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(false);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(false);
 		
 		try {
 			//call
@@ -725,7 +737,7 @@ public class SaffronServiceTest {
 			//evaluate
 			verify(mongo).updateTaxonomy(taxonomyId, taxonomy);
 			verify(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
-			verify(mongo).updateTopic(taxonomyId, topicParent, status);
+			verify(mongo).updateTopic(taxonomyId, topicParentString, status);
 			throw e;
 		}
 	}
@@ -738,7 +750,8 @@ public class SaffronServiceTest {
 		//prepare
 		String taxonomyId = "runId";
 		String topicChild = "topicChild";
-		String topicParent = "topicParent";
+		Taxonomy topicParent = mock(Taxonomy.class);
+		String topicParentString = "topicParent";
 		String status = Status.accepted.toString();
 		
 		Taxonomy taxonomy = mock(Taxonomy.class);
@@ -748,9 +761,10 @@ public class SaffronServiceTest {
 		doNothing().when(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(false);
 		
+		when(topicParent.getRoot()).thenReturn(topicParentString);
 		when(taxonomy.getParent(topicChild)).thenReturn(topicParent);
 		when(mongo.updateTopic(taxonomyId, topicChild, status)).thenReturn(true);
-		when(mongo.updateTopic(taxonomyId, topicParent, status)).thenReturn(true);
+		when(mongo.updateTopic(taxonomyId, topicParentString, status)).thenReturn(true);
 		
 		try {
 			//call
@@ -760,7 +774,7 @@ public class SaffronServiceTest {
 			verify(mongo).updateTaxonomy(taxonomyId, taxonomy);
 			verify(taxonomy).setParentChildStatus(topicChild, Status.valueOf(status));
 			verify(mongo, never()).updateTopic(taxonomyId, topicChild, status);
-			verify(mongo, never()).updateTopic(taxonomyId, topicParent, status);
+			verify(mongo, never()).updateTopic(taxonomyId, topicParentString, status);
 			throw e;
 		}
 	}

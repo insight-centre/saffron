@@ -361,7 +361,7 @@ public class TaxonomyTest {
 			.build(); 
     	
     	//call
-    	inputTaxonomy.removeChild("greatgrandmother");
+    	inputTaxonomy.removeDescendent("greatgrandmother");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -383,7 +383,7 @@ public class TaxonomyTest {
 			.build();   
     	
     	//call
-    	inputTaxonomy.removeChild("mother");
+    	inputTaxonomy.removeDescendent("mother");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -411,7 +411,7 @@ public class TaxonomyTest {
     	inputTaxonomy.children.add(new Taxonomy.Builder().root("childless").build());
     	
     	//call
-    	inputTaxonomy.removeChild("childless");
+    	inputTaxonomy.removeDescendent("childless");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -433,7 +433,7 @@ public class TaxonomyTest {
 			.build();
   
     	//call
-    	inputTaxonomy.removeChild("grandmother");
+    	inputTaxonomy.removeDescendent("grandmother");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -458,7 +458,7 @@ public class TaxonomyTest {
 			.build();
     	
     	//call
-    	inputTaxonomy.removeChild("kid2");
+    	inputTaxonomy.removeDescendent("kid2");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -483,7 +483,7 @@ public class TaxonomyTest {
 			.build();
     	
     	//call
-    	inputTaxonomy.removeChild("uncle");
+    	inputTaxonomy.removeDescendent("uncle");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -509,7 +509,7 @@ public class TaxonomyTest {
 			.build(); 
     	
     	//call
-    	inputTaxonomy.removeChild("random");
+    	inputTaxonomy.removeDescendent("random");
     	
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
@@ -844,7 +844,7 @@ public class TaxonomyTest {
     	String expected = "greatgrandmother";
     	
     	//call
-    	String actual = inputTaxonomy.getParent("mother");
+    	String actual = inputTaxonomy.getParent("mother").getRoot();
     	
     	//evaluate
     	assertEquals(expected, actual);
@@ -859,7 +859,7 @@ public class TaxonomyTest {
     	String expected = "greatgrandmother";
     	
     	//call
-    	String actual = inputTaxonomy.getParent("grandfather");
+    	String actual = inputTaxonomy.getParent("grandfather").getRoot();
     	
     	//evaluate
     	assertEquals(expected, actual);
@@ -871,7 +871,7 @@ public class TaxonomyTest {
     	String expected = "mother";
     	
     	//call
-    	String actual = inputTaxonomy.getParent("grandmother");
+    	String actual = inputTaxonomy.getParent("grandmother").getRoot();
     	
     	//evaluate
     	assertEquals(expected, actual);
@@ -883,7 +883,7 @@ public class TaxonomyTest {
     	String expected = "mother";
     	
     	//call
-    	String actual = inputTaxonomy.getParent("kid2");
+    	String actual = inputTaxonomy.getParent("kid2").getRoot();
     	
     	//evaluate
     	assertEquals(expected, actual);
@@ -894,7 +894,7 @@ public class TaxonomyTest {
     	//prepare
     	
     	//call
-    	String actual = inputTaxonomy.getParent("inexistent");
+    	Taxonomy actual = inputTaxonomy.getParent("inexistent");
     	
     	//evaluate
     	assertNull(actual);

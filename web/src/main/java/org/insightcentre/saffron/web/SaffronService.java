@@ -87,7 +87,7 @@ public class SaffronService {
 		//2 - If new status = "rejected" then
 		if (topic.status.equals(Status.rejected)) {
 			Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
-			taxonomy.removeChild(topic.topicString);
+			taxonomy.removeDescendent(topic.topicString);
 			boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
 			if(!taxonomyUpdated)
 				throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
@@ -171,12 +171,79 @@ public class SaffronService {
 			if(!topicUpdated)
 				throw new RuntimeException("An error has ocurred when updating the status of the child topic in the database.");
 			
-			String parentString = taxonomy.getParent(topicChild);			
+			String parentString = taxonomy.getParent(topicChild).getRoot();			
 			if (!parentString.equals(Taxonomy.VIRTUAL_ROOT)) {
 				topicUpdated = dataSource.updateTopic(taxonomyId, parentString, Status.accepted.toString());
 				if(!topicUpdated)
 					throw new RuntimeException("An error has ocurred when updating the status of the parent topic in the database.");
 			}
 		}		
+	}
+
+	/**
+	 * Update the parent of multiple topics in the taxonomy
+	 * 
+	 * @param taxonomyId - the identifier of the taxonomy to be modified
+	 * @param childNewParentList - the topic-newParent pairs to be modified
+	 */
+	public void updateParent(String taxonomyId, List<Pair<String, String>> childNewParentList) {
+		RuntimeException agException = null;
+	
+		for(Pair<String,String> childNewParent: childNewParentList) {
+			try {
+				this.updateParent(taxonomyId, (String) childNewParent.getLeft(), (String) childNewParent.getRight());
+			} catch (Exception e) {
+    			if (agException == null)
+    				agException = new RuntimeException("Some change parent relations were not updated: " + e.getMessage());
+    			agException.addSuppressed(e);
+    		}
+		}
+		
+		if (agException != null)
+    		throw agException;
+	}
+	
+	/**
+	 * Update the parent of a given topic and mark their relationship as accepted
+	 * 
+	 * @param taxonomyId - the identifier of the taxonomy to be modified
+	 * @param topicChild - the child topic to have the parent changed
+	 * @param topicNewParent - the new parent for the child topic
+	 */
+	public void updateParent(String taxonomyId, String topicChild, String topicNewParent) {
+		/*
+		 * 1 - Get taxonomy
+		 * 2 - If taxonomy exists, ask it to update the parent of the topic.
+		 * 3 - Save the modifications performed in the taxonomy
+		 * 4 - Change status of child - new parent relation to accepted.
+		 */
+		
+		if (taxonomyId == null || taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}		
+		if (topicChild == null || topicChild.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The topicChild cannot be empty or null");
+			exception.addParameterValue("topicChild", topicChild);
+			throw exception;
+		}
+		if (topicNewParent == null || topicNewParent.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The topicNewParent cannot be empty or null");
+			exception.addParameterValue("topicNewParent", topicNewParent);
+			throw exception;
+		}
+		
+		
+		Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
+		if(taxonomy == null)
+			throw new RuntimeException("There is no run with id = '" + taxonomyId + "'.");
+		taxonomy.updateParent(topicChild, topicNewParent);
+		
+		boolean taxonomyUpdated =  dataSource.updateTaxonomy(taxonomyId, taxonomy);
+		if(!taxonomyUpdated)
+			throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
+		
+		this.updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
 	}
 }

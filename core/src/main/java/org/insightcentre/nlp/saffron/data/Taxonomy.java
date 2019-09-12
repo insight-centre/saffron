@@ -257,29 +257,63 @@ public class Taxonomy {
      * @return a {@link String} representing the parent as in the taxonomy, or {@code null} if
      * child does not exist
      */
-    public String getParent(String topicChild) {
+    public Taxonomy getParent(String topicChild) {
     	
     	if(topicChild == null || topicChild.equals(""))
     		throw new InvalidValueException("topic child cannot be null or empty");
     	
     	for(Taxonomy child: this.getChildren()) {
     		if (child.getRoot().equals(topicChild))
-    			return this.getRoot();
+    			return this;
     		else {
-    			String parent = child.getParent(topicChild);
+    			Taxonomy parent = child.getParent(topicChild);
     			if (parent != null)
     				return parent;
     		}
     	}
 		return null;
 	}
+    
+    /**
+     * Update the parent of a given topic
+     * 
+     * @param topicChild - the topic to be moved to a new parent
+     * @param topicNewParent - the new parent topic
+     * 
+     * @throws InvalidOperationException - if the new parent is a child of the topic
+     */
+    public void updateParent(String topicChild, String topicNewParent) {
+		/*
+		 * 1 - Verify if child exists, otherwise throw Exception
+		 * 2 - Find new parent. If parent is child of topicChild then throw InvalidOperationException.
+		 * 3 - Remove topicChild and its branch from older parent
+		 * 4 - Add topicChild and its branch to the new parent.
+		 */
+    	
+    	// 1 - Verify if child exists, otherwise throw Exception
+    	Taxonomy child = this.descendent(topicChild);
+    	if (child == null)
+    		throw new RuntimeException("The child topic '" + topicChild + "' does not exist in this taxonomy");
+    	
+    	// 2 - Find new parent. If parent is child of topicChild then throw InvalidOperationException.
+    	if (child.descendent(topicNewParent) != null)
+    		throw new InvalidOperationException("The new parent '" + topicNewParent + "' cannot be a descendent of the topic '" + topicChild+ "'.");
+    	
+    	// 3 - Remove topicChild and its branch from older parent
+    	Taxonomy oldParent = this.getParent(topicChild);
+    	oldParent.removeChildBranch(topicChild);
+    	
+    	// 4 - Add topicChild and its branch to the new parent
+    	Taxonomy newParent = this.descendent(topicNewParent);
+    	newParent.addChild(child);
+    }
 
     /**
-     * Search this taxonomy for a taxonomy with a given root
-     * @param topic The name to search for
-     * @return A taxonomy whose root is name or null if no taxonomy is found
+     * If a topic exists in the taxonomy, remove it and move its children to the parent.
+     * 
+     * @param topicString - the topic to be removed
      */
-    public void removeChild(String topicString) {
+    public void removeDescendent(String topicString) {
     	
     	for(Taxonomy child: this.getChildren()) {
     		if(child.getRoot().equals(topicString)) {
@@ -291,11 +325,21 @@ public class Taxonomy {
     			this.children = newChildren;
     			return;
     		} else {
-    			child.removeChild(topicString);
+    			child.removeDescendent(topicString);
     		}
     	}
     }
 
+    /**
+     * Adds a taxonomy as child of this taxonomy node
+     * 
+     * @param child - the taxonomy to be added
+     */
+    public void addChild(Taxonomy child) {
+    	if (!this.children.contains(child))
+    		this.children.add(child);
+    }
+    
     /**
      * Search this taxonomy for a taxonomy with a given root
      * @param newParent The name to search for
@@ -340,7 +384,19 @@ public class Taxonomy {
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
-
+    /**
+     * Remove a child topic and all its branches, if the child exists
+     * 
+     * @param topicString - the child to be removed
+     */
+    public void removeChildBranch(String topicString) {
+    	for(int i=0; i<this.children.size(); i++) {
+    		if (this.children.get(i).getRoot().equals(topicString)) {
+    			this.children.remove(i);
+    			break;
+    		}
+    	}
+    }
 
     /**
      * The size of the taxonomy (number of topics). Note this calculates the size 
@@ -856,5 +912,5 @@ public class Taxonomy {
     	public Taxonomy build() {
     		return taxonomy;
     	}
-    }
+	}
 }
