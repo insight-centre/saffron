@@ -390,6 +390,10 @@ public class Taxonomy {
      * @param topicString - the child to be removed
      */
     public void removeChildBranch(String topicString) {
+    	
+    	if (topicString == null || topicString.equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	
     	for(int i=0; i<this.children.size(); i++) {
     		if (this.children.get(i).getRoot().equals(topicString)) {
     			this.children.remove(i);

@@ -920,4 +920,141 @@ public class TaxonomyTest {
     	//evaluate
     }
     
+    /**
+     * 
+     * Testing method 
+     *   
+     *   removeChildBranch(String topicString)
+     * 
+     */
+    
+    @Test
+    public void testRemoveChildBranchBranchNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.children.get(0).removeChildBranch("grandmother");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveChildBranchLeafNode() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.children.get(0).removeChildBranch("kid1");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testRemoveChildBranchInexistentChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.children.get(0).removeChildBranch("inexistent_child");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test(expected = InvalidValueException.class)
+    public void testRemoveChildBranchNullChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+    		inputTaxonomy.children.get(0).removeChildBranch(null);
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = InvalidValueException.class)
+    public void testRemoveChildBranchEmptyChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+    		inputTaxonomy.children.get(0).removeChildBranch("");
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
 }
