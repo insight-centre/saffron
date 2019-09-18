@@ -336,7 +336,13 @@ public class Taxonomy {
      * @param child - the taxonomy to be added
      */
     public void addChild(Taxonomy child) {
-    	if (!this.children.contains(child))
+    	
+    	if (child == null || child.getRoot().equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	
+    	if (this.hasDescendent(child.getRoot()))
+    		throw new InvalidOperationException("There is already a descendent with the specified topic string value");
+    	else
     		this.children.add(child);
     }
     
