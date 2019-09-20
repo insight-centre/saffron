@@ -858,4 +858,401 @@ public class SaffronServiceTest {
 			throw e;
 		}
 	}
+	
+	/**
+	 * Parent updated successfully
+	 */
+	@Test
+	public void testUpdateParent() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		//call
+		spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		
+		//evaluate
+		verify(taxonomy, times(1)).updateParent(topicChild, topicNewParent);
+		verify(mongo, times(1)).updateTaxonomy(taxonomyId, taxonomy);
+		verify(spyService, times(1)).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+	}
+	
+	/**
+	 * Parent update unsuccessful (exception thrown)
+	 */
+	@Test(expected = RuntimeException.class)
+	public void testUpdateParent2() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doThrow(RuntimeException.class).when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (RuntimeException e) {
+			//evaluate
+			verify(taxonomy, times(1)).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Error updating taxonomy in the database
+	 */
+	@Test(expected = RuntimeException.class)
+	public void testUpdateParent3() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(false);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (RuntimeException e) {		
+			//evaluate
+			verify(taxonomy, times(1)).updateParent(topicChild, topicNewParent);
+			verify(mongo, times(1)).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Error updating the status of the topics to "accepted"
+	 * FIXME: It should retry updating the topic status
+	 */
+	@Test(expected = RuntimeException.class)
+	public void testUpdateParent4() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doThrow(RuntimeException.class).when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (RuntimeException e){
+			//evaluate
+			verify(taxonomy, times(1)).updateParent(topicChild, topicNewParent);
+			verify(mongo, times(1)).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, times(1)).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Inexistent taxonomy
+	 */
+	@Test(expected = RuntimeException.class)
+	public void testUpdateParent5() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(null);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (RuntimeException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Null taxonomyId
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent6() {
+		//prepare
+		String taxonomyId = null;
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Empty taxonomyId
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent7() {
+		//prepare
+		String taxonomyId = "";
+		String topicChild = "topicChild";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Null topicChild 
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent8() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = null;
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Empty topicChild 
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent9() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "";
+		String topicNewParent = "topicNewParent";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Null topicNewParent
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent10() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = null;
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Empty topicNewParent
+	 */
+	@Test(expected = InvalidValueException.class)
+	public void testUpdateParent11() {
+		//prepare
+		String taxonomyId = "taxonomyId";
+		String topicChild = "topicChild";
+		String topicNewParent = "";
+		SaffronService spyService = spy(service);
+		
+		Taxonomy taxonomy = mock(Taxonomy.class);
+		doNothing().when(taxonomy).updateParent(topicChild, topicNewParent);
+		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
+		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
+		doNothing().when(spyService).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+		
+		try {
+			//call
+			spyService.updateParent(taxonomyId, topicChild, topicNewParent);
+		} catch (InvalidValueException e) {		
+			//evaluate
+			verify(taxonomy, never()).updateParent(topicChild, topicNewParent);
+			verify(mongo, never()).updateTaxonomy(taxonomyId, taxonomy);
+			verify(spyService, never()).updateParentRelationshipStatus(taxonomyId, topicChild, Status.accepted.toString());
+			throw e;
+		}
+	}
+	
+	/**
+	 * Ensure all update parent relations are updated
+	 */
+	@Test
+	public void testupdateParentList() {
+		//Prepare
+		List<Pair<String,String>> input = new ArrayList<Pair<String,String>>();
+		Pair<String, String> pair1 = new ImmutablePair<String, String>("child1","newParent1");
+		Pair<String, String> pair2 = new ImmutablePair<String, String>("child2","newParent2");
+		Pair<String, String> pair3 = new ImmutablePair<String, String>("child3","newParent3");
+		input.add(pair1);
+		input.add(pair2);
+		input.add(pair3);
+		
+		String runId = "runId";
+		SaffronService spyService = spy(service);
+		
+		doNothing().when(spyService).updateParent(runId, pair1.getLeft(), pair1.getRight());
+		doNothing().when(spyService).updateParent(runId, pair2.getLeft(), pair2.getRight());
+		doNothing().when(spyService).updateParent(runId, pair3.getLeft(), pair3.getRight());
+		
+		
+		//Call
+		spyService.updateParent(runId, input);	
+		
+		//Evaluate
+		verify(spyService, times(1)).updateParent(runId, pair1.getLeft(), pair1.getRight());
+		verify(spyService, times(1)).updateParent(runId, pair2.getLeft(), pair2.getRight());
+		verify(spyService, times(1)).updateParent(runId, pair3.getLeft(), pair3.getRight());
+	}
+	
+	/**
+	 * Ensure only correct update parent relations are updated
+	 */
+	@Test(expected = RuntimeException.class)
+	public void testupdateParent2() {
+		//Prepare
+		List<Pair<String,String>> input = new ArrayList<Pair<String,String>>();
+		Pair<String, String> pair1 = new ImmutablePair<String, String>("child1","newParent1");
+		Pair<String, String> pair2 = new ImmutablePair<String, String>("child2","newParent2");
+		Pair<String, String> pair3 = new ImmutablePair<String, String>("child3","newParent3");
+		Pair<String, String> pair4 = new ImmutablePair<String, String>("","newParent4");
+		Pair<String, String> pair5 = new ImmutablePair<String, String>("child5","newParent5");
+		Pair<String, String> pair6 = new ImmutablePair<String, String>(null,"newParent6");
+		Pair<String, String> pair7 = new ImmutablePair<String, String>("child7",null);
+		input.add(pair1);
+		input.add(pair2);
+		input.add(pair3);
+		input.add(pair4);
+		input.add(pair5);
+		input.add(pair6);
+		input.add(pair7);
+		
+		String runId = "runId";
+		SaffronService spyService = spy(service);
+		
+		doThrow(new InvalidOperationException("")).when(spyService).updateParent(runId, pair1.getLeft(), pair1.getRight());
+		doNothing().when(spyService).updateParent(runId, pair2.getLeft(), pair2.getRight());
+		doNothing().when(spyService).updateParent(runId, pair3.getLeft(), pair3.getRight());
+		doThrow(new InvalidValueException("")).when(spyService).updateParent(runId, pair4.getLeft(), pair4.getRight());
+		doNothing().when(spyService).updateParent(runId, pair5.getLeft(), pair5.getRight());
+		doThrow(new InvalidValueException("")).when(spyService).updateParent(runId, pair6.getLeft(), pair6.getRight());
+		doThrow(new InvalidValueException("")).when(spyService).updateParent(runId, pair7.getLeft(), pair7.getRight());
+		
+		try {
+			//Call
+			spyService.updateParent(runId, input);		
+		} catch (Exception e) {
+			//Evaluate
+			verify(spyService, times(1)).updateParent(runId, pair1.getLeft(), pair1.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair2.getLeft(), pair2.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair3.getLeft(), pair3.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair4.getLeft(), pair4.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair5.getLeft(), pair5.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair6.getLeft(), pair6.getRight());
+			verify(spyService, times(1)).updateParent(runId, pair7.getLeft(), pair7.getRight());
+			throw e;
+		}
+	}
 }
