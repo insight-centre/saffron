@@ -771,25 +771,12 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     // reject one or multiple topics
     $scope.deleteRun = function($event, id){
         $event.preventDefault();
-        deleteOneRun($http, id);
+        if(confirm("Are you sure you want to delete this run?")) {
+            deleteOneRun($http, id);
+        }
     };
 
 });
-
-// angular.module('app').controller('deleteRun', function ($scope, $http, $location, sharedProperties) {
-//
-//     $scope.parents = parents;
-//     $scope.deleteRun = function(id) {
-//         console.log("HERE")
-//         if(confirm("Are you sure you want to delete this run?")) {
-//             var index = $scope.parents.indexOf(id);
-//             if(index >= 0) {
-//                 $scope.parents.splice(index, 1);
-//             }
-//             $http.get("/api/v1/" + parents);
-//         }
-//     };
-// });
 
 // the child topics component
 angular.module('app').component('childtopics', {

@@ -614,6 +614,8 @@ public class Browser extends AbstractHandler {
                 } else if (o1.score < o2.score) {
                     return +1;
                 } else {
+                    int k = Integer.compare(o1.occurrences, o2.occurrences);
+                    if(k != 0) return -k;
                     int i = o1.author_id.compareTo(o2.author_id);
                     int j = o1.topic_id.compareTo(o2.topic_id);
                     return i != 0 ? i : j;

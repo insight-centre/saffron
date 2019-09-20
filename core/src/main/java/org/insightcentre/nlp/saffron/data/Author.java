@@ -6,30 +6,30 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * The author of a document
- * 
+ *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class Author {
+
     public final String id;
     public final String name;
     public final Set<String> nameVariants;
 
     @JsonCreator
     public Author(@JsonProperty("id") String id,
-                  @JsonProperty("name") String name,
-                  @JsonProperty("name_variants") Set<String> nameVariants) {
-        this.id = id == null ? UUID.randomUUID().toString() : id;
+            @JsonProperty("name") String name,
+            @JsonProperty("name_variants") Set<String> nameVariants) {
+        this.id = id == null ? name : id;
         this.name = name;
         this.nameVariants = nameVariants;
     }
 
     public Author(String name) {
-        this.id = UUID.randomUUID().toString();
+        this.id = name;
         this.name = name;
         this.nameVariants = new HashSet<String>();
     }
@@ -56,5 +56,4 @@ public class Author {
         return true;
     }
 
-    
 }
