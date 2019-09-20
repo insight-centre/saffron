@@ -32,7 +32,7 @@ public class Launcher {
 
     public static Executor executor;
     public static Home home;
-    
+
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
         p.printHelpOn(System.err);

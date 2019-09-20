@@ -1,7 +1,13 @@
 package org.insightcentre.nlp.saffron.topic.topicsim;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -11,6 +17,7 @@ import java.util.TreeSet;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 
@@ -75,6 +82,13 @@ public class TopicSimilarity {
 
         return topicTopics;
     }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static TopicSimilarity fromJsonString(String json) throws JsonParseException, JsonMappingException, IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(json, TopicSimilarity.class);
+    }
+
 
     private double sim(Object2IntMap<String> v1, Object2IntMap<String> v2) {
         double aa = 0, bb = 0, ab = 0;

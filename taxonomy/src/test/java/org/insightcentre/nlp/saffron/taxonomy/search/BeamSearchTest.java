@@ -62,7 +62,7 @@ public class BeamSearchTest {
     }
 
     private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST));
+        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
 
     /**
@@ -70,7 +70,6 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
-        System.out.println("extractTaxonomy");
         HashMap<String, Topic> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);

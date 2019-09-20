@@ -60,59 +60,13 @@ public class NewRun extends AbstractHandler {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
 
             }
-
-//            boolean isFileBased = true;
-//
-//            if (isDBConfigured()){
-//                isFileBased = false;
-//            }
-//            if (isFileBased) {
-//                if (executor.newDataSet(saffronDatasetName)) {
-//                    return saffronDatasetName;
-//                } else {
-//                    baseRequest.setHandled(true);
-//                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
-//                }
-//            } else {
-//                MongoDBHandler mongo = getMongoDBHandler();
-//                FindIterable<Document> docs = mongo.getRun(saffronDatasetName);
-//                boolean isdatasetNamePresent = false;
-//                for(Document doc:docs) {
-//                    isdatasetNamePresent = true;
-//                }
-//                if (!isdatasetNamePresent) {
-//                    return saffronDatasetName;
-//                } else {
-//                    baseRequest.setHandled(true);
-//                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Dataset name already exists");
-//                }
-//            }
-
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No or Bad Dataset Name (Must be non-empty string matching [A-Za-z][A-Za-z0-9_-]* and not 'train', 'execute', 'static' or 'new' but was " + saffronDatasetName + ")");
         }
         return null;
     }
 
-    private boolean isDBConfigured() {
-        //TODO: Needs refactoring for generic usage
-        String mongoUrl = System.getenv("MONGO_URL");
-        String mongoPort = System.getenv("MONGO_PORT");
-        String mongoDbName = System.getenv("MONGO_DB_NAME");
-        try{
-            new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
 
-    private MongoDBHandler getMongoDBHandler() {
-        String mongoUrl = System.getenv("MONGO_URL");
-        String mongoPort = System.getenv("MONGO_PORT");
-        String mongoDbName = System.getenv("MONGO_DB_NAME");
-        return new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-    }
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
