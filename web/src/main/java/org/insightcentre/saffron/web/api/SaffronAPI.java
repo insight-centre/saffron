@@ -5,7 +5,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
@@ -23,6 +22,8 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.Status;
@@ -336,58 +337,45 @@ public class SaffronAPI {
     @Path("/{param}/topics/changeroot")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postChangeTopicRoot(@PathParam("param") String name, InputStream incomingData) {
+    public Response postChangeTopicRoot(@PathParam("param") String runId, InputStream incomingData) {
 
-
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-
+    	List<Pair<String,String>> childNewParentList = new ArrayList<Pair<String,String>>();
+    	
+    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+        
         Iterator<String> keys = jsonRqObj.keys();
-
-        try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            originalTaxo = saffron.getTaxonomy(name);
-            JSONObject returnJson = new JSONObject();
-            JSONArray returnJsonArray = new JSONArray();
-            while (keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicString = json.get("id").toString();
-                    String newParentString = json.get("new_parent").toString();
-                    String oldParentString = json.get("current_parent").toString();
-
-                    if (!newParentString.equals(oldParentString)) {
-                        // If we are at top root, just use the resulting taxonomy
-                        Taxonomy topic = originalTaxo.descendent(topicString);
-                        Taxonomy newParent = originalTaxo.descendent(newParentString);
-                        if (topic.hasDescendentParent(newParentString)) {
-                            return Response.status(Response.Status.BAD_REQUEST).entity("The selected move parent target is a member of a child topic and cannot be moved").build();
-                        }
-
-                        finalTaxon = TaxonomyUtils.updateTaxonomyParentRelationship(originalTaxo, topicString, newParentString, oldParentString, topic, newParent);
-                        returnJson.put("id", name);
-                        returnJson.put("success", true);
-                        returnJson.put("new_parent", newParentString);
-                        returnJsonArray.put(returnJson);
-                        saffron.updateTopic(name, topicString, "accepted");
-                    }
-                }
+        while (keys.hasNext()) {
+            String key = keys.next();
+            JSONArray obj = (JSONArray) jsonRqObj.get(key);
+            for (int i = 0; i < obj.length(); i++) {
+                JSONObject json = obj.getJSONObject(i);
+                String topicString = json.get("id").toString();
+                String newParentString = json.get("new_parent").toString();
+                //FIXME Current parent does not really matter
+                String oldParentString = json.get("current_parent").toString();
+                
+                childNewParentList.add(new ImmutablePair<String,String>(topicString, newParentString));
             }
-            saffron.updateTaxonomy(name, finalTaxon);
-            return Response.ok(returnJsonArray.toString()).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
-
         }
-
+        
+        try {
+        	saffronService.updateParent(runId, childNewParentList);
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+        }
+        
+        //build answer
+        /*JSONArray returnJsonArray = new JSONArray();
+        JSONObject returnJson = new JSONObject();
+        returnJson.put("id", name);
+        returnJson.put("success", true);
+        returnJson.put("new_parent", newParentString);
+        returnJsonArray.put(returnJson);
+        
+        return Response.ok(returnJsonArray.toString()).build();*/
+        return Response.ok("All parents successfully updated").build();
     }
 
 
@@ -452,49 +440,51 @@ public class SaffronAPI {
     @Path("/{param}/topics/updaterelationship")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopicRelationship(@PathParam("param") String name, InputStream incomingData) {
-
-
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
+    public Response updateTopicRelationship(@PathParam("param") String runId, InputStream incomingData) {
+		/* 
+		 * 1 - Read and validate JSON input
+		 * 2 - If everything is ok, continue, otherwise send a code error
+		 * 3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how the changes are made.)
+		 * 4 - If everything is ok return an OK code, otherwise send an error code
+		 */
+		
+		//1 - Read and validate JSON input
+		
+		List<Pair<String,String>> parentChildStatusList = new ArrayList<Pair<String,String>>();
+		
+		StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+        
         Iterator<String> keys = jsonRqObj.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
 
-        try {
-
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            while (keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicChild = json.get("topic_child").toString();
-                    String topicParent = json.get("topic_parent").toString();
-                    String status = json.get("status").toString();
-                    originalTaxo = saffron.getTaxonomy(name);
-                    if (!status.equals(Status.rejected.toString())) {
-                        if (status.equals(Status.accepted.toString())) {
-                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);
-                            saffron.updateTopic(name, topicChild, status);
-                        } else {
-                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.none);
-                            saffron.updateTopic(name, topicChild, "none");
-                            finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
-                        }
-                        saffron.updateTaxonomy(name, finalTaxon);
-                    }
-                }
+            try {
+	            JSONArray obj = (JSONArray) jsonRqObj.get(key);
+	            for (int i = 0; i < obj.length(); i++) {
+	            	JSONObject json = obj.getJSONObject(i);
+	                String topicChild = json.get("topic_child").toString();
+	                //FIXME: getting the current parent is irrelevant, unless we are considering concurrent requests, which we are not
+	                String status = json.get("status").toString();
+	                
+	                parentChildStatusList.add(new ImmutablePair<String,String>(topicChild, status));
+	            }
+            } catch (Exception e) {
+            	//2 - If everything is ok continue, otherwise send an error code
+    			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
             }
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
-
         }
+        
+        //3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how/if changes are made).
+    	try {
+    		saffronService.updateParentRelationshipStatus(runId, parentChildStatusList);
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+    	}
 
-        return Response.ok("Topics for run ID: " + name + " Updated").build();
+    	//4 - If everything is ok return an OK code, otherwise send an error code
+        return Response.ok("Topics for run ID: " + runId + " Updated").build();
     }
 
     @PUT

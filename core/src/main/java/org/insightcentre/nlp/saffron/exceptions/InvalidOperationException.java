@@ -1,4 +1,4 @@
-package org.insightcentre.saffron.web.exceptions;
+package org.insightcentre.nlp.saffron.exceptions;
 
 /**
  * Exception used an invalid operation is requested
