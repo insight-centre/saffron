@@ -280,7 +280,9 @@ public class Taxonomy {
      * @param topicChild - the topic to be moved to a new parent
      * @param topicNewParent - the new parent topic
      * 
-     * @throws InvalidOperationException - if the new parent is a child of the topic
+     * @throws InvalidValueException - if any parameter is either {@code null} or an empty string
+     * @throws InvalidOperationException - if the new parent is a descendant of the topicChild
+     * @throws RuntimeException - if either child or new parent topic do not exist in this taxonomy
      */
     public void updateParent(String topicChild, String topicNewParent) {
 		/*
@@ -290,6 +292,12 @@ public class Taxonomy {
 		 * 4 - Add topicChild and its branch to the new parent.
 		 */
     	
+    	if (topicChild == null || topicChild.equals(""))
+    		throw new InvalidValueException("The topic child parameter cannot be null or empty");
+    	
+    	if (topicNewParent == null || topicNewParent.equals(""))
+    		throw new InvalidValueException("The new parent parameter cannot be null or empty");
+    	
     	// 1 - Verify if child exists, otherwise throw Exception
     	Taxonomy child = this.descendent(topicChild);
     	if (child == null)
@@ -298,13 +306,15 @@ public class Taxonomy {
     	// 2 - Find new parent. If parent is child of topicChild then throw InvalidOperationException.
     	if (child.descendent(topicNewParent) != null)
     		throw new InvalidOperationException("The new parent '" + topicNewParent + "' cannot be a descendent of the topic '" + topicChild+ "'.");
+    	Taxonomy newParent = this.descendent(topicNewParent);
+    	if (newParent == null)
+    		throw new RuntimeException("The parent topic '" + topicNewParent + "' does not exist in this taxonomy");
     	
     	// 3 - Remove topicChild and its branch from older parent
     	Taxonomy oldParent = this.getParent(topicChild);
     	oldParent.removeChildBranch(topicChild);
     	
     	// 4 - Add topicChild and its branch to the new parent
-    	Taxonomy newParent = this.descendent(topicNewParent);
     	newParent.addChild(child);
     }
 
@@ -334,6 +344,10 @@ public class Taxonomy {
      * Adds a taxonomy as child of this taxonomy node
      * 
      * @param child - the taxonomy to be added
+     * 
+     * @throws {@link InvalidValueException} - if the parameter is either null or an empty String root
+     * @throws {@link InvalidOperationException} - if there is already a topic with same String root as
+     *  the one provided as parameter 
      */
     public void addChild(Taxonomy child) {
     	

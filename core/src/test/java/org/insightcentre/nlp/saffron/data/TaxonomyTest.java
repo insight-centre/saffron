@@ -1341,4 +1341,489 @@ public class TaxonomyTest {
     	}
     }
     
+    /**
+     * 
+     * Testing method 
+     *   
+     *   updateParent(String topicChild, String topicNewParent)
+     * 
+     */
+    
+    @Test
+    public void testUpdateParentUncleBranchChild() {
+    	//prepare
+    	inputTaxonomy.children.add(new Taxonomy.Builder().root("father").build());
+    	
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+				.addChild(new Taxonomy.Builder().root("father")
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)		
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("grandmother", "father");
+    	
+    	//evaluate
+    	assertEquals(expected,inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentUncleLeafChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+							.build()
+					)
+					.addChild(
+							new Taxonomy.Builder().root("kid2")
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("uncle", "kid2");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentSiblingBranchChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(
+							new Taxonomy.Builder().root("kid1")
+							.addChild(
+									new Taxonomy.Builder().root("grandmother")
+										.addChild(new Taxonomy.Builder().root("aunt").build())
+										.addChild(new Taxonomy.Builder().root("uncle").build())
+									.build()
+							)
+							.build())
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("grandmother", "kid1");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentSiblingLeafChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(
+									new Taxonomy.Builder().root("aunt")
+									.addChild(new Taxonomy.Builder().root("uncle").build())	
+									.build())
+								
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("uncle", "aunt");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentGrandparentBranchChild() {
+    	//prepare
+    	
+    	inputTaxonomy = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(
+										new Taxonomy.Builder().root("uncle")
+										.addChild(new Taxonomy.Builder().root("father").build())
+										.build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.addChild(
+							new Taxonomy.Builder().root("uncle")
+							.addChild(new Taxonomy.Builder().root("father").build())
+							.build()
+					)
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("uncle", "mother");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentGrandparentLeafChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.addChild(new Taxonomy.Builder().root("uncle").build())
+					.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("uncle", "mother");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentRootBranchChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+				.addChild(
+						new Taxonomy.Builder().root("grandmother")
+							.addChild(new Taxonomy.Builder().root("aunt").build())
+							.addChild(new Taxonomy.Builder().root("uncle").build())
+						.build()
+				)
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("grandmother", "greatgrandmother");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+    
+    @Test
+    public void testUpdateParentRootLeafChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+				.addChild(new Taxonomy.Builder().root("kid1").build())
+			.build();
+    	
+    	//call
+    	inputTaxonomy.updateParent("kid1", "greatgrandmother");
+    	
+    	//evaluate
+    	assertEquals(expected, inputTaxonomy);
+    }
+   
+    @Test(expected = InvalidOperationException.class)
+    public void testUpdateParentIsAChildBranchChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("grandmother", "aunt");
+    	} catch (InvalidOperationException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = InvalidOperationException.class)
+    public void testUpdateParentIsADescendantBranchChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("greatgrandmother", "aunt");
+    	} catch (InvalidOperationException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = RuntimeException.class)
+    public void testUpdateParentInexistentParent() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("grandmother", "inexistent");
+    	} catch (RuntimeException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = RuntimeException.class)
+    public void testUpdateParentInexistentChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("inexistent", "aunt");
+    	} catch (RuntimeException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected=InvalidValueException.class)
+    public void testUpdateParentNullChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent(null, "aunt");
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = InvalidValueException.class)
+    public void testUpdateParentEmptyChild() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("", "aunt");
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = InvalidValueException.class)
+    public void testUpdateParentNullParent() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("mother", null);
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    @Test(expected = InvalidValueException.class)
+    public void testUpdateParentEmptyParent() {
+    	//prepare
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+    	
+    	try {
+	    	//call
+	    	inputTaxonomy.updateParent("mother", "");
+    	} catch (InvalidValueException e) {
+    		//evaluate
+    		assertEquals(expected, inputTaxonomy);
+    		throw e;
+    	}
+    }
+    
+    
 }
