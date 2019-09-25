@@ -20,6 +20,7 @@ import com.mongodb.client.FindIterable;
  * @author Bianca Pereira
  */
 public class BlackWhiteList {
+
     public final Set<String> termWhiteList, termBlackList;
     public final Set<TaxoLink> taxoWhiteList, taxoBlackList;
 
@@ -46,7 +47,7 @@ public class BlackWhiteList {
             if (t.getString("status").equals("accepted")) {
                 topicWhiteList.add(t.getString("topic"));
 
-                if (!t.getString("topic").equals(t.getString("original_topic"))) {
+                if (!t.getString("topic").equals(t.getString("original_topic")) && t.getString("original_topic") != null) {
                     topicBlackList.add(t.getString("original_topic"));
                 }
             } else if (t.getString("status").equals("rejected")) {
@@ -73,26 +74,30 @@ public class BlackWhiteList {
     }
 
     /**
-     * Builds a list of accepted and denied relationships to be part of a taxonomy.
-     * 
-     * The children topics are the ones to keep the "accepted" or "none" statuses with their parents.
-     * "Rejected" parents are kept as the "originalParent" of a topic
-     * 
-     * @param taxonomy - The taxonomy used as source for the acceptance and denial lists
-     * @param taxoAcceptanceList - the list to be populated with accepted parent-child relations 
-     * @param taxoDenialList - the list to be populated with denied parent-child relations
+     * Builds a list of accepted and denied relationships to be part of a
+     * taxonomy.
+     *
+     * The children topics are the ones to keep the "accepted" or "none"
+     * statuses with their parents. "Rejected" parents are kept as the
+     * "originalParent" of a topic
+     *
+     * @param taxonomy - The taxonomy used as source for the acceptance and
+     * denial lists
+     * @param taxoAcceptanceList - the list to be populated with accepted
+     * parent-child relations
+     * @param taxoDenialList - the list to be populated with denied parent-child
+     * relations
      */
     private static void buildTaxoBWList(Taxonomy taxonomy, Set<TaxoLink> taxoAcceptanceList, Set<TaxoLink> taxoDenialList) {
-    	for(Taxonomy child: taxonomy.children) {
-    		if (child.getStatus().equals(Status.accepted)) {
-    			taxoAcceptanceList.add(new TaxoLink(taxonomy.root, child.root));
-    		}
-    		buildTaxoBWList(child, taxoAcceptanceList, taxoDenialList);
-    	}
-    	if (taxonomy.originalParent != null && !taxonomy.originalParent.isEmpty()) {
-    		taxoDenialList.add(new TaxoLink(taxonomy.originalParent, taxonomy.root));
-    	}
+        for (Taxonomy child : taxonomy.children) {
+            if (child.getStatus().equals(Status.accepted)) {
+                taxoAcceptanceList.add(new TaxoLink(taxonomy.root, child.root));
+            }
+            buildTaxoBWList(child, taxoAcceptanceList, taxoDenialList);
+        }
+        if (taxonomy.originalParent != null && !taxonomy.originalParent.isEmpty()) {
+            taxoDenialList.add(new TaxoLink(taxonomy.originalParent, taxonomy.root));
+        }
     }
-
 
 }

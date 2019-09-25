@@ -757,7 +757,7 @@ public class MongoDBHandler implements SaffronDataSource {
             document.put("topic_string", name.topicString);
             document.put("mvList", name.mvList);
             document.put("dbpedia_url", name.dbpedia_url);
-            document.put("status", "none");
+            document.put("status", name.status.toString());
             topicsCollection.insertOne(document);
         });
 
