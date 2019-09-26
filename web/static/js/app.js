@@ -164,9 +164,7 @@ angular.module('app').component('edittopics', {
                         ctrl.rejected.push({
                             "topic_string": response.data[t].topicString,
                             "topic_id": response.data[t].id,
-                            "status": response.data[t].status,
-                            "left": ctrl.rejected.length % 2 == 0,
-                            "right": ctrl.rejected.length % 2 > 0
+                            "status": response.data[t].status
                         });
                     }             
                 }
@@ -360,10 +358,13 @@ angular.module('app').component('editparents', {
                 "parent": parent,
                 "status": topic.status
             }
+            if (current_topic["topic_string"] === "HEAD_TOPIC") {
+                current_topic["topic_string"] = "Root";
+            }
             ctrl.topics.push(current_topic);
 
             for (let i = 0; i < topic.children.length; i++) {
-                $scope.getChildren(topic.children[i], parent_branch == "" ? topic.root : parent_branch + " > " + topic.root, current_topic);
+                $scope.getChildren(topic.children[i], parent_branch == "" ? current_topic["topic_string"] : parent_branch + " > " + current_topic["topic_string"], current_topic);
             }
         };
 

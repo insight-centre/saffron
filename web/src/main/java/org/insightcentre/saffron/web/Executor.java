@@ -242,11 +242,12 @@ public class Executor extends AbstractHandler {
         new Thread(new Runnable() {
 
             @Override
+            @SuppressWarnings("UseSpecificCatch")
             public void run() {
                 _status.stage = 1;
                 try {
                     execute(corpus, newConfig, data, saffronDatasetName, false);
-                } catch (IOException x) {
+                } catch (Throwable x) {
                     Status _status = statuses.get(saffronDatasetName);
                     _status.fail(x.getMessage(), x);
                 }
@@ -430,15 +431,15 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        data.deleteRun(saffronDatasetName);
-        data.addRun(saffronDatasetName, new Date(), config);
-        Status _status = statuses.get(saffronDatasetName);
-        _status.advanced = false;
         BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
         if (bwList == null) {
             bwList = new BlackWhiteList();
 
         }
+        data.deleteRun(saffronDatasetName);
+        data.addRun(saffronDatasetName, new Date(), config);
+        Status _status = statuses.get(saffronDatasetName);
+        _status.advanced = false;
         scaleThreads(config);
 
         ObjectMapper mapper = new ObjectMapper();
