@@ -341,7 +341,7 @@ angular.module('app').component('editparents', {
              ctrl.topics = [];
             $http.get(apiUrlWithSaffron).then(
                 function (response) {
-                    $scope.getChildren(response.data, "", null);
+                    $scope.getChildren(response.data, "", null, 0);
                 },
                 function (error) {
                     console.log(error);
@@ -350,13 +350,14 @@ angular.module('app').component('editparents', {
             );          
         }
         
-        $scope.getChildren = function(topic, parent_branch, parent) {
+        $scope.getChildren = function(topic, parent_branch, parent, depth) {
             var current_topic = {
                 "topic_string": topic.root,
                 "branch": parent_branch,
                 "topic_id": topic.root,
                 "parent": parent,
-                "status": topic.status
+                "status": topic.status,
+                "collapsed_branch" : "-".repeat(depth) + topic.root
             }
             if (current_topic["topic_string"] === "HEAD_TOPIC") {
                 current_topic["topic_string"] = "Root";
@@ -364,7 +365,7 @@ angular.module('app').component('editparents', {
             ctrl.topics.push(current_topic);
 
             for (let i = 0; i < topic.children.length; i++) {
-                $scope.getChildren(topic.children[i], parent_branch == "" ? current_topic["topic_string"] : parent_branch + " > " + current_topic["topic_string"], current_topic);
+                $scope.getChildren(topic.children[i], parent_branch == "" ? topic.root : parent_branch + " > " + topic.root, current_topic, depth + 1);
             }
         };
 
