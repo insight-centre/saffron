@@ -25,6 +25,9 @@ var link = svg.selectAll(".link"),
 d3.json(apiUrl + saffronDatasetName, function(error, json) {
   if (error) throw error;
   root = json;
+  if (root.root === "HEAD_TOPIC") {
+    root.root = "Root";
+  }
   var links = graph.links;
   update();
 });
