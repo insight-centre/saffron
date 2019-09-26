@@ -616,7 +616,13 @@ public class Executor extends AbstractHandler {
         @Override
         public void fail(String message, Throwable cause) {
             this.failed = true;
-            setStatusMessage("Failed: " + message);
+            System.out.println(message + " cause = " + cause.getClass());
+            if (cause instanceof com.mongodb.MongoTimeoutException){
+                setStatusMessage("Failed: Cannot connect to a MongoDB instance. " +
+                        "Please configure Saffron to connect to a running MongoDB instance and try again.");
+            } else {
+                setStatusMessage("Failed: " + message);
+            }
             data.remove(name);
             cause.printStackTrace();
             if (out != null) {
