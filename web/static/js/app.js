@@ -164,9 +164,7 @@ angular.module('app').component('edittopics', {
                         ctrl.rejected.push({
                             "topic_string": response.data[t].topicString,
                             "topic_id": response.data[t].id,
-                            "status": response.data[t].status,
-                            "left": ctrl.rejected.length % 2 == 0,
-                            "right": ctrl.rejected.length % 2 > 0
+                            "status": response.data[t].status
                         });
                     }             
                 }
@@ -360,6 +358,9 @@ angular.module('app').component('editparents', {
                 "parent": parent,
                 "status": topic.status,
                 "collapsed_branch" : "-".repeat(depth) + topic.root
+            }
+            if (current_topic["topic_string"] === "HEAD_TOPIC") {
+                current_topic["topic_string"] = "Root";
             }
             ctrl.topics.push(current_topic);
 
