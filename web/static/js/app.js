@@ -164,9 +164,7 @@ angular.module('app').component('edittopics', {
                         ctrl.rejected.push({
                             "topic_string": response.data[t].topicString,
                             "topic_id": response.data[t].id,
-                            "status": response.data[t].status,
-                            "left": ctrl.rejected.length % 2 == 0,
-                            "right": ctrl.rejected.length % 2 > 0
+                            "status": response.data[t].status
                         });
                     }             
                 }
