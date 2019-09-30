@@ -57,15 +57,25 @@ public class DocumentSearcherFactory {
     
     public static DocumentSearcher index(Corpus corpus, File index, SaffronListener log, Boolean isInitialRun) throws IOException {
         final Directory dir = luceneFileDirectory(index, isInitialRun);
-        try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
-            log.log("Indexing");
-            for (Document doc : corpus.getDocuments()) {
-                //Document doc2 = TIKA_ANALYZER.analyze(doc);
-                indexer.indexDoc(doc, doc.contents());
-            }
-            indexer.commit();
+        DocumentSearcher searcher = null;
+        if (isInitialRun) {
+	        try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
+	            log.log("Indexing");
+	            for (Document doc : corpus.getDocuments()) {
+	                //Document doc2 = TIKA_ANALYZER.analyze(doc);
+	                indexer.indexDoc(doc, doc.contents());
+	            }
+	            indexer.commit();
+	            searcher = luceneSearcher(dir, LOWERCASE_ONLY);
+	        }
+        } else{
+        	searcher = luceneSearcher(dir, LOWERCASE_ONLY);
+        	log.log("Updating index");
+        	for (Document doc : corpus.getDocuments()) {
+        		searcher.updateDocument(doc.id, doc);
+        	}
         }
-        return luceneSearcher(dir, LOWERCASE_ONLY);
+        return searcher;
     }
 
     private static Directory luceneFileDirectory(File indexPath, boolean clearExistingIndex)
