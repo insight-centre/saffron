@@ -115,7 +115,7 @@ public class Executor extends AbstractHandler {
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
-            HttpServletResponse response) throws IOException, ServletException {
+                       HttpServletResponse response) throws IOException, ServletException {
         try {
             if ("/execute".equals(target)) {
                 String name = hsr.getParameter("name");
@@ -128,7 +128,9 @@ public class Executor extends AbstractHandler {
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                doRerun(saffronDatasetName, response, baseRequest);
+                if (!saffronDatasetName.equals("images/warning.png")) {
+                    doRerun(saffronDatasetName, response, baseRequest);
+                }
             } else if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
                 Status status = getStatus(saffronDatasetName);
@@ -222,18 +224,21 @@ public class Executor extends AbstractHandler {
                 HashMap<String, String> result
                         = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
                 for (int j = 0; j < authorList.length(); j++) {
-                    authors.add((Author) authorList.get(j));
+                    System.out.println(authorList);
+                    JSONObject authorObject = (JSONObject) authorList.get(j);
+                    Author author = new Author(authorObject.getString("name"));
+                    authors.add(author);
                 }
                 org.insightcentre.nlp.saffron.data.Document docCorp
                         = new org.insightcentre.nlp.saffron.data.Document(
-                                new SaffronPath(""),
-                                obj.getString("id"),
-                                new URL("http://" + mongoUrl + "/" + mongoPort),
-                                obj.getString("name"),
-                                obj.getString("mime_type"),
-                                authors,
-                                result,
-                                obj.get("metadata").toString());
+                        new SaffronPath(""),
+                        obj.getString("id"),
+                        new URL("http://" + mongoUrl + "/" + mongoPort),
+                        obj.getString("name"),
+                        obj.getString("mime_type"),
+                        authors,
+                        result,
+                        obj.get("metadata").toString());
                 other.addDocument(docCorp);
             }
         }
@@ -357,7 +362,7 @@ public class Executor extends AbstractHandler {
     }
 
     public void startWithCrawl(final String url, final int maxPages, final boolean domain,
-            final boolean advanced, final String saffronDatasetName) {
+                               final boolean advanced, final String saffronDatasetName) {
         final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
