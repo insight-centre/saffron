@@ -662,6 +662,9 @@ public class SaffronAPI {
 
     }
 
+
+
+
     @GET
     @Path("/{param}/topicextraction/")
     public Response getTopicExtraction(@PathParam("param") String name) {
@@ -843,6 +846,47 @@ public class SaffronAPI {
         } else {
             return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
         }
+    }
+
+
+    @GET
+    @Path("/{param}/docs/doc/{document_id}")
+    public Response getOriginalDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+
+        FindIterable<Document> runs;
+        String file = "";
+        try {
+            runs = saffron.getCorpus(name);
+
+            for (Document doc : runs) {
+
+                System.out.println(documentId);
+                String id = doc.get("id").toString();
+                List documents = (ArrayList)doc.get("documents");
+                System.out.println(documents.size());
+                for (Object text : documents) {
+                    String json = new Gson().toJson(text);
+
+                    JSONObject jsonObj = new JSONObject(json);
+                    System.out.println(jsonObj.get("name"));
+                    if (jsonObj.get("id").equals(documentId)) {
+                        file = jsonObj.get("contents").toString();
+                        System.out.println(file);
+                    }
+                }
+
+
+            }
+
+            return Response.ok(file).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok(file).build();
+
     }
 
     @GET

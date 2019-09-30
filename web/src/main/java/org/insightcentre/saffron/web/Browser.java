@@ -366,15 +366,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType(Files.probeContentType(f.toPath()));
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        try (InputStream reader = new FileInputStream(f)) {
-                            try (OutputStream writer = response.getOutputStream()) {
-                                byte[] buf = new byte[4096];
-                                int i = 0;
-                                while ((i = reader.read(buf)) >= 0) {
-                                    writer.write(buf, 0, i);
-                                }
-                            }
-                        }
+                        response.getWriter().write(doc.contents());
                     } else if (doc != null) {
                         String contents = doc.contents();
                         response.setContentType("text/plain");
