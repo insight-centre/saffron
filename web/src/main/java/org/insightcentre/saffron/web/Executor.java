@@ -42,6 +42,7 @@ import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
@@ -545,10 +546,7 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
-        // Insert HEAD_TOPIC into top of solution
-        List<Taxonomy> newChildren = new ArrayList<>();
-        newChildren.add(graph.deepCopy());
-        Taxonomy topRootGraph = new Taxonomy(Taxonomy.VIRTUAL_ROOT, 0.0, 0.0, "", "", newChildren, org.insightcentre.nlp.saffron.data.Status.none);
+        Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
         _status.setStatusMessage("Saving taxonomy");
 
         if (storeCopy.equals("true"))
