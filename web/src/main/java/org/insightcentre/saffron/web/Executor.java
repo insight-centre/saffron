@@ -13,13 +13,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -128,7 +122,7 @@ public class Executor extends AbstractHandler {
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                if (!saffronDatasetName.equals("images/warning.png")) {
+                if(this.statuses.containsKey(saffronDatasetName)){
                     doRerun(saffronDatasetName, response, baseRequest);
                 }
             } else if ("/execute/status".equals(target)) {
@@ -224,9 +218,17 @@ public class Executor extends AbstractHandler {
                 HashMap<String, String> result
                         = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
                 for (int j = 0; j < authorList.length(); j++) {
-                    System.out.println(authorList);
                     JSONObject authorObject = (JSONObject) authorList.get(j);
-                    Author author = new Author(authorObject.getString("name"));
+                    Set nameVariants;
+                    try {
+                        nameVariants = (Set) authorObject.get("name_variants");
+                    } catch (JSONException e) {
+                        nameVariants = new HashSet<>();
+                    }
+
+                    Author author = new Author(authorObject.getString("id"),
+                            authorObject.getString("name"),
+                            nameVariants);
                     authors.add(author);
                 }
                 org.insightcentre.nlp.saffron.data.Document docCorp

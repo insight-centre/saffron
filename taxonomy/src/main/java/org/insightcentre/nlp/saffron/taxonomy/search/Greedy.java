@@ -49,11 +49,13 @@ public class Greedy implements TaxonomySearch {
 
         Solution soln = Solution.empty(topicMap.keySet());
         for (TaxoLink sp : whiteList) {
-            soln = soln.add(sp.top, sp.bottom,
-                    topicMap.get(sp.top).score,
-                    topicMap.get(sp.bottom).score,
-                    score.deltaScore(sp), true);
-            score = score.next(sp.top, sp.bottom, soln);
+            if (topicMap.get(sp.top) != null && topicMap.get(sp.bottom) != null) {
+                soln = soln.add(sp.top, sp.bottom,
+                        topicMap.get(sp.top).score,
+                        topicMap.get(sp.bottom).score,
+                        score.deltaScore(sp), true);
+                score = score.next(sp.top, sp.bottom, soln);
+            }
         }
         SOLN_LOOP:
         while (!soln.isComplete()) {
