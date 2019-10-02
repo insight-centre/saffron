@@ -382,6 +382,8 @@ angular.module('app').component('editparents', {
               ]
             };
 
+
+
             $http.post(apiUrlWithSaffron + "topics/updaterelationship", requestData).then(
                 function (response) {
                     topic.status = status;
