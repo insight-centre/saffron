@@ -359,8 +359,9 @@ angular.module('app').component('editparents', {
                 "status": topic.status,
                 "collapsed_branch" : "-".repeat(depth) + topic.root
             }
-            if (current_topic["topic_string"] === "HEAD_TOPIC") {
+            if (current_topic["topic_id"] === "HEAD_TOPIC") {
                 current_topic["topic_string"] = "Root";
+                current_topic["collapsed_branch"] = "Root";
             }
             ctrl.topics.push(current_topic);
 
@@ -409,10 +410,10 @@ angular.module('app').component('editparents', {
             }
             var requestData = {
                     "topics" : [{
-                        "id": topic.topic_string,
-                        "new_id": topic.topic_string,
-                        "current_parent": topic.parent.topic_string,
-                        "new_parent": new_parent.topic_string
+                        "id": topic.topic_id,
+                        "new_id": topic.topic_id,
+                        "current_parent": topic.parent.topic_id,
+                        "new_parent": new_parent.topic_id
                     }]
                 };
 
