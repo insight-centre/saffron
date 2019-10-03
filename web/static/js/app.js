@@ -366,7 +366,7 @@ angular.module('app').component('editparents', {
             ctrl.topics.push(current_topic);
 
             for (let i = 0; i < topic.children.length; i++) {
-                $scope.getChildren(topic.children[i], parent_branch == "" ? current_topic["topic_string"] : parent_branch + " > " + current_topic["topic_string"], current_topic);
+                $scope.getChildren(topic.children[i], parent_branch == "" ? current_topic["topic_string"] : parent_branch + " > " + current_topic["topic_string"], current_topic, depth+1);
             }
         };
 
