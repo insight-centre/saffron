@@ -122,7 +122,7 @@ public class Executor extends AbstractHandler {
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                if(this.statuses.containsKey(saffronDatasetName)){
+                if(saffronDatasetName != null && this.statuses.containsKey(saffronDatasetName)){
                     doRerun(saffronDatasetName, response, baseRequest);
                 }
             } else if ("/execute/status".equals(target)) {
@@ -219,16 +219,13 @@ public class Executor extends AbstractHandler {
                         = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
                 for (int j = 0; j < authorList.length(); j++) {
                     JSONObject authorObject = (JSONObject) authorList.get(j);
-                    Set nameVariants;
+                    String name;
                     try {
-                        nameVariants = (Set) authorObject.get("name_variants");
+                        name = authorObject.getString("name");
                     } catch (JSONException e) {
-                        nameVariants = new HashSet<>();
+                        name = "";
                     }
-
-                    Author author = new Author(authorObject.getString("id"),
-                            authorObject.getString("name"),
-                            nameVariants);
+                    Author author = new Author(name);
                     authors.add(author);
                 }
                 org.insightcentre.nlp.saffron.data.Document docCorp
