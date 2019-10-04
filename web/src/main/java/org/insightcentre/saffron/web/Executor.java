@@ -13,13 +13,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -116,7 +110,7 @@ public class Executor extends AbstractHandler {
 
     @Override
     public void handle(String target, Request baseRequest, HttpServletRequest hsr,
-            HttpServletResponse response) throws IOException, ServletException {
+                       HttpServletResponse response) throws IOException, ServletException {
         try {
             if ("/execute".equals(target)) {
                 String name = hsr.getParameter("name");
@@ -129,7 +123,9 @@ public class Executor extends AbstractHandler {
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                doRerun(saffronDatasetName, response, baseRequest);
+                if(saffronDatasetName != null && this.statuses.containsKey(saffronDatasetName)){
+                    doRerun(saffronDatasetName, response, baseRequest);
+                }
             } else if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
                 Status status = getStatus(saffronDatasetName);
@@ -218,23 +214,23 @@ public class Executor extends AbstractHandler {
             JSONArray docList = (JSONArray) jsonObj.get("documents");
             for (int i = 0; i < docList.length(); i++) {
                 JSONObject obj = (JSONObject) docList.get(i);
-                List<Author> authors = new ArrayList<>();
+
                 JSONArray authorList = (JSONArray) obj.get("authors");
                 HashMap<String, String> result
                         = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
-                for (int j = 0; j < authorList.length(); j++) {
-                    authors.add((Author) authorList.get(j));
-                }
+                List<Author> authors = Arrays.asList(
+                        new ObjectMapper().readValue(obj.get("authors").toString(), Author[].class));
+
                 org.insightcentre.nlp.saffron.data.Document docCorp
                         = new org.insightcentre.nlp.saffron.data.Document(
-                                new SaffronPath(""),
-                                obj.getString("id"),
-                                new URL("http://" + mongoUrl + "/" + mongoPort),
-                                obj.getString("name"),
-                                obj.getString("mime_type"),
-                                authors,
-                                result,
-                                obj.get("metadata").toString());
+                        new SaffronPath(""),
+                        obj.getString("id"),
+                        new URL("http://" + mongoUrl + "/" + mongoPort),
+                        obj.getString("name"),
+                        obj.getString("mime_type"),
+                        authors,
+                        result,
+                        obj.get("metadata").toString());
                 other.addDocument(docCorp);
             }
         }
@@ -358,7 +354,7 @@ public class Executor extends AbstractHandler {
     }
 
     public void startWithCrawl(final String url, final int maxPages, final boolean domain,
-            final boolean advanced, final String saffronDatasetName) {
+                               final boolean advanced, final String saffronDatasetName) {
         final Status _status = makeStatus();
         _status.name = saffronDatasetName;
         statuses.put(saffronDatasetName, _status);
