@@ -528,18 +528,19 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     private void initialiseInMemoryDatabase() {
-    	FindIterable<org.bson.Document> runs = this.getAllRuns();
-        for (org.bson.Document doc : runs) {
-            JSONObject configObj = new JSONObject(doc);
-            configObj.get("id").toString();
-            try {
-				this.fromMongo(configObj.get("id").toString());
-			} catch (JSONException e) {
-				throw new RuntimeException("An error has ocurring while loading database into memory", e);
-			} catch (IOException e) {
-				throw new RuntimeException("An error has ocurring while loading database into memory", e);
-			}
-         }		
+        try {
+    	    FindIterable<org.bson.Document> runs = this.getAllRuns();
+
+            for (org.bson.Document doc : runs) {
+                JSONObject configObj = new JSONObject(doc);
+                configObj.get("id").toString();
+                this.fromMongo(configObj.get("id").toString());
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException("An error has ocurring while loading database into memory", e);
+        } catch (IOException e) {
+            throw new RuntimeException("An error has ocurring while loading database into memory", e);
+        }
 	}
 
 	/**
@@ -631,8 +632,9 @@ public class MongoDBHandler implements SaffronDataSource {
         document.put("id", id);
         document.put("run_date", date);
         document.put("config", json);
-        this.runCollection.insertOne(document);
         try {
+            this.runCollection.insertOne(document);
+
             //this.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -641,8 +643,13 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     public FindIterable<Document>  getAllRuns() {
-        FindIterable<Document> docs = MongoUtils.getDocs(this);
-        return docs;
+        try {
+            FindIterable<Document> docs = MongoUtils.getDocs(this);
+            return docs;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
 
