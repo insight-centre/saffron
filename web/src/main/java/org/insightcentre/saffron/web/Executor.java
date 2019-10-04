@@ -213,21 +213,13 @@ public class Executor extends AbstractHandler {
             JSONArray docList = (JSONArray) jsonObj.get("documents");
             for (int i = 0; i < docList.length(); i++) {
                 JSONObject obj = (JSONObject) docList.get(i);
-                List<Author> authors = new ArrayList<>();
+
                 JSONArray authorList = (JSONArray) obj.get("authors");
                 HashMap<String, String> result
                         = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
-                for (int j = 0; j < authorList.length(); j++) {
-                    JSONObject authorObject = (JSONObject) authorList.get(j);
-                    String name;
-                    try {
-                        name = authorObject.getString("name");
-                    } catch (JSONException e) {
-                        name = "";
-                    }
-                    Author author = new Author(name);
-                    authors.add(author);
-                }
+                List<Author> authors = Arrays.asList(
+                        new ObjectMapper().readValue(obj.get("authors").toString(), Author[].class));
+
                 org.insightcentre.nlp.saffron.data.Document docCorp
                         = new org.insightcentre.nlp.saffron.data.Document(
                         new SaffronPath(""),
