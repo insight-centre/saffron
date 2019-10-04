@@ -64,13 +64,25 @@ public class Browser extends AbstractHandler {
 
     public Browser(File dir) throws IOException {
 
-        if(!saffron.type.equals("mongodb")) {
-        	//FIXME It should ask the "FileDatabase" that implements SaffronDataSource to initialise itself
+        if(saffron.type.equals("mongodb")) {
+        	//FIXME It should ask the database to initialise itself
             if (dir.exists()) {
                 for (File subdir : dir.listFiles()) {
                     if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
                         try {
-
+                        	if (!saffron.containsKey(subdir.getName())) {
+                        		//TODO Use official Saffron Log system
+                        		System.out.println("New Saffron run detected.");
+                        		System.out.println("Importing Saffron run from '" + subdir.getAbsolutePath() + "' ..");
+                        		try {
+                        			saffron.importFromDirectory(subdir, subdir.getName());
+                        			System.out.println("Saffron run successfully imported..");
+                        		} catch (Exception e) {
+                        			//TODO Use official Saffron Log system
+                        			System.err.println("An error has occurred while loading a Saffron run from file. Aborting operation..");
+                        			e.printStackTrace();
+                        		}
+                        	}
                         } catch (Exception x) {
                             x.printStackTrace();
                             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");

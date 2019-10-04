@@ -137,7 +137,7 @@ public interface SaffronDataSource extends Closeable {
 
     public void setDocTopics(String runId, List<DocumentTopic> docTopics);
 
-    public void setCorpus(String runId, DocumentSearcher corpus);
+    public void setIndex(String runId, DocumentSearcher index);
 
     void setCorpus(String runId, Corpus corpus);
 

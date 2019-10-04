@@ -28,16 +28,21 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.saffron.web.SaffronDataSource;
-import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 public class MongoDBHandler implements SaffronDataSource {
@@ -370,6 +375,10 @@ public class MongoDBHandler implements SaffronDataSource {
             //this.searcher = corpus;
         }
 
+        public void setSearcher(DocumentSearcher searcher) {
+        	this.searcher = searcher;
+        }
+        
         public DocumentSearcher getSearcher() {
             return searcher;
         }
@@ -542,6 +551,90 @@ public class MongoDBHandler implements SaffronDataSource {
             throw new RuntimeException("An error has ocurring while loading database into memory", e);
         }
 	}
+    
+    /**
+     * Load Saffron data from disk into MongoDB
+     *
+     * @param directory The directory containing the JSON files
+     * @return nothing
+     * @throws IOException
+     */
+    public void importFromDirectory(File directory, String name) throws IOException {
+    	
+    	String runId = directory.getName();
+    	
+    	File configFile = new File(directory, "config.json");
+    	if (!configFile.exists()) {
+            throw new FileNotFoundException("Could not find config.json");
+        }
+    	
+        File taxonomyFile = new File(directory, "taxonomy.json");
+        if (!taxonomyFile.exists()) {
+            throw new FileNotFoundException("Could not find taxonomy.json");
+        }
+        
+        File authorSimFile = new File(directory, "author-sim.json");
+        if (!authorSimFile.exists()) {
+            throw new FileNotFoundException("Could not find author-sim.json");
+        }
+        
+        File topicSimFile = new File(directory, "topic-sim.json");
+        if (!topicSimFile.exists()) {
+            throw new FileNotFoundException("Could not find topic-sim.json");
+        }
+        
+        File authorTopicFile = new File(directory, "author-topics.json");
+        if (!authorTopicFile.exists()) {
+            throw new FileNotFoundException("Could not find author-topics.json");
+        }
+        
+        File docTopicsFile = new File(directory, "doc-topics.json");
+        if (!docTopicsFile.exists()) {
+            throw new FileNotFoundException("Could not find doc-topics.json");
+        }
+        
+        File topicsFile = new File(directory, "topics.json");
+        if (!topicsFile.exists()) {
+            throw new FileNotFoundException("Could not find topics.json");
+        }
+        
+        File indexFile = new File(directory, "index");
+        if (!indexFile.exists()) {
+            throw new FileNotFoundException("Could not find index");
+        }
+        
+    	BufferedReader r = Files.newBufferedReader(Paths.get(configFile.getAbsolutePath()));
+    	StringBuilder sb = new StringBuilder();
+        Configuration newConfig = null;
+        try {
+            String line;
+            while ((line = r.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+        } catch (Exception e) {
+        	throw new RuntimeException("The configuration file is in the wrong format.", e);
+        }        
+    	this.addRun(runId, new Date(), newConfig);
+    	
+    	
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        
+        this.setTaxonomy(runId, mapper.readValue(taxonomyFile, VirtualRootTaxonomy.class));
+        this.setAuthorSim(runId, mapper.readValue(authorSimFile,
+                tf.constructCollectionType(List.class, AuthorAuthor.class)));
+        this.setTopicSim(runId,  mapper.readValue(topicSimFile,
+                tf.constructCollectionType(List.class, TopicTopic.class)));
+        this.setAuthorTopics(runId, mapper.readValue(authorTopicFile,
+                tf.constructCollectionType(List.class, AuthorTopic.class)));
+        this.setDocTopics(runId, mapper.readValue(docTopicsFile,
+                tf.constructCollectionType(List.class, DocumentTopic.class)));
+        this.setTopics(runId, mapper.readValue(topicsFile,
+                tf.constructCollectionType(List.class, Topic.class)));
+        this.setCorpus(runId, DocumentSearcherFactory.load(indexFile));
+        this.setIndex(runId, DocumentSearcherFactory.load(indexFile));
+    }
 
 	/**
      * Load the Saffron data from mongo
@@ -1116,6 +1209,15 @@ public class MongoDBHandler implements SaffronDataSource {
         }
         return saffron.getDoc(docId);
     }
+   
+    @Override
+    public void setIndex(String runId, DocumentSearcher index) {
+    	MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }        
+        saffron.setSearcher(index);
+    }
 
     @Override
     public DocumentSearcher getSearcher(String runId) {
@@ -1135,9 +1237,6 @@ public class MongoDBHandler implements SaffronDataSource {
         }
         saffron.setDocTopics(docTopics);
     }
-
-    @Override
-    public void setCorpus(String runId, DocumentSearcher corpus) {}
 
     @Override
     public void setCorpus(String runId, Corpus corpus) {
@@ -1426,7 +1525,6 @@ public class MongoDBHandler implements SaffronDataSource {
 
     public boolean addCorpus(String saffronDatasetName, Date date, Corpus corpus) {
         ObjectMapper mapper = new ObjectMapper();
-
 
         try{
             Document doc = Document.parse( mapper.writeValueAsString(corpus) );

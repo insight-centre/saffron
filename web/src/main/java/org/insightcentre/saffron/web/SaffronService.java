@@ -6,6 +6,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
@@ -172,7 +173,7 @@ public class SaffronService {
 				throw new RuntimeException("An error has ocurred when updating the status of the child topic in the database.");
 			
 			String parentString = taxonomy.getParent(topicChild).getRoot();			
-			if (!parentString.equals(Taxonomy.VIRTUAL_ROOT)) {
+			if (!parentString.equals(VirtualRootTaxonomy.VIRTUAL_ROOT)) {
 				topicUpdated = dataSource.updateTopic(taxonomyId, parentString, Status.accepted.toString());
 				if(!topicUpdated)
 					throw new RuntimeException("An error has ocurred when updating the status of the parent topic in the database.");

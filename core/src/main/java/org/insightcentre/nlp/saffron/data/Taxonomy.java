@@ -34,11 +34,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
 	
-	/** Identifier for taxonomies with a virtual root **/
-	//FIXME Create VirtualRootTaxonomy subclass where the virtual root is included
-	// when the taxonomy object is constructed
-	public static final String VIRTUAL_ROOT = "HEAD_TOPIC";
-	
     /** The topic string of this node in the taxonomy */
     public String root;
     /** The original parent node of this node in the taxonomy */
@@ -56,7 +51,7 @@ public class Taxonomy {
 
     public List<Taxonomy> parent;
 
-    private Taxonomy() {
+    protected Taxonomy() {
     	score = 0.0;
     	linkScore = 0.0;
     	children = new ArrayList<Taxonomy>();

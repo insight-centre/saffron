@@ -1,9 +1,5 @@
 package org.insightcentre.saffron.web;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -29,7 +25,12 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.json.JSONObject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.TypeFactory;
+
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web
@@ -308,7 +309,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     && corpus != null;
         }
 
-        public void setCorpus(DocumentSearcher corpus) {
+        public void setCorpus(Corpus corpus) {
             this.corpus = new HashMap<>();
             this.corpusByAuthor = new HashMap<>();
             this.authors = new HashMap<>();
@@ -324,7 +325,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     }
                 }
             }
-            this.searcher = corpus;
+            //this.searcher = corpus;
         }
 
         public DocumentSearcher getSearcher() {
@@ -460,6 +461,10 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                 }
             }
         }
+
+		public void setSearcher(DocumentSearcher searcher) {
+			this.searcher = searcher;			
+		}
     }
 
 
@@ -867,23 +872,23 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
         saffron.setDocTopics(docTopics);
     }
-
+    
     @Override
-    public void setCorpus(String runId, DocumentSearcher corpus) {
-        SaffronDataImpl saffron = data.get(runId);
+    public void setIndex(String runId, DocumentSearcher index) {
+    	SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+    	saffron.setSearcher(index);
+    }
+    
+    @Override
+    public void setCorpus(String runId, Corpus corpus) {
+    	SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         saffron.setCorpus(corpus);
-    }
-
-
-
-
-
-    @Override
-    public void setCorpus(String runId, Corpus corpus) {
-
     }
 
     @Override
