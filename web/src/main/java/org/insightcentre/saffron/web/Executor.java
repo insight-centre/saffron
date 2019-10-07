@@ -123,7 +123,7 @@ public class Executor extends AbstractHandler {
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                if(saffronDatasetName != null && this.statuses.containsKey(saffronDatasetName)){
+                if(saffronDatasetName != null && data.containsKey(saffronDatasetName)){
                     doRerun(saffronDatasetName, response, baseRequest);
                 }
             } else if ("/execute/status".equals(target)) {
