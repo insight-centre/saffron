@@ -6,7 +6,17 @@ package org.insightcentre.nlp.saffron.data;
  * @author John McCrae
  */
 public enum Status {
-    accepted,
-    rejected,
-    none
+    accepted("accepted"),
+    rejected("rejected"),
+    none("none");
+	
+	private String status;
+	
+	Status(String status) {
+		this.status = status;
+	}
+	
+	public String toString() {
+		return this.status;
+	}
 }

@@ -59,9 +59,54 @@ public class TermExtractionConfiguration {
      */
     public Set<String> blacklist = Collections.EMPTY_SET;
     /**
+     * A file containing a list of black terms
+     */
+    public SaffronPath blacklistFile;
+    /**
      * If set always output at least one topic for each input document (overrides maxTopics
      * if necessary)
      */
+
+    public void setCorpus(SaffronPath corpus) {
+        this.corpus = corpus;
+    }
+
+    public SaffronPath getCorpus() {
+        return this.corpus;
+    }
+
+    public void setPosModel(SaffronPath posModel) {
+        this.posModel = posModel;
+    }
+
+    public SaffronPath getPosModel() {
+        return this.posModel;
+    }
+
+    public void setTokenizerModel(SaffronPath tokenizerModel) {
+        this.tokenizerModel = tokenizerModel;
+    }
+
+    public SaffronPath getTokenizerModel() {
+        return this.tokenizerModel;
+    }
+
+    public void setLemmatizerModel(SaffronPath lemmatizerModel) {
+        this.lemmatizerModel = lemmatizerModel;
+    }
+
+    public SaffronPath getLemmatizerModel() {
+        return this.lemmatizerModel;
+    }
+
+    public void setStopWords(SaffronPath stopWords) {
+        this.stopWords = stopWords;
+    }
+
+    public SaffronPath getStopWords() {
+        return this.stopWords;
+    }
+
     public boolean oneTopicPerDoc;
     
     /** The Weighting method to use */

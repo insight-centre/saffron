@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data.connections;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
@@ -10,6 +11,7 @@ import java.util.Objects;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DocumentTopic {
     public final String document_id;
     public String topic_string;

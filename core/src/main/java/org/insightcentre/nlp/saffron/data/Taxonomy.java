@@ -14,6 +14,9 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
+import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,9 +29,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * A taxonomy of topics
  * 
  * @author John McCrae &lt;john@mccr.ae&gt;
+ * @author Bianca Pereira
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
+	
     /** The topic string of this node in the taxonomy */
     public String root;
     /** The original parent node of this node in the taxonomy */
@@ -46,7 +51,11 @@ public class Taxonomy {
 
     public List<Taxonomy> parent;
 
-
+    protected Taxonomy() {
+    	score = 0.0;
+    	linkScore = 0.0;
+    	children = new ArrayList<Taxonomy>();
+    }
 
     @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -83,7 +92,7 @@ public class Taxonomy {
     }
 
     /**
-     * Get the string for the root topic
+     * Get the status of the relation between the root topic and its parent
      * @return 
      */
     public Status getStatus() {
@@ -92,13 +101,42 @@ public class Taxonomy {
 
 
     /**
-     * Set the string for the root topic
+     * Set the status of the relation between the the root topic and its parent
      * @return
      */
     public void setStatus(Status status) {
 
         this.status = status;
     }
+    
+    /**
+     * Traverse the taxonomy and modify the status of a parent-child relationship.
+     * 
+     * @param childTopic - the child topic
+     * @param status - the new status
+     * @throws InvalidOperationException - thrown in case of a "rejected" status. Taxonomy is a single connected
+     *   component, therefore parent-child relations cannot be rejected.
+     */
+    public void setParentChildStatus(String childTopic, Status status) throws InvalidOperationException {
+    	/*
+    	 * 1 - If status = "rejected", reject the operation.
+    	 * 2 - Otherwise, traverse the taxonomy until finding "childTopic" then change the status of "childTopic"
+    	 */
+    	if (childTopic == null || childTopic.equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	if (status == null)
+    		throw new InvalidValueException("The status of parent-child relation cannot be null.");
+		if (status.equals(Status.rejected))
+			throw new InvalidOperationException("Parent-child relations cannot be rejected. Choose a new parent instead.");
+		
+		for(Taxonomy child: this.children) {
+			if (child.getRoot().equals(childTopic)) {
+				child.setStatus(status);
+			} else {
+				child.setParentChildStatus(childTopic, status);
+			}
+		}
+	}
 
     /**
      * Get the string for the root topic
@@ -198,7 +236,7 @@ public class Taxonomy {
           if(this.root.equals(name)){
             return previousTaxo;
           }
-          for(Taxonomy child : children) {
+          for(Taxonomy child : this.getChildren()) {
               Taxonomy d = child.antecendent(name, previous, this, child);
               if (d != null)
                 return d;
@@ -207,34 +245,116 @@ public class Taxonomy {
     }
 
 
-
-
-
     /**
-     * Search this taxonomy for a taxonomy with a given root
-     * @param topic The name to search for
-     * @return A taxonomy whose root is name or null if no taxonomy is found
+     * Get the parent of a given topic or {@code null} if child topic does not exist in
+     * the taxonomy
+     * @param topicChild - the child topic
+     * @return a {@link String} representing the parent as in the taxonomy, or {@code null} if
+     * child does not exist
      */
-    public Taxonomy removeChild(String topic, Taxonomy taxonomy) {
-
-        List<Taxonomy> newChildren = new ArrayList<>();
-        Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
-        for(Taxonomy childTaxo : taxonomy.getChildren()) {
-            if(!childTaxo.root.equals(parent.root)){
-                newChildren.add(childTaxo);
-            } else if (childTaxo.root.equals(parent.root)){
-                for(Taxonomy removal : parent.getChildren()) {
-
-                    if (!removal.root.equals(topic)) {
-                        newChildren.add(childTaxo);
-                    }
-                }
-            }
-
-        }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    public Taxonomy getParent(String topicChild) {
+    	
+    	if(topicChild == null || topicChild.equals(""))
+    		throw new InvalidValueException("topic child cannot be null or empty");
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		if (child.getRoot().equals(topicChild))
+    			return this;
+    		else {
+    			Taxonomy parent = child.getParent(topicChild);
+    			if (parent != null)
+    				return parent;
+    		}
+    	}
+		return null;
+	}
+    
+    /**
+     * Update the parent of a given topic
+     * 
+     * @param topicChild - the topic to be moved to a new parent
+     * @param topicNewParent - the new parent topic
+     * 
+     * @throws InvalidValueException - if any parameter is either {@code null} or an empty string
+     * @throws InvalidOperationException - if the new parent is a descendant of the topicChild
+     * @throws RuntimeException - if either child or new parent topic do not exist in this taxonomy
+     */
+    public void updateParent(String topicChild, String topicNewParent) {
+		/*
+		 * 1 - Verify if child exists, otherwise throw Exception
+		 * 2 - Find new parent. If parent is child of topicChild then throw InvalidOperationException.
+		 * 3 - Remove topicChild and its branch from older parent
+		 * 4 - Add topicChild and its branch to the new parent.
+		 */
+    	
+    	if (topicChild == null || topicChild.equals(""))
+    		throw new InvalidValueException("The topic child parameter cannot be null or empty");
+    	
+    	if (topicNewParent == null || topicNewParent.equals(""))
+    		throw new InvalidValueException("The new parent parameter cannot be null or empty");
+    	
+    	// 1 - Verify if child exists, otherwise throw Exception
+    	Taxonomy child = this.descendent(topicChild);
+    	if (child == null)
+    		throw new RuntimeException("The child topic '" + topicChild + "' does not exist in this taxonomy");
+    	
+    	// 2 - Find new parent. If parent is child of topicChild then throw InvalidOperationException.
+    	if (child.descendent(topicNewParent) != null)
+    		throw new InvalidOperationException("The new parent '" + topicNewParent + "' cannot be a descendent of the topic '" + topicChild+ "'.");
+    	Taxonomy newParent = this.descendent(topicNewParent);
+    	if (newParent == null)
+    		throw new RuntimeException("The parent topic '" + topicNewParent + "' does not exist in this taxonomy");
+    	
+    	// 3 - Remove topicChild and its branch from older parent
+    	Taxonomy oldParent = this.getParent(topicChild);
+    	oldParent.removeChildBranch(topicChild);
+    	
+    	// 4 - Add topicChild and its branch to the new parent
+    	newParent.addChild(child);
     }
 
+    /**
+     * If a topic exists in the taxonomy, remove it and move its children to the parent.
+     * 
+     * @param topicString - the topic to be removed
+     */
+    public void removeDescendent(String topicString) {
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		if(child.getRoot().equals(topicString)) {
+    			List<Taxonomy> newChildren = this.getChildren();
+    			for (Taxonomy grandchild: child.getChildren()) {
+    				newChildren.add(grandchild);
+    			}
+    			newChildren.remove(child);
+    			this.children = newChildren;
+    			return;
+    		} else {
+    			child.removeDescendent(topicString);
+    		}
+    	}
+    }
+
+    /**
+     * Adds a taxonomy as child of this taxonomy node
+     * 
+     * @param child - the taxonomy to be added
+     * 
+     * @throws {@link InvalidValueException} - if the parameter is either null or an empty String root
+     * @throws {@link InvalidOperationException} - if there is already a topic with same String root as
+     *  the one provided as parameter 
+     */
+    public void addChild(Taxonomy child) {
+    	
+    	if (child == null || child.getRoot().equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	
+    	if (this.hasDescendent(child.getRoot()))
+    		throw new InvalidOperationException("There is already a descendent with the specified topic string value");
+    	else
+    		this.children.add(child);
+    }
+    
     /**
      * Search this taxonomy for a taxonomy with a given root
      * @param newParent The name to search for
@@ -246,11 +366,8 @@ public class Taxonomy {
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy childTaxo : newParent.getChildren()) {
             if(!childTaxo.root.equals(oldParentString)) {
-
                 newChildren.add(childTaxo);
             }
-
-
         }
 
         newChildren.add(child);
@@ -265,6 +382,13 @@ public class Taxonomy {
      */
     public Taxonomy addChildTaxo(Taxonomy child, Taxonomy currentTaxo, String parentString) {
         List<Taxonomy> newChildren = new ArrayList<>();
+        if(this.root.equals(parentString)){
+            newChildren.add(child);
+            for(Taxonomy childTaxo : this.getChildren()) {
+                newChildren.add(childTaxo);
+            }
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        }
 
         for(Taxonomy childTaxo : currentTaxo.getChildren()) {
             if(!childTaxo.root.equals(parentString)) {
@@ -275,7 +399,23 @@ public class Taxonomy {
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
-
+    /**
+     * Remove a child topic and all its branches, if the child exists
+     * 
+     * @param topicString - the child to be removed
+     */
+    public void removeChildBranch(String topicString) {
+    	
+    	if (topicString == null || topicString.equals(""))
+    		throw new InvalidValueException("The child topic cannot be empty or null.");
+    	
+    	for(int i=0; i<this.children.size(); i++) {
+    		if (this.children.get(i).getRoot().equals(topicString)) {
+    			this.children.remove(i);
+    			break;
+    		}
+    	}
+    }
 
     /**
      * The size of the taxonomy (number of topics). Note this calculates the size 
@@ -537,14 +677,27 @@ public class Taxonomy {
      */
     public Taxonomy deepCopyNewTaxo(String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
         List<Taxonomy> newChildren = new ArrayList<>();
+
+        if(this.root.equals(newParent)) {
+            for(Taxonomy t : this.children) {
+
+                newChildren.add(t.deepCopy());
+            }
+            newChildren.add(newTaxo);
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        }
+
         for(Taxonomy t : newParentTaxo.children) {
             if(t.root.equals(newParent)){
+
                 t = t.addChildTaxo(newTaxo, t, newParent);
                 newChildren.add(t.deepCopy());
             } else {
+
                 newChildren.add(t.deepCopyNewTaxo(newParent, newTaxo, t));
             }
         }
+
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
     }
 
@@ -578,23 +731,24 @@ public class Taxonomy {
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopyNewParent(String topicString, String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
+    public Taxonomy deepCopyNewParent(String topicString, String oldParent, String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
-
             if (!t.root.equals(topicString)) {
                 if (t.root.equals(newParent)){
-
+                    if (this.root.equals(newParent)) {
+                        t.setStatus(Status.none);
+                    }
                     for (Taxonomy newChild:newParentTaxo.children){
                         if (newChild.root.equals(topicString)){
                             t.children.add(newChild);
-                            newChildren.add(t.deepCopyNewParent(topicString, newParent, newTaxo, newParentTaxo));
+                            newChildren.add(t.deepCopyNewParent(topicString, oldParent, newParent, newTaxo, newParentTaxo));
                         }
                     }
 
                 } else {
-                    newChildren.add(t.deepCopyNewParent(topicString, newParent, newTaxo, newParentTaxo));
+                    newChildren.add(t.deepCopyNewParent(topicString, oldParent, newParent, newTaxo, newParentTaxo));
                 }
 
             }
@@ -633,9 +787,27 @@ public class Taxonomy {
             if (!t.root.equals(topicString)) {
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
             } else {
-                t.setStatus(status);
                 t.setRoot(topicString);
                 newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopySetTopicRelationshipStatus(String topicString, Status status) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+
+            if (!t.root.equals(topicString)) {
+                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
+            } else {
+                t.setStatus(status);
+                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
             }
         }
         return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
@@ -717,4 +889,47 @@ public class Taxonomy {
     public String toString() {
         return String.format("%s (%.4f) { %s }", root, score, children.toString());
     }
+    
+    public static class Builder{
+    	
+    	private Taxonomy taxonomy;
+    	
+    	public Builder() {
+    		taxonomy = new Taxonomy();
+    	}
+    	
+    	public Builder(Taxonomy taxonomy) {
+    		this.taxonomy = taxonomy;
+    	}
+    	
+    	public Builder root(String root) {
+    		taxonomy.root = root;
+    		return this;
+    	}
+    	
+    	public Builder originalParent(String originalParent) {
+    		taxonomy.originalParent = originalParent;
+    		return this;
+    	}
+    	
+    	public Builder originalTopic(String originalTopic) {
+    		taxonomy.originalTopic = originalTopic;
+    		return this;
+    	}
+    	
+    	public Builder status(Status status) {
+    		taxonomy.status = status;
+    		return this;
+    	}
+    	
+    	public Builder addChild(Taxonomy childBranch) {
+    		taxonomy.children.add(childBranch);
+    		
+    		return this;
+    	}
+    	
+    	public Taxonomy build() {
+    		return taxonomy;
+    	}
+	}
 }

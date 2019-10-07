@@ -24,8 +24,10 @@ var link = svg.selectAll(".link"),
 
 d3.json(apiUrl + saffronDatasetName, function(error, json) {
   if (error) throw error;
-  console.log("HEREEEEE")
   root = json;
+  if (root.root === "HEAD_TOPIC") {
+    root.root = "Root";
+  }
   var links = graph.links;
   update();
 });
@@ -94,12 +96,21 @@ function update() {
   var nodeEnter = node.enter().append("g")
       .attr("class", nodeClass)
       .on("click", function (d) {
-          location.href = "topic/" + d.root;
+          if (!location.href.endsWith("/edit")) {
+            location.href = "topic/" + d.root;  
+          }
+          
       })
       .style("cursor","pointer");
 
   nodeEnter.append("a")
-      .attr("href", function(d) { return "topic/" + d.root; })
+      .attr("href", function(d) { 
+        if (location.href.endsWith("/edit")) {
+            return location.href;  
+          } else {
+            return "topic/" + d.root;  
+          }
+       })
       .append("text")
       .each(function(d) {
           if(d.score>maxScore/3){

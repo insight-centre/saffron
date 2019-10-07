@@ -29,7 +29,7 @@ public class APIUtils {
                 crunchifyBuilder.append(line);
             }
         } catch (Exception e) {
-            System.out.println("Error Parsing: - ");
+            e.printStackTrace();
         }
         return crunchifyBuilder;
     }
@@ -74,12 +74,13 @@ public class APIUtils {
             TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
+            entity.setTopic(doc.getString("topic_string"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setAcronym(doc.getString("acronym"));
             entity.setOccurrences(doc.getInteger("occurences"));
             entity.setPattern(doc.getString("pattern"));
             entity.setTfidf(doc.getString("tfidf"));
-            entity.setTopic(doc.getString("topic"));
+
             entity.setDocumentId(doc.getString("document_id"));
 
             topicsResponse.add(entity);
@@ -112,8 +113,8 @@ public class APIUtils {
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setSimilarity(doc.getDouble("similarity"));
-            entity.setTopicString1(doc.getString("topic1"));
-            entity.setTopicString2(doc.getString("topic2"));
+            entity.setTopicString1(doc.getString("topic1_id"));
+            entity.setTopicString2(doc.getString("topic2_id"));
 
             topicsResponse.add(entity);
         }

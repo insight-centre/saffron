@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-import org.insightcentre.nlp.saffron.data.Model;
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
@@ -62,7 +62,7 @@ public class BeamSearchTest {
     }
 
     private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST));
+        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
 
     /**
@@ -70,7 +70,6 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
-        System.out.println("extractTaxonomy");
         HashMap<String, Topic> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);
@@ -115,8 +114,8 @@ public class BeamSearchTest {
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));
-        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b")));
-        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab")));
+        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("b") && t.status == Status.none));
+        assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab") && t.status == Status.accepted));
     }
 
     @Test
