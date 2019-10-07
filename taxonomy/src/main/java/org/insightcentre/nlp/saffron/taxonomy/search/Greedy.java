@@ -45,14 +45,17 @@ public class Greedy implements TaxonomySearch {
             }
         }
         candidates.removeAll(blackList);
+        candidates.removeAll(whiteList);
 
         Solution soln = Solution.empty(topicMap.keySet());
         for (TaxoLink sp : whiteList) {
-            soln = soln.add(sp.top, sp.bottom,
-                    topicMap.get(sp.top).score,
-                    topicMap.get(sp.bottom).score,
-                    score.deltaScore(sp));
-            score = score.next(sp.top, sp.bottom, soln);
+            if (topicMap.get(sp.top) != null && topicMap.get(sp.bottom) != null) {
+                soln = soln.add(sp.top, sp.bottom,
+                        topicMap.get(sp.top).score,
+                        topicMap.get(sp.bottom).score,
+                        score.deltaScore(sp), true);
+                score = score.next(sp.top, sp.bottom, soln);
+            }
         }
         SOLN_LOOP:
         while (!soln.isComplete()) {
@@ -74,7 +77,7 @@ public class Greedy implements TaxonomySearch {
                 Solution soln2 = soln.add(candidate.top, candidate.bottom,
                         topicMap.get(candidate.top).score,
                         topicMap.get(candidate.bottom).score,
-                        scores.getDouble(candidate));
+                        scores.getDouble(candidate), false);
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;

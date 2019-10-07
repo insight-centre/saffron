@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import java.util.HashSet;
+import java.util.Iterator;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +37,7 @@ public class BeamSearch implements TaxonomySearch {
             soln = soln.add(sp.top, sp.bottom,
                     topicMap.get(sp.top).score,
                     topicMap.get(sp.bottom).score,
-                    score.deltaScore(sp));
+                    score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
             score = score.next(sp.top, sp.bottom, soln);
             whiteHeads.add(sp.bottom);
@@ -60,7 +61,7 @@ public class BeamSearch implements TaxonomySearch {
                         if (next.canPush(totalScore)) {
                             Solution s = prevSoln.soln.add(t2, t1,
                                     topicMap.get(t2).score,
-                                    topicMap.get(t1).score, linkScore);
+                                    topicMap.get(t1).score, linkScore, false);
                             if (s != null) {
                                 Soln candidate = new Soln(s,
                                         prevSoln.score.next(t2, t1, s),
@@ -105,7 +106,24 @@ public class BeamSearch implements TaxonomySearch {
 
         @Override
         public int compareTo(Soln o) {
-            int c = Integer.compare(this.hashCode(), o.hashCode());
+            int c = Double.compare(totalScore, o.totalScore);
+            if(c != 0) { return -c; }
+            c = Boolean.compare(rooted, o.rooted);
+            if(c != 0) { return c; }
+            c = Integer.compare(soln.size, o.soln.size);
+            if(c != 0) { return -c; }
+            Iterator<String> i1 = soln.heads.keySet().iterator();
+            Iterator<String> i2 = o.soln.heads.keySet().iterator();
+            while(i1.hasNext() && i2.hasNext()) {
+                c = i1.next().compareTo(i2.next());
+                if(c != 0) { return c; }
+            }
+            if(i1.hasNext()) {
+                return -1;
+            } else if(i2.hasNext()) {
+                return +1;
+            }
+            c = Integer.compare(this.hashCode(), o.hashCode());
             if (c != 0) {
                 return c;
             }

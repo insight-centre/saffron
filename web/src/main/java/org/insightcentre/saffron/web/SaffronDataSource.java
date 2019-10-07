@@ -7,7 +7,10 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -15,6 +18,7 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.json.JSONObject;
 
 /**
  * Interface for accessing Saffron data storage, used by the API
@@ -32,17 +36,6 @@ public interface SaffronDataSource extends Closeable {
      */
     boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim);
 
-    /**
-     * Add a list of topics?
-     * @param id The ID of the run
-     * @param date The timestamp
-     * @param topics The topics to add
-     * @return True if successful
-     * @deprecated Andy, shouldn't this be addTopics?
-     */
-    default boolean addAuthorTopics(String id, Date date, List<Topic> topics) {
-        return addTopics(id, date, topics);
-    }
 
     /**
      * Add a document topic
@@ -59,7 +52,7 @@ public interface SaffronDataSource extends Closeable {
      * @param date The timestamp
      * @return  True if successful
      */
-    boolean addRun(String id, Date date);
+    boolean addRun(String id, Date date, Configuration config);
 
     /**
      * Update the current taxonomy
@@ -94,11 +87,13 @@ public interface SaffronDataSource extends Closeable {
 
     void deleteTopic(String runId, String topic);
 
-    List<DocumentTopic> getRun(String runId);
+    String getRun(String runId);
 
     Taxonomy getTaxonomy(String runId);
 
     List<DocumentTopic> getDocTopics(String runId);
+
+    //public List<String> getAllRuns();
 
     public List<String> getTaxoParents(String runId, String topic_string);
 
@@ -142,9 +137,11 @@ public interface SaffronDataSource extends Closeable {
 
     public void setDocTopics(String runId, List<DocumentTopic> docTopics);
 
-    public void setCorpus(String runId, DocumentSearcher corpus);
+    public void setIndex(String runId, DocumentSearcher index);
 
-    public void setTopics(String runId, Collection<Topic> _topics);
+    void setCorpus(String runId, Corpus corpus);
+
+    public void setTopics(String runId, List<Topic> _topics);
 
     public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics);
 
@@ -156,8 +153,9 @@ public interface SaffronDataSource extends Closeable {
 
     public void remove(String runId);
 
-    boolean updateTaxonomy(String id, Date date, Taxonomy graph);
+    boolean updateTaxonomy(String id, Taxonomy graph);
 
+    //FIXME It should be called "updateStatus" instead
     boolean updateTopic(String id, String topic, String status);
 
     boolean updateTopicName(String id, String topic, String newTopic, String status);
@@ -176,7 +174,7 @@ public interface SaffronDataSource extends Closeable {
      * @param id The id of the dataset
      * @return True if the dataset exists
      */
-    boolean containsKey(String id);
+    boolean containsKey(String id) throws IOException;
 
     /**
      * Is the dataset loaded?

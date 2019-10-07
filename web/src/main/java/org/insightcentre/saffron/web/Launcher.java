@@ -30,6 +30,9 @@ import javax.ws.rs.ApplicationPath;
 @ApplicationPath("/api/v1")
 public class Launcher {
 
+    public static Executor executor;
+    public static Home home;
+
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
         p.printHelpOn(System.err);
@@ -80,9 +83,9 @@ public class Launcher {
             //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory);
-            Executor executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
+            executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
-            Home home = new Home(browser.saffron, directory);
+            home = new Home(browser.saffron, directory);
 
             ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
             context.setContextPath("/");

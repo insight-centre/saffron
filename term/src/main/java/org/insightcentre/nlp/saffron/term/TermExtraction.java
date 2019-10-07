@@ -68,7 +68,7 @@ public class TermExtraction {
     private final File refFile;
     private final int maxTopics;
     private final Feature keyFeature;
-    private final Set<String> blacklist;
+    private final Set<String> configBlacklist;
     private final boolean oneTopicPerDoc;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
@@ -91,17 +91,17 @@ public class TermExtraction {
         this.refFile = null;
         this.maxTopics = 100;
         this.keyFeature = Feature.comboBasic;
-        this.blacklist = Collections.EMPTY_SET;
+        this.configBlacklist = Collections.EMPTY_SET;
         this.oneTopicPerDoc = false;
     }
 
-    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, 
-            ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq, 
-            ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords, 
-            Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens, 
-            int ngramMin, int ngramMax, boolean headTokenFinal, 
-            TermExtractionConfiguration.WeightingMethod method, List<Feature> features, 
-            File refFile, int maxTopics, Feature keyFeature, Set<String> blacklist, 
+    public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger,
+            ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq,
+            ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords,
+            Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens,
+            int ngramMin, int ngramMax, boolean headTokenFinal,
+            TermExtractionConfiguration.WeightingMethod method, List<Feature> features,
+            File refFile, int maxTopics, Feature keyFeature, Set<String> blacklist,
             boolean oneTopicPerDoc) {
         this.nThreads = nThreads;
         this.tagger = tagger;
@@ -121,7 +121,7 @@ public class TermExtraction {
         this.refFile = refFile;
         this.maxTopics = maxTopics;
         this.keyFeature = keyFeature;
-        this.blacklist = blacklist;
+        this.configBlacklist = blacklist;
         this.oneTopicPerDoc = oneTopicPerDoc;
     }
 
@@ -182,7 +182,10 @@ public class TermExtraction {
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
         this.maxTopics = config.maxTopics;
         this.keyFeature = config.baseFeature;
-        this.blacklist = config.blacklist;
+        this.configBlacklist = config.blacklist == null ? new HashSet<>() : config.blacklist;
+        if(config.blacklistFile != null) {
+            loadBlacklistFromFile (this.configBlacklist, config.blacklistFile);
+        }
         this.oneTopicPerDoc = config.oneTopicPerDoc;
     }
 
@@ -198,7 +201,7 @@ public class TermExtraction {
 
     public FrequencyStats extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTopic> docTopics,
-            CasingStats casing)
+            CasingStats casing, Set<String> blackList)
             throws SearchException, InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
@@ -210,7 +213,7 @@ public class TermExtraction {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTopics, casing, lowercaseAll(blacklist)));
+                    summary, docTopics, casing, lowercaseAll(blackList)));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -225,11 +228,15 @@ public class TermExtraction {
     private Object2DoubleMap<String> scoreByFeat(List<String> topics, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
-            final Lazy<DomainStats> domain) {
+            final Lazy<DomainStats> domain, final Set<String> whiteList) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String topic : topics) {
-            scores.put(topic,
-                    Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
+            if (whiteList.contains(topic)) {
+                scores.put(topic, Double.POSITIVE_INFINITY);
+            } else {
+                scores.put(topic,
+                        Features.calcFeature(feature, topic, stats, ref, incl, ntm, domain));
+            }
         }
         return scores;
 
@@ -252,7 +259,15 @@ public class TermExtraction {
                     if (whiteList.contains(o2)) {
                         return +1;
                     } else {
-                        return -Double.compare(scores.getDouble(o1), scores.getDouble(o2));
+                        boolean proper1 = isProperTopic(o1, stopWords);
+                        boolean proper2 = isProperTopic(o2, stopWords);
+                        if (proper1 == proper2) {
+                            return -Double.compare(scores.getDouble(o1), scores.getDouble(o2));
+                        } else if (proper1) {
+                            return -1;
+                        } else {
+                            return +1;
+                        }
                     }
                 }
             }
@@ -269,10 +284,11 @@ public class TermExtraction {
     }
 
     public Result extractTopics(final Corpus searcher, final Set<String> whiteList, final Set<String> blackList, SaffronListener log) {
+        blackList.addAll(configBlacklist);
         try {
             final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
-            final FrequencyStats freqs = extractStats(searcher, dts, casing);
+            final FrequencyStats freqs = extractStats(searcher, dts, casing, blackList);
             Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
                 @Override
                 protected FrequencyStats init() {
@@ -285,9 +301,9 @@ public class TermExtraction {
                         } else if (refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
                         } else if (refFile.getName().endsWith(".zip")) {
-                            return extractStats(CorpusTools.fromZIP(refFile), null, null);
+                            return extractStats(CorpusTools.fromZIP(refFile), null, null, blackList);
                         } else if (refFile.getName().endsWith(".tar.gz")) {
-                            return extractStats(CorpusTools.fromTarball(refFile), null, null);
+                            return extractStats(CorpusTools.fromTarball(refFile), null, null, blackList);
                         } else {
                             throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
@@ -328,10 +344,15 @@ public class TermExtraction {
                 }
             };
             List<String> topics = new ArrayList<>(freqs.docFrequency.keySet());
+            for (String whiteListTopic : whiteList) {
+                if (!freqs.docFrequency.containsKey(whiteListTopic)) {
+                    topics.add(whiteListTopic);
+                }
+            }
             switch (method) {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(topics, keyFeature,
-                            freqs, ref, incl, ntm, domain);
+                            freqs, ref, incl, ntm, domain, whiteList);
                     rankTopicsByFeat(topics, scores, whiteList, blackList);
                     if (topics.size() > maxTopics) {
                         if (oneTopicPerDoc) {
@@ -340,13 +361,13 @@ public class TermExtraction {
                             topics = topics.subList(0, maxTopics);
                         }
                     }
-                    return new Result(convertToTopics(topics, freqs, scores, casing),
+                    return new Result(convertToTopics(topics, freqs, scores, casing, whiteList, stopWords),
                             filterTopics(topics, dts, casing, stopWords));
                 case voting:
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(topics, feat,
-                                freqs, ref, incl, ntm, domain);
+                                freqs, ref, incl, ntm, domain, whiteList);
                         rankTopicsByFeat(topics, scores2, whiteList, blackList);
                         int i = 1;
                         for (String topic : topics) {
@@ -361,7 +382,7 @@ public class TermExtraction {
                             topics = topics.subList(0, maxTopics);
                         }
                     }
-                    return new Result(convertToTopics(topics, freqs, voting, casing),
+                    return new Result(convertToTopics(topics, freqs, voting, casing, whiteList, stopWords),
                             filterTopics(topics, dts, casing, stopWords));
                 default:
                     throw new UnsupportedOperationException("TODO");
@@ -375,15 +396,15 @@ public class TermExtraction {
             ConcurrentLinkedQueue<DocumentTopic> dts,
             CasingStats casing, Set<String> stopWords) {
         Set<String> ts2 = new HashSet<>(ts);
-        List<DocumentTopic> rval = new ArrayList<>();
+        Set<DocumentTopic> rval = new HashSet<>();
         for (DocumentTopic dt : dts) {
-            if (ts2.contains(dt.topic_string) && isProperTopic(dt.topic_string, stopWords)) {
+            if (ts2.contains(dt.topic_string)) { // && isProperTopic(dt.topic_string, stopWords)) {
                 rval.add(new DocumentTopic(dt.document_id,
                         casing.trueCase(dt.topic_string),
                         dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
             }
         }
-        return rval;
+        return new ArrayList<DocumentTopic>(rval);
     }
 
     private static boolean isProperTopic(String rootSequence, Set<String> stopWords) {
@@ -462,13 +483,19 @@ public class TermExtraction {
     }
 
     private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
-            Object2DoubleMap<String> scores, CasingStats casing) {
+            Object2DoubleMap<String> scores, CasingStats casing, Set<String> whiteList,
+            Set<String> stopWords) {
         Set<Topic> topics = new HashSet<>();
         for (String t : ts) {
-            topics.add(new Topic(casing.trueCase(t),
+            final Topic topic = new Topic(casing.trueCase(t),
                     stats.termFrequency.getInt(t),
                     stats.docFrequency.getInt(t), scores.getDouble(t),
-                    Collections.EMPTY_LIST));
+                    Collections.EMPTY_LIST,
+                    Status.none.toString());
+            topics.add(topic);
+            if (whiteList.contains(t)) {
+                topic.status = Status.accepted;
+            }
         }
         return topics;
     }
@@ -514,6 +541,18 @@ public class TermExtraction {
         return acceptedTopics;
     }
 
+    private void loadBlacklistFromFile(Set<String> configBlacklist, SaffronPath blacklistFile) {
+        try(BufferedReader r = new BufferedReader(new FileReader(blacklistFile.toFile()))) {
+            String line;
+            while((line = r.readLine()) != null) {
+                configBlacklist.add(line);
+            }
+        } catch(IOException x) {
+            System.err.println("Could not load black list file");
+            throw new RuntimeException(x);
+        }
+    }
+
     public static class Result {
 
         public Set<Topic> topics;
@@ -530,11 +569,11 @@ public class TermExtraction {
         public void normalize() {
             double[] values = new double[topics.size()];
             int i = 0;
-            for(Topic t : topics) {
+            for (Topic t : topics) {
                 values[i++] = t.score;
             }
             LogGap normalizer = LogGap.makeModel(values);
-            for(Topic t : topics) {
+            for (Topic t : topics) {
                 t.score = normalizer.normalize(t.score);
             }
         }

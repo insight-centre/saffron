@@ -1,7 +1,7 @@
 const apiUrl = '/api/v1/run/';
 const apiUrlWithSaffron = apiUrl + saffronDatasetName + '/';
 
-angular.module('app', ['ngMaterial'])
+angular.module('app', ['ngMaterial', 'ui.bootstrap'])
     // this service is used to collect all public values
     // to be able to pass them among controllers
     .factory('sharedProperties', function ($location) {
@@ -78,6 +78,24 @@ function rerunTaxonomy($http, runId){
 }
 
 
+angular.module('app').component('header', {
+   templateUrl: '/header-component.html',
+   controller: function ($location, $scope, $window) {
+      var ctrl = this;
+      ctrl.menuList = [];
+      ctrl.menuList.push({
+        "href": "/" + saffronDatasetName + "/",
+        "text": "Home"
+      });
+
+      ctrl.searchAction = "/" + saffronDatasetName + "/search/";
+   },
+   bindings: {
+     //expects the value "yes" 
+      menu: '@',
+      search: '@'
+   }
+});
 
 // getting the top topics to fill the right sidebar on homepage of a run
 angular.module('app').component('toptopics', {
@@ -387,7 +405,6 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
     getParents(sharedProperties.getTopic());
 });
 
-
 // the runs controller
 angular.module('app').controller('runs', function ($scope, $http, $location, sharedProperties) {
     $scope.parents = [];
@@ -409,25 +426,12 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     // reject one or multiple topics
     $scope.deleteRun = function($event, id){
         $event.preventDefault();
-        deleteOneRun($http, id);
+        if(confirm("Are you sure you want to delete this run?")) {
+            deleteOneRun($http, id);
+        }
     };
 
 });
-
-// angular.module('app').controller('deleteRun', function ($scope, $http, $location, sharedProperties) {
-//
-//     $scope.parents = parents;
-//     $scope.deleteRun = function(id) {
-//         console.log("HERE")
-//         if(confirm("Are you sure you want to delete this run?")) {
-//             var index = $scope.parents.indexOf(id);
-//             if(index >= 0) {
-//                 $scope.parents.splice(index, 1);
-//             }
-//             $http.get("/api/v1/" + parents);
-//         }
-//     };
-// });
 
 // the child topics component
 angular.module('app').component('childtopics', {

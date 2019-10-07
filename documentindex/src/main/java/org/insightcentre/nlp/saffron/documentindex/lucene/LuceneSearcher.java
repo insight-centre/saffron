@@ -185,7 +185,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
             try (IndexWriter writer = new IndexWriter(directory, conf)) {
                 Term t = new Term(LuceneDocument.UID_NAME, id);
                 writer.updateDocument(t, LuceneDocument.makeDocument(doc.id, doc.contents(), doc.url, doc.authors, doc.name, doc.file == null ? null : doc.file.toFile(), doc.mimeType, doc.metadata));
-            }
+            } 
         } catch (IOException x) {
             throw new RuntimeException(x);
         }

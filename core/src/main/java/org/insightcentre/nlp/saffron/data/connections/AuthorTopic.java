@@ -1,12 +1,15 @@
 package org.insightcentre.nlp.saffron.data.connections;
 
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthorTopic {
     public String author_id;
     public String topic_id;
