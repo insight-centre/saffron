@@ -61,6 +61,14 @@ Install MongoDB with the defaults set and start up. Once started, open a Mongo
 session by typing 'mongo' on a terminal. Create a saffron database by typing:
 
     use saffron
+    
+By default, the aforementioned JSON files are not generated anymore, however you can change this by editing the file
+    ./saffron-web.sh
+    
+and change the following line from false to true:
+
+    export STORE_LOCAL_COPY=true
+
 
 To change the Mongo HOST and PORT, simply edit the following file
 
@@ -128,6 +136,8 @@ Documentation
 =============
 
 The JavaDoc is available at https://saffron.pages.insight-centre.org/saffron/
+
+The detailed description of how to use the Edit Mode in the Web interface is available in the [Wiki](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode)
 
 API Documentation
 =================
