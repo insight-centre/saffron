@@ -106,7 +106,7 @@ The following results are generated
 * `topic-sim.json`: The topic-topic similarity graph
 * `author-sim.json`: The author-author similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
-* `cinfig.json`: the configuration file for the run
+* `config.json`: the configuration file for the run
  
 
 To create a .dot file, you can use the command line:
