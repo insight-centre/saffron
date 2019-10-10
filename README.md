@@ -123,7 +123,7 @@ Documentation
 
 The JavaDoc is available at https://saffron.pages.insight-centre.org/saffron/
 
-The Wiki describes the 
+The Wiki describes the web interface of the review mode https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode
 
 API Documentation
 =================
