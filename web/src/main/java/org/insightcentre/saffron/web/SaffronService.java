@@ -65,30 +65,30 @@ public class SaffronService {
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
 		}		
-		if (topic.topicString == null || topic.topicString.equals("")) {
+		if (topic.getString() == null || topic.getString().equals("")) {
 			InvalidValueException exception = new InvalidValueException("The topic string cannot be empty or null");
-			exception.addParameterValue("topic.string", topic.topicString);
+			exception.addParameterValue("topic.string", topic.getString());
 			throw exception;
 		}
-		if (topic.status == null) {
+		if (topic.getStatus() == null) {
 			InvalidValueException exception = new InvalidValueException("The topic status cannot be null");
-			exception.addParameterValue("topic.status", topic.status);
+			exception.addParameterValue("topic.status", topic.getStatus());
 			throw exception;
 		}
 		
-		Term dbTopic = dataSource.getTopic(taxonomyId, topic.topicString);
-		if (dbTopic.status.equals(Status.rejected))
+		Term dbTopic = dataSource.getTopic(taxonomyId, topic.getString());
+		if (dbTopic.getStatus().equals(Status.rejected))
 			throw new InvalidOperationException("The status of a 'rejected' topic cannot be modified.");
 		
 		// 1 - Change topic status in the database.
-		boolean topicUpdated = dataSource.updateTopic(taxonomyId, topic.topicString, topic.status.toString());
+		boolean topicUpdated = dataSource.updateTopic(taxonomyId, topic.getString(), topic.getStatus().toString());
 		if(!topicUpdated)
 			throw new RuntimeException("An error has ocurred when updating the topic in the database.");
 		
 		//2 - If new status = "rejected" then
-		if (topic.status.equals(Status.rejected)) {
+		if (topic.getStatus().equals(Status.rejected)) {
 			Taxonomy taxonomy = dataSource.getTaxonomy(taxonomyId);
-			taxonomy.removeDescendent(topic.topicString);
+			taxonomy.removeDescendent(topic.getString());
 			boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
 			if(!taxonomyUpdated)
 				throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");

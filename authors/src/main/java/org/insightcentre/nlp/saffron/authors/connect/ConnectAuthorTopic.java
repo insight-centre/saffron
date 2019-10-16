@@ -146,7 +146,7 @@ public class ConnectAuthorTopic {
             for(Author a : doc.authors) {
                 if(!author2Topic.containsKey(a)) 
                     author2Topic.put(a, new ArrayList<String>());
-                author2Topic.get(a).add(dt.topic_string);
+                author2Topic.get(a).add(dt.term_string);
             }
         }
         return author2Topic;
@@ -155,7 +155,7 @@ public class ConnectAuthorTopic {
     private Map<String, Term> buildTopicById(List<Term> topics) {
         Map<String, Term> topicById = new HashMap<>();
         for(Term topic : topics)
-            topicById.put(topic.topicString, topic);
+            topicById.put(topic.getString(), topic);
         return topicById;
     }
 
@@ -170,15 +170,15 @@ public class ConnectAuthorTopic {
             Object2IntMap<AT> matches, SaffronListener log) {
         for(Map.Entry<Author, List<String>> e : author2Topic.entrySet()) {
             Author a = e.getKey();
-            for(String topic_string : e.getValue()) {
-                Term t = topics.get(topic_string);
+            for(String termString : e.getValue()) {
+                Term t = topics.get(termString);
                 if(t == null) {
-                    log.log("Topic missing: " + topic_string);
+                    log.log("Topic missing: " + termString);
                     continue;
                 }
-                AT at = new AT(a.id, topic_string);
-                occurrences.put(at, occurrences.getInt(at) + t.occurrences);
-                matches.put(at, matches.getInt(at) + t.matches);
+                AT at = new AT(a.id, termString);
+                occurrences.put(at, occurrences.getInt(at) + t.getOccurrences());
+                matches.put(at, matches.getInt(at) + t.getMatches());
             }
         }
     }
@@ -187,7 +187,7 @@ public class ConnectAuthorTopic {
         for(DocumentTopic dt : docTopics) {
             Document doc = docById.get(dt.document_id);
             for(Author a : doc.authors) {
-                AT at = new AT(a.id, dt.topic_string);
+                AT at = new AT(a.id, dt.term_string);
                 paper_count.put(at, paper_count.getInt(at) + 1);
                 if(dt.tfidf != null)
                     tfirf.put(at, tfirf.getDouble(at) + dt.tfidf);

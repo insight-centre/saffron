@@ -46,13 +46,13 @@ public class TopicExtractionBenchmark {
         final Set<String> extractedTopics = new TreeSet<>();
         if (retain) {
             for (Term t : extracted) {
-                extractedTopics.add(t.topicString.toLowerCase());
+                extractedTopics.add(t.getString().toLowerCase());
             }
         }
         Set<String> goldTopics = new TreeSet<>();
         for (Term t : gold) {
-            if (!retain || extractedTopics.contains(t.topicString.toLowerCase())) {
-                goldTopics.add(t.topicString.toLowerCase());
+            if (!retain || extractedTopics.contains(t.getString().toLowerCase())) {
+                goldTopics.add(t.getString().toLowerCase());
             }
         }
         final int K = Math.max(extracted.size(), goldTopics.size());
@@ -60,7 +60,7 @@ public class TopicExtractionBenchmark {
         double[] recall = new double[K];
         double[] precision = new double[K];
         for (int i = 0; i < K; i++) {
-            if (i < extracted.size() && goldTopics.contains(extracted.get(i).topicString.toLowerCase())) {
+            if (i < extracted.size() && goldTopics.contains(extracted.get(i).getString().toLowerCase())) {
                 found++;
             }
             recall[i] = (double) found / goldTopics.size();

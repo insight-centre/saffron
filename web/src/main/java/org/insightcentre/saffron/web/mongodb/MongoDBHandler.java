@@ -74,7 +74,7 @@ public class MongoDBHandler implements SaffronDataSource {
         private List<TopicTopic> topicSim;
         private List<AuthorTopic> authorTopics;
         private List<DocumentTopic> docTopics;
-        private HashMap<String, Term> topics;
+        private HashMap<String, Term> terms;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
         private HashMap<String, List<DocumentTopic>> docByTopic, topicByDoc;
@@ -173,11 +173,11 @@ public class MongoDBHandler implements SaffronDataSource {
             this.authorTopics = new ArrayList<>(authorTopics);
         }
 
-        public List<AuthorTopic> getAuthorByTopic(String topic) {
+        public List<AuthorTopic> getAuthorByTopic(String term) {
             if (authorByTopic == null){
                 authorByTopic = new HashMap<>();
             }
-            List<AuthorTopic> ats = authorByTopic.get(topic);
+            List<AuthorTopic> ats = authorByTopic.get(term);
             return ats == null ? Collections.EMPTY_LIST : ats;
         }
 
@@ -205,10 +205,10 @@ public class MongoDBHandler implements SaffronDataSource {
             docByTopic = new HashMap<>();
             topicByDoc = new HashMap<>();
             for (DocumentTopic dt : docTopics) {
-                if (!docByTopic.containsKey(dt.topic_string)) {
-                    docByTopic.put(dt.topic_string, new ArrayList<DocumentTopic>());
+                if (!docByTopic.containsKey(dt.term_string)) {
+                    docByTopic.put(dt.term_string, new ArrayList<DocumentTopic>());
                 }
-                docByTopic.get(dt.topic_string).add(dt);
+                docByTopic.get(dt.term_string).add(dt);
                 if (!topicByDoc.containsKey(dt.document_id)) {
                     topicByDoc.put(dt.document_id, new ArrayList<DocumentTopic>());
                 }
@@ -217,8 +217,8 @@ public class MongoDBHandler implements SaffronDataSource {
             this.docTopics = docTopics;
         }
 
-        public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String topic) {
-            final List<DocumentTopic> dts = docByTopic.get(topic);
+        public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String term) {
+            final List<DocumentTopic> dts = docByTopic.get(term);
             if (dts == null) {
                 return Collections.EMPTY_LIST;
             } else {
@@ -250,27 +250,27 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public Term getTopic(String topic) {
-            return topics.get(topic);
+        public Term getTopic(String term) {
+            return terms.get(term);
         }
 
         public Collection<Term> getTopics() {
-            return topics == null ? Collections.EMPTY_LIST : topics.values();
+            return terms == null ? Collections.EMPTY_LIST : terms.values();
         }
 
-        public void setTopics(Collection<Term> _topics) {
-            this.topics = new HashMap<>();
+        public void setTopics(Collection<Term> _terms) {
+            this.terms = new HashMap<>();
             this.topicsSorted = new ArrayList<>();
-            for (Term t : _topics) {
-                this.topics.put(t.topicString, t);
-                this.topicsSorted.add(t.topicString);
+            for (Term t : _terms) {
+                this.terms.put(t.getString(), t);
+                this.topicsSorted.add(t.getString());
             }
             this.topicsSorted.sort(new Comparator<String>() {
                 @Override
                 public int compare(String o1, String o2) {
-                    if (topics.containsKey(o1) && topics.containsKey(o2)) {
-                        double wt1 = topics.get(o1).score;
-                        double wt2 = topics.get(o2).score;
+                    if (terms.containsKey(o1) && terms.containsKey(o2)) {
+                        double wt1 = terms.get(o1).getScore();
+                        double wt2 = terms.get(o2).getScore();
                         if (wt1 > wt2) {
                             return -1;
                         } else if (wt2 > wt1) {
@@ -286,10 +286,10 @@ public class MongoDBHandler implements SaffronDataSource {
             return topicSim;
         }
 
-        public void setTopicSim(List<TopicTopic> topicSim) {
+        public void setTopicSim(List<TopicTopic> termSim) {
             topicByTopic1 = new HashMap<>();
             topicByTopic2 = new HashMap<>();
-            for (TopicTopic tt : topicSim) {
+            for (TopicTopic tt : termSim) {
                 if (!topicByTopic1.containsKey(tt.topic1)) {
                     topicByTopic1.put(tt.topic1, new ArrayList<TopicTopic>());
                 }
@@ -299,12 +299,12 @@ public class MongoDBHandler implements SaffronDataSource {
                 }
                 topicByTopic2.get(tt.topic2).add(tt);
             }
-            this.topicSim = topicSim;
+            this.topicSim = termSim;
         }
 
-        public List<TopicTopic> getTopicByTopic1(String topic1, List<String> _ignore) {
+        public List<TopicTopic> getTopicByTopic1(String term1, List<String> _ignore) {
             Set<String> ignore = _ignore == null ? new HashSet<>() : new HashSet<>(_ignore);
-            List<TopicTopic> tt = topicByTopic1.get(topic1);
+            List<TopicTopic> tt = topicByTopic1.get(term1);
             if (tt != null) {
                 Iterator<TopicTopic> itt = tt.iterator();
                 while (itt.hasNext()) {
@@ -318,8 +318,8 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public List<TopicTopic> getTopicByTopic2(String topic2) {
-            List<TopicTopic> tt = topicByTopic2.get(topic2);
+        public List<TopicTopic> getTopicByTopic2(String term2) {
+            List<TopicTopic> tt = topicByTopic2.get(term2);
             return tt == null ? Collections.EMPTY_LIST : tt;
         }
 
@@ -331,7 +331,7 @@ public class MongoDBHandler implements SaffronDataSource {
          */
         public boolean isLoaded() {
             return taxonomy != null && authorSim != null && topicSim != null
-                    && authorTopics != null && docTopics != null && topics != null
+                    && authorTopics != null && docTopics != null && terms != null
                     && corpus != null;
         }
 
@@ -427,8 +427,8 @@ public class MongoDBHandler implements SaffronDataSource {
             return t;
         }
 
-        public List<String> getTaxoParents(String topic_string) {
-            IntList il = taxoMap.get(topic_string);
+        public List<String> getTaxoParents(String term_string) {
+            IntList il = taxoMap.get(term_string);
             if (il != null) {
                 Taxonomy t = taxonomy;
                 List<String> route = new ArrayList<>();
@@ -442,14 +442,14 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public Taxonomy getTaxoDescendent(String topic_string) {
+        public Taxonomy getTaxoDescendent(String term_string) {
 
             Taxonomy t = taxonomy;
-            return taxonomy.descendent(topic_string);
+            return taxonomy.descendent(term_string);
         }
 
-        public List<String> getTaxoChildren(String topic_string) {
-            IntList il = taxoMap.get(topic_string);
+        public List<String> getTaxoChildren(String term_string) {
+            IntList il = taxoMap.get(term_string);
             if (il != null) {
                 Taxonomy t = taxoNavigate(taxonomy, il);
                 List<String> children = new ArrayList<>();
@@ -462,8 +462,8 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public List<TopicAndScore> getTaxoChildrenScored(String topic_string) {
-            IntList il = taxoMap.get(topic_string);
+        public List<TopicAndScore> getTaxoChildrenScored(String term_string) {
+            IntList il = taxoMap.get(term_string);
             if (il != null) {
                 Taxonomy t = taxoNavigate(taxonomy, il);
                 List<TopicAndScore> children = new ArrayList<>();
@@ -476,39 +476,39 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        private void updateTopicName(String topic, String newTopic, Status status) {
-            Term t = topics.get(topic);
+        private void updateTopicName(String term, String newTerm, Status status) {
+            Term t = terms.get(term);
             if (t != null) {
                 for (AuthorTopic at : authorTopics) {
-                    if (at.topic_id.equals(topic)) {
-                        at.topic_id = newTopic;
+                    if (at.topic_id.equals(term)) {
+                        at.topic_id = newTerm;
                     }
                 }
                 for (DocumentTopic dt : docTopics) {
-                    if (dt.topic_string.equals(topic)) {
-                        dt.topic_string = newTopic;
+                    if (dt.term_string.equals(term)) {
+                        dt.term_string = newTerm;
                     }
                 }
                 for (TopicTopic tt : topicSim) {
-                    if (tt.topic1.equals(topic)) {
-                        tt.topic1 = newTopic;
+                    if (tt.topic1.equals(term)) {
+                        tt.topic1 = newTerm;
                     }
-                    if (tt.topic2.equals(topic)) {
-                        tt.topic2 = newTopic;
+                    if (tt.topic2.equals(term)) {
+                        tt.topic2 = newTerm;
                     }
                 }
-                updateTopicNameInTaxonomy(taxonomy, topic, newTopic);
-                t.topicString = newTopic;
-                t.status = status;
+                updateTopicNameInTaxonomy(taxonomy, term, newTerm);
+                t.setString(newTerm);
+                t.setStatus(status);
             }
         }
 
-        private void updateTopicNameInTaxonomy(Taxonomy taxo, String topic, String newTopic) {
-            if(taxo.root.equals(topic)) {
-                taxo.root = newTopic;
+        private void updateTopicNameInTaxonomy(Taxonomy taxo, String term, String newTerm) {
+            if(taxo.root.equals(term)) {
+                taxo.root = newTerm;
             } else {
                 for(Taxonomy child : taxo.getChildren()) {
-                    updateTopicNameInTaxonomy(child, topic, newTopic);
+                    updateTopicNameInTaxonomy(child, term, newTerm);
                 }
             }
         }
@@ -524,11 +524,11 @@ public class MongoDBHandler implements SaffronDataSource {
         this.mongoClient = new MongoClient(url, port);
         this.database = mongoClient.getDatabase(dbName);
         this.runCollection = database.getCollection(collectionName);
-        this.topicsCollection = database.getCollection(collectionName + "_topics");
-        this.topicsCorrespondenceCollection = database.getCollection(collectionName + "_topics_correspondence");
-        this.topicsExtractionCollection = database.getCollection(collectionName + "_topics_extraction");
-        this.authorTopicsCollection = database.getCollection(collectionName + "_author_topics");
-        this.topicsSimilarityCollection = database.getCollection(collectionName + "_topics_similarity");
+        this.topicsCollection = database.getCollection(collectionName + "_terms");
+        this.topicsCorrespondenceCollection = database.getCollection(collectionName + "_terms_correspondence");
+        this.topicsExtractionCollection = database.getCollection(collectionName + "_terms_extraction");
+        this.authorTopicsCollection = database.getCollection(collectionName + "_author_terms");
+        this.topicsSimilarityCollection = database.getCollection(collectionName + "_terms_similarity");
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
         this.taxonomyCollection = database.getCollection(collectionName + "_taxonomy");
         this.corpusCollection = database.getCollection(collectionName + "_corpus");
@@ -783,23 +783,24 @@ public class MongoDBHandler implements SaffronDataSource {
         return topicsExtractionCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getTopicExtractionForTopic(String runId, String topicId) {
-        return topicsExtractionCollection.find(and(eq("run", runId), eq("topicId", topicId)));
+    public FindIterable<Document> getTopicExtractionForTopic(String runId, String termId) {
+        return topicsExtractionCollection.find(and(eq("run", runId), eq("termId", termId)));
     }
 
+    //TODO: Create final variable with names of attributes in each collection
     public boolean addTopicExtraction(String id, Date date, Set<Term> res) {
         Document document = new Document();
 
         res.forEach(name -> {
-            document.put("_id", id + "_" + name.topicString);
+            document.put("_id", id + "_" + name.getString());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic", name.topicString);
-            document.put("score", name.score);
-            document.put("dbpedia_url", name.dbpedia_url);
-            document.put("mvList", name.mvList);
-            document.put("occurrences", name.occurrences);
-            document.put("matches", name.matches);
+            document.put("term", name.getString());
+            document.put("score", name.getScore());
+            document.put("dbpedia_url", name.getDbpediaUrl());
+            document.put("mvList", name.getMorphologicalVariationList());
+            document.put("occurrences", name.getOccurrences());
+            document.put("matches", name.getMatches());
             topicsExtractionCollection.insertOne(document);
         });
         return true;
@@ -807,14 +808,14 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-    public boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> topics) {
+    public boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> terms) {
         Document document = new Document();
 
-        topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topic_string + "_" + name.document_id);
+        terms.forEach(name -> {
+            document.put("_id", id + "_" + name.term_string + "_" + name.document_id);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic_string", name.topic_string);
+            document.put("term_string", name.term_string);
             document.put("acronym", name.acronym);
             document.put("occurences", name.occurrences);
             document.put("pattern", name.pattern);
@@ -833,9 +834,9 @@ public class MongoDBHandler implements SaffronDataSource {
         return this.topicsCorrespondenceCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getDocumentTopicCorrespondenceForTopic(String runId, String topicId) {
+    public FindIterable<Document> getDocumentTopicCorrespondenceForTopic(String runId, String termId) {
 
-        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("topic", topicId)));
+        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("term", termId)));
     }
 
 
@@ -843,21 +844,21 @@ public class MongoDBHandler implements SaffronDataSource {
         return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
     }
 
-    public boolean addTopics(String id, Date date, List<Term> topics) {
+    public boolean addTopics(String id, Date date, List<Term> terms) {
         Document document = new Document();
 
-        topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topicString);
+        terms.forEach(name -> {
+            document.put("_id", id + "_" + name.getString());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic", name.topicString);
-            document.put("matches", name.matches);
-            document.put("occurences", name.occurrences);
-            document.put("score", name.score);
-            document.put("topic_string", name.topicString);
-            document.put("mvList", name.mvList);
-            document.put("dbpedia_url", name.dbpedia_url);
-            document.put("status", name.status.toString());
+            document.put("term", name.getString());
+            document.put("matches", name.getMatches());
+            document.put("occurences", name.getOccurrences());
+            document.put("score", name.getScore());
+            document.put("term_string", name.getString());
+            document.put("mvList", name.getMorphologicalVariationList());
+            document.put("dbpedia_url", name.getDbpediaUrl());
+            document.put("status", name.getStatus().toString());
             topicsCollection.insertOne(document);
         });
 
@@ -872,23 +873,23 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
 
-    public void deleteTopic(String runId, String topic) {
+    public void deleteTopic(String runId, String term) {
 
         BasicDBObject updateFields = new BasicDBObject();
         updateFields.append("run", runId);
-        updateFields.append("topic", topic);
+        updateFields.append("term", term);
         BasicDBObject setQuery = new BasicDBObject();
         setQuery.append("$set", updateFields);
-        topicsCollection.findOneAndDelete(and(eq("run", runId), (eq("topic", topic))));
+        topicsCollection.findOneAndDelete(and(eq("run", runId), (eq("term", term))));
     }
 
 
 
 
-    public boolean addAuthorTopics(String id, Date date, Collection<AuthorTopic> topics) {
+    public boolean addAuthorTopics(String id, Date date, Collection<AuthorTopic> terms) {
         Document document = new Document();
         int[] idx = { 0 };
-        topics.forEach(name -> {
+        terms.forEach(name -> {
             document.put("_id", id + "_" + name.topic_id + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
@@ -896,7 +897,7 @@ public class MongoDBHandler implements SaffronDataSource {
             document.put("matches", name.matches);
             document.put("occurences", name.occurrences);
             document.put("score", name.score);
-            document.put("topic_id", name.topic_id);
+            document.put("term_id", name.topic_id);
             document.put("tfirf", name.tfirf);
             document.put("paper_count", name.paper_count);
             document.put("researcher_score", name.researcher_score);
@@ -912,23 +913,23 @@ public class MongoDBHandler implements SaffronDataSource {
 
     }
 
-    public FindIterable<Document>  getAuthorTopicsForTopic(String runId, String topic) {
+    public FindIterable<Document>  getAuthorTopicsForTopic(String runId, String term) {
         Document document = new Document();
         document.put("run", runId);
-        return authorTopicsCollection.find(and(eq("run", runId), eq("author_topic", topic)));
+        return authorTopicsCollection.find(and(eq("run", runId), eq("author_term", term)));
 
     }
 
-    public boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity) {
+    public boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> termSimilarity) {
         Document document = new Document();
         int[] idx = { 0 };
-        for (TopicTopic topic : topicSimilarity) {
-            document.put("_id", id + "_" + topic.getTopic1() + "_" + topic.getTopic2() + "_" + idx[0]++);
+        for (TopicTopic term : termSimilarity) {
+            document.put("_id", id + "_" + term.getTopic1() + "_" + term.getTopic2() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic1_id", topic.getTopic1());
-            document.put("topic2_id", topic.getTopic2());
-            document.put("similarity", topic.getSimilarity());
+            document.put("term1_id", term.getTopic1());
+            document.put("term2_id", term.getTopic2());
+            document.put("similarity", term.getSimilarity());
             topicsSimilarityCollection.insertOne(document);
         }
         return true;
@@ -940,16 +941,16 @@ public class MongoDBHandler implements SaffronDataSource {
         return this.topicsSimilarityCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getTopicsSimilarityBetweenTopics(String runId, String topic1, String topic2) {
+    public FindIterable<Document> getTopicsSimilarityBetweenTopics(String runId, String term1, String term2) {
         Document document = new Document();
         document.put("run", runId);
-        return this.topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1_id", topic1), eq("topic2", topic2)));
+        return this.topicsSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term1), eq("term2", term2)));
     }
 
-    public FindIterable<Document> getTopicsSimilarityForTopic(String runId, String topic) {
+    public FindIterable<Document> getTopicsSimilarityForTopic(String runId, String term) {
         Document document = new Document();
         document.put("run", runId);
-        return this.topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1_id", topic)));
+        return this.topicsSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term)));
     }
 
     public boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim) {
@@ -975,10 +976,10 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
 
-    public FindIterable<Document> getAuthorSimilarityForTopic(String runId, String topic1, String topic2) {
+    public FindIterable<Document> getAuthorSimilarityForTopic(String runId, String term1, String term2) {
         Document document = new Document();
         document.put("run", runId);
-        return this.authorSimilarityCollection.find(and(eq("run", runId), eq("topic1_id", topic1), eq("topic2_id", topic2)));
+        return this.authorSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term1), eq("term2_id", term2)));
     }
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
@@ -1011,7 +1012,7 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e){
             e.printStackTrace();
-            System.err.println("Failed to reject the topic from the taxonomy " + id);
+            System.err.println("Failed to reject the term from the taxonomy " + id);
             return false;
         }
 
@@ -1040,21 +1041,21 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<String> getTaxoParents(String runId, String topic_string) {
+    public List<String> getTaxoParents(String runId, String term_string) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTaxoParents(topic_string);
+        return saffron.getTaxoParents(term_string);
     }
 
     @Override
-    public List<TopicAndScore> getTaxoChildrenScored(String runId, String topic_string) {
+    public List<TopicAndScore> getTaxoChildrenScored(String runId, String term_string) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTaxoChildrenScored(topic_string);
+        return saffron.getTaxoChildrenScored(term_string);
     }
 
     @Override
@@ -1094,30 +1095,30 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<String> getTaxoChildren(String runId, String topic_string) {
+    public List<String> getTaxoChildren(String runId, String term_string) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTaxoChildren(topic_string);
+        return saffron.getTaxoChildren(term_string);
     }
 
     @Override
-    public List<TopicTopic> getTopicByTopic1(String runId, String topic1, List<String> _ignore) {
+    public List<TopicTopic> getTopicByTopic1(String runId, String term1, List<String> _ignore) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTopicByTopic1(topic1, _ignore);
+        return saffron.getTopicByTopic1(term1, _ignore);
     }
 
     @Override
-    public List<TopicTopic> getTopicByTopic2(String runId, String topic2) {
+    public List<TopicTopic> getTopicByTopic2(String runId, String term2) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTopicByTopic2(topic2);
+        return saffron.getTopicByTopic2(term2);
     }
 
     @Override
@@ -1130,12 +1131,12 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<AuthorTopic> getAuthorByTopic(String runId, String topic) {
+    public List<AuthorTopic> getAuthorByTopic(String runId, String term) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getAuthorByTopic(topic);
+        return saffron.getAuthorByTopic(term);
     }
 
     @Override
@@ -1157,21 +1158,21 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String topic) {
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String term) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getDocByTopic(topic);
+        return saffron.getDocByTopic(term);
     }
 
     @Override
-    public Term getTopic(String runId, String topic) {
+    public Term getTopic(String runId, String term) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTopic(topic);
+        return saffron.getTopic(term);
     }
 
     @Override
@@ -1254,13 +1255,13 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public void setTopics(String runId, List<Term> _topics) {
-        this.addTopics(runId, new Date(), _topics);
+    public void setTopics(String runId, List<Term> _terms) {
+        this.addTopics(runId, new Date(), _terms);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        saffron.setTopics(_topics);
+        saffron.setTopics(_terms);
 
     }
 
@@ -1275,13 +1276,13 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public void setTopicSim(String runId, List<TopicTopic> topicSim) {
-        this.addTopicsSimilarity(runId, new Date(), topicSim);
+    public void setTopicSim(String runId, List<TopicTopic> termSim) {
+        this.addTopicsSimilarity(runId, new Date(), termSim);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        saffron.setTopicSim(topicSim);
+        saffron.setTopicSim(termSim);
     }
 
     @Override
@@ -1310,10 +1311,10 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
 
-    public boolean updateTopic(String id, String topic, String status) {
+    public boolean updateTopic(String id, String term, String status) {
 
         try {
-            Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+            Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
             Bson update = set("status", status);
 
 
@@ -1325,7 +1326,7 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e ) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
@@ -1333,10 +1334,10 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-    public boolean updateTopicSimilarity(String id, String topic1, String topic2, String status) {
+    public boolean updateTopicSimilarity(String id, String term1, String term2, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic1),
-                Filters.eq("topic2", topic2));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term1", term1),
+                Filters.eq("term2", term2));
         Bson update = set("status", status);
 
 
@@ -1349,17 +1350,17 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic1 + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term1 + " from the taxonomy " + id);
             return false;
         }
 
     }
 
-    public boolean updateAuthorTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateAuthorTopicName(String id, String term, String newTopic, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_topic", topic));
-        Bson update = combine(set("author_topic", newTopic), set("topicString", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_term", term));
+        Bson update = combine(set("author_term", newTopic), set("termString", newTopic),
+                set("originalTopic", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
@@ -1369,18 +1370,18 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
     }
 
 
-    public boolean updateDocumentTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateDocumentTopicName(String id, String term, String newTopic, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
-        Bson update = combine(set("topic", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
+        Bson update = combine(set("term", newTopic),
+                set("originalTopic", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
@@ -1390,17 +1391,17 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
     }
 
-    public boolean updateTopicSimilarityName(String id, String topic, String newTopic, String status) {
+    public boolean updateTopicSimilarityName(String id, String term, String newTopic, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
-        Bson update = combine(set("topic1", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term1", term));
+        Bson update = combine(set("term1", newTopic),
+                set("originalTopic", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
@@ -1410,7 +1411,7 @@ public class MongoDBHandler implements SaffronDataSource {
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
@@ -1419,10 +1420,10 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-    public boolean updateTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateTopicName(String id, String term, String newTopic, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
-        Bson update = combine(set("topic", newTopic), set("topicString", newTopic), set("originalTopic", topic));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
+        Bson update = combine(set("term", newTopic), set("termString", newTopic), set("originalTopic", term));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
@@ -1460,7 +1461,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Taxonomy getTaxoDescendent(String runId, String topicString) {
+    public Taxonomy getTaxoDescendent(String runId, String termString) {
         return null;
     }
 
@@ -1490,7 +1491,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String topicId) {
+    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String termId) {
         return null;
     }
 
@@ -1500,14 +1501,14 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<TopicTopic> getTopicByTopics(String name, String topic1, String topic2) {
+    public Iterable<TopicTopic> getTopicByTopics(String name, String term1, String term2) {
         return null;
     }
 
 
     public FindIterable<Document> searchTaxonomy(String id, String term) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", term));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
 
         return topicsCorrespondenceCollection.find(condition);
     }

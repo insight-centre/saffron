@@ -51,8 +51,8 @@ public class Greedy implements TaxonomySearch {
         for (TaxoLink sp : whiteList) {
             if (topicMap.get(sp.top) != null && topicMap.get(sp.bottom) != null) {
                 soln = soln.add(sp.top, sp.bottom,
-                        topicMap.get(sp.top).score,
-                        topicMap.get(sp.bottom).score,
+                        topicMap.get(sp.top).getScore(),
+                        topicMap.get(sp.bottom).getScore(),
                         score.deltaScore(sp), true);
                 score = score.next(sp.top, sp.bottom, soln);
             }
@@ -75,8 +75,8 @@ public class Greedy implements TaxonomySearch {
             while (!candidates.isEmpty()) {
                 TaxoLink candidate = candidates.remove(0);
                 Solution soln2 = soln.add(candidate.top, candidate.bottom,
-                        topicMap.get(candidate.top).score,
-                        topicMap.get(candidate.bottom).score,
+                        topicMap.get(candidate.top).getScore(),
+                        topicMap.get(candidate.bottom).getScore(),
                         scores.getDouble(candidate), false);
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {

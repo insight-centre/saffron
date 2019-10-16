@@ -423,7 +423,7 @@ public class TermExtractionTest {
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("good time")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("good time")));
     }
     
     @Test
@@ -515,8 +515,8 @@ public class TermExtractionTest {
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("great time")));
-        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("good time") && t.status == Status.accepted));
+        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("great time")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("good time") && t.getStatus() == Status.accepted));
     }
     
     @Test
@@ -602,8 +602,8 @@ public class TermExtractionTest {
             config.oneTopicPerDoc);
         Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("plan")));
-        assert(!res.topics.stream().anyMatch((Term t) -> t.topicString.equals("401k plan")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("plan")));
+        assert(!res.topics.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
 
     }
 }

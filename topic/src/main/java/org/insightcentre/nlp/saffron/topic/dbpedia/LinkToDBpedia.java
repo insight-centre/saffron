@@ -81,7 +81,7 @@ public class LinkToDBpedia implements Closeable {
     void remove_different_case(List<Candidate> topic2titles, Term topic) {
         Iterator<Candidate> i = topic2titles.iterator();
         while (i.hasNext()) {
-            if (!has_same_case(topic.topicString, i.next().variant)) {
+            if (!has_same_case(topic.getString(), i.next().variant)) {
                 i.remove();
             }
         }
@@ -123,12 +123,12 @@ public class LinkToDBpedia implements Closeable {
         // TODO: Do something better here
         if (topic2titles.size() == 1) {
             try {
-                original.dbpedia_url = new URL("http://dbpedia.org/resource/" + topic2titles.get(0).dbpediaKey);
+                original.setDbpediaUrl(new URL("http://dbpedia.org/resource/" + topic2titles.get(0).dbpediaKey));
             } catch (MalformedURLException ex) {
                 System.err.println("Bad URL " + topic2titles.get(0).dbpediaKey);
             }
         } else if (topic2titles.size() > 1) {
-            System.err.println("Multiple candidates for " + original.topicString);
+            System.err.println("Multiple candidates for " + original.getString());
         }
         return original;
     }
@@ -146,7 +146,7 @@ public class LinkToDBpedia implements Closeable {
 
     List<Candidate> candidates(Term topic) {
         try {
-            statement.setString(1, topic.topicString);
+            statement.setString(1, topic.getString());
             ResultSet results = statement.executeQuery();
             List<Candidate> candidates = new ArrayList<>();
             while (results.next()) {

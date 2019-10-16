@@ -56,8 +56,8 @@ public class RDFConversion {
 
         for (DocumentTopic dt : data.getTopicByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
-                    base == null ? "../topic/" + encode(dt.topic_string) 
-                            : base + "/rdf/topic/" + encode(dt.topic_string)));
+                    base == null ? "../topic/" + encode(dt.term_string) 
+                            : base + "/rdf/topic/" + encode(dt.term_string)));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);
@@ -73,16 +73,16 @@ public class RDFConversion {
     }
     
     public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
-        Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.topicString))
+        Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.getString()))
                 .addProperty(RDF.type, SKOS.Concept)
-                .addProperty(RDFS.label, t.topicString)
-                .addProperty(SAFFRON.occurrences, model.createTypedLiteral(t.occurrences))
-                .addProperty(SAFFRON.matches, model.createTypedLiteral(t.matches))
-                .addProperty(SAFFRON.score, model.createTypedLiteral(t.score));
-        if (t.dbpedia_url != null) {
-            res.addProperty(SKOS.exactMatch, model.createResource(t.dbpedia_url.toString()));
+                .addProperty(RDFS.label, t.getString())
+                .addProperty(SAFFRON.occurrences, model.createTypedLiteral(t.getOccurrences()))
+                .addProperty(SAFFRON.matches, model.createTypedLiteral(t.getMatches()))
+                .addProperty(SAFFRON.score, model.createTypedLiteral(t.getScore()));
+        if (t.getDbpediaUrl() != null) {
+            res.addProperty(SKOS.exactMatch, model.createResource(t.getDbpediaUrl().toString()));
         }
-        for (Term.MorphologicalVariation mv : t.mvList) {
+        for (Term.MorphologicalVariation mv : t.getMorphologicalVariationList()) {
             res.addProperty(SAFFRON.morphologicalVariant,
                     model.createResource()
                     .addProperty(RDF.value, mv.string)
@@ -90,14 +90,14 @@ public class RDFConversion {
                             model.createTypedLiteral(mv.occurrences)));
         }
         
-        for(AuthorTopic at : data.getAuthorByTopic(datasetName, t.topicString)) {
+        for(AuthorTopic at : data.getAuthorByTopic(datasetName, t.getString())) {
             res.addProperty(SAFFRON.author, 
                     model.createResource(base == null ?
                             "../author/" + encode(at.author_id)
                             : base + "/rdf/author/" + encode(at.author_id)));
         }
         
-        for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.topicString, null)) {
+        for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
                             base == null ? encode(tt.topic2)

@@ -35,8 +35,8 @@ public class BeamSearch implements TaxonomySearch {
 
         for (TaxoLink sp : whiteList) {
             soln = soln.add(sp.top, sp.bottom,
-                    topicMap.get(sp.top).score,
-                    topicMap.get(sp.bottom).score,
+                    topicMap.get(sp.top).getScore(),
+                    topicMap.get(sp.bottom).getScore(),
                     score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
             score = score.next(sp.top, sp.bottom, soln);
@@ -60,8 +60,8 @@ public class BeamSearch implements TaxonomySearch {
                                 + linkScore;
                         if (next.canPush(totalScore)) {
                             Solution s = prevSoln.soln.add(t2, t1,
-                                    topicMap.get(t2).score,
-                                    topicMap.get(t1).score, linkScore, false);
+                                    topicMap.get(t2).getScore(),
+                                    topicMap.get(t1).getScore(), linkScore, false);
                             if (s != null) {
                                 Soln candidate = new Soln(s,
                                         prevSoln.score.next(t2, t1, s),

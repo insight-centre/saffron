@@ -398,9 +398,9 @@ public class TermExtraction {
         Set<String> ts2 = new HashSet<>(ts);
         Set<DocumentTopic> rval = new HashSet<>();
         for (DocumentTopic dt : dts) {
-            if (ts2.contains(dt.topic_string)) { // && isProperTopic(dt.topic_string, stopWords)) {
+            if (ts2.contains(dt.term_string)) { // && isProperTopic(dt.topic_string, stopWords)) {
                 rval.add(new DocumentTopic(dt.document_id,
-                        casing.trueCase(dt.topic_string),
+                        casing.trueCase(dt.term_string),
                         dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
             }
         }
@@ -494,7 +494,7 @@ public class TermExtraction {
                     Status.none.toString());
             topics.add(topic);
             if (whiteList.contains(t)) {
-                topic.status = Status.accepted;
+                topic.setStatus(Status.accepted);
             }
         }
         return topics;
@@ -513,10 +513,10 @@ public class TermExtraction {
         Map<String, Set<String>> topic2doc = new HashMap<>();
         for (DocumentTopic dt : dts) {
             docs.add(dt.document_id);
-            if (!topic2doc.containsKey(dt.topic_string)) {
-                topic2doc.put(dt.topic_string, new HashSet<>());
+            if (!topic2doc.containsKey(dt.term_string)) {
+                topic2doc.put(dt.term_string, new HashSet<>());
             }
-            topic2doc.get(dt.topic_string).add(dt.document_id);
+            topic2doc.get(dt.term_string).add(dt.document_id);
         }
         List<String> acceptedTopics = new ArrayList<>();
         for (String topic : topics) {
@@ -570,11 +570,11 @@ public class TermExtraction {
             double[] values = new double[topics.size()];
             int i = 0;
             for (Term t : topics) {
-                values[i++] = t.score;
+                values[i++] = t.getScore();
             }
             LogGap normalizer = LogGap.makeModel(values);
             for (Term t : topics) {
-                t.score = normalizer.normalize(t.score);
+                t.setScore(normalizer.normalize(t.getScore()));
             }
         }
 

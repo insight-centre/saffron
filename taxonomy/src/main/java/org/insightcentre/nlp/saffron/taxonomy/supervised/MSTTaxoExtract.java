@@ -43,10 +43,10 @@ public class MSTTaxoExtract implements TaxonomySearch {
             for(int j = 0; j < topics.size(); j++) {
                 matrix[i][j] = i == j ? 0 : classifier.predict(topics.get(i), topics.get(j));
             }
-            if(t1.score > bestScore || (t1.score == bestScore && t1.occurrences > bestOcc)) {
-                bestScore = t1.score;
-                bestOcc = t1.occurrences;
-                topNode = t1.topicString;
+            if(t1.getScore() > bestScore || (t1.getScore() == bestScore && t1.getOccurrences() > bestOcc)) {
+                bestScore = t1.getScore();
+                bestOcc = t1.getOccurrences();
+                topNode = t1.getString();
             }
         }
         System.err.println("Built graph");
@@ -93,7 +93,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
             }
         }
         double linkScore = parent == null ? Double.NaN : matrix[topic.indexOf(parent)][topic.indexOf(node)];
-        return new Taxonomy(node, topicMap.get(node).score, linkScore, "", "", children, Status.none);
+        return new Taxonomy(node, topicMap.get(node).getScore(), linkScore, "", "", children, Status.none);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

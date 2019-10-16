@@ -179,10 +179,10 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             docByTopic = new HashMap<>();
             topicByDoc = new HashMap<>();
             for (DocumentTopic dt : docTopics) {
-                if (!docByTopic.containsKey(dt.topic_string)) {
-                    docByTopic.put(dt.topic_string, new ArrayList<DocumentTopic>());
+                if (!docByTopic.containsKey(dt.term_string)) {
+                    docByTopic.put(dt.term_string, new ArrayList<DocumentTopic>());
                 }
-                docByTopic.get(dt.topic_string).add(dt);
+                docByTopic.get(dt.term_string).add(dt);
                 if (!topicByDoc.containsKey(dt.document_id)) {
                     topicByDoc.put(dt.document_id, new ArrayList<DocumentTopic>());
                 }
@@ -236,15 +236,15 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             this.topics = new HashMap<>();
             this.topicsSorted = new ArrayList<>();
             for (Term t : _topics) {
-                this.topics.put(t.topicString, t);
-                this.topicsSorted.add(t.topicString);
+                this.topics.put(t.getString(), t);
+                this.topicsSorted.add(t.getString());
             }
             this.topicsSorted.sort(new Comparator<String>() {
                 @Override
                 public int compare(String o1, String o2) {
                     if (topics.containsKey(o1) && topics.containsKey(o2)) {
-                        double wt1 = topics.get(o1).score;
-                        double wt2 = topics.get(o2).score;
+                        double wt1 = topics.get(o1).getScore();
+                        double wt2 = topics.get(o2).getScore();
                         if (wt1 > wt2) {
                             return -1;
                         } else if (wt2 > wt1) {
@@ -434,8 +434,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     }
                 }
                 for (DocumentTopic dt : docTopics) {
-                    if (dt.topic_string.equals(topic)) {
-                        dt.topic_string = newTopic;
+                    if (dt.term_string.equals(topic)) {
+                        dt.term_string = newTopic;
                     }
                 }
                 for (TopicTopic tt : topicSim) {
@@ -447,8 +447,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     }
                 }
                 updateTopicNameInTaxonomy(taxonomy, topic, newTopic);
-                t.topicString = newTopic;
-                t.status = status;
+                t.setString(newTopic);
+                t.setStatus(status);
             }
         }
 
@@ -631,7 +631,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (saffron == null) {
             return;
         }
-        List<Term> topics = saffron.getTopics().stream().filter((Term t) -> !t.topicString.equals(topic)).collect(Collectors.toList());
+        List<Term> topics = saffron.getTopics().stream().filter((Term t) -> !t.getString().equals(topic)).collect(Collectors.toList());
         saffron.setTopics(topics);
     }
 
@@ -1016,7 +1016,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getDocTopics().stream().filter(dt -> dt.topic_string.equals(topicId)).collect(Collectors.toList());
+        return saffron.getDocTopics().stream().filter(dt -> dt.term_string.equals(topicId)).collect(Collectors.toList());
     }
 
     @Override

@@ -1,16 +1,18 @@
 
 package org.insightcentre.nlp.saffron.data;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.net.URL;
-import java.util.List;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  *
@@ -40,13 +42,13 @@ public class TopicTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\"topic_string\": \"topic\", \"occurrences\": 5, \"mv_list\": [{\"string\":\"mv1\"}]}";
+        final String data = "{\""+ Term.JSON_TERM_STRING+"\": \"topic\", \""+ Term.JSON_OCCURRENCES + "\": 5, \"" + Term.JSON_MORPHOLOGICAL_VARIATION_LIST + "\": [{\"string\":\"mv1\"}]}";
         final Term topic = mapper.readValue(data, Term.class);
-        assertEquals("topic", topic.topicString);
-        assertEquals(5, topic.occurrences);
-        assertEquals(1, topic.mvList.size());
-        assertEquals("mv1", topic.mvList.get(0).string);
-        topic.dbpedia_url = new URL("http://dbpedia.org/resource/Example");
+        assertEquals("topic", topic.getString());
+        assertEquals(5, topic.getOccurrences());
+        assertEquals(1, topic.getMorphologicalVariationList().size());
+        assertEquals("mv1", topic.getMorphologicalVariationList().get(0).string);
+        topic.setDbpediaUrl(new URL("http://dbpedia.org/resource/Example"));
         final String json = mapper.writeValueAsString(topic);
         assertEquals(topic, mapper.readValue(json, Term.class));
         

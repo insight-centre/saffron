@@ -16,7 +16,7 @@ public class AddSizesToTaxonomy {
     public static TaxonomyWithSize addSizes(Taxonomy taxonomy, List<DocumentTopic> docTopics) {
         Object2IntOpenHashMap<String> topicFreq = new Object2IntOpenHashMap<>();
         for(DocumentTopic dt : docTopics) {
-            topicFreq.put(dt.topic_string, dt.occurrences);
+            topicFreq.put(dt.term_string, dt.occurrences);
         }
         return _addSizes(taxonomy, topicFreq, 0);
     }

@@ -208,10 +208,10 @@ public class Train {
             } else {
                 id2 = id;
             }
-            if (!index.containsKey(dt.topic_string)) {
-                index.put(dt.topic_string, new IntRBTreeSet());
+            if (!index.containsKey(dt.term_string)) {
+                index.put(dt.term_string, new IntRBTreeSet());
             }
-            index.get(dt.topic_string).add(id2);
+            index.get(dt.term_string).add(id2);
         }
         return index;
     }

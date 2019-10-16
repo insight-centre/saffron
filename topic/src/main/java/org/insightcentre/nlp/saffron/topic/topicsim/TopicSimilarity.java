@@ -44,11 +44,11 @@ public class TopicSimilarity {
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
         log.log(String.format("%s doc-topics\n", documentTopics.size()));
         for (DocumentTopic dt : documentTopics) {
-            if (!vectors.containsKey(dt.topic_string)) {
-                vectors.put(dt.topic_string, new Object2IntOpenHashMap<String>());
+            if (!vectors.containsKey(dt.term_string)) {
+                vectors.put(dt.term_string, new Object2IntOpenHashMap<String>());
             }
             //if(dt.occurrences != null)
-            vectors.get(dt.topic_string).put(dt.document_id, dt.occurrences);
+            vectors.get(dt.term_string).put(dt.document_id, dt.occurrences);
         }
         for (String t1 : vectors.keySet()) {
             TreeSet<TopicTopic> topN = new TreeSet<>(new Comparator<TopicTopic>() {

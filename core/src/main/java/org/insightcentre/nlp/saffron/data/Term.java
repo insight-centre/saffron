@@ -13,56 +13,79 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Term implements Comparable<Term> {
 
-    @JsonProperty("topic_string")
+    
     /**
      * The unique string for this topic
      */
-    public String topicString;
+	public final static String JSON_TERM_STRING = "term_string";
+	@JsonProperty(JSON_TERM_STRING)
+    private String termString;
+	
     /**
      * The number of times this occurs in text
      */
-    public int occurrences;
+	public final static String JSON_OCCURRENCES = "occurrences";
+	@JsonProperty(JSON_OCCURRENCES)
+    private int occurrences;
+    
     /**
      * The number of documents this occurs in
      */
-    public int matches;
+    public final static String JSON_MATCHES = "matches";
+    @JsonProperty(JSON_MATCHES)
+    private int matches;
+    
     /**
      * The importance of this topic
      */
-    public double score;
+    public final static String JSON_SCORE = "score";
+    @JsonProperty(JSON_SCORE)
+    private double score;
+    
     /**
      * Any detected morphological variations of this term
      */
-    public final List<MorphologicalVariation> mvList;
+    public final static String JSON_MORPHOLOGICAL_VARIATION_LIST = "mv_list";
+    @JsonProperty(JSON_MORPHOLOGICAL_VARIATION_LIST)
+    private final List<MorphologicalVariation> mvList;
+    
     /**
      * The link to DBpedia (may be null)
      */
-    public URL dbpedia_url;
+    public final static String JSON_DBPEDIA_URL = "dbpedia_url";
+    @JsonProperty(JSON_DBPEDIA_URL)
+    private URL dbpediaUrl;
+    
     /**
      * The statue of the topic
      */
-    public Status status;
+    public final static String JSON_STATUS = "status";
+    @JsonProperty(JSON_STATUS)
+    private Status status;
+    
     /**
      * The original string
      */
-    public final String originalTopic;
+    public final static String JSON_ORIGINAL_TOPIC = "original_topic";
+    @JsonProperty(JSON_ORIGINAL_TOPIC)
+    private final String originalTopic;
 
     private Term(String topicString) {
-    	this.topicString = topicString;
+    	this.termString = topicString;
     	this.mvList = Collections.EMPTY_LIST;
     	this.originalTopic = topicString;
     }
     
     @JsonCreator
     public Term(
-            @JsonProperty(value = "topic_string", required = true) String topic_string,
-            @JsonProperty(value = "occurrences") int occurrences,
-            @JsonProperty(value = "matches") int matches,
-            @JsonProperty(value = "score") double score,
-            @JsonProperty(value = "mv_list") List<MorphologicalVariation> mvList,
-            @JsonProperty(value = "status") String status) {
+            @JsonProperty(value = JSON_TERM_STRING, required = true) String topic_string,
+            @JsonProperty(value = JSON_OCCURRENCES) int occurrences,
+            @JsonProperty(value = JSON_MATCHES) int matches,
+            @JsonProperty(value = JSON_SCORE) double score,
+            @JsonProperty(value = JSON_MORPHOLOGICAL_VARIATION_LIST) List<MorphologicalVariation> mvList,
+            @JsonProperty(value = JSON_STATUS) String status) {
         super();
-        this.topicString = topic_string;
+        this.termString = topic_string;
         this.occurrences = occurrences;
         this.matches = matches;
         this.score = score;
@@ -78,9 +101,65 @@ public class Term implements Comparable<Term> {
         }
     }
 
-    public void addMorphologicalVariation(MorphologicalVariation mv) {
+    public String getString() {
+		return termString;
+	}
+
+	public void setString(String string) {
+		this.termString = string;
+	}
+
+	public int getOccurrences() {
+		return occurrences;
+	}
+
+	public void setOccurrences(int occurrences) {
+		this.occurrences = occurrences;
+	}
+
+	public int getMatches() {
+		return matches;
+	}
+
+	public void setMatches(int matches) {
+		this.matches = matches;
+	}
+
+	public double getScore() {
+		return score;
+	}
+
+	public void setScore(double score) {
+		this.score = score;
+	}
+	
+	public List<MorphologicalVariation> getMorphologicalVariationList() {
+		return mvList;
+	}
+	
+	public void addMorphologicalVariation(MorphologicalVariation mv) {
         mvList.add(mv);
     }
+
+	public URL getDbpediaUrl() {
+		return dbpediaUrl;
+	}
+
+	public void setDbpediaUrl(URL dbpediaUrl) {
+		this.dbpediaUrl = dbpediaUrl;
+	}
+
+	public Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(Status status) {
+		this.status = status;
+	}
+
+	public String getOriginalTopic() {
+		return originalTopic;
+	}
 
     @Override
     public int compareTo(Term o) {
@@ -88,7 +167,7 @@ public class Term implements Comparable<Term> {
         if (i0 == 0) {
             int i = Integer.compare(occurrences, o.occurrences);
             if (i == 0) {
-                int i1 = topicString.compareTo(o.topicString);
+                int i1 = termString.compareTo(o.termString);
                 return i1;
             } else {
                 return -i;
@@ -100,7 +179,7 @@ public class Term implements Comparable<Term> {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 19 * hash + Objects.hashCode(this.topicString);
+        hash = 19 * hash + Objects.hashCode(this.termString);
         return hash;
     }
 
@@ -113,7 +192,7 @@ public class Term implements Comparable<Term> {
             return false;
         }
         final Term other = (Term) obj;
-        if (!Objects.equals(this.topicString, other.topicString)) {
+        if (!Objects.equals(this.termString, other.termString)) {
             return false;
         }
         return true;
@@ -121,7 +200,7 @@ public class Term implements Comparable<Term> {
 
     @Override
     public String toString() {
-        return "Topic{" + "topicString=" + topicString + '}';
+        return "Topic{" + "topicString=" + termString + '}';
     }
 
     public static class MorphologicalVariation {
@@ -211,7 +290,7 @@ public class Term implements Comparable<Term> {
     	}
     	
     	public Builder dbpediaUrl(URL url) {
-    		topic.dbpedia_url = url;
+    		topic.dbpediaUrl = url;
     		return this;
     	}
     	

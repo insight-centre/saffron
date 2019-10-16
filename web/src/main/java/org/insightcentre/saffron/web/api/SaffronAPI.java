@@ -147,7 +147,7 @@ public class SaffronAPI {
                 entity.setMatches(doc.getInteger("matches"));
                 entity.setOccurrences(doc.getInteger("occurences"));
                 entity.setScore(doc.getDouble("score"));
-                entity.setTopicString(doc.getString("topic_string"));
+                entity.setTopicString(doc.getString("term_string"));
                 entity.setMvList((List<String>) doc.get("mvList"));
                 entity.setStatus(doc.getString("status"));
                 topicsResponse.add(entity);

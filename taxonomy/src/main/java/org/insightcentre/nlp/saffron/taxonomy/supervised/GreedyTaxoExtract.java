@@ -95,17 +95,17 @@ public class GreedyTaxoExtract {
             Taxonomy pTaxo = taxos.get(parent);
             Taxonomy cTaxo = taxos.get(child);
             if(pTaxo == null && cTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN,  "", "", new ArrayList<Taxonomy>(), Status.none);
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).getScore(), Double.NaN,  "", "", new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, topicMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, topicMap.get(parent).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
             } else if(cTaxo == null && pTaxo.children.size() < maxChildren) {
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, topicMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo.children.size() < maxChildren) {
@@ -141,7 +141,7 @@ public class GreedyTaxoExtract {
 
     private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Term> topicMap) {
         for(String orphan : orphans) {
-            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
+            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
         }
         return t;
     }
@@ -159,10 +159,10 @@ public class GreedyTaxoExtract {
             for(String topicString : topTaxos.keySet()) {
                 Term t = topics.get(topicString);
                 if(t != null) {
-                    if(t.score > topScore || 
-                            (t.score == topScore && t.occurrences > topOcc)) {
-                        topScore = t.score;
-                        topOcc = t.occurrences;
+                    if(t.getScore() > topScore || 
+                            (t.getScore() == topScore && t.getOccurrences() > topOcc)) {
+                        topScore = t.getScore();
+                        topOcc = t.getOccurrences();
                         topTopic = topicString;
                     }
                 }

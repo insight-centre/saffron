@@ -253,8 +253,8 @@ public class Features {
         if(topicMap != null) {
             Term t1 = topicMap.get(top);
             Term t2 = topicMap.get(bottom);
-            if(t1 != null && t2 != null && t1.occurrences > 0 && t2.occurrences > 0) {
-                return Math.log((double)t1.occurrences) - Math.log((double)t2.occurrences);
+            if(t1 != null && t2 != null && t1.getOccurrences() > 0 && t2.getOccurrences() > 0) {
+                return Math.log((double)t1.getOccurrences()) - Math.log((double)t2.getOccurrences());
             }
         }
         return 0;

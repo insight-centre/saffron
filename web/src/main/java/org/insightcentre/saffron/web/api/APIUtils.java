@@ -74,7 +74,7 @@ public class APIUtils {
             TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
-            entity.setTopic(doc.getString("topic_string"));
+            entity.setTopic(doc.getString("term_string"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setAcronym(doc.getString("acronym"));
             entity.setOccurrences(doc.getInteger("occurences"));

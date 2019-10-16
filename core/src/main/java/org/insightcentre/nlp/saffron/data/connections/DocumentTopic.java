@@ -14,7 +14,7 @@ import java.util.Objects;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DocumentTopic {
     public final String document_id;
-    public String topic_string;
+    public String term_string;
     public final int occurrences;
     public final String pattern;
     public final String acronym;
@@ -24,13 +24,13 @@ public class DocumentTopic {
 
     @JsonCreator
     public DocumentTopic(@JsonProperty(value="document_id",required=true) String document_id, 
-                         @JsonProperty(value="topic_string",required=true) String topic_string, 
+                         @JsonProperty(value="term_string",required=true) String topic_string, 
                          @JsonProperty("occurences") int occurences, 
                          @JsonProperty("pattern") String pattern, 
                          @JsonProperty("acronym") String acronym,
                          @JsonProperty("tfidf") Double tfidf) {
         this.document_id = document_id;
-        this.topic_string = topic_string;
+        this.term_string = topic_string;
         this.occurrences = occurences;
         this.pattern = pattern;
         this.acronym = acronym;
@@ -41,7 +41,7 @@ public class DocumentTopic {
     public int hashCode() {
         int hash = 7;
         hash = 11 * hash + Objects.hashCode(this.document_id);
-        hash = 11 * hash + Objects.hashCode(this.topic_string);
+        hash = 11 * hash + Objects.hashCode(this.term_string);
         return hash;
     }
 
@@ -57,7 +57,7 @@ public class DocumentTopic {
         if (!Objects.equals(this.document_id, other.document_id)) {
             return false;
         }
-        if (!Objects.equals(this.topic_string, other.topic_string)) {
+        if (!Objects.equals(this.term_string, other.term_string)) {
             return false;
         }
         return true;

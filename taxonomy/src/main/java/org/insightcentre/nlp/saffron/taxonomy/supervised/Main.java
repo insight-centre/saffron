@@ -98,7 +98,7 @@ public class Main {
         Map<String, Term> tMap = new HashMap<>();
         //System.err.printf("%d topics\n", topics.size());
         for (Term topic : topics) {
-            tMap.put(topic.topicString, topic);
+            tMap.put(topic.getString(), topic);
         }
         return tMap;
     }
