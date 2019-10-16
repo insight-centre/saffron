@@ -33,7 +33,7 @@ import libsvm.svm_problem;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
@@ -114,10 +114,10 @@ public class Train {
                 taxos.add(loadTaxoFile(taxoFile, mapper));
             }
 
-            final List<Topic> topics = topicsFile == null ? null
-                    : (List<Topic>) mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            final List<Term> topics = topicsFile == null ? null
+                    : (List<Term>) mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper, new DefaultSaffronListener());
+            Map<String, Term> topicMap = topics == null ? null : loadMap(topics, mapper, new DefaultSaffronListener());
 
             train(docTopics, topicMap, taxos, config);
 
@@ -170,7 +170,7 @@ public class Train {
         }
     }
 
-    private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
+    private static void train(List<DocumentTopic> docTopics, Map<String, Term> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Model model = new Model();
         model.features = config.features;
@@ -344,7 +344,7 @@ public class Train {
         }
     }*/
 
-    public static Features makeFeatures(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
+    public static Features makeFeatures(List<DocumentTopic> docTopics, Map<String, Term> topicMap,
             Model model) throws IOException {
         Matrix svdAveMatrix = model.svdAve == null ? null 
                 : new Matrix(model.svdAve);

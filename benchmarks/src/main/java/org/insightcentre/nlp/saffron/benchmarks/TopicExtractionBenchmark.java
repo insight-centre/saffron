@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  * Compares the result of two topic extractions
@@ -41,16 +41,16 @@ public class TopicExtractionBenchmark {
         return avp;
     }
 
-    public static Scores evaluate(List<Topic> extracted, List<Topic> gold, boolean retain) {
+    public static Scores evaluate(List<Term> extracted, List<Term> gold, boolean retain) {
         Collections.sort(extracted);
         final Set<String> extractedTopics = new TreeSet<>();
         if (retain) {
-            for (Topic t : extracted) {
+            for (Term t : extracted) {
                 extractedTopics.add(t.topicString.toLowerCase());
             }
         }
         Set<String> goldTopics = new TreeSet<>();
-        for (Topic t : gold) {
+        for (Term t : gold) {
             if (!retain || extractedTopics.contains(t.topicString.toLowerCase())) {
                 goldTopics.add(t.topicString.toLowerCase());
             }
@@ -105,8 +105,8 @@ public class TopicExtractionBenchmark {
                 badOptions(p, "Gold file not given");
             }
 
-            List<Topic> extracted = mapper.readValue(outFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
-            List<Topic> gold = mapper.readValue(goldFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            List<Term> extracted = mapper.readValue(outFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            List<Term> gold = mapper.readValue(goldFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             Scores scores = evaluate(extracted, gold, !os.has("r"));
 

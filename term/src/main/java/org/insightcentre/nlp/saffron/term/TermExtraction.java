@@ -482,12 +482,12 @@ public class TermExtraction {
         }
     }
 
-    private static Set<Topic> convertToTopics(List<String> ts, FrequencyStats stats,
+    private static Set<Term> convertToTopics(List<String> ts, FrequencyStats stats,
             Object2DoubleMap<String> scores, CasingStats casing, Set<String> whiteList,
             Set<String> stopWords) {
-        Set<Topic> topics = new HashSet<>();
+        Set<Term> topics = new HashSet<>();
         for (String t : ts) {
-            final Topic topic = new Topic(casing.trueCase(t),
+            final Term topic = new Term(casing.trueCase(t),
                     stats.termFrequency.getInt(t),
                     stats.docFrequency.getInt(t), scores.getDouble(t),
                     Collections.EMPTY_LIST,
@@ -555,10 +555,10 @@ public class TermExtraction {
 
     public static class Result {
 
-        public Set<Topic> topics;
+        public Set<Term> topics;
         public List<DocumentTopic> docTopics;
 
-        public Result(Set<Topic> topics, List<DocumentTopic> docTopics) {
+        public Result(Set<Term> topics, List<DocumentTopic> docTopics) {
             this.topics = topics;
             this.docTopics = docTopics;
         }
@@ -569,11 +569,11 @@ public class TermExtraction {
         public void normalize() {
             double[] values = new double[topics.size()];
             int i = 0;
-            for (Topic t : topics) {
+            for (Term t : topics) {
                 values[i++] = t.score;
             }
             LogGap normalizer = LogGap.makeModel(values);
-            for (Topic t : topics) {
+            for (Term t : topics) {
                 t.score = normalizer.normalize(t.score);
             }
         }

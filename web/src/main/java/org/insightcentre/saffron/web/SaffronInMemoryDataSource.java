@@ -51,7 +51,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         private List<TopicTopic> topicSim;
         private List<AuthorTopic> authorTopics;
         private List<DocumentTopic> docTopics;
-        private HashMap<String, Topic> topics;
+        private HashMap<String, Term> topics;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
         private HashMap<String, List<DocumentTopic>> docByTopic, topicByDoc;
@@ -224,18 +224,18 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             }
         }
 
-        public Topic getTopic(String topic) {
+        public Term getTopic(String topic) {
             return topics.get(topic);
         }
 
-        public Collection<Topic> getTopics() {
+        public Collection<Term> getTopics() {
             return topics == null ? Collections.EMPTY_LIST : topics.values();
         }
 
-        public void setTopics(Collection<Topic> _topics) {
+        public void setTopics(Collection<Term> _topics) {
             this.topics = new HashMap<>();
             this.topicsSorted = new ArrayList<>();
-            for (Topic t : _topics) {
+            for (Term t : _topics) {
                 this.topics.put(t.topicString, t);
                 this.topicsSorted.add(t.topicString);
             }
@@ -426,7 +426,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
 
         private void updateTopicName(String topic, String newTopic, Status status) {
-            Topic t = topics.get(topic);
+            Term t = topics.get(topic);
             if (t != null) {
                 for (AuthorTopic at : authorTopics) {
                     if (at.topic_id.equals(topic)) {
@@ -525,8 +525,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new FileNotFoundException("Could not find topics.json");
         }
 
-        saffron.setTopics((List<Topic>) mapper.readValue(topicsFile,
-                tf.constructCollectionType(List.class, Topic.class)));
+        saffron.setTopics((List<Term>) mapper.readValue(topicsFile,
+                tf.constructCollectionType(List.class, Term.class)));
 
         File indexFile = new File(directory, "index");
         if (!indexFile.exists()) {
@@ -580,7 +580,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public boolean addTopicExtraction(String id, Date date, Set<Topic> res) {
+    public boolean addTopicExtraction(String id, Date date, Set<Term> res) {
         SaffronDataImpl saffron = data.get(id);
         if (saffron == null) {
             return false;
@@ -591,7 +591,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public boolean addTopics(String id, Date date, List<Topic> topics) {
+    public boolean addTopics(String id, Date date, List<Term> topics) {
         SaffronDataImpl saffron = data.get(id);
         if (saffron == null) {
             return false;
@@ -631,7 +631,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (saffron == null) {
             return;
         }
-        List<Topic> topics = saffron.getTopics().stream().filter((Topic t) -> !t.topicString.equals(topic)).collect(Collectors.toList());
+        List<Term> topics = saffron.getTopics().stream().filter((Term t) -> !t.topicString.equals(topic)).collect(Collectors.toList());
         saffron.setTopics(topics);
     }
 
@@ -811,7 +811,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public Topic getTopic(String runId, String topic) {
+    public Term getTopic(String runId, String topic) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -892,7 +892,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public void setTopics(String runId, List<Topic> _topics) {
+    public void setTopics(String runId, List<Term> _topics) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -988,7 +988,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<Topic> getAllTopics(String datasetName) {
+    public Iterable<Term> getAllTopics(String datasetName) {
         SaffronDataImpl saffron = data.get(datasetName);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

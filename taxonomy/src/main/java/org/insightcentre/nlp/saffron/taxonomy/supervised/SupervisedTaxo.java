@@ -10,7 +10,7 @@ import java.util.Map;
 import libsvm.svm;
 import libsvm.svm_model;
 import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
@@ -26,7 +26,7 @@ public class SupervisedTaxo {
     private final ArrayList<String> attributes;
 
     public SupervisedTaxo(List<DocumentTopic> docTopics,
-            Map<String, Topic> topicMap, Model model) throws IOException {
+            Map<String, Term> topicMap, Model model) throws IOException {
         this.features = Train.makeFeatures(docTopics, topicMap, model);
         this.classifier = readClassifier(model);
         this.attributes = Train.buildAttributes(features.featureNames());

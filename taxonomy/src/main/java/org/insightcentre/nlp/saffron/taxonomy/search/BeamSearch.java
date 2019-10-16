@@ -6,7 +6,7 @@ import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.Map;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  *
@@ -24,7 +24,7 @@ public class BeamSearch implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> topicMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);

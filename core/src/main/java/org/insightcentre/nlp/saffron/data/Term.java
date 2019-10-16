@@ -11,7 +11,7 @@ import java.util.Objects;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Topic implements Comparable<Topic> {
+public class Term implements Comparable<Term> {
 
     @JsonProperty("topic_string")
     /**
@@ -47,14 +47,14 @@ public class Topic implements Comparable<Topic> {
      */
     public final String originalTopic;
 
-    private Topic(String topicString) {
+    private Term(String topicString) {
     	this.topicString = topicString;
     	this.mvList = Collections.EMPTY_LIST;
     	this.originalTopic = topicString;
     }
     
     @JsonCreator
-    public Topic(
+    public Term(
             @JsonProperty(value = "topic_string", required = true) String topic_string,
             @JsonProperty(value = "occurrences") int occurrences,
             @JsonProperty(value = "matches") int matches,
@@ -83,7 +83,7 @@ public class Topic implements Comparable<Topic> {
     }
 
     @Override
-    public int compareTo(Topic o) {
+    public int compareTo(Term o) {
         int i0 = Double.compare(score, o.score);
         if (i0 == 0) {
             int i = Integer.compare(occurrences, o.occurrences);
@@ -112,7 +112,7 @@ public class Topic implements Comparable<Topic> {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final Topic other = (Topic) obj;
+        final Term other = (Term) obj;
         if (!Objects.equals(this.topicString, other.topicString)) {
             return false;
         }
@@ -189,10 +189,10 @@ public class Topic implements Comparable<Topic> {
     
     public static class Builder {
     	
-    	Topic topic;
+    	Term topic;
     	
     	public Builder(String topicString) {
-    		topic = new Topic(topicString);
+    		topic = new Term(topicString);
     	}
     	
     	public Builder occurrences(int occurences) {
@@ -220,7 +220,7 @@ public class Topic implements Comparable<Topic> {
     		return this;
     	}
     	
-    	public Topic build() {
+    	public Term build() {
     		return topic;
     	}
     }

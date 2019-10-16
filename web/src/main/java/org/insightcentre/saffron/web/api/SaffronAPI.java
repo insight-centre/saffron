@@ -28,7 +28,7 @@ import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;
@@ -402,7 +402,7 @@ public class SaffronAPI {
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
 		}*/
 		
-    	List<Topic> topics = new ArrayList<Topic>();
+    	List<Term> topics = new ArrayList<Term>();
     			
     	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
     	JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
@@ -416,7 +416,7 @@ public class SaffronAPI {
                 String topicString = json.get("topic").toString();
                 String status = json.get("status").toString();
                 try {
-                	topics.add(new Topic.Builder(topicString).status(Status.valueOf(status)).build());
+                	topics.add(new Term.Builder(topicString).status(Status.valueOf(status)).build());
                 } catch (Exception e) {
         			//2 - If everything is ok continue, otherwise send an error code
         			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();

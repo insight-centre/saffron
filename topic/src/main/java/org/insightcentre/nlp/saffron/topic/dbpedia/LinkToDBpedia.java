@@ -17,7 +17,7 @@ import java.util.Iterator;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  * Link topics to DBpedia (by name only more or less)
@@ -78,7 +78,7 @@ public class LinkToDBpedia implements Closeable {
         return true;
     }
 
-    void remove_different_case(List<Candidate> topic2titles, Topic topic) {
+    void remove_different_case(List<Candidate> topic2titles, Term topic) {
         Iterator<Candidate> i = topic2titles.iterator();
         while (i.hasNext()) {
             if (!has_same_case(topic.topicString, i.next().variant)) {
@@ -119,7 +119,7 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    Topic pick_best_matches(List<Candidate> topic2titles, Topic original) {
+    Term pick_best_matches(List<Candidate> topic2titles, Term original) {
         // TODO: Do something better here
         if (topic2titles.size() == 1) {
             try {
@@ -144,7 +144,7 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    List<Candidate> candidates(Topic topic) {
+    List<Candidate> candidates(Term topic) {
         try {
             statement.setString(1, topic.topicString);
             ResultSet results = statement.executeQuery();
@@ -158,7 +158,7 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    public Topic matchDBpediaArticle(Topic topic) {
+    public Term matchDBpediaArticle(Term topic) {
         List<Candidate> topic2titles = candidates(topic);
         remove_different_case(topic2titles, topic);
         //replace_redirects(topic2titles);
@@ -209,7 +209,7 @@ public class LinkToDBpedia implements Closeable {
             ObjectMapper mapper = new ObjectMapper();
             Configuration config = mapper.readValue(configFile, Configuration.class);
 
-            List<Topic> outTopics = mapper.readValue(input, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            List<Term> outTopics = mapper.readValue(input, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, outTopics);
 

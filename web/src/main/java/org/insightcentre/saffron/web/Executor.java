@@ -35,7 +35,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
@@ -487,7 +487,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Linking to DBpedia");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
-        List<Topic> topics = new ArrayList<>(res.topics);
+        List<Term> topics = new ArrayList<>(res.topics);
         data.setTopics(saffronDatasetName, topics);
 
         _status.setStatusMessage("Saving linked topics");
@@ -529,7 +529,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Building topic map");
-        Map<String, Topic> topicMap = loadMap(topics, mapper, _status);
+        Map<String, Term> topicMap = loadMap(topics, mapper, _status);
 
         //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         _status.setStatusMessage("Reading model");

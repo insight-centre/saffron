@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 
 /**
@@ -27,7 +27,7 @@ public class Greedy implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> topicMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();

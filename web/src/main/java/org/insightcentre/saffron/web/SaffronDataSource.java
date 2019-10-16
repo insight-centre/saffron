@@ -12,7 +12,7 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -70,9 +70,9 @@ public interface SaffronDataSource extends Closeable {
      * @param res The taxonomy to update
      * @return True if successful
      */
-    boolean addTopicExtraction(String id, Date date, Set<Topic> res);
+    boolean addTopicExtraction(String id, Date date, Set<Term> res);
 
-    boolean addTopics(String id, Date date, List<Topic> topics);
+    boolean addTopics(String id, Date date, List<Term> topics);
 
     boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity);
 
@@ -123,7 +123,7 @@ public interface SaffronDataSource extends Closeable {
 
     public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String topic);
 
-    public Topic getTopic(String runId, String topic);
+    public Term getTopic(String runId, String topic);
 
     public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String runId, String authorId);
 
@@ -141,7 +141,7 @@ public interface SaffronDataSource extends Closeable {
 
     void setCorpus(String runId, Corpus corpus);
 
-    public void setTopics(String runId, List<Topic> _topics);
+    public void setTopics(String runId, List<Term> _topics);
 
     public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics);
 
@@ -191,7 +191,7 @@ public interface SaffronDataSource extends Closeable {
 
     public Iterable<Author> getAllAuthors(String datasetName);
 
-    public Iterable<Topic> getAllTopics(String datasetName);
+    public Iterable<Term> getAllTopics(String datasetName);
 
     public Date getDate(String doc);
 

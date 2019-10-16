@@ -37,7 +37,7 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
@@ -168,9 +168,9 @@ public class EnrichTopics {
             service.shutdown();
             service.awaitTermination(2, TimeUnit.DAYS);
             List<DocumentTopic> docTopics = new ArrayList<>(dts);
-            List<Topic> topics = new ArrayList<>();
+            List<Term> topics = new ArrayList<>();
             for (String topic : topicStrings) {
-                topics.add(new Topic(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
+                topics.add(new Term(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
                         (double) summary.docFrequency.getInt(topic) / corpus.size(),
                         Collections.EMPTY_LIST, Status.none.toString()));
             }
@@ -186,9 +186,9 @@ public class EnrichTopics {
     public static class Result {
 
         public final List<DocumentTopic> docTopics;
-        public final List<Topic> topics;
+        public final List<Term> topics;
 
-        public Result(List<DocumentTopic> docTopics, List<Topic> topics) {
+        public Result(List<DocumentTopic> docTopics, List<Term> topics) {
             this.docTopics = docTopics;
             this.topics = topics;
         }

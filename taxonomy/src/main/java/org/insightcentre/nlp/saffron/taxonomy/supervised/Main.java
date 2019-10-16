@@ -12,7 +12,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
@@ -76,9 +76,9 @@ public class Main {
                 badOptions(p, "Configuration does not have a model file");
             }
             List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
-            List<Topic> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            List<Term> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            Map<String, Topic> topicMap = loadMap(topics, mapper, new DefaultSaffronListener());
+            Map<String, Term> topicMap = loadMap(topics, mapper, new DefaultSaffronListener());
             
             Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
@@ -94,10 +94,10 @@ public class Main {
         }
     }
 
-    public static Map<String, Topic> loadMap(List<Topic> topics, ObjectMapper mapper, SaffronListener log) throws IOException {
-        Map<String, Topic> tMap = new HashMap<>();
+    public static Map<String, Term> loadMap(List<Term> topics, ObjectMapper mapper, SaffronListener log) throws IOException {
+        Map<String, Term> tMap = new HashMap<>();
         //System.err.printf("%d topics\n", topics.size());
-        for (Topic topic : topics) {
+        for (Term topic : topics) {
             tMap.put(topic.topicString, topic);
         }
         return tMap;

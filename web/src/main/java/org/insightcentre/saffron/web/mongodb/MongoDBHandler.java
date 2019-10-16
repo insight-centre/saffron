@@ -74,7 +74,7 @@ public class MongoDBHandler implements SaffronDataSource {
         private List<TopicTopic> topicSim;
         private List<AuthorTopic> authorTopics;
         private List<DocumentTopic> docTopics;
-        private HashMap<String, Topic> topics;
+        private HashMap<String, Term> topics;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
         private HashMap<String, List<DocumentTopic>> docByTopic, topicByDoc;
@@ -250,18 +250,18 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public Topic getTopic(String topic) {
+        public Term getTopic(String topic) {
             return topics.get(topic);
         }
 
-        public Collection<Topic> getTopics() {
+        public Collection<Term> getTopics() {
             return topics == null ? Collections.EMPTY_LIST : topics.values();
         }
 
-        public void setTopics(Collection<Topic> _topics) {
+        public void setTopics(Collection<Term> _topics) {
             this.topics = new HashMap<>();
             this.topicsSorted = new ArrayList<>();
-            for (Topic t : _topics) {
+            for (Term t : _topics) {
                 this.topics.put(t.topicString, t);
                 this.topicsSorted.add(t.topicString);
             }
@@ -477,7 +477,7 @@ public class MongoDBHandler implements SaffronDataSource {
         }
 
         private void updateTopicName(String topic, String newTopic, Status status) {
-            Topic t = topics.get(topic);
+            Term t = topics.get(topic);
             if (t != null) {
                 for (AuthorTopic at : authorTopics) {
                     if (at.topic_id.equals(topic)) {
@@ -631,7 +631,7 @@ public class MongoDBHandler implements SaffronDataSource {
         this.setDocTopics(runId, mapper.readValue(docTopicsFile,
                 tf.constructCollectionType(List.class, DocumentTopic.class)));
         this.setTopics(runId, mapper.readValue(topicsFile,
-                tf.constructCollectionType(List.class, Topic.class)));
+                tf.constructCollectionType(List.class, Term.class)));
         this.setCorpus(runId, DocumentSearcherFactory.load(indexFile));
         this.setIndex(runId, DocumentSearcherFactory.load(indexFile));
     }
@@ -696,8 +696,8 @@ public class MongoDBHandler implements SaffronDataSource {
             JSONObject jsonObj = new JSONObject(doc.toJson());
             jsonTopicsArray.put(jsonObj);
         }
-        saffron.setTopics((List<Topic>) mapper.readValue(jsonTopicsArray.toString(),
-                tf.constructCollectionType(List.class, Topic.class)));
+        saffron.setTopics((List<Term>) mapper.readValue(jsonTopicsArray.toString(),
+                tf.constructCollectionType(List.class, Term.class)));
 
         Iterable<org.bson.Document> corpus = this.getCorpus(runId);
         for (org.bson.Document doc : corpus) {
@@ -787,7 +787,7 @@ public class MongoDBHandler implements SaffronDataSource {
         return topicsExtractionCollection.find(and(eq("run", runId), eq("topicId", topicId)));
     }
 
-    public boolean addTopicExtraction(String id, Date date, Set<Topic> res) {
+    public boolean addTopicExtraction(String id, Date date, Set<Term> res) {
         Document document = new Document();
 
         res.forEach(name -> {
@@ -843,7 +843,7 @@ public class MongoDBHandler implements SaffronDataSource {
         return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
     }
 
-    public boolean addTopics(String id, Date date, List<Topic> topics) {
+    public boolean addTopics(String id, Date date, List<Term> topics) {
         Document document = new Document();
 
         topics.forEach(name -> {
@@ -1166,7 +1166,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Topic getTopic(String runId, String topic) {
+    public Term getTopic(String runId, String topic) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1254,7 +1254,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public void setTopics(String runId, List<Topic> _topics) {
+    public void setTopics(String runId, List<Term> _topics) {
         this.addTopics(runId, new Date(), _topics);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
@@ -1475,7 +1475,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<Topic> getAllTopics(String datasetName) {
+    public Iterable<Term> getAllTopics(String datasetName) {
         return null;
     }
 

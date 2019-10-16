@@ -14,7 +14,7 @@ import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
@@ -31,7 +31,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+    public Taxonomy extractTaxonomy(Map<String, Term> topicMap) {
         final ArrayList<String> topics = new ArrayList<>(topicMap.keySet());
         final double[][] matrix = new double[topics.size()][topics.size()];
         String topNode = null;
@@ -39,7 +39,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
         double bestScore = Double.NEGATIVE_INFINITY;
         int bestOcc = Integer.MIN_VALUE;
         for(int i = 0; i < topics.size(); i++) {
-            Topic t1 = topicMap.get(topics.get(i));
+            Term t1 = topicMap.get(topics.get(i));
             for(int j = 0; j < topics.size(); j++) {
                 matrix[i][j] = i == j ? 0 : classifier.predict(topics.get(i), topics.get(j));
             }
@@ -62,14 +62,14 @@ public class MSTTaxoExtract implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap, Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> topicMap, Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     
     
     private Taxonomy buildTaxo(String node, Weighted<Arborescence<String>> arbor,
-            Map<String, Topic> topicMap, String parent,
+            Map<String, Term> topicMap, String parent,
             ArrayList<String> topic, double[][] matrix) {
         Map<String,List<String>> invertedArbor = new HashMap<>();
         for(ImmutableMap.Entry<String,String> e : arbor.val.parents.entrySet()) {
@@ -83,7 +83,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
     }
     
     private Taxonomy buildTaxo(String node, Map<String, List<String>> tree,
-            Map<String, Topic> topicMap, String parent,
+            Map<String, Term> topicMap, String parent,
             ArrayList<String> topic, double[][] matrix) {
         List<Taxonomy> children = new ArrayList<>();
         List<String> edges = tree.get(node);

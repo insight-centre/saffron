@@ -12,7 +12,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 
 /**
@@ -26,13 +26,13 @@ public class Features {
     private final Map<String, IntSet> topicDocuments;
     private final Map<String, double[]> vectors;
     private final TaxonomyExtractionConfiguration.FeatureSelection selection;
-    private final Map<String, Topic> topicMap;
+    private final Map<String, Term> topicMap;
     private final Set<Hypernym> hypernyms;
 
     public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, 
             Map<String, IntSet> topicDocuments, 
             Map<String, double[]> vectors,
-            Map<String, Topic> topicMap,
+            Map<String, Term> topicMap,
             Set<Hypernym> hypernyms,
             TaxonomyExtractionConfiguration.FeatureSelection selection) {
         this.svdMatrixAve = svdMatrixAve;
@@ -251,8 +251,8 @@ public class Features {
      */
     public double relFreq(String top, String bottom) {
         if(topicMap != null) {
-            Topic t1 = topicMap.get(top);
-            Topic t2 = topicMap.get(bottom);
+            Term t1 = topicMap.get(top);
+            Term t2 = topicMap.get(bottom);
             if(t1 != null && t2 != null && t1.occurrences > 0 && t2.occurrences > 0) {
                 return Math.log((double)t1.occurrences) - Math.log((double)t2.occurrences);
             }

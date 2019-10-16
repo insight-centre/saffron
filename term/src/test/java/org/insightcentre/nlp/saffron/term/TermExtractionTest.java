@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.term.TermExtraction.Result;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -423,7 +423,7 @@ public class TermExtractionTest {
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("good time")));
     }
     
     @Test
@@ -515,8 +515,8 @@ public class TermExtractionTest {
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("great time")));
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time") && t.status == Status.accepted));
+        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("great time")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("good time") && t.status == Status.accepted));
     }
     
     @Test
@@ -602,8 +602,8 @@ public class TermExtractionTest {
             config.oneTopicPerDoc);
         Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("plan")));
-        assert(!res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("401k plan")));
+        assert(res.topics.stream().anyMatch((Term t) -> t.topicString.equals("plan")));
+        assert(!res.topics.stream().anyMatch((Term t) -> t.topicString.equals("401k plan")));
 
     }
 }

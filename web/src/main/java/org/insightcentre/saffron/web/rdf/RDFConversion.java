@@ -11,7 +11,7 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
@@ -67,12 +67,12 @@ public class RDFConversion {
         return model;
     }
 
-    public static Model topicToRDF(Topic t, SaffronDataSource data, String datasetName) {
+    public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         return topicToRDF(t, data, datasetName, model, null);
     }
     
-    public static Model topicToRDF(Topic t, SaffronDataSource data, String datasetName, Model model, String base) {
+    public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
         Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.topicString))
                 .addProperty(RDF.type, SKOS.Concept)
                 .addProperty(RDFS.label, t.topicString)
@@ -82,7 +82,7 @@ public class RDFConversion {
         if (t.dbpedia_url != null) {
             res.addProperty(SKOS.exactMatch, model.createResource(t.dbpedia_url.toString()));
         }
-        for (Topic.MorphologicalVariation mv : t.mvList) {
+        for (Term.MorphologicalVariation mv : t.mvList) {
             res.addProperty(SAFFRON.morphologicalVariant,
                     model.createResource()
                     .addProperty(RDF.value, mv.string)
@@ -159,7 +159,7 @@ public class RDFConversion {
         for(Author auth : data.getAllAuthors(datasetName)) {
             authorToRdf(auth, data, datasetName, model, base);
         }
-        for(Topic topic : data.getAllTopics(datasetName)) {
+        for(Term topic : data.getAllTopics(datasetName)) {
             topicToRDF(topic, data, datasetName, model, base);
         }
         return model;

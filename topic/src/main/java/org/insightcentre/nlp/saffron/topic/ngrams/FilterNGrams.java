@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  *
@@ -58,10 +58,10 @@ public class FilterNGrams {
             ObjectMapper mapper = new ObjectMapper();
             Configuration config = mapper.readValue(configFile, Configuration.class);
 
-            List<Topic> outTopics = new ArrayList<>();
-            Iterator<Topic> topics = mapper.readValues(new JsonFactory().createParser(input), Topic.class);
+            List<Term> outTopics = new ArrayList<>();
+            Iterator<Term> topics = mapper.readValues(new JsonFactory().createParser(input), Term.class);
             while (topics.hasNext()) {
-                Topic topic = topics.next();
+                Term topic = topics.next();
                 if (!is_invalid(topic)) {
                     outTopics.add(topic);
                 }
@@ -75,7 +75,7 @@ public class FilterNGrams {
         }
     }
 
-    private static boolean is_invalid(Topic topic) {
+    private static boolean is_invalid(Term topic) {
         if(topic.dbpedia_url != null)
             return false;
         String[] words = topic.topicString.split("\\s+");

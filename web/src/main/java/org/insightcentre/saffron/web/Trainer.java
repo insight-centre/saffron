@@ -25,7 +25,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
@@ -117,7 +117,7 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Building topic map");
-            Map<String, Topic> topicMap = loadMap(result.topics, mapper, status);
+            Map<String, Term> topicMap = loadMap(result.topics, mapper, status);
 
             status.stage++;
             final Map<String, double[]> glove;

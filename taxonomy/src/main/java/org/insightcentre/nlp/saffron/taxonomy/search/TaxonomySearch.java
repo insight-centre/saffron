@@ -7,7 +7,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
@@ -17,11 +17,11 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  * @author John McCrae
  */
 public interface TaxonomySearch {
-    public default Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
+    public default Taxonomy extractTaxonomy(Map<String, Term> topicMap) {
         return extractTaxonomyWithBlackWhiteList(topicMap, Collections.EMPTY_SET, Collections.EMPTY_SET);
     }
     
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap, 
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> topicMap, 
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList);
     
     

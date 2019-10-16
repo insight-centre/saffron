@@ -5,7 +5,7 @@ import java.util.List;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
@@ -31,10 +31,10 @@ public class SaffronService {
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
 	 * @param topics - the topics to be modified
 	 */
-	public void updateTopicStatus(String taxonomyId, List<Topic> topics) {
+	public void updateTopicStatus(String taxonomyId, List<Term> topics) {
 		RuntimeException agException = null;
 		
-    	for(Topic topic: topics){
+    	for(Term topic: topics){
     		try {
     			updateTopicStatus(taxonomyId,topic);
     		} catch (Exception e) {
@@ -54,7 +54,7 @@ public class SaffronService {
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
 	 * @param topic - the topic to be modified
 	 */
-	public void updateTopicStatus(String taxonomyId, Topic topic) {
+	public void updateTopicStatus(String taxonomyId, Term topic) {
 		/*
 		 * 1 - Change topic status in the database.
 		 * 2 - If new status = "rejected" then
@@ -76,7 +76,7 @@ public class SaffronService {
 			throw exception;
 		}
 		
-		Topic dbTopic = dataSource.getTopic(taxonomyId, topic.topicString);
+		Term dbTopic = dataSource.getTopic(taxonomyId, topic.topicString);
 		if (dbTopic.status.equals(Status.rejected))
 			throw new InvalidOperationException("The status of a 'rejected' topic cannot be modified.");
 		

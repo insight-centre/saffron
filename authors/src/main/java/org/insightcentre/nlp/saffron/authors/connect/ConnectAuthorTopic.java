@@ -17,7 +17,7 @@ import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
@@ -68,18 +68,18 @@ public class ConnectAuthorTopic {
         this.top_n = config.topN;
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Topic> topics, List<DocumentTopic> documentTopics,
+    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTopic> documentTopics,
         Iterable<Document> documents) {
         return connectResearchers(topics, documentTopics, documents, new DefaultSaffronListener());
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Topic> topics, List<DocumentTopic> documentTopics,
+    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTopic> documentTopics,
         Iterable<Document> documents, SaffronListener log) {
 
         Map<String, Document>     docById      = buildDocById(documents);
         Map<Author, List<String>> author2Topic = buildAuthor2Topic(documentTopics, docById, log);
         //Map<Author, List<String>> author2Doc   = buildAuthor2Doc(documentTopics, docById);
-        Map<String, Topic>        topicById    = buildTopicById(topics);
+        Map<String, Term>        topicById    = buildTopicById(topics);
 
         Object2IntMap<AT>     occurrences = new Object2IntOpenHashMap<>();
         Object2IntMap<AT>     matches     = new Object2IntOpenHashMap<>();
@@ -152,9 +152,9 @@ public class ConnectAuthorTopic {
         return author2Topic;
     }
 
-    private Map<String, Topic> buildTopicById(List<Topic> topics) {
-        Map<String, Topic> topicById = new HashMap<>();
-        for(Topic topic : topics)
+    private Map<String, Term> buildTopicById(List<Term> topics) {
+        Map<String, Term> topicById = new HashMap<>();
+        for(Term topic : topics)
             topicById.put(topic.topicString, topic);
         return topicById;
     }
@@ -166,12 +166,12 @@ public class ConnectAuthorTopic {
         return docById;
     }
 
-    private void countOccurrence(Map<Author, List<String>> author2Topic, Map<String, Topic> topics, Object2IntMap<AT> occurrences, 
+    private void countOccurrence(Map<Author, List<String>> author2Topic, Map<String, Term> topics, Object2IntMap<AT> occurrences, 
             Object2IntMap<AT> matches, SaffronListener log) {
         for(Map.Entry<Author, List<String>> e : author2Topic.entrySet()) {
             Author a = e.getKey();
             for(String topic_string : e.getValue()) {
-                Topic t = topics.get(topic_string);
+                Term t = topics.get(topic_string);
                 if(t == null) {
                     log.log("Topic missing: " + topic_string);
                     continue;

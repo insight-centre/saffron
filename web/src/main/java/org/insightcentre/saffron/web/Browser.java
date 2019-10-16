@@ -36,7 +36,7 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
@@ -262,7 +262,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.equals("/topics")) {
                     final String id = request.getParameter("id");
-                    final Topic t;
+                    final Term t;
                     if (id != null) {
                         t = saffron.getTopic(saffronDatasetName, id);
                     } else {
@@ -311,7 +311,7 @@ public class Browser extends AbstractHandler {
                     mapper.writeValue(response.getWriter(), saffron.getTopTopics(saffronDatasetName, n, offset + n));
                 } else if (target.startsWith("/topic/")) {
                     final String topicString = decode(target.substring(7));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicString);
+                    final Term topic = saffron.getTopic(saffronDatasetName, topicString);
 
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -485,7 +485,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.startsWith("/ttl/topic/")) {
                     final String topicId = decode(target.substring(11));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicId);
+                    final Term topic = saffron.getTopic(saffronDatasetName, topicId);
                     if (topic != null) {
                         response.setContentType("text/turtle");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -515,7 +515,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.startsWith("/rdf/topic/")) {
                     final String topicId = decode(target.substring(11));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicId);
+                    final Term topic = saffron.getTopic(saffronDatasetName, topicId);
                     if (topic != null) {
                         response.setContentType("application/rdf+xml");
                         response.setStatus(HttpServletResponse.SC_OK);

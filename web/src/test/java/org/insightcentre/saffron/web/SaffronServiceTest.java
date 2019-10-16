@@ -17,7 +17,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
@@ -51,10 +51,10 @@ public class SaffronServiceTest {
 	@Test
 	public void testUpdateTopicStatus() {
 		//Prepare
-		Topic input = new Topic.Builder("topic_string").status(Status.accepted).build();
+		Term input = new Term.Builder("topic_string").status(Status.accepted).build();
 		String runId = "runId";
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		
 		//Call
@@ -71,10 +71,10 @@ public class SaffronServiceTest {
 	@Test
 	public void testUpdateTopicStatus2() {
 		//Prepare
-		Topic input = new Topic.Builder("topic_string").status(Status.none).build();
+		Term input = new Term.Builder("topic_string").status(Status.none).build();
 		String runId = "runId";
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.accepted).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.accepted).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		
 		//Call
@@ -92,10 +92,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus3() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Term input = new Term.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.accepted).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.accepted).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
 		doNothing().when(taxonomy).removeDescendent(input.topicString);
@@ -116,10 +116,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus4() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Term input = new Term.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
 		doNothing().when(taxonomy).removeDescendent(input.topicString);
@@ -140,10 +140,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus5() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.none).build();
+		Term input = new Term.Builder("mother").status(Status.none).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.rejected).build());
 		
 		try {
 			//Call
@@ -164,10 +164,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus6() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.accepted).build();
+		Term input = new Term.Builder("mother").status(Status.accepted).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.rejected).build());
 		
 		try {
 			//Call
@@ -188,10 +188,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus7() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Term input = new Term.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.rejected).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.rejected).build());
 		
 		try {
 			//Call
@@ -212,7 +212,7 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus8() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("").status(Status.rejected).build();
+		Term input = new Term.Builder("").status(Status.rejected).build();
 		
 		//Call
 		try {
@@ -232,7 +232,7 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus9() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(null).build();
+		Term input = new Term.Builder("mother").status(null).build();
 		
 		//Call
 		try {
@@ -252,7 +252,7 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus10() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.accepted).build();
+		Term input = new Term.Builder("mother").status(Status.accepted).build();
 		
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(false);
 		
@@ -274,10 +274,10 @@ public class SaffronServiceTest {
 	public void testUpdateTopicStatus11() {
 		//Prepare
 		String runId = "runId";
-		Topic input = new Topic.Builder("mother").status(Status.rejected).build();
+		Term input = new Term.Builder("mother").status(Status.rejected).build();
 		Taxonomy taxonomy = mock(Taxonomy.class);
 		
-		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Topic.Builder(input.topicString).status(Status.none).build());
+		when(mongo.getTopic(runId, input.topicString)).thenReturn(new Term.Builder(input.topicString).status(Status.none).build());
 		when(mongo.updateTopic(runId, input.topicString, input.status.toString())).thenReturn(true);
 		when(mongo.getTaxonomy(runId)).thenReturn(taxonomy);
 		doNothing().when(taxonomy).removeDescendent(input.topicString);
@@ -301,10 +301,10 @@ public class SaffronServiceTest {
 	@Test
 	public void testUpdateTopicStatusList() {
 		//Prepare
-		List<Topic> input = new ArrayList<Topic>();
-		Topic topic1 = new Topic.Builder("topic1_string").status(Status.accepted).build();;
-		Topic topic2 = new Topic.Builder("topic2_string").status(Status.rejected).build();
-		Topic topic3 = new Topic.Builder("topic3_string").status(Status.none).build();
+		List<Term> input = new ArrayList<Term>();
+		Term topic1 = new Term.Builder("topic1_string").status(Status.accepted).build();;
+		Term topic2 = new Term.Builder("topic2_string").status(Status.rejected).build();
+		Term topic3 = new Term.Builder("topic3_string").status(Status.none).build();
 		input.add(topic1);
 		input.add(topic2);
 		input.add(topic3);
@@ -332,10 +332,10 @@ public class SaffronServiceTest {
 	@Test(expected = RuntimeException.class)
 	public void testUpdateTopicStatusList2() {
 		//Prepare
-		List<Topic> input = new ArrayList<Topic>();
-		Topic topic1 = new Topic.Builder("topic1_string").status(null).build();;
-		Topic topic2 = new Topic.Builder("topic2_string").status(Status.rejected).build();
-		Topic topic3 = new Topic.Builder("topic3_string").status(Status.none).build();
+		List<Term> input = new ArrayList<Term>();
+		Term topic1 = new Term.Builder("topic1_string").status(null).build();;
+		Term topic2 = new Term.Builder("topic2_string").status(Status.rejected).build();
+		Term topic3 = new Term.Builder("topic3_string").status(Status.none).build();
 		input.add(topic1);
 		input.add(topic2);
 		input.add(topic3);

@@ -9,7 +9,7 @@ import java.util.Random;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.junit.After;
@@ -61,8 +61,8 @@ public class BeamSearchTest {
 
     }
 
-    private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
+    private void addTopic(HashMap<String, Term> topics, String t, double score) {
+        topics.put(t, new Term(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
 
     /**
@@ -70,7 +70,7 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
-        HashMap<String, Topic> topics = new HashMap<>();
+        HashMap<String, Term> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);
         addTopic(topics, "b", 0.0);
@@ -93,7 +93,7 @@ public class BeamSearchTest {
     @Test
     public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
         System.out.println("extractTaxonomyWithBlackWhiteList");
-        HashMap<String, Topic> topics = new HashMap<>();
+        HashMap<String, Term> topics = new HashMap<>();
         addTopic(topics, "", 0.0);
         addTopic(topics, "a", 0.0);
         addTopic(topics, "b", 0.0);
@@ -130,7 +130,7 @@ public class BeamSearchTest {
                     scores[i][j] = r.nextDouble();
                 }
             }
-            HashMap<String, Topic> topics = new HashMap<>();
+            HashMap<String, Term> topics = new HashMap<>();
             for (int i = 0; i < n; i++) {
                 addTopic(topics, "" + i, 0.0);
             }

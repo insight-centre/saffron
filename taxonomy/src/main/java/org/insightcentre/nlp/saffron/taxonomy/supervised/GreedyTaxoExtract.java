@@ -11,7 +11,7 @@ import java.util.Objects;
 
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
@@ -30,7 +30,7 @@ public class GreedyTaxoExtract {
     }
 
     
-    public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {
+    public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Term> topicMap) {
         HashMap<String, List<ScoredString>> scoresByChild = new HashMap<>();
         for(String t1 : topicMap.keySet()) {
             List<ScoredString> list = new ArrayList<>();
@@ -139,7 +139,7 @@ public class GreedyTaxoExtract {
         return addOrphans(mergeTaxos(topTaxos, topicMap), orphans, topicMap);
     }
 
-    private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Topic> topicMap) {
+    private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Term> topicMap) {
         for(String orphan : orphans) {
             t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
         }
@@ -147,7 +147,7 @@ public class GreedyTaxoExtract {
     }
     
     private Taxonomy mergeTaxos(HashMap<String, Taxonomy> topTaxos,
-            Map<String, Topic> topics) {
+            Map<String, Term> topics) {
         if(topTaxos.isEmpty()) {
             throw new RuntimeException("Did not extract any taxonomies (no terms?)");
         } else if(topTaxos.size() == 1) {
@@ -157,7 +157,7 @@ public class GreedyTaxoExtract {
             double topScore = Double.NEGATIVE_INFINITY;
             int topOcc = Integer.MIN_VALUE;
             for(String topicString : topTaxos.keySet()) {
-                Topic t = topics.get(topicString);
+                Term t = topics.get(topicString);
                 if(t != null) {
                     if(t.score > topScore || 
                             (t.score == topScore && t.occurrences > topOcc)) {
