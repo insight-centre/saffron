@@ -13,8 +13,6 @@ import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
  * Develop a taxonomy by greedily splitting the set of topics

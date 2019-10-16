@@ -1,17 +1,17 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
