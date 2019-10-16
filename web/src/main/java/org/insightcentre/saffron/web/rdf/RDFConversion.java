@@ -56,8 +56,8 @@ public class RDFConversion {
 
         for (DocumentTopic dt : data.getTopicByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
-                    base == null ? "../topic/" + encode(dt.term_string) 
-                            : base + "/rdf/topic/" + encode(dt.term_string)));
+                    base == null ? "../term/" + encode(dt.getTermString()) 
+                            : base + "/rdf/term/" + encode(dt.getTermString())));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);
@@ -73,7 +73,7 @@ public class RDFConversion {
     }
     
     public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
-        Resource res = model.createResource(base == null ? "" : base + "/rdf/topic/" + encode(t.getString()))
+        Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
                 .addProperty(RDF.type, SKOS.Concept)
                 .addProperty(RDFS.label, t.getString())
                 .addProperty(SAFFRON.occurrences, model.createTypedLiteral(t.getOccurrences()))
@@ -101,7 +101,7 @@ public class RDFConversion {
             res.addProperty(SKOS.related,
                     model.createResource(
                             base == null ? encode(tt.topic2)
-                                    : base + "/rdf/topic/" + encode(tt.topic2)));
+                                    : base + "/rdf/term/" + encode(tt.topic2)));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);
@@ -134,8 +134,8 @@ public class RDFConversion {
         }
         for(AuthorTopic at : data.getTopicByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTopic, model.createResource(
-                    base == null ? "../topic/" + encode(at.topic_id) 
-                            : base + "/rdf/topic/" + encode(at.topic_id)));
+                    base == null ? "../term/" + encode(at.topic_id) 
+                            : base + "/rdf/term/" + encode(at.topic_id)));
         }
         for(Document d : data.getDocsByAuthor(datasetName, author.id)) {
             res.addProperty(FOAF.made, base == null ? 

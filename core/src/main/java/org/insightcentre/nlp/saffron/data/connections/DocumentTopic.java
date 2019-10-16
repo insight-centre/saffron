@@ -13,35 +13,87 @@ import java.util.Objects;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class DocumentTopic {
-    public final String document_id;
-    public String term_string;
-    public final int occurrences;
-    public final String pattern;
-    public final String acronym;
+	
+	public static final String JSON_DOCUMENT_ID = "document_id";
+	@JsonProperty(JSON_DOCUMENT_ID)
+    private final String documentId;
+	
+	public static final String JSON_TERM_STRING = "term_string";
+	@JsonProperty(JSON_TERM_STRING)
+    private String termString;
+	
+	public static final String JSON_OCCURRENCES = "occurrences";
+	@JsonProperty(JSON_OCCURRENCES)
+    private final int occurrences;
+	
+	public static final String JSON_PATTERN = "pattern";
+	@JsonProperty(JSON_PATTERN)
+    private final String pattern;
+	
+	public static final String JSON_ACRONYM = "acronym";
+	@JsonProperty(JSON_ACRONYM)
+    private final String acronym;
+	
     //public final double score;
-    public Double tfidf;
+	
+	public static final String JSON_TF_IDF = "tfidf";
+	@JsonProperty(JSON_TF_IDF)
+    private Double tfIdf;
+	
     //public Integer unembedded_occ;
 
     @JsonCreator
-    public DocumentTopic(@JsonProperty(value="document_id",required=true) String document_id, 
-                         @JsonProperty(value="term_string",required=true) String topic_string, 
-                         @JsonProperty("occurences") int occurences, 
-                         @JsonProperty("pattern") String pattern, 
-                         @JsonProperty("acronym") String acronym,
-                         @JsonProperty("tfidf") Double tfidf) {
-        this.document_id = document_id;
-        this.term_string = topic_string;
+    public DocumentTopic(@JsonProperty(value=JSON_DOCUMENT_ID,required=true) String document_id, 
+                         @JsonProperty(value=JSON_TERM_STRING,required=true) String topic_string, 
+                         @JsonProperty(JSON_OCCURRENCES) int occurences, 
+                         @JsonProperty(JSON_PATTERN) String pattern, 
+                         @JsonProperty(JSON_ACRONYM) String acronym,
+                         @JsonProperty(JSON_TF_IDF) Double tfidf) {
+        this.documentId = document_id;
+        this.termString = topic_string;
         this.occurrences = occurences;
         this.pattern = pattern;
         this.acronym = acronym;
-        this.tfidf = tfidf;
+        this.tfIdf = tfidf;
     }
 
-    @Override
+    public String getTermString() {
+		return termString;
+	}
+
+	public void setTermString(String termString) {
+		this.termString = termString;
+	}
+
+	public Double getTfIdf() {
+		return tfIdf;
+	}
+
+	public void setTfIdf(Double tfIdf) {
+		this.tfIdf = tfIdf;
+	}
+
+	public String getDocumentId() {
+		return documentId;
+	}
+
+	public int getOccurrences() {
+		return occurrences;
+	}
+
+	public String getPattern() {
+		return pattern;
+	}
+
+	public String getAcronym() {
+		return acronym;
+	}
+
+	@Override
     public int hashCode() {
         int hash = 7;
-        hash = 11 * hash + Objects.hashCode(this.document_id);
-        hash = 11 * hash + Objects.hashCode(this.term_string);
+        hash = 11 * hash + Objects.hashCode(this.documentId);
+        hash = 11 * hash + Objects.hashCode(this.termString);
         return hash;
     }
 
@@ -54,10 +106,10 @@ public class DocumentTopic {
             return false;
         }
         final DocumentTopic other = (DocumentTopic) obj;
-        if (!Objects.equals(this.document_id, other.document_id)) {
+        if (!Objects.equals(this.documentId, other.documentId)) {
             return false;
         }
-        if (!Objects.equals(this.term_string, other.term_string)) {
+        if (!Objects.equals(this.termString, other.termString)) {
             return false;
         }
         return true;

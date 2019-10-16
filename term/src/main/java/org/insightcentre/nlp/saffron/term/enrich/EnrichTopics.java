@@ -300,12 +300,12 @@ public class EnrichTopics {
             HashSet<String> docNames = new HashSet<>();
             for (DocumentTopic dt : docTopics) {
                 // We assume there are no duplicates in the DT list 
-                topicDf.put(dt.term_string, topicDf.getDouble(dt.term_string) + 1.0);
-                docNames.add(dt.document_id);
+                topicDf.put(dt.getTermString(), topicDf.getDouble(dt.getTermString()) + 1.0);
+                docNames.add(dt.getDocumentId());
             }
             double n = docNames.size();
             for (DocumentTopic dt : docTopics) {
-                dt.tfidf = (double) dt.occurrences * Math.log(n / topicDf.getDouble(dt.term_string));
+                dt.setTfIdf((double) dt.getOccurrences() * Math.log(n / topicDf.getDouble(dt.getTermString())));
             }
         }
     }

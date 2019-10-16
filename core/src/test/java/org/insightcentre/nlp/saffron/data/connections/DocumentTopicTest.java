@@ -38,10 +38,10 @@ public class DocumentTopicTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\"document_id\": \"doc1\", \"term_string\": \"t1\"}";
+        final String data = "{\""+ DocumentTopic.JSON_DOCUMENT_ID +"\": \"doc1\", \""+ DocumentTopic.JSON_TERM_STRING + "\": \"t1\"}";
         final DocumentTopic tt = mapper.readValue(data, DocumentTopic.class);
-        assertEquals("doc1", tt.document_id);
-        assertEquals("t1", tt.term_string);
+        assertEquals("doc1", tt.getDocumentId());
+        assertEquals("t1", tt.getTermString());
         final String json = mapper.writeValueAsString(tt);
         assertEquals(tt, mapper.readValue(json, DocumentTopic.class));
         

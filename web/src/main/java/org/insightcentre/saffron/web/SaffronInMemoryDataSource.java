@@ -179,14 +179,14 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             docByTopic = new HashMap<>();
             topicByDoc = new HashMap<>();
             for (DocumentTopic dt : docTopics) {
-                if (!docByTopic.containsKey(dt.term_string)) {
-                    docByTopic.put(dt.term_string, new ArrayList<DocumentTopic>());
+                if (!docByTopic.containsKey(dt.getTermString())) {
+                    docByTopic.put(dt.getTermString(), new ArrayList<DocumentTopic>());
                 }
-                docByTopic.get(dt.term_string).add(dt);
-                if (!topicByDoc.containsKey(dt.document_id)) {
-                    topicByDoc.put(dt.document_id, new ArrayList<DocumentTopic>());
+                docByTopic.get(dt.getTermString()).add(dt);
+                if (!topicByDoc.containsKey(dt.getDocumentId())) {
+                    topicByDoc.put(dt.getDocumentId(), new ArrayList<DocumentTopic>());
                 }
-                topicByDoc.get(dt.document_id).add(dt);
+                topicByDoc.get(dt.getDocumentId()).add(dt);
             }
             this.docTopics = docTopics;
         }
@@ -198,7 +198,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             } else {
                 final List<Document> docs = new ArrayList<>();
                 for (DocumentTopic dt : dts) {
-                    Document d = corpus.get(dt.document_id);
+                    Document d = corpus.get(dt.getDocumentId());
                     if (d != null) {
                         docs.add(d);
                     }
@@ -434,8 +434,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     }
                 }
                 for (DocumentTopic dt : docTopics) {
-                    if (dt.term_string.equals(topic)) {
-                        dt.term_string = newTopic;
+                    if (dt.getTermString().equals(topic)) {
+                        dt.setTermString(newTopic);
                     }
                 }
                 for (TopicTopic tt : topicSim) {
@@ -1016,7 +1016,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getDocTopics().stream().filter(dt -> dt.term_string.equals(topicId)).collect(Collectors.toList());
+        return saffron.getDocTopics().stream().filter(dt -> dt.getTermString().equals(topicId)).collect(Collectors.toList());
     }
 
     @Override

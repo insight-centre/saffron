@@ -203,15 +203,15 @@ public class Train {
         int id = 0;
         for (DocumentTopic dt : docTopics) {
             final int id2;
-            if (!docIds.containsKey(dt.document_id)) {
-                docIds.put(dt.document_id, id2 = id++);
+            if (!docIds.containsKey(dt.getDocumentId())) {
+                docIds.put(dt.getDocumentId(), id2 = id++);
             } else {
                 id2 = id;
             }
-            if (!index.containsKey(dt.term_string)) {
-                index.put(dt.term_string, new IntRBTreeSet());
+            if (!index.containsKey(dt.getTermString())) {
+                index.put(dt.getTermString(), new IntRBTreeSet());
             }
-            index.get(dt.term_string).add(id2);
+            index.get(dt.getTermString()).add(id2);
         }
         return index;
     }

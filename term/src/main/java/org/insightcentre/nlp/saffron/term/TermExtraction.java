@@ -398,10 +398,10 @@ public class TermExtraction {
         Set<String> ts2 = new HashSet<>(ts);
         Set<DocumentTopic> rval = new HashSet<>();
         for (DocumentTopic dt : dts) {
-            if (ts2.contains(dt.term_string)) { // && isProperTopic(dt.topic_string, stopWords)) {
-                rval.add(new DocumentTopic(dt.document_id,
-                        casing.trueCase(dt.term_string),
-                        dt.occurrences, dt.pattern, dt.acronym, dt.tfidf));
+            if (ts2.contains(dt.getTermString())) { // && isProperTopic(dt.topic_string, stopWords)) {
+                rval.add(new DocumentTopic(dt.getDocumentId(),
+                        casing.trueCase(dt.getTermString()),
+                        dt.getOccurrences(), dt.getPattern(), dt.getAcronym(), dt.getTfIdf()));
             }
         }
         return new ArrayList<DocumentTopic>(rval);
@@ -512,11 +512,11 @@ public class TermExtraction {
         Set<String> docs = new HashSet<>();
         Map<String, Set<String>> topic2doc = new HashMap<>();
         for (DocumentTopic dt : dts) {
-            docs.add(dt.document_id);
-            if (!topic2doc.containsKey(dt.term_string)) {
-                topic2doc.put(dt.term_string, new HashSet<>());
+            docs.add(dt.getDocumentId());
+            if (!topic2doc.containsKey(dt.getTermString())) {
+                topic2doc.put(dt.getTermString(), new HashSet<>());
             }
-            topic2doc.get(dt.term_string).add(dt.document_id);
+            topic2doc.get(dt.getTermString()).add(dt.getDocumentId());
         }
         List<String> acceptedTopics = new ArrayList<>();
         for (String topic : topics) {

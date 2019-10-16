@@ -138,15 +138,15 @@ public class ConnectAuthorTopic {
             SaffronListener log) {
         Map<Author, List<String>> author2Topic = new HashMap<>();
         for(DocumentTopic dt : documentTopics) {
-            Document doc = docById.get(dt.document_id);
+            Document doc = docById.get(dt.getDocumentId());
             if(doc == null) {
-                log.log("Document missing: " + dt.document_id);
+                log.log("Document missing: " + dt.getDocumentId());
                 continue;
             }
             for(Author a : doc.authors) {
                 if(!author2Topic.containsKey(a)) 
                     author2Topic.put(a, new ArrayList<String>());
-                author2Topic.get(a).add(dt.term_string);
+                author2Topic.get(a).add(dt.getTermString());
             }
         }
         return author2Topic;
@@ -185,12 +185,12 @@ public class ConnectAuthorTopic {
 
     private void countTfirf(List<DocumentTopic> docTopics, Map<String, Document> docById, Object2IntMap<AT> paper_count, Object2DoubleMap<AT> tfirf) {
         for(DocumentTopic dt : docTopics) {
-            Document doc = docById.get(dt.document_id);
+            Document doc = docById.get(dt.getDocumentId());
             for(Author a : doc.authors) {
-                AT at = new AT(a.id, dt.term_string);
+                AT at = new AT(a.id, dt.getTermString());
                 paper_count.put(at, paper_count.getInt(at) + 1);
-                if(dt.tfidf != null)
-                    tfirf.put(at, tfirf.getDouble(at) + dt.tfidf);
+                if(dt.getTfIdf() != null)
+                    tfirf.put(at, tfirf.getDouble(at) + dt.getTfIdf());
             }
         }
     }
