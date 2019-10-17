@@ -13,6 +13,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSInputFile;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.bson.Document;
@@ -35,10 +37,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import javax.print.Doc;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.file.Files;
@@ -340,31 +340,32 @@ public class MongoDBHandler implements SaffronDataSource {
             this.corpusByAuthor = new HashMap<>();
             this.authors = new HashMap<>();
 
-            JSONArray documentArray = (JSONArray) corpus.get("documents");
+
+           // JSONArray documentArray = (JSONArray) corpus.get("documents");
             ArrayList<org.insightcentre.nlp.saffron.data.Document> docData =
-                    new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
-            if (documentArray != null) {
-                for (int i=0;i<documentArray.length();i++){
-
-                    JSONObject obj = documentArray.getJSONObject(i);
-                    String contents = "";
-                    if (obj.has("contents"))
-                        contents = obj.getString("contents");
-                    SaffronPath path = new SaffronPath();
-                    path.setPath(obj.getString("id"));
-                    List<Author> authors = new ArrayList<>();
-                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
-                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
-                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
-
-                    docData.add(doc);
-                }
-            }
+                    new ArrayList<>();
+//            if (documentArray != null) {
+//                for (int i=0;i<documentArray.length();i++){
+//
+//                    JSONObject obj = documentArray.getJSONObject(i);
+//                    String contents = "";
+//                    if (obj.has("contents"))
+//                        contents = obj.getString("contents");
+//                    SaffronPath path = new SaffronPath();
+//                    path.setPath(obj.getString("id"));
+//                    List<Author> authors = new ArrayList<>();
+//                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
+//                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
+//                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+//
+//                    docData.add(doc);
+//                }
+//            }
             for (org.insightcentre.nlp.saffron.data.Document d : docData) {
                 this.corpus.put(d.id, d);
                 for (Author a : d.getAuthors()) {
                     if (!corpusByAuthor.containsKey(a.id)) {
-                        corpusByAuthor.put(a.id, new ArrayList<org.insightcentre.nlp.saffron.data.Document>());
+                        corpusByAuthor.put(a.id, new ArrayList<>());
                     }
                     corpusByAuthor.get(a.id).add(d);
                     if (!authors.containsKey(a.id)) {
@@ -372,7 +373,6 @@ public class MongoDBHandler implements SaffronDataSource {
                     }
                 }
             }
-            //this.searcher = corpus;
         }
 
         public void setSearcher(DocumentSearcher searcher) {
@@ -1249,6 +1249,9 @@ public class MongoDBHandler implements SaffronDataSource {
         Iterable<org.bson.Document> corpusJson = this.getCorpus(runId);
         for (org.bson.Document doc : corpusJson) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
+            GridFS gridFs = getGridFS();
+           // GridFSInputFile gfsFile = gridFs.findOne()
+
             saffron.setCorpus(jsonObj);
         }
     }
@@ -1533,8 +1536,23 @@ public class MongoDBHandler implements SaffronDataSource {
             FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
             findOptions.upsert(true);
             findOptions.returnDocument(ReturnDocument.AFTER);
+
+            GridFS gridFs = getGridFS();
+            if (doc.get("documents") != null) {
+                ArrayList<Document> docList = (ArrayList) doc.get("documents");
+                for (Document d : docList) {
+                    GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
+
+                    gfsFile.setFilename(d.getString("id"));
+                    gfsFile.put("documentType", "text");
+                    gfsFile.save();
+                }
+
+            }
             if (getCorpusCount(saffronDatasetName) > 0)
                 this.corpusCollection.findOneAndDelete(doc);
+            doc.remove("documents");
+
 
             this.corpusCollection.insertOne(doc);
 
@@ -1543,7 +1561,6 @@ public class MongoDBHandler implements SaffronDataSource {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         return false;
     }
@@ -1558,5 +1575,10 @@ public class MongoDBHandler implements SaffronDataSource {
         Document document = new Document();
         document.put("id", saffronDatasetName);
         return this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+    }
+
+    public GridFS getGridFS() {
+        DB db = mongoClient.getDB(this.dbName);
+        return new GridFS(db, "corpusCollection");
     }
 }
