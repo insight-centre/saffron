@@ -1541,11 +1541,20 @@ public class MongoDBHandler implements SaffronDataSource {
             if (doc.get("documents") != null) {
                 ArrayList<Document> docList = (ArrayList) doc.get("documents");
                 for (Document d : docList) {
-                    GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
+                    if (d.getString("contents") != null) {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
 
-                    gfsFile.setFilename(d.getString("id"));
-                    gfsFile.put("documentType", "text");
-                    gfsFile.save();
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.save();
+                    } else {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.get("metadata").toString().getBytes()));
+
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.save();
+                    }
+
                 }
 
             }
