@@ -290,14 +290,14 @@ public class MongoDBHandler implements SaffronDataSource {
             topicByTopic1 = new HashMap<>();
             topicByTopic2 = new HashMap<>();
             for (TopicTopic tt : termSim) {
-                if (!topicByTopic1.containsKey(tt.topic1)) {
-                    topicByTopic1.put(tt.topic1, new ArrayList<TopicTopic>());
+                if (!topicByTopic1.containsKey(tt.getTerm1())) {
+                    topicByTopic1.put(tt.getTerm1(), new ArrayList<TopicTopic>());
                 }
-                topicByTopic1.get(tt.topic1).add(tt);
-                if (!topicByTopic2.containsKey(tt.topic2)) {
-                    topicByTopic2.put(tt.topic2, new ArrayList<TopicTopic>());
+                topicByTopic1.get(tt.getTerm1()).add(tt);
+                if (!topicByTopic2.containsKey(tt.getTerm2())) {
+                    topicByTopic2.put(tt.getTerm2(), new ArrayList<TopicTopic>());
                 }
-                topicByTopic2.get(tt.topic2).add(tt);
+                topicByTopic2.get(tt.getTerm2()).add(tt);
             }
             this.topicSim = termSim;
         }
@@ -308,7 +308,7 @@ public class MongoDBHandler implements SaffronDataSource {
             if (tt != null) {
                 Iterator<TopicTopic> itt = tt.iterator();
                 while (itt.hasNext()) {
-                    if (ignore.contains(itt.next().topic2)) {
+                    if (ignore.contains(itt.next().getTerm2())) {
                         itt.remove();
                     }
                 }
@@ -490,11 +490,11 @@ public class MongoDBHandler implements SaffronDataSource {
                     }
                 }
                 for (TopicTopic tt : topicSim) {
-                    if (tt.topic1.equals(term)) {
-                        tt.topic1 = newTerm;
+                    if (tt.getTerm1().equals(term)) {
+                        tt.setTerm1(newTerm);
                     }
-                    if (tt.topic2.equals(term)) {
-                        tt.topic2 = newTerm;
+                    if (tt.getTerm2().equals(term)) {
+                        tt.setTerm2(newTerm);
                     }
                 }
                 updateTopicNameInTaxonomy(taxonomy, term, newTerm);
@@ -924,11 +924,11 @@ public class MongoDBHandler implements SaffronDataSource {
         Document document = new Document();
         int[] idx = { 0 };
         for (TopicTopic term : termSimilarity) {
-            document.put("_id", id + "_" + term.getTopic1() + "_" + term.getTopic2() + "_" + idx[0]++);
+            document.put("_id", id + "_" + term.getTerm1() + "_" + term.getTerm2() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("term1_id", term.getTopic1());
-            document.put("term2_id", term.getTopic2());
+            document.put("term1_id", term.getTerm1());
+            document.put("term2_id", term.getTerm2());
             document.put("similarity", term.getSimilarity());
             topicsSimilarityCollection.insertOne(document);
         }

@@ -100,8 +100,8 @@ public class RDFConversion {
         for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
-                            base == null ? encode(tt.topic2)
-                                    : base + "/rdf/term/" + encode(tt.topic2)));
+                            base == null ? encode(tt.getTerm2())
+                                    : base + "/rdf/term/" + encode(tt.getTerm2())));
         }
 
         model.setNsPrefix("foaf", FOAF.NS);

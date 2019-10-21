@@ -55,11 +55,11 @@ public class TopicSimilarity {
 
                 @Override
                 public int compare(TopicTopic arg0, TopicTopic arg1) {
-                    int i1 = Double.compare(arg0.similarity, arg1.similarity);
+                    int i1 = Double.compare(arg0.getSimilarity(), arg1.getSimilarity());
                     if (i1 == 0) {
-                        int i2 = arg0.topic1.compareTo(arg1.topic1);
+                        int i2 = arg0.getTerm1().compareTo(arg1.getTerm1());
                         if (i2 == 0) {
-                            return arg0.topic2.compareTo(arg1.topic2);
+                            return arg0.getTerm2().compareTo(arg1.getTerm2());
                         }
                         return i2;
                     }

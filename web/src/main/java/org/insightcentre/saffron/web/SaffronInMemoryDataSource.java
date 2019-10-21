@@ -264,14 +264,14 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             topicByTopic1 = new HashMap<>();
             topicByTopic2 = new HashMap<>();
             for (TopicTopic tt : topicSim) {
-                if (!topicByTopic1.containsKey(tt.topic1)) {
-                    topicByTopic1.put(tt.topic1, new ArrayList<TopicTopic>());
+                if (!topicByTopic1.containsKey(tt.getTerm1())) {
+                    topicByTopic1.put(tt.getTerm1(), new ArrayList<TopicTopic>());
                 }
-                topicByTopic1.get(tt.topic1).add(tt);
-                if (!topicByTopic2.containsKey(tt.topic2)) {
-                    topicByTopic2.put(tt.topic2, new ArrayList<TopicTopic>());
+                topicByTopic1.get(tt.getTerm1()).add(tt);
+                if (!topicByTopic2.containsKey(tt.getTerm2())) {
+                    topicByTopic2.put(tt.getTerm2(), new ArrayList<TopicTopic>());
                 }
-                topicByTopic2.get(tt.topic2).add(tt);
+                topicByTopic2.get(tt.getTerm2()).add(tt);
             }
             this.topicSim = topicSim;
         }
@@ -282,7 +282,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             if (tt != null) {
                 Iterator<TopicTopic> itt = tt.iterator();
                 while (itt.hasNext()) {
-                    if (ignore.contains(itt.next().topic2)) {
+                    if (ignore.contains(itt.next().getTerm2())) {
                         itt.remove();
                     }
                 }
@@ -439,11 +439,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     }
                 }
                 for (TopicTopic tt : topicSim) {
-                    if (tt.topic1.equals(topic)) {
-                        tt.topic1 = newTopic;
+                    if (tt.getTerm1().equals(topic)) {
+                        tt.setTerm1(newTopic);
                     }
-                    if (tt.topic2.equals(topic)) {
-                        tt.topic2 = newTopic;
+                    if (tt.getTerm2().equals(topic)) {
+                        tt.setTerm2(newTopic);
                     }
                 }
                 updateTopicNameInTaxonomy(taxonomy, topic, newTopic);
@@ -1034,7 +1034,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getTopicSim().stream().filter(tt -> tt.topic1.equals(topic1) && tt.topic2.equals(topic2)).collect(Collectors.toList());
+        return saffron.getTopicSim().stream().filter(tt -> tt.getTerm1().equals(topic1) && tt.getTerm2().equals(topic2)).collect(Collectors.toList());
     }
 
 }

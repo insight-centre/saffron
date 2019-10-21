@@ -12,40 +12,59 @@ import org.insightcentre.nlp.saffron.data.Status;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TopicTopic {
-    public String topic1;
-    public String topic2;
-    public final double similarity;
-    public Status status;
+    private String term1;
+    private String term2;
+    private final double similarity;
+    private Status status;
 
     @JsonCreator
-    public TopicTopic(@JsonProperty("topic1_id") String topic1, 
-                      @JsonProperty("topic2_id") String topic2,
+    public TopicTopic(@JsonProperty("term1_id") String term1, 
+                      @JsonProperty("term2_id") String term2,
                       @JsonProperty("similarity") double similarity) {
-        this.topic1 = topic1;
-        this.topic2 = topic2;
+        this.term1 = term1;
+        this.term2 = term2;
         this.similarity = similarity;
     }
 
-    @JsonProperty("topic1_id")
-    public String getTopic1() {
-        return topic1;
+    public final static String JSON_TERM1_ID = "term1_id";
+    @JsonProperty(JSON_TERM1_ID)
+    public String getTerm1() {
+        return term1;
     }
 
-    @JsonProperty("topic2_id")
-    public String getTopic2() {
-        return topic2;
+    public final static String JSON_TERM2_ID = "term2_id";
+    @JsonProperty(JSON_TERM2_ID)
+    public String getTerm2() {
+        return term2;
     }
 
-    @JsonProperty("similarity")
+    public final static String JSON_SIMILARITY = "similarity";
+    @JsonProperty(JSON_SIMILARITY)
     public double getSimilarity() {
         return similarity;
     }
 
-    @Override
+    public Status getStatus() {
+		return status;
+	}
+
+	public void setStatus(Status status) {
+		this.status = status;
+	}
+
+	public void setTerm1(String term1) {
+		this.term1 = term1;
+	}
+
+	public void setTerm2(String term2) {
+		this.term2 = term2;
+	}
+
+	@Override
     public int hashCode() {
         int hash = 5;
-        hash = 89 * hash + Objects.hashCode(this.topic1);
-        hash = 89 * hash + Objects.hashCode(this.topic2);
+        hash = 89 * hash + Objects.hashCode(this.term1);
+        hash = 89 * hash + Objects.hashCode(this.term2);
         hash = 89 * hash + (int) (Double.doubleToLongBits(this.similarity) ^ (Double.doubleToLongBits(this.similarity) >>> 32));
         return hash;
     }
@@ -59,10 +78,10 @@ public class TopicTopic {
             return false;
         }
         final TopicTopic other = (TopicTopic) obj;
-        if (!Objects.equals(this.topic1, other.topic1)) {
+        if (!Objects.equals(this.term1, other.term1)) {
             return false;
         }
-        if (!Objects.equals(this.topic2, other.topic2)) {
+        if (!Objects.equals(this.term2, other.term2)) {
             return false;
         }
         if (Double.doubleToLongBits(this.similarity) != Double.doubleToLongBits(other.similarity)) {
