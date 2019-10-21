@@ -39,7 +39,7 @@ import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
 import org.insightcentre.saffron.web.api.BaseResponse;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
@@ -184,7 +184,7 @@ public class Browser extends AbstractHandler {
                     final String term2 = request.getParameter("term2");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
-                    final List<TopicTopic> tts;
+                    final List<TermTerm> tts;
                     if (term1 != null) {
                         tts = saffron.getTopicByTopic1(saffronDatasetName, term1, saffron.getTaxoChildren(saffronDatasetName, term1));
                     } else if (term2 != null) {
@@ -193,7 +193,7 @@ public class Browser extends AbstractHandler {
                         tts = null;
                     }
                     if (tts != null) {
-                        List<TopicTopic> tts2 = getTopN(tts, n, offset);
+                        List<TermTerm> tts2 = getTopN(tts, n, offset);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -561,10 +561,10 @@ public class Browser extends AbstractHandler {
         }
     }
     
-    private List<TopicTopic> getTopN(final List<TopicTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<TopicTopic>() {
+    private List<TermTerm> getTopN(final List<TermTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<TermTerm>() {
             @Override
-            public int compare(TopicTopic o1, TopicTopic o2) {
+            public int compare(TermTerm o1, TermTerm o2) {
                 if (o1.getSimilarity() > o2.getSimilarity()) {
                     return -1;
                 } else if (o1.getSimilarity() < o2.getSimilarity()) {

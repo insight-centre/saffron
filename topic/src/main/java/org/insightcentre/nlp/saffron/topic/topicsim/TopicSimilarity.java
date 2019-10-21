@@ -19,7 +19,7 @@ import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 
 /**
  *
@@ -35,12 +35,12 @@ public class TopicSimilarity {
         this.top_n = config.topN;
     }
 
-    public List<TopicTopic> topicSimilarity(List<DocumentTerm> documentTopics) {
+    public List<TermTerm> topicSimilarity(List<DocumentTerm> documentTopics) {
         return topicSimilarity(documentTopics, new DefaultSaffronListener());
     }
     
-    public List<TopicTopic> topicSimilarity(List<DocumentTerm> documentTopics, SaffronListener log) {
-        List<TopicTopic> topicTopics = new ArrayList<>();
+    public List<TermTerm> topicSimilarity(List<DocumentTerm> documentTopics, SaffronListener log) {
+        List<TermTerm> topicTopics = new ArrayList<>();
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
         log.log(String.format("%s doc-topics\n", documentTopics.size()));
         for (DocumentTerm dt : documentTopics) {
@@ -51,10 +51,10 @@ public class TopicSimilarity {
             vectors.get(dt.getTermString()).put(dt.getDocumentId(), dt.getOccurrences());
         }
         for (String t1 : vectors.keySet()) {
-            TreeSet<TopicTopic> topN = new TreeSet<>(new Comparator<TopicTopic>() {
+            TreeSet<TermTerm> topN = new TreeSet<>(new Comparator<TermTerm>() {
 
                 @Override
-                public int compare(TopicTopic arg0, TopicTopic arg1) {
+                public int compare(TermTerm arg0, TermTerm arg1) {
                     int i1 = Double.compare(arg0.getSimilarity(), arg1.getSimilarity());
                     if (i1 == 0) {
                         int i2 = arg0.getTerm1().compareTo(arg1.getTerm1());
@@ -70,7 +70,7 @@ public class TopicSimilarity {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
-                        topN.add(new TopicTopic(t1, t2, s));
+                        topN.add(new TermTerm(t1, t2, s));
                     }
                 }
             }

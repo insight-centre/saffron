@@ -16,7 +16,7 @@ import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.json.JSONObject;
 
@@ -74,7 +74,7 @@ public interface SaffronDataSource extends Closeable {
 
     boolean addTopics(String id, Date date, List<Term> topics);
 
-    boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity);
+    boolean addTopicsSimilarity(String id, Date date, List<TermTerm> topicSimilarity);
 
     /*
      * (non-Javadoc)
@@ -109,9 +109,9 @@ public interface SaffronDataSource extends Closeable {
 
     public List<String> getTaxoChildren(String runId, String topic_string);
 
-    public List<TopicTopic> getTopicByTopic1(String runId, String topic1, List<String> _ignore);
+    public List<TermTerm> getTopicByTopic1(String runId, String topic1, List<String> _ignore);
 
-    public List<TopicTopic> getTopicByTopic2(String runId, String topic2);
+    public List<TermTerm> getTopicByTopic2(String runId, String topic2);
 
     public List<AuthorTerm> getTopicByAuthor(String runId, String author);
 
@@ -145,7 +145,7 @@ public interface SaffronDataSource extends Closeable {
 
     public void setAuthorTopics(String runId, Collection<AuthorTerm> authorTopics);
 
-    public void setTopicSim(String runId, List<TopicTopic> topicSim);
+    public void setTopicSim(String runId, List<TermTerm> topicSim);
 
     public void setAuthorSim(String runId, List<AuthorAuthor> authorSim);
 
@@ -199,9 +199,9 @@ public interface SaffronDataSource extends Closeable {
 
     public Iterable<DocumentTerm> getDocTopicByTopic(String name, String topicId);
 
-    public Iterable<TopicTopic> getAllTopicSimilarities(String name);
+    public Iterable<TermTerm> getAllTopicSimilarities(String name);
 
-    public Iterable<TopicTopic> getTopicByTopics(String name, String topic1, String topic2);
+    public Iterable<TermTerm> getTopicByTopics(String name, String topic1, String topic2);
 
     public static class TopicAndScore {
 

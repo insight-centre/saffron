@@ -39,7 +39,7 @@ import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
@@ -508,7 +508,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting topics");
         TopicSimilarity ts = new TopicSimilarity(config.topicSim);
-        final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
+        final List<TermTerm> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving topic connections");
         if (storeCopy.equals("true"))

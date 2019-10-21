@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.saffron.web.SaffronDataSource;
 
 
@@ -97,7 +97,7 @@ public class RDFConversion {
                             : base + "/rdf/author/" + encode(at.getAuthorId())));
         }
         
-        for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
+        for(TermTerm tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
                             base == null ? encode(tt.getTerm2())

@@ -22,7 +22,7 @@ import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 
@@ -48,12 +48,12 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
         private Taxonomy taxonomy;
         private List<AuthorAuthor> authorSim;
-        private List<TopicTopic> topicSim;
+        private List<TermTerm> topicSim;
         private List<AuthorTerm> authorTopics;
         private List<DocumentTerm> docTopics;
         private HashMap<String, Term> topics;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
-        private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
+        private HashMap<String, List<TermTerm>> topicByTopic1, topicByTopic2;
         private HashMap<String, List<DocumentTerm>> docByTopic, topicByDoc;
         private HashMap<String, List<AuthorTerm>> authorByTopic, topicByAuthor;
         private List<String> topicsSorted;
@@ -256,31 +256,31 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             });
         }
 
-        public List<TopicTopic> getTopicSim() {
+        public List<TermTerm> getTopicSim() {
             return topicSim;
         }
 
-        public void setTopicSim(List<TopicTopic> topicSim) {
+        public void setTopicSim(List<TermTerm> topicSim) {
             topicByTopic1 = new HashMap<>();
             topicByTopic2 = new HashMap<>();
-            for (TopicTopic tt : topicSim) {
+            for (TermTerm tt : topicSim) {
                 if (!topicByTopic1.containsKey(tt.getTerm1())) {
-                    topicByTopic1.put(tt.getTerm1(), new ArrayList<TopicTopic>());
+                    topicByTopic1.put(tt.getTerm1(), new ArrayList<TermTerm>());
                 }
                 topicByTopic1.get(tt.getTerm1()).add(tt);
                 if (!topicByTopic2.containsKey(tt.getTerm2())) {
-                    topicByTopic2.put(tt.getTerm2(), new ArrayList<TopicTopic>());
+                    topicByTopic2.put(tt.getTerm2(), new ArrayList<TermTerm>());
                 }
                 topicByTopic2.get(tt.getTerm2()).add(tt);
             }
             this.topicSim = topicSim;
         }
 
-        public List<TopicTopic> getTopicByTopic1(String topic1, List<String> _ignore) {
+        public List<TermTerm> getTopicByTopic1(String topic1, List<String> _ignore) {
             Set<String> ignore = _ignore == null ? new HashSet<>() : new HashSet<>(_ignore);
-            List<TopicTopic> tt = topicByTopic1.get(topic1);
+            List<TermTerm> tt = topicByTopic1.get(topic1);
             if (tt != null) {
-                Iterator<TopicTopic> itt = tt.iterator();
+                Iterator<TermTerm> itt = tt.iterator();
                 while (itt.hasNext()) {
                     if (ignore.contains(itt.next().getTerm2())) {
                         itt.remove();
@@ -292,8 +292,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             }
         }
 
-        public List<TopicTopic> getTopicByTopic2(String topic2) {
-            List<TopicTopic> tt = topicByTopic2.get(topic2);
+        public List<TermTerm> getTopicByTopic2(String topic2) {
+            List<TermTerm> tt = topicByTopic2.get(topic2);
             return tt == null ? Collections.EMPTY_LIST : tt;
         }
 
@@ -438,7 +438,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                         dt.setTermString(newTopic);
                     }
                 }
-                for (TopicTopic tt : topicSim) {
+                for (TermTerm tt : topicSim) {
                     if (tt.getTerm1().equals(topic)) {
                         tt.setTerm1(newTopic);
                     }
@@ -501,8 +501,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new FileNotFoundException("Could not find topic-sim.json");
         }
 
-        saffron.setTopicSim((List<TopicTopic>) mapper.readValue(topicSimFile,
-                tf.constructCollectionType(List.class, TopicTopic.class)));
+        saffron.setTopicSim((List<TermTerm>) mapper.readValue(topicSimFile,
+                tf.constructCollectionType(List.class, TermTerm.class)));
 
         File authorTopicFile = new File(directory, "author-topics.json");
         if (!authorTopicFile.exists()) {
@@ -602,7 +602,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity) {
+    public boolean addTopicsSimilarity(String id, Date date, List<TermTerm> topicSimilarity) {
         SaffronDataImpl saffron = data.get(id);
         if (saffron == null) {
             return false;
@@ -748,7 +748,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<TopicTopic> getTopicByTopic1(String runId, String topic1, List<String> _ignore) {
+    public List<TermTerm> getTopicByTopic1(String runId, String topic1, List<String> _ignore) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -757,7 +757,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<TopicTopic> getTopicByTopic2(String runId, String topic2) {
+    public List<TermTerm> getTopicByTopic2(String runId, String topic2) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -910,7 +910,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public void setTopicSim(String runId, List<TopicTopic> topicSim) {
+    public void setTopicSim(String runId, List<TermTerm> topicSim) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1020,7 +1020,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<TopicTopic> getAllTopicSimilarities(String name) {
+    public Iterable<TermTerm> getAllTopicSimilarities(String name) {
         SaffronDataImpl saffron = data.get(name);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1029,7 +1029,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<TopicTopic> getTopicByTopics(String name, String topic1, String topic2) {
+    public Iterable<TermTerm> getTopicByTopics(String name, String topic1, String topic2) {
         SaffronDataImpl saffron = data.get(name);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

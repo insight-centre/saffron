@@ -11,14 +11,14 @@ import org.insightcentre.nlp.saffron.data.Status;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class TopicTopic {
+public class TermTerm {
     private String term1;
     private String term2;
     private final double similarity;
     private Status status;
 
     @JsonCreator
-    public TopicTopic(@JsonProperty("term1_id") String term1, 
+    public TermTerm(@JsonProperty("term1_id") String term1, 
                       @JsonProperty("term2_id") String term2,
                       @JsonProperty("similarity") double similarity) {
         this.term1 = term1;
@@ -77,7 +77,7 @@ public class TopicTopic {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final TopicTopic other = (TopicTopic) obj;
+        final TermTerm other = (TermTerm) obj;
         if (!Objects.equals(this.term1, other.term1)) {
             return false;
         }
