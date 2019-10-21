@@ -26,7 +26,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
-import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
+import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTerm;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
 import org.insightcentre.nlp.saffron.config.*;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
@@ -496,7 +496,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
-        ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTerm);
+        ConnectAuthorTerm cr = new ConnectAuthorTerm(config.authorTerm);
         Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");

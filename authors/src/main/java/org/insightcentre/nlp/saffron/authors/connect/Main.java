@@ -73,7 +73,7 @@ public class Main {
             List<DocumentTerm> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             List<Term> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            ConnectAuthorTopic cr = new ConnectAuthorTopic(config);
+            ConnectAuthorTerm cr = new ConnectAuthorTerm(config);
 
             Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
             
