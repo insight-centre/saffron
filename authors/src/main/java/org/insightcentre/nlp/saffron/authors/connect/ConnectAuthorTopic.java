@@ -14,7 +14,7 @@ import java.util.Objects;
 import java.util.TreeSet;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
-import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
+import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
@@ -64,7 +64,7 @@ public class ConnectAuthorTopic {
     }
     private final int top_n;
 
-    public ConnectAuthorTopic(AuthorTopicConfiguration config) {
+    public ConnectAuthorTopic(AuthorTermConfiguration config) {
         this.top_n = config.topN;
     }
     

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.TreeSet;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
-import org.insightcentre.nlp.saffron.config.TopicSimilarityConfiguration;
+import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
@@ -30,7 +30,7 @@ public class TopicSimilarity {
     private final double threshold;
     private final int top_n;
 
-    public TopicSimilarity(TopicSimilarityConfiguration config) {
+    public TopicSimilarity(TermSimilarityConfiguration config) {
         this.threshold = config.threshold;
         this.top_n = config.topN;
     }

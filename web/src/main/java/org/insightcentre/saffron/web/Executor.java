@@ -193,19 +193,19 @@ public class Executor extends AbstractHandler {
         final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms
                 = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
-        AuthorTopicConfiguration authorTopic
-                = new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
+        AuthorTermConfiguration authorTopic
+                = new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTermConfiguration.class);
         AuthorSimilarityConfiguration authorSimilarityConfiguration
                 = new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
-        TopicSimilarityConfiguration topicSimilarityConfiguration
-                = new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
+        TermSimilarityConfiguration topicSimilarityConfiguration
+                = new ObjectMapper().readValue(topicSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
-        newConfig.authorTopic = authorTopic;
+        newConfig.authorTerm = authorTopic;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
-        newConfig.topicSim = topicSimilarityConfiguration;
+        newConfig.termSim = topicSimilarityConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -496,7 +496,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
-        ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
+        ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTerm);
         Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
@@ -507,7 +507,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Connecting topics");
-        TopicSimilarity ts = new TopicSimilarity(config.topicSim);
+        TopicSimilarity ts = new TopicSimilarity(config.termSim);
         final List<TermTerm> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving topic connections");
