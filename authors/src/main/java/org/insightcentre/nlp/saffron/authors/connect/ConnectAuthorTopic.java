@@ -94,11 +94,11 @@ public class ConnectAuthorTopic {
 
                 @Override
                 public int compare(AuthorTopic arg0, AuthorTopic arg1) {
-                    int i1 = Double.compare(arg0.score, arg1.score);
+                    int i1 = Double.compare(arg0.getScore(), arg1.getScore());
                     if(i1 == 0) {
-                        int i2 = arg0.author_id.compareTo(arg1.author_id);
+                        int i2 = arg0.getAuthorId().compareTo(arg1.getAuthorId());
                         if(i2 == 0) {
-                            int i3 = arg0.topic_id.compareTo(arg1.topic_id);
+                            int i3 = arg0.getTermId().compareTo(arg1.getTermId());
                             if(i3 == 0) {
                                 return arg0.hashCode() - arg1.hashCode();
                             }
@@ -113,16 +113,16 @@ public class ConnectAuthorTopic {
             for(String topicString : e.getValue()) {
                 AT atKey = new AT(e.getKey().id, topicString);
                 AuthorTopic at = new AuthorTopic();
-                at.author_id     = e.getKey().id;
-                at.topic_id      = topicString;
-                at.tfirf         = tfirf.getDouble(atKey);
-                at.matches       = matches.getInt(atKey);
-                at.occurrences   = occurrences.getInt(atKey);
-                at.paper_count   = paper_count.getInt(atKey);
-                at.score         = at.tfirf * at.paper_count;
+                at.setAuthorId(e.getKey().id);
+                at.setTermId(topicString);
+                at.setTfIrf(tfirf.getDouble(atKey));
+                at.setMatches(matches.getInt(atKey));
+                at.setOccurrences(occurrences.getInt(atKey));
+                at.setPaperCount(paper_count.getInt(atKey));
+                at.setScore(at.getTfIrf() * at.getPaperCount());
                 if(topN.size() < top_n) {
                     topN.add(at);
-                } else if(topN.size() >= top_n && at.score > topN.first().score) {
+                } else if(topN.size() >= top_n && at.getScore() > topN.first().getScore()) {
                     topN.pollFirst();
                     topN.add(at);
                 }

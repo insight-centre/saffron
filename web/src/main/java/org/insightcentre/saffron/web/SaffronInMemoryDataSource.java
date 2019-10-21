@@ -138,14 +138,14 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             authorByTopic = new HashMap<>();
             topicByAuthor = new HashMap<>();
             for (AuthorTopic at : authorTopics) {
-                if (!authorByTopic.containsKey(at.topic_id)) {
-                    authorByTopic.put(at.topic_id, new ArrayList<AuthorTopic>());
+                if (!authorByTopic.containsKey(at.getTermId())) {
+                    authorByTopic.put(at.getTermId(), new ArrayList<AuthorTopic>());
                 }
-                authorByTopic.get(at.topic_id).add(at);
-                if (!topicByAuthor.containsKey(at.author_id)) {
-                    topicByAuthor.put(at.author_id, new ArrayList<AuthorTopic>());
+                authorByTopic.get(at.getTermId()).add(at);
+                if (!topicByAuthor.containsKey(at.getAuthorId())) {
+                    topicByAuthor.put(at.getAuthorId(), new ArrayList<AuthorTopic>());
                 }
-                topicByAuthor.get(at.author_id).add(at);
+                topicByAuthor.get(at.getAuthorId()).add(at);
             }
             this.authorTopics = new ArrayList<>(authorTopics);
         }
@@ -158,7 +158,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         public List<Author> authorTopicsToAuthors(List<AuthorTopic> ats) {
             List<Author> authors = new ArrayList<>();
             for (AuthorTopic at : ats) {
-                Author a = getAuthor(at.author_id);
+                Author a = getAuthor(at.getAuthorId());
                 if (a != null) {
                     authors.add(a);
                 }
@@ -429,8 +429,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             Term t = topics.get(topic);
             if (t != null) {
                 for (AuthorTopic at : authorTopics) {
-                    if (at.topic_id.equals(topic)) {
-                        at.topic_id = newTopic;
+                    if (at.getTermId().equals(topic)) {
+                        at.setTermId(newTopic);
                     }
                 }
                 for (DocumentTerm dt : docTopics) {

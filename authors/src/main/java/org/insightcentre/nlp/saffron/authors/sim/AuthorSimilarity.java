@@ -39,10 +39,10 @@ public class AuthorSimilarity {
         //System.err.printf("%d author topics\n", ats.size());
         for (AuthorTopic at : ats) {
             log.tick();
-            if (!vectors.containsKey(at.author_id)) {
-                vectors.put(at.author_id, new Object2DoubleOpenHashMap<String>());
+            if (!vectors.containsKey(at.getAuthorId())) {
+                vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
-            vectors.get(at.author_id).put(at.topic_id, at.score);
+            vectors.get(at.getAuthorId()).put(at.getTermId(), at.getScore());
         }
         //System.err.printf("\n%d vectors\n", vectors.size());
         for (String t1 : vectors.keySet()) {

@@ -93,8 +93,8 @@ public class RDFConversion {
         for(AuthorTopic at : data.getAuthorByTopic(datasetName, t.getString())) {
             res.addProperty(SAFFRON.author, 
                     model.createResource(base == null ?
-                            "../author/" + encode(at.author_id)
-                            : base + "/rdf/author/" + encode(at.author_id)));
+                            "../author/" + encode(at.getAuthorId())
+                            : base + "/rdf/author/" + encode(at.getAuthorId())));
         }
         
         for(TopicTopic tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
@@ -134,8 +134,8 @@ public class RDFConversion {
         }
         for(AuthorTopic at : data.getTopicByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTopic, model.createResource(
-                    base == null ? "../term/" + encode(at.topic_id) 
-                            : base + "/rdf/term/" + encode(at.topic_id)));
+                    base == null ? "../term/" + encode(at.getTermId()) 
+                            : base + "/rdf/term/" + encode(at.getTermId())));
         }
         for(Document d : data.getDocsByAuthor(datasetName, author.id)) {
             res.addProperty(FOAF.made, base == null ? 

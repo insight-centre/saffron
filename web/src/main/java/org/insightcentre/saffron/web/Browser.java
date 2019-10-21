@@ -613,15 +613,15 @@ public class Browser extends AbstractHandler {
         tts.sort(new Comparator<AuthorTopic>() {
             @Override
             public int compare(AuthorTopic o1, AuthorTopic o2) {
-                if (o1.score > o2.score) {
+                if (o1.getScore() > o2.getScore()) {
                     return -1;
-                } else if (o1.score < o2.score) {
+                } else if (o1.getScore() < o2.getScore()) {
                     return +1;
                 } else {
-                    int k = Integer.compare(o1.occurrences, o2.occurrences);
+                    int k = Integer.compare(o1.getOccurrences(), o2.getOccurrences());
                     if(k != 0) return -k;
-                    int i = o1.author_id.compareTo(o2.author_id);
-                    int j = o1.topic_id.compareTo(o2.topic_id);
+                    int i = o1.getAuthorId().compareTo(o2.getAuthorId());
+                    int j = o1.getTermId().compareTo(o2.getTermId());
                     return i != 0 ? i : j;
                 }
             }

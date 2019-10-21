@@ -3,7 +3,6 @@ package org.insightcentre.nlp.saffron.data.connections;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *
@@ -11,29 +10,93 @@ import org.insightcentre.nlp.saffron.data.Status;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthorTopic {
-    public String author_id;
-    public String topic_id;
-    public int matches;
-    public int occurrences;
-    public int paper_count;  // Number of papers for researcher that topic occurs in.
-    public double tfirf;     // Like TFIDF but with researchers instead of documents.
+    private String authorId;
+    private String termId;
+    private int matches;
+    private int occurrences;
+    private int paperCount;  // Number of papers for researcher that topic occurs in.
+    private double tfIrf;     // Like TFIDF but with researchers instead of documents.
                              // See "Domain adaptive extraction of topical hierarchies 
                              // for Expertise Mining" (Georgeta Bordea (2013)) for
                              // evaluations of different methods.
-    public double score;     // tfirf * topic score
-    public double researcher_score; // score for researcher's ranking for this particular topic
+    private double score;     // tfirf * topic score
+    private double researcherScore; // score for researcher's ranking for this particular topic
+    
+    public String getAuthorId() {
+		return authorId;
+	}
 
-    @Override
+	public void setAuthorId(String authorId) {
+		this.authorId = authorId;
+	}
+
+	public String getTermId() {
+		return termId;
+	}
+
+	public void setTermId(String termId) {
+		this.termId = termId;
+	}
+
+	public int getMatches() {
+		return matches;
+	}
+
+	public void setMatches(int matches) {
+		this.matches = matches;
+	}
+
+	public int getOccurrences() {
+		return occurrences;
+	}
+
+	public void setOccurrences(int occurrences) {
+		this.occurrences = occurrences;
+	}
+
+	public int getPaperCount() {
+		return paperCount;
+	}
+
+	public void setPaperCount(int paperCount) {
+		this.paperCount = paperCount;
+	}
+
+	public double getTfIrf() {
+		return tfIrf;
+	}
+
+	public void setTfIrf(double tfIrf) {
+		this.tfIrf = tfIrf;
+	}
+
+	public double getScore() {
+		return score;
+	}
+
+	public void setScore(double score) {
+		this.score = score;
+	}
+
+	public double getResearcherScore() {
+		return researcherScore;
+	}
+
+	public void setResearcherScore(double researcherScore) {
+		this.researcherScore = researcherScore;
+	}
+
+	@Override
     public int hashCode() {
         int hash = 7;
-        hash = 43 * hash + Objects.hashCode(this.author_id);
-        hash = 43 * hash + Objects.hashCode(this.topic_id);
+        hash = 43 * hash + Objects.hashCode(this.authorId);
+        hash = 43 * hash + Objects.hashCode(this.termId);
         hash = 43 * hash + this.matches;
         hash = 43 * hash + this.occurrences;
-        hash = 43 * hash + this.paper_count;
-        hash = 43 * hash + (int) (Double.doubleToLongBits(this.tfirf) ^ (Double.doubleToLongBits(this.tfirf) >>> 32));
+        hash = 43 * hash + this.paperCount;
+        hash = 43 * hash + (int) (Double.doubleToLongBits(this.tfIrf) ^ (Double.doubleToLongBits(this.tfIrf) >>> 32));
         hash = 43 * hash + (int) (Double.doubleToLongBits(this.score) ^ (Double.doubleToLongBits(this.score) >>> 32));
-        hash = 43 * hash + (int) (Double.doubleToLongBits(this.researcher_score) ^ (Double.doubleToLongBits(this.researcher_score) >>> 32));
+        hash = 43 * hash + (int) (Double.doubleToLongBits(this.researcherScore) ^ (Double.doubleToLongBits(this.researcherScore) >>> 32));
         return hash;
     }
 
@@ -46,10 +109,10 @@ public class AuthorTopic {
             return false;
         }
         final AuthorTopic other = (AuthorTopic) obj;
-        if (!Objects.equals(this.author_id, other.author_id)) {
+        if (!Objects.equals(this.authorId, other.authorId)) {
             return false;
         }
-        if (!Objects.equals(this.topic_id, other.topic_id)) {
+        if (!Objects.equals(this.termId, other.termId)) {
             return false;
         }
         if (this.matches != other.matches) {
@@ -58,16 +121,16 @@ public class AuthorTopic {
         if (this.occurrences != other.occurrences) {
             return false;
         }
-        if (this.paper_count != other.paper_count) {
+        if (this.paperCount != other.paperCount) {
             return false;
         }
-        if (Double.doubleToLongBits(this.tfirf) != Double.doubleToLongBits(other.tfirf)) {
+        if (Double.doubleToLongBits(this.tfIrf) != Double.doubleToLongBits(other.tfIrf)) {
             return false;
         }
         if (Double.doubleToLongBits(this.score) != Double.doubleToLongBits(other.score)) {
             return false;
         }
-        if (Double.doubleToLongBits(this.researcher_score) != Double.doubleToLongBits(other.researcher_score)) {
+        if (Double.doubleToLongBits(this.researcherScore) != Double.doubleToLongBits(other.researcherScore)) {
             return false;
         }
         return true;

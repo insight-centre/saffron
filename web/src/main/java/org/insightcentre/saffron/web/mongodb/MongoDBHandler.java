@@ -161,14 +161,14 @@ public class MongoDBHandler implements SaffronDataSource {
             authorByTopic = new HashMap<>();
             topicByAuthor = new HashMap<>();
             for (AuthorTopic at : authorTopics) {
-                if (!authorByTopic.containsKey(at.topic_id)) {
-                    authorByTopic.put(at.topic_id, new ArrayList<AuthorTopic>());
+                if (!authorByTopic.containsKey(at.getTermId())) {
+                    authorByTopic.put(at.getTermId(), new ArrayList<AuthorTopic>());
                 }
-                authorByTopic.get(at.topic_id).add(at);
-                if (!topicByAuthor.containsKey(at.author_id)) {
-                    topicByAuthor.put(at.author_id, new ArrayList<AuthorTopic>());
+                authorByTopic.get(at.getTermId()).add(at);
+                if (!topicByAuthor.containsKey(at.getAuthorId())) {
+                    topicByAuthor.put(at.getAuthorId(), new ArrayList<AuthorTopic>());
                 }
-                topicByAuthor.get(at.author_id).add(at);
+                topicByAuthor.get(at.getAuthorId()).add(at);
             }
             this.authorTopics = new ArrayList<>(authorTopics);
         }
@@ -184,7 +184,7 @@ public class MongoDBHandler implements SaffronDataSource {
         public List<Author> authorTopicsToAuthors(List<AuthorTopic> ats) {
             List<Author> authors = new ArrayList<>();
             for (AuthorTopic at : ats) {
-                Author a = getAuthor(at.author_id);
+                Author a = getAuthor(at.getAuthorId());
                 if (a != null) {
                     authors.add(a);
                 }
@@ -480,8 +480,8 @@ public class MongoDBHandler implements SaffronDataSource {
             Term t = terms.get(term);
             if (t != null) {
                 for (AuthorTopic at : authorTopics) {
-                    if (at.topic_id.equals(term)) {
-                        at.topic_id = newTerm;
+                    if (at.getTermId().equals(term)) {
+                        at.setTermId(newTerm);
                     }
                 }
                 for (DocumentTerm dt : docTopics) {
@@ -890,17 +890,17 @@ public class MongoDBHandler implements SaffronDataSource {
         Document document = new Document();
         int[] idx = { 0 };
         terms.forEach(name -> {
-            document.put("_id", id + "_" + name.topic_id + "_" + idx[0]++);
+            document.put("_id", id + "_" + name.getTermId() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("author_topic", name.topic_id);
-            document.put("matches", name.matches);
-            document.put("occurences", name.occurrences);
-            document.put("score", name.score);
-            document.put("term_id", name.topic_id);
-            document.put("tfirf", name.tfirf);
-            document.put("paper_count", name.paper_count);
-            document.put("researcher_score", name.researcher_score);
+            document.put("author_topic", name.getTermId());
+            document.put("matches", name.getMatches());
+            document.put("occurences", name.getOccurrences());
+            document.put("score", name.getScore());
+            document.put("term_id", name.getTermId());
+            document.put("tfirf", name.getTfIrf());
+            document.put("paper_count", name.getPaperCount());
+            document.put("researcher_score", name.getResearcherScore());
             authorTopicsCollection.insertOne(document);
         });
         return true;
