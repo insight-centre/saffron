@@ -14,7 +14,7 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.saffron.web.SaffronDataSource;
 
@@ -54,7 +54,7 @@ public class RDFConversion {
             res.addLiteral(DCTerms.type, d.getMimeType());
         }
 
-        for (DocumentTopic dt : data.getTopicByDoc(datasetName, d.id)) {
+        for (DocumentTerm dt : data.getTopicByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
                     base == null ? "../term/" + encode(dt.getTermString()) 
                             : base + "/rdf/term/" + encode(dt.getTermString())));

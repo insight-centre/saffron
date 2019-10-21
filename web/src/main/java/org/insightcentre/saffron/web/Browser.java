@@ -38,7 +38,7 @@ import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
 import org.insightcentre.saffron.web.api.BaseResponse;
@@ -233,7 +233,7 @@ public class Browser extends AbstractHandler {
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (doc != null) {
-                        final List<DocumentTopic> dts = saffron.getTopicByDoc(saffronDatasetName, doc);
+                        final List<DocumentTerm> dts = saffron.getTopicByDoc(saffronDatasetName, doc);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -585,10 +585,10 @@ public class Browser extends AbstractHandler {
         }
     }
 
-    private List<DocumentTopic> getTopNDocTopics(final List<DocumentTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<DocumentTopic>() {
+    private List<DocumentTerm> getTopNDocTopics(final List<DocumentTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<DocumentTerm>() {
             @Override
-            public int compare(DocumentTopic o1, DocumentTopic o2) {
+            public int compare(DocumentTerm o1, DocumentTerm o2) {
                 if (o1.getOccurrences() > o2.getOccurrences()) {
                     return -1;
                 } else if (o1.getOccurrences() < o2.getOccurrences()) {

@@ -19,7 +19,7 @@ import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  *
@@ -68,12 +68,12 @@ public class ConnectAuthorTopic {
         this.top_n = config.topN;
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTopic> documentTopics,
+    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
         Iterable<Document> documents) {
         return connectResearchers(topics, documentTopics, documents, new DefaultSaffronListener());
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTopic> documentTopics,
+    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
         Iterable<Document> documents, SaffronListener log) {
 
         Map<String, Document>     docById      = buildDocById(documents);
@@ -134,10 +134,10 @@ public class ConnectAuthorTopic {
         
     }
 
-    private Map<Author, List<String>> buildAuthor2Topic(List<DocumentTopic> documentTopics, Map<String, Document> docById,
+    private Map<Author, List<String>> buildAuthor2Topic(List<DocumentTerm> documentTopics, Map<String, Document> docById,
             SaffronListener log) {
         Map<Author, List<String>> author2Topic = new HashMap<>();
-        for(DocumentTopic dt : documentTopics) {
+        for(DocumentTerm dt : documentTopics) {
             Document doc = docById.get(dt.getDocumentId());
             if(doc == null) {
                 log.log("Document missing: " + dt.getDocumentId());
@@ -183,8 +183,8 @@ public class ConnectAuthorTopic {
         }
     }
 
-    private void countTfirf(List<DocumentTopic> docTopics, Map<String, Document> docById, Object2IntMap<AT> paper_count, Object2DoubleMap<AT> tfirf) {
-        for(DocumentTopic dt : docTopics) {
+    private void countTfirf(List<DocumentTerm> docTopics, Map<String, Document> docById, Object2IntMap<AT> paper_count, Object2DoubleMap<AT> tfirf) {
+        for(DocumentTerm dt : docTopics) {
             Document doc = docById.get(dt.getDocumentId());
             for(Author a : doc.authors) {
                 AT at = new AT(a.id, dt.getTermString());

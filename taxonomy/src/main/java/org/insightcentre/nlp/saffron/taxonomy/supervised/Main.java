@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 
@@ -75,7 +75,7 @@ public class Main {
                     || config.taxonomy.search == null) {
                 badOptions(p, "Configuration does not have a model file");
             }
-            List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
+            List<DocumentTerm> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             List<Term> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             Map<String, Term> topicMap = loadMap(topics, mapper, new DefaultSaffronListener());

@@ -8,7 +8,7 @@ import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics.WordTrie;
 
@@ -26,10 +26,10 @@ public class EnrichTopicTask implements Runnable {
     private final FrequencyStats stats = new FrequencyStats();
     private final FrequencyStats summary;
     private final WordTrie topicStrings;
-    private final ConcurrentLinkedQueue<DocumentTopic> finalDocTopics;
-    private final HashMap<String, DocumentTopic> docTopics = new HashMap<>();
+    private final ConcurrentLinkedQueue<DocumentTerm> finalDocTopics;
+    private final HashMap<String, DocumentTerm> docTopics = new HashMap<>();
 
-    public EnrichTopicTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie topicStrings, ConcurrentLinkedQueue<DocumentTopic> docTopics) {
+    public EnrichTopicTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie topicStrings, ConcurrentLinkedQueue<DocumentTerm> docTopics) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
@@ -82,7 +82,7 @@ public class EnrichTopicTask implements Runnable {
             synchronized (summary) {
                 summary.add(stats);
             }
-            for(DocumentTopic dt : docTopics.values()) {
+            for(DocumentTerm dt : docTopics.values()) {
                 finalDocTopics.add(dt);
             }
         } catch (Exception x) {
@@ -107,7 +107,7 @@ public class EnrichTopicTask implements Runnable {
     private void processTopic(String topicCandidate) {
         stats.termFrequency.put(topicCandidate, stats.termFrequency.getInt(topicCandidate) + 1);
         stats.docFrequency.put(topicCandidate, 1);
-        docTopics.put(topicCandidate, new DocumentTopic(doc.id, topicCandidate, stats.termFrequency.getInt(topicCandidate), null, null, null));
+        docTopics.put(topicCandidate, new DocumentTerm(doc.id, topicCandidate, stats.termFrequency.getInt(topicCandidate), null, null, null));
 
     }
 

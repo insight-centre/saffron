@@ -11,7 +11,7 @@ import libsvm.svm;
 import libsvm.svm_model;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  * Provides pairwise supervised predictions of the order of elements in a
@@ -25,7 +25,7 @@ public class SupervisedTaxo {
     private final svm_model classifier;
     private final ArrayList<String> attributes;
 
-    public SupervisedTaxo(List<DocumentTopic> docTopics,
+    public SupervisedTaxo(List<DocumentTerm> docTopics,
             Map<String, Term> topicMap, Model model) throws IOException {
         this.features = Train.makeFeatures(docTopics, topicMap, model);
         this.classifier = readClassifier(model);

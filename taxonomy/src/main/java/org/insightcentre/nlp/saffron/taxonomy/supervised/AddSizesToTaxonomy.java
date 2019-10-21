@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  * Calculcate the sizes of the taxonomy
@@ -13,9 +13,9 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  */
 public class AddSizesToTaxonomy {
     
-    public static TaxonomyWithSize addSizes(Taxonomy taxonomy, List<DocumentTopic> docTopics) {
+    public static TaxonomyWithSize addSizes(Taxonomy taxonomy, List<DocumentTerm> docTopics) {
         Object2IntOpenHashMap<String> topicFreq = new Object2IntOpenHashMap<>();
-        for(DocumentTopic dt : docTopics) {
+        for(DocumentTerm dt : docTopics) {
             topicFreq.put(dt.getTermString(), dt.getOccurrences());
         }
         return _addSizes(taxonomy, topicFreq, 0);

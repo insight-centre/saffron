@@ -34,7 +34,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 
@@ -103,11 +103,11 @@ public class Train {
                 badOptions(p, "Config invalid: " + config.verify());
             }
 
-            final List<DocumentTopic> docTopics;
+            final List<DocumentTerm> docTopics;
             if (docTopicsFile == null) {
                 docTopics = null;
             } else {
-                docTopics = mapper.readValue(docTopicsFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
+                docTopics = mapper.readValue(docTopicsFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             }
             final List<List<StringPair>> taxos = new ArrayList<>();
             for (File taxoFile : taxoFiles) {
@@ -170,7 +170,7 @@ public class Train {
         }
     }
 
-    private static void train(List<DocumentTopic> docTopics, Map<String, Term> topicMap,
+    private static void train(List<DocumentTerm> docTopics, Map<String, Term> topicMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Model model = new Model();
         model.features = config.features;
@@ -197,11 +197,11 @@ public class Train {
         mapper.writerWithDefaultPrettyPrinter().writeValue(config.modelFile.toFile(), model);
     }
 
-    public static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
+    public static Map<String, IntSet> indexDocTopics(List<DocumentTerm> docTopics) {
         Object2IntMap<String> docIds = new Object2IntOpenHashMap<>();
         HashMap<String, IntSet> index = new HashMap<>();
         int id = 0;
-        for (DocumentTopic dt : docTopics) {
+        for (DocumentTerm dt : docTopics) {
             final int id2;
             if (!docIds.containsKey(dt.getDocumentId())) {
                 docIds.put(dt.getDocumentId(), id2 = id++);
@@ -344,7 +344,7 @@ public class Train {
         }
     }*/
 
-    public static Features makeFeatures(List<DocumentTopic> docTopics, Map<String, Term> topicMap,
+    public static Features makeFeatures(List<DocumentTerm> docTopics, Map<String, Term> topicMap,
             Model model) throws IOException {
         Matrix svdAveMatrix = model.svdAve == null ? null 
                 : new Matrix(model.svdAve);

@@ -12,7 +12,7 @@ import java.util.Objects;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  * Greedily construct a taxonomy
@@ -30,7 +30,7 @@ public class GreedyTaxoExtract {
     }
 
     
-    public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Term> topicMap) {
+    public Taxonomy extractTaxonomy(List<DocumentTerm> docTopics, Map<String, Term> topicMap) {
         HashMap<String, List<ScoredString>> scoresByChild = new HashMap<>();
         for(String t1 : topicMap.keySet()) {
             List<ScoredString> list = new ArrayList<>();

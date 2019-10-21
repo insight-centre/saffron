@@ -42,7 +42,7 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
 import org.insightcentre.nlp.saffron.data.*;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.domain.DomainStats;
@@ -200,7 +200,7 @@ public class TermExtraction {
     }
 
     public FrequencyStats extractStats(Corpus searcher,
-            ConcurrentLinkedQueue<DocumentTopic> docTopics,
+            ConcurrentLinkedQueue<DocumentTerm> docTopics,
             CasingStats casing, Set<String> blackList)
             throws SearchException, InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
@@ -286,7 +286,7 @@ public class TermExtraction {
     public Result extractTopics(final Corpus searcher, final Set<String> whiteList, final Set<String> blackList, SaffronListener log) {
         blackList.addAll(configBlacklist);
         try {
-            final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+            final ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
             final FrequencyStats freqs = extractStats(searcher, dts, casing, blackList);
             Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
@@ -392,19 +392,19 @@ public class TermExtraction {
         }
     }
 
-    private static List<DocumentTopic> filterTopics(List<String> ts,
-            ConcurrentLinkedQueue<DocumentTopic> dts,
+    private static List<DocumentTerm> filterTopics(List<String> ts,
+            ConcurrentLinkedQueue<DocumentTerm> dts,
             CasingStats casing, Set<String> stopWords) {
         Set<String> ts2 = new HashSet<>(ts);
-        Set<DocumentTopic> rval = new HashSet<>();
-        for (DocumentTopic dt : dts) {
+        Set<DocumentTerm> rval = new HashSet<>();
+        for (DocumentTerm dt : dts) {
             if (ts2.contains(dt.getTermString())) { // && isProperTopic(dt.topic_string, stopWords)) {
-                rval.add(new DocumentTopic(dt.getDocumentId(),
+                rval.add(new DocumentTerm(dt.getDocumentId(),
                         casing.trueCase(dt.getTermString()),
                         dt.getOccurrences(), dt.getPattern(), dt.getAcronym(), dt.getTfIdf()));
             }
         }
-        return new ArrayList<DocumentTopic>(rval);
+        return new ArrayList<DocumentTerm>(rval);
     }
 
     private static boolean isProperTopic(String rootSequence, Set<String> stopWords) {
@@ -508,10 +508,10 @@ public class TermExtraction {
         return ss;
     }
 
-    private List<String> getTopTopics(List<String> topics, int maxTopics, ConcurrentLinkedQueue<DocumentTopic> dts) {
+    private List<String> getTopTopics(List<String> topics, int maxTopics, ConcurrentLinkedQueue<DocumentTerm> dts) {
         Set<String> docs = new HashSet<>();
         Map<String, Set<String>> topic2doc = new HashMap<>();
-        for (DocumentTopic dt : dts) {
+        for (DocumentTerm dt : dts) {
             docs.add(dt.getDocumentId());
             if (!topic2doc.containsKey(dt.getTermString())) {
                 topic2doc.put(dt.getTermString(), new HashSet<>());
@@ -556,9 +556,9 @@ public class TermExtraction {
     public static class Result {
 
         public Set<Term> topics;
-        public List<DocumentTopic> docTopics;
+        public List<DocumentTerm> docTopics;
 
-        public Result(Set<Term> topics, List<DocumentTopic> docTopics) {
+        public Result(Set<Term> topics, List<DocumentTerm> docTopics) {
             this.topics = topics;
             this.docTopics = docTopics;
         }

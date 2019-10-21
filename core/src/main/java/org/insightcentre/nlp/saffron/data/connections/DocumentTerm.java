@@ -12,7 +12,7 @@ import java.util.Objects;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class DocumentTopic {
+public class DocumentTerm {
 	
 	public static final String JSON_DOCUMENT_ID = "document_id";
 	@JsonProperty(JSON_DOCUMENT_ID)
@@ -43,7 +43,7 @@ public class DocumentTopic {
     //public Integer unembedded_occ;
 
     @JsonCreator
-    public DocumentTopic(@JsonProperty(value=JSON_DOCUMENT_ID,required=true) String document_id, 
+    public DocumentTerm(@JsonProperty(value=JSON_DOCUMENT_ID,required=true) String document_id, 
                          @JsonProperty(value=JSON_TERM_STRING,required=true) String topic_string, 
                          @JsonProperty(JSON_OCCURRENCES) int occurences, 
                          @JsonProperty(JSON_PATTERN) String pattern, 
@@ -105,7 +105,7 @@ public class DocumentTopic {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final DocumentTopic other = (DocumentTopic) obj;
+        final DocumentTerm other = (DocumentTerm) obj;
         if (!Objects.equals(this.documentId, other.documentId)) {
             return false;
         }

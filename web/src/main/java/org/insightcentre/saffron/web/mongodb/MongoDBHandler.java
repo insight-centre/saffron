@@ -25,7 +25,7 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
@@ -73,11 +73,11 @@ public class MongoDBHandler implements SaffronDataSource {
         private List<AuthorAuthor> authorSim;
         private List<TopicTopic> topicSim;
         private List<AuthorTopic> authorTopics;
-        private List<DocumentTopic> docTopics;
+        private List<DocumentTerm> docTopics;
         private HashMap<String, Term> terms;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
-        private HashMap<String, List<DocumentTopic>> docByTopic, topicByDoc;
+        private HashMap<String, List<DocumentTerm>> docByTopic, topicByDoc;
         private HashMap<String, List<AuthorTopic>> authorByTopic, topicByAuthor;
         private List<String> topicsSorted;
         private HashMap<String, org.insightcentre.nlp.saffron.data.Document> corpus;
@@ -197,20 +197,20 @@ public class MongoDBHandler implements SaffronDataSource {
             return ats == null ? Collections.EMPTY_LIST : ats;
         }
 
-        public List<DocumentTopic> getDocTopics() {
+        public List<DocumentTerm> getDocTopics() {
             return docTopics;
         }
 
-        public void setDocTopics(List<DocumentTopic> docTopics) {
+        public void setDocTopics(List<DocumentTerm> docTopics) {
             docByTopic = new HashMap<>();
             topicByDoc = new HashMap<>();
-            for (DocumentTopic dt : docTopics) {
+            for (DocumentTerm dt : docTopics) {
                 if (!docByTopic.containsKey(dt.getTermString())) {
-                    docByTopic.put(dt.getTermString(), new ArrayList<DocumentTopic>());
+                    docByTopic.put(dt.getTermString(), new ArrayList<DocumentTerm>());
                 }
                 docByTopic.get(dt.getTermString()).add(dt);
                 if (!topicByDoc.containsKey(dt.getDocumentId())) {
-                    topicByDoc.put(dt.getDocumentId(), new ArrayList<DocumentTopic>());
+                    topicByDoc.put(dt.getDocumentId(), new ArrayList<DocumentTerm>());
                 }
                 topicByDoc.get(dt.getDocumentId()).add(dt);
             }
@@ -218,12 +218,12 @@ public class MongoDBHandler implements SaffronDataSource {
         }
 
         public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String term) {
-            final List<DocumentTopic> dts = docByTopic.get(term);
+            final List<DocumentTerm> dts = docByTopic.get(term);
             if (dts == null) {
                 return Collections.EMPTY_LIST;
             } else {
                 final List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<>();
-                for (DocumentTopic dt : dts) {
+                for (DocumentTerm dt : dts) {
                     org.insightcentre.nlp.saffron.data.Document d = corpus.get(dt.getDocumentId());
                     if (d != null) {
                         docs.add(d);
@@ -233,8 +233,8 @@ public class MongoDBHandler implements SaffronDataSource {
             }
         }
 
-        public List<DocumentTopic> getTopicByDoc(String doc) {
-            List<DocumentTopic> dts = topicByDoc.get(doc);
+        public List<DocumentTerm> getTopicByDoc(String doc) {
+            List<DocumentTerm> dts = topicByDoc.get(doc);
             if (dts == null) {
                 return Collections.EMPTY_LIST;
             } else {
@@ -484,7 +484,7 @@ public class MongoDBHandler implements SaffronDataSource {
                         at.topic_id = newTerm;
                     }
                 }
-                for (DocumentTopic dt : docTopics) {
+                for (DocumentTerm dt : docTopics) {
                     if (dt.getTermString().equals(term)) {
                         dt.setTermString(newTerm);
                     }
@@ -629,7 +629,7 @@ public class MongoDBHandler implements SaffronDataSource {
         this.setAuthorTopics(runId, mapper.readValue(authorTopicFile,
                 tf.constructCollectionType(List.class, AuthorTopic.class)));
         this.setDocTopics(runId, mapper.readValue(docTopicsFile,
-                tf.constructCollectionType(List.class, DocumentTopic.class)));
+                tf.constructCollectionType(List.class, DocumentTerm.class)));
         this.setTopics(runId, mapper.readValue(topicsFile,
                 tf.constructCollectionType(List.class, Term.class)));
         this.setCorpus(runId, DocumentSearcherFactory.load(indexFile));
@@ -687,8 +687,8 @@ public class MongoDBHandler implements SaffronDataSource {
 
             docTopicsArray.put(jsonObj);
         }
-        saffron.setDocTopics((List<DocumentTopic>) mapper.readValue(docTopicsArray.toString(),
-                tf.constructCollectionType(List.class, DocumentTopic.class)));
+        saffron.setDocTopics((List<DocumentTerm>) mapper.readValue(docTopicsArray.toString(),
+                tf.constructCollectionType(List.class, DocumentTerm.class)));
 
         Iterable<org.bson.Document> topicsDocs = this.getTopics(runId);
         JSONArray jsonTopicsArray = new JSONArray();
@@ -808,7 +808,7 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-    public boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> terms) {
+    public boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTerm> terms) {
         Document document = new Document();
 
         terms.forEach(name -> {
@@ -1031,7 +1031,7 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
     @Override
-    public List<DocumentTopic> getDocTopics(String runId) {
+    public List<DocumentTerm> getDocTopics(String runId) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
 
         if (saffron == null) {
@@ -1149,7 +1149,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<DocumentTopic> getTopicByDoc(String runId, String doc) {
+    public List<DocumentTerm> getTopicByDoc(String runId, String doc) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1230,7 +1230,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public void setDocTopics(String runId, List<DocumentTopic> docTopics) {
+    public void setDocTopics(String runId, List<DocumentTerm> docTopics) {
         this.addDocumentTopicCorrespondence(runId, new Date(), docTopics);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
@@ -1491,7 +1491,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String termId) {
+    public Iterable<DocumentTerm> getDocTopicByTopic(String name, String termId) {
         return null;
     }
 

@@ -38,7 +38,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 
@@ -159,7 +159,7 @@ public class EnrichTopics {
                     new ThreadPoolExecutor.CallerRunsPolicy());
 
             final FrequencyStats summary = new FrequencyStats();
-            final ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+            final ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
 
             for (Document d : corpus.getDocuments()) {
                 service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(topicStrings, tokenizer), dts));
@@ -167,7 +167,7 @@ public class EnrichTopics {
 
             service.shutdown();
             service.awaitTermination(2, TimeUnit.DAYS);
-            List<DocumentTopic> docTopics = new ArrayList<>(dts);
+            List<DocumentTerm> docTopics = new ArrayList<>(dts);
             List<Term> topics = new ArrayList<>();
             for (String topic : topicStrings) {
                 topics.add(new Term(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
@@ -185,10 +185,10 @@ public class EnrichTopics {
 
     public static class Result {
 
-        public final List<DocumentTopic> docTopics;
+        public final List<DocumentTerm> docTopics;
         public final List<Term> topics;
 
-        public Result(List<DocumentTopic> docTopics, List<Term> topics) {
+        public Result(List<DocumentTerm> docTopics, List<Term> topics) {
             this.docTopics = docTopics;
             this.topics = topics;
         }
@@ -295,16 +295,16 @@ public class EnrichTopics {
          *
          * @param docTopics The list of values to add TF-IDF scores to
          */
-        public static void addTfidf(List<DocumentTopic> docTopics) {
+        public static void addTfidf(List<DocumentTerm> docTopics) {
             Object2DoubleMap<String> topicDf = new Object2DoubleOpenHashMap<>();
             HashSet<String> docNames = new HashSet<>();
-            for (DocumentTopic dt : docTopics) {
+            for (DocumentTerm dt : docTopics) {
                 // We assume there are no duplicates in the DT list 
                 topicDf.put(dt.getTermString(), topicDf.getDouble(dt.getTermString()) + 1.0);
                 docNames.add(dt.getDocumentId());
             }
             double n = docNames.size();
-            for (DocumentTopic dt : docTopics) {
+            for (DocumentTerm dt : docTopics) {
                 dt.setTfIdf((double) dt.getOccurrences() * Math.log(n / topicDf.getDouble(dt.getTermString())));
             }
         }

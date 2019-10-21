@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics.WordTrie;
 import org.junit.After;
@@ -73,7 +73,7 @@ public class EnrichTopicTaskTest {
         topicStrings.addTokenized(new String[] { "test", "document" });
         topicStrings.addTokenized(new String[] { "document" });
         topicStrings.addTokenized(new String[] { "work" });
-        ConcurrentLinkedQueue<DocumentTopic> docTopics = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<DocumentTerm> docTopics = new ConcurrentLinkedQueue<>();
                 
         
         EnrichTopicTask instance = new EnrichTopicTask(doc, tagger, null, tokenizer, summary, topicStrings, docTopics);

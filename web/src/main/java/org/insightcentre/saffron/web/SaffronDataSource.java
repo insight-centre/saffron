@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.json.JSONObject;
@@ -44,7 +44,7 @@ public interface SaffronDataSource extends Closeable {
      * @param topics The doc-topics
      * @return True if successful
      */
-    boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> topics);
+    boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTerm> topics);
 
     /**
      * Create a new run
@@ -91,7 +91,7 @@ public interface SaffronDataSource extends Closeable {
 
     Taxonomy getTaxonomy(String runId);
 
-    List<DocumentTopic> getDocTopics(String runId);
+    List<DocumentTerm> getDocTopics(String runId);
 
     //public List<String> getAllRuns();
 
@@ -119,7 +119,7 @@ public interface SaffronDataSource extends Closeable {
 
     public List<Author> authorTopicsToAuthors(String runId, List<AuthorTopic> ats);
 
-    public List<DocumentTopic> getTopicByDoc(String runId, String doc);
+    public List<DocumentTerm> getTopicByDoc(String runId, String doc);
 
     public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String topic);
 
@@ -135,7 +135,7 @@ public interface SaffronDataSource extends Closeable {
 
     public DocumentSearcher getSearcher(String runId);
 
-    public void setDocTopics(String runId, List<DocumentTopic> docTopics);
+    public void setDocTopics(String runId, List<DocumentTerm> docTopics);
 
     public void setIndex(String runId, DocumentSearcher index);
 
@@ -197,7 +197,7 @@ public interface SaffronDataSource extends Closeable {
 
     public List<AuthorTopic> getAllAuthorTopics(String name);
 
-    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String topicId);
+    public Iterable<DocumentTerm> getDocTopicByTopic(String name, String topicId);
 
     public Iterable<TopicTopic> getAllTopicSimilarities(String name);
 
