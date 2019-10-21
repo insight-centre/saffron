@@ -51,18 +51,40 @@ Each element in these two files represents a single term extracted from the corp
 * `occurrences`: The total number of occurrences of a topic in the corpus
 * `matches`: The number of documents in the corpus containing this topic
 * `score`: The importance of the topic to this corpus (between 0 and 1)
-* `status`: Whether the term was validated or not (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **None**
+* `status`: Whether the term was validated or not (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **none**
 * `mv_list`: A list of alternative (morphological variants) forms of this 
 topic string
    * `string`: The form of this variant
-* `originalTopic`: 
+* `originalTopic`: TBD
 
 
 
-
-### Topic-Sim
 ### Doc-Topic
-## Taxonomy
+
+### Topic-Sim ([topic-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topic-sim.json))
+
+This file gathers and compares all pair of terms extracted in the previous stage. Each element describes one edge, ie. a relation between two terms, and their similarity score (see the [pairwise scoring](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach#211-pairwise-scoring) step for more explanation on how this is calculated).
+
+* `topic1_id`: The first topic's topic string
+* `topic2_id`: The second topic's topic string
+* `similarity`: The similarity of the two topics 
+* `status`: Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **mone**
+
+## Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
+
+This file represents the whole taxonomy. Each element describes a term and how it is related to other terms in the taxonomy. 
+The file contains the following:
+
+* `root`: The topic string of this topic or `HEAD_TOPIC` for the root of the taxonomy
+* `score`: The weighting given to the root topic
+* `linkScore`: The likelihood of the link from this topic to its root being correct
+* `originalParent`: The parent assigned before the latest edition (see [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode))
+* `originalTopic`: 
+* `children`: A list of children of this node (these are also Taxonomy objects)
+* `status`:
+* `parent`:
+
+
 
 If authors are present in the original corpus:
 ### Author-Topics
@@ -70,20 +92,6 @@ If authors are present in the original corpus:
 
 
 
-Topic ([topics.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topics.json))
------
-
-
-
-Taxonomy  ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
---------
-
-The topic taxonomy containing the following
-
-* `root`: The topic string of this topic or `""` for no topic
-* `children`: A list of children of this node (these are also Taxonomy objects)
-* `score`: The weighting given to the root topic
-* `linkScore`: The likelihood of the link from this topic to its root being correct
 
 Author-Author
 -------------
@@ -123,13 +131,5 @@ The connection between a document and a topic
 * `tfidf`: Saffron internal value
 * `unembedded_occ`: Saffron internal value
 
-Topic-Topic ([topic-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topic-sim.json))
------------
-
-An edge in the topic-topic graph
-
-* `topic1`: The first topic's topic string
-* `topic2`: The second topic's topic string
-* `similarity`: The similarity of the two topics
 
 
