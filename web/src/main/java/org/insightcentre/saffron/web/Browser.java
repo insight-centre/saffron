@@ -37,7 +37,7 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
@@ -210,7 +210,7 @@ public class Browser extends AbstractHandler {
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (author != null) {
-                        final List<AuthorTopic> ats = saffron.getTopicByAuthor(saffronDatasetName, author);
+                        final List<AuthorTerm> ats = saffron.getTopicByAuthor(saffronDatasetName, author);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -609,10 +609,10 @@ public class Browser extends AbstractHandler {
         }
     }
 
-    private List<AuthorTopic> getTopNAuthorTopics(final List<AuthorTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<AuthorTopic>() {
+    private List<AuthorTerm> getTopNAuthorTopics(final List<AuthorTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<AuthorTerm>() {
             @Override
-            public int compare(AuthorTopic o1, AuthorTopic o2) {
+            public int compare(AuthorTerm o1, AuthorTerm o2) {
                 if (o1.getScore() > o2.getScore()) {
                     return -1;
                 } else if (o1.getScore() < o2.getScore()) {

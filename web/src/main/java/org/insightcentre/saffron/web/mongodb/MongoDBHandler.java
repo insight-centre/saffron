@@ -24,7 +24,7 @@ import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
@@ -72,13 +72,13 @@ public class MongoDBHandler implements SaffronDataSource {
         private Taxonomy taxonomy;
         private List<AuthorAuthor> authorSim;
         private List<TopicTopic> topicSim;
-        private List<AuthorTopic> authorTopics;
+        private List<AuthorTerm> authorTopics;
         private List<DocumentTerm> docTopics;
         private HashMap<String, Term> terms;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TopicTopic>> topicByTopic1, topicByTopic2;
         private HashMap<String, List<DocumentTerm>> docByTopic, topicByDoc;
-        private HashMap<String, List<AuthorTopic>> authorByTopic, topicByAuthor;
+        private HashMap<String, List<AuthorTerm>> authorByTopic, topicByAuthor;
         private List<String> topicsSorted;
         private HashMap<String, org.insightcentre.nlp.saffron.data.Document> corpus;
         private HashMap<String, List<org.insightcentre.nlp.saffron.data.Document>> corpusByAuthor;
@@ -153,37 +153,37 @@ public class MongoDBHandler implements SaffronDataSource {
             return as;
         }
 
-        public List<AuthorTopic> getAuthorTopics() {
+        public List<AuthorTerm> getAuthorTopics() {
             return authorTopics;
         }
 
-        public void setAuthorTopics(Collection<AuthorTopic> authorTopics) {
+        public void setAuthorTopics(Collection<AuthorTerm> authorTopics) {
             authorByTopic = new HashMap<>();
             topicByAuthor = new HashMap<>();
-            for (AuthorTopic at : authorTopics) {
+            for (AuthorTerm at : authorTopics) {
                 if (!authorByTopic.containsKey(at.getTermId())) {
-                    authorByTopic.put(at.getTermId(), new ArrayList<AuthorTopic>());
+                    authorByTopic.put(at.getTermId(), new ArrayList<AuthorTerm>());
                 }
                 authorByTopic.get(at.getTermId()).add(at);
                 if (!topicByAuthor.containsKey(at.getAuthorId())) {
-                    topicByAuthor.put(at.getAuthorId(), new ArrayList<AuthorTopic>());
+                    topicByAuthor.put(at.getAuthorId(), new ArrayList<AuthorTerm>());
                 }
                 topicByAuthor.get(at.getAuthorId()).add(at);
             }
             this.authorTopics = new ArrayList<>(authorTopics);
         }
 
-        public List<AuthorTopic> getAuthorByTopic(String term) {
+        public List<AuthorTerm> getAuthorByTopic(String term) {
             if (authorByTopic == null){
                 authorByTopic = new HashMap<>();
             }
-            List<AuthorTopic> ats = authorByTopic.get(term);
+            List<AuthorTerm> ats = authorByTopic.get(term);
             return ats == null ? Collections.EMPTY_LIST : ats;
         }
 
-        public List<Author> authorTopicsToAuthors(List<AuthorTopic> ats) {
+        public List<Author> authorTopicsToAuthors(List<AuthorTerm> ats) {
             List<Author> authors = new ArrayList<>();
-            for (AuthorTopic at : ats) {
+            for (AuthorTerm at : ats) {
                 Author a = getAuthor(at.getAuthorId());
                 if (a != null) {
                     authors.add(a);
@@ -192,8 +192,8 @@ public class MongoDBHandler implements SaffronDataSource {
             return authors;
         }
 
-        public List<AuthorTopic> getTopicByAuthor(String author) {
-            List<AuthorTopic> ats = topicByAuthor.get(author);
+        public List<AuthorTerm> getTopicByAuthor(String author) {
+            List<AuthorTerm> ats = topicByAuthor.get(author);
             return ats == null ? Collections.EMPTY_LIST : ats;
         }
 
@@ -479,7 +479,7 @@ public class MongoDBHandler implements SaffronDataSource {
         private void updateTopicName(String term, String newTerm, Status status) {
             Term t = terms.get(term);
             if (t != null) {
-                for (AuthorTopic at : authorTopics) {
+                for (AuthorTerm at : authorTopics) {
                     if (at.getTermId().equals(term)) {
                         at.setTermId(newTerm);
                     }
@@ -627,7 +627,7 @@ public class MongoDBHandler implements SaffronDataSource {
         this.setTopicSim(runId,  mapper.readValue(topicSimFile,
                 tf.constructCollectionType(List.class, TopicTopic.class)));
         this.setAuthorTopics(runId, mapper.readValue(authorTopicFile,
-                tf.constructCollectionType(List.class, AuthorTopic.class)));
+                tf.constructCollectionType(List.class, AuthorTerm.class)));
         this.setDocTopics(runId, mapper.readValue(docTopicsFile,
                 tf.constructCollectionType(List.class, DocumentTerm.class)));
         this.setTopics(runId, mapper.readValue(topicsFile,
@@ -676,8 +676,8 @@ public class MongoDBHandler implements SaffronDataSource {
             JSONObject jsonObj = new JSONObject(doc.toJson());
             authorTopicsDocsArray.put(jsonObj);
         }
-        saffron.setAuthorTopics((List<AuthorTopic>) mapper.readValue(authorTopicsDocsArray.toString(),
-                tf.constructCollectionType(List.class, AuthorTopic.class)));
+        saffron.setAuthorTopics((List<AuthorTerm>) mapper.readValue(authorTopicsDocsArray.toString(),
+                tf.constructCollectionType(List.class, AuthorTerm.class)));
 
 
         Iterable<org.bson.Document> docTopicsDocs = this.getDocumentTopicCorrespondence(runId);
@@ -886,7 +886,7 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-    public boolean addAuthorTopics(String id, Date date, Collection<AuthorTopic> terms) {
+    public boolean addAuthorTopics(String id, Date date, Collection<AuthorTerm> terms) {
         Document document = new Document();
         int[] idx = { 0 };
         terms.forEach(name -> {
@@ -1122,7 +1122,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<AuthorTopic> getTopicByAuthor(String runId, String author) {
+    public List<AuthorTerm> getTopicByAuthor(String runId, String author) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1131,7 +1131,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<AuthorTopic> getAuthorByTopic(String runId, String term) {
+    public List<AuthorTerm> getAuthorByTopic(String runId, String term) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1140,7 +1140,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTopic> ats) {
+    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTerm> ats) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1266,7 +1266,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics) {
+    public void setAuthorTopics(String runId, Collection<AuthorTerm> authorTopics) {
        this.addAuthorTopics(runId, new Date(), authorTopics);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
@@ -1486,7 +1486,7 @@ public class MongoDBHandler implements SaffronDataSource {
     }
 
     @Override
-    public List<AuthorTopic> getAllAuthorTopics(String name) {
+    public List<AuthorTerm> getAllAuthorTopics(String name) {
         return null;
     }
 

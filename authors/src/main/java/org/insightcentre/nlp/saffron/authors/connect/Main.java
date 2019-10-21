@@ -10,7 +10,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 
@@ -75,7 +75,7 @@ public class Main {
 
             ConnectAuthorTopic cr = new ConnectAuthorTopic(config);
 
-            Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
+            Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
             
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTopics);
             

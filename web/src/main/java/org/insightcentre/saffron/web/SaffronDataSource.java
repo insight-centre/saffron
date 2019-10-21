@@ -14,7 +14,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
@@ -113,11 +113,11 @@ public interface SaffronDataSource extends Closeable {
 
     public List<TopicTopic> getTopicByTopic2(String runId, String topic2);
 
-    public List<AuthorTopic> getTopicByAuthor(String runId, String author);
+    public List<AuthorTerm> getTopicByAuthor(String runId, String author);
 
-    public List<AuthorTopic> getAuthorByTopic(String runId, String topic);
+    public List<AuthorTerm> getAuthorByTopic(String runId, String topic);
 
-    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTopic> ats);
+    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTerm> ats);
 
     public List<DocumentTerm> getTopicByDoc(String runId, String doc);
 
@@ -143,7 +143,7 @@ public interface SaffronDataSource extends Closeable {
 
     public void setTopics(String runId, List<Term> _topics);
 
-    public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics);
+    public void setAuthorTopics(String runId, Collection<AuthorTerm> authorTopics);
 
     public void setTopicSim(String runId, List<TopicTopic> topicSim);
 
@@ -195,7 +195,7 @@ public interface SaffronDataSource extends Closeable {
 
     public Date getDate(String doc);
 
-    public List<AuthorTopic> getAllAuthorTopics(String name);
+    public List<AuthorTerm> getAllAuthorTopics(String name);
 
     public Iterable<DocumentTerm> getDocTopicByTopic(String name, String topicId);
 

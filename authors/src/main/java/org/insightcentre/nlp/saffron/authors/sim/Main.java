@@ -8,7 +8,7 @@ import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
 /**
  *
@@ -55,7 +55,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             AuthorSimilarityConfiguration config = configuration == null ? new AuthorSimilarityConfiguration () : mapper.readValue(configuration, AuthorSimilarityConfiguration.class);
-            List<AuthorTopic> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, AuthorTopic.class));
+            List<AuthorTerm> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, AuthorTerm.class));
 
             AuthorSimilarity ts = new AuthorSimilarity(config);
 

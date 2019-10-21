@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class AuthorTopic {
+public class AuthorTerm {
     private String authorId;
     private String termId;
     private int matches;
@@ -108,7 +108,7 @@ public class AuthorTopic {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final AuthorTopic other = (AuthorTopic) obj;
+        final AuthorTerm other = (AuthorTerm) obj;
         if (!Objects.equals(this.authorId, other.authorId)) {
             return false;
         }

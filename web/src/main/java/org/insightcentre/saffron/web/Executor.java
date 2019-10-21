@@ -38,7 +38,7 @@ import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
@@ -497,7 +497,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting authors to topics");
         ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
-        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
+        Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))

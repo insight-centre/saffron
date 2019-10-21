@@ -18,7 +18,7 @@ import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
@@ -68,12 +68,12 @@ public class ConnectAuthorTopic {
         this.top_n = config.topN;
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
+    public Collection<AuthorTerm> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
         Iterable<Document> documents) {
         return connectResearchers(topics, documentTopics, documents, new DefaultSaffronListener());
     }
     
-    public Collection<AuthorTopic> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
+    public Collection<AuthorTerm> connectResearchers(List<Term> topics, List<DocumentTerm> documentTopics,
         Iterable<Document> documents, SaffronListener log) {
 
         Map<String, Document>     docById      = buildDocById(documents);
@@ -88,12 +88,12 @@ public class ConnectAuthorTopic {
         countOccurrence(author2Topic, topicById, occurrences, matches, log);
         countTfirf(documentTopics, docById, paper_count, tfirf);
 
-        List<AuthorTopic> ats = new ArrayList<>();
+        List<AuthorTerm> ats = new ArrayList<>();
         for(Map.Entry<Author, List<String>> e : author2Topic.entrySet()) {
-            TreeSet<AuthorTopic> topN = new TreeSet<>(new Comparator<AuthorTopic>() {
+            TreeSet<AuthorTerm> topN = new TreeSet<>(new Comparator<AuthorTerm>() {
 
                 @Override
-                public int compare(AuthorTopic arg0, AuthorTopic arg1) {
+                public int compare(AuthorTerm arg0, AuthorTerm arg1) {
                     int i1 = Double.compare(arg0.getScore(), arg1.getScore());
                     if(i1 == 0) {
                         int i2 = arg0.getAuthorId().compareTo(arg1.getAuthorId());
@@ -112,7 +112,7 @@ public class ConnectAuthorTopic {
         
             for(String topicString : e.getValue()) {
                 AT atKey = new AT(e.getKey().id, topicString);
-                AuthorTopic at = new AuthorTopic();
+                AuthorTerm at = new AuthorTerm();
                 at.setAuthorId(e.getKey().id);
                 at.setTermId(topicString);
                 at.setTfIrf(tfirf.getDouble(atKey));

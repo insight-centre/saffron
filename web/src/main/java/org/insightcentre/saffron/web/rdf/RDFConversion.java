@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.saffron.web.SaffronDataSource;
@@ -90,7 +90,7 @@ public class RDFConversion {
                             model.createTypedLiteral(mv.occurrences)));
         }
         
-        for(AuthorTopic at : data.getAuthorByTopic(datasetName, t.getString())) {
+        for(AuthorTerm at : data.getAuthorByTopic(datasetName, t.getString())) {
             res.addProperty(SAFFRON.author, 
                     model.createResource(base == null ?
                             "../author/" + encode(at.getAuthorId())
@@ -132,7 +132,7 @@ public class RDFConversion {
                     base == null ? encode(aa.author2_id)
                             : base + "/rdf/author/" + aa.author2_id));
         }
-        for(AuthorTopic at : data.getTopicByAuthor(datasetName, author.id)) {
+        for(AuthorTerm at : data.getTopicByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTopic, model.createResource(
                     base == null ? "../term/" + encode(at.getTermId()) 
                             : base + "/rdf/term/" + encode(at.getTermId())));
