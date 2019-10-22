@@ -57,7 +57,7 @@ public class Main {
             TermSimilarityConfiguration config = configuration == null ? new TermSimilarityConfiguration () : mapper.readValue(configuration, TermSimilarityConfiguration.class);
             List<DocumentTerm> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
 
-            TopicSimilarity ts = new TopicSimilarity(config);
+            TermSimilarity ts = new TermSimilarity(config);
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             

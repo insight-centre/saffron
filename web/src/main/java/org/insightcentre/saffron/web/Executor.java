@@ -47,7 +47,7 @@ import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
-import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
+import org.insightcentre.nlp.saffron.topic.topicsim.TermSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -507,7 +507,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Connecting topics");
-        TopicSimilarity ts = new TopicSimilarity(config.termSim);
+        TermSimilarity ts = new TermSimilarity(config.termSim);
         final List<TermTerm> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving topic connections");
