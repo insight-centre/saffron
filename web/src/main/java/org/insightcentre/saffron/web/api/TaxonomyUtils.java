@@ -27,7 +27,7 @@ public class TaxonomyUtils {
         newParent = newParent.addChild(topic, newParent, oldParentString);
         finalTaxon = originalTaxo.deepCopyNewParent(topicString, oldParentString, newParentString, topic, newParent);
         finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
-        finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
+        finalTaxon = finalTaxon.deepCopySetTermRelationshipStatus(topicString, Status.accepted);
         return finalTaxon;
     }
 }

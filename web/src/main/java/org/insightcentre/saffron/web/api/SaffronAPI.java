@@ -292,11 +292,11 @@ public class SaffronAPI {
         try {
 
             if (status.equals("rejected")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(termId, Status.rejected);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.rejected);
             } else if (status.equals("accepted")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(termId, Status.accepted);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.accepted);
             } else if (status.equals("none")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(termId, Status.none);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.none);
             }
             saffron.updateTerm(name, termId, status);
             saffron.updateTermSimilarity(name, termId, termId2, status);

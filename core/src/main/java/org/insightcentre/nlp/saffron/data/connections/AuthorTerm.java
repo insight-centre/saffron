@@ -14,13 +14,13 @@ public class AuthorTerm {
     private String termId;
     private int matches;
     private int occurrences;
-    private int paperCount;  // Number of papers for researcher that topic occurs in.
+    private int paperCount;  // Number of papers for researcher that term occurs in.
     private double tfIrf;     // Like TFIDF but with researchers instead of documents.
                              // See "Domain adaptive extraction of topical hierarchies 
                              // for Expertise Mining" (Georgeta Bordea (2013)) for
                              // evaluations of different methods.
-    private double score;     // tfirf * topic score
-    private double researcherScore; // score for researcher's ranking for this particular topic
+    private double score;     // tfirf * term score
+    private double researcherScore; // score for researcher's ranking for this particular term
     
     public String getAuthorId() {
 		return authorId;

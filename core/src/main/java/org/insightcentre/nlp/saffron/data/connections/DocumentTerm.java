@@ -9,7 +9,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
- * The link between a document and a topic
+ * The link between a document and a term
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -47,13 +47,13 @@ public class DocumentTerm {
 
     @JsonCreator
     public DocumentTerm(@JsonProperty(value=JSON_DOCUMENT_ID,required=true) String document_id, 
-                         @JsonAlias("topic_string") @JsonProperty(value=JSON_TERM_STRING,required=true) String topic_string, 
+                         @JsonAlias("topic_string") @JsonProperty(value=JSON_TERM_STRING,required=true) String termString, 
                          @JsonProperty(JSON_OCCURRENCES) int occurences, 
                          @JsonProperty(JSON_PATTERN) String pattern, 
                          @JsonProperty(JSON_ACRONYM) String acronym,
                          @JsonProperty(JSON_TF_IDF) Double tfidf) {
         this.documentId = document_id;
-        this.termString = topic_string;
+        this.termString = termString;
         this.occurrences = occurences;
         this.pattern = pattern;
         this.acronym = acronym;

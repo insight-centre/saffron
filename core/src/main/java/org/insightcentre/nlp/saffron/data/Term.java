@@ -16,7 +16,7 @@ public class Term implements Comparable<Term> {
 
     
     /**
-     * The unique string for this topic
+     * The unique string for this term
      */
 	public final static String JSON_TERM_STRING = "term_string";
 	@JsonAlias("topic_string") //Enable compatibility with previous Saffron version
@@ -38,7 +38,7 @@ public class Term implements Comparable<Term> {
     private int matches;
     
     /**
-     * The importance of this topic
+     * The importance of this term
      */
     public final static String JSON_SCORE = "score";
     @JsonProperty(JSON_SCORE)
@@ -59,7 +59,7 @@ public class Term implements Comparable<Term> {
     private URL dbpediaUrl;
     
     /**
-     * The statue of the topic
+     * The statue of the term
      */
     public final static String JSON_STATUS = "status";
     @JsonProperty(JSON_STATUS)
@@ -68,31 +68,32 @@ public class Term implements Comparable<Term> {
     /**
      * The original string
      */
-    public final static String JSON_ORIGINAL_TOPIC = "original_topic";
+    public final static String JSON_ORIGINAL_TOPIC = "original_term";
+    @JsonAlias("original_topic")
     @JsonProperty(JSON_ORIGINAL_TOPIC)
-    private final String originalTopic;
+    private final String originalTerm;
 
-    private Term(String topicString) {
-    	this.termString = topicString;
+    private Term(String termString) {
+    	this.termString = termString;
     	this.mvList = Collections.EMPTY_LIST;
-    	this.originalTopic = topicString;
+    	this.originalTerm = termString;
     }
     
     @JsonCreator
     public Term(
-            @JsonAlias("topic_string") @JsonProperty(value = JSON_TERM_STRING, required = true) String topic_string,
+            @JsonAlias("topic_string") @JsonProperty(value = JSON_TERM_STRING, required = true) String termString,
             @JsonProperty(value = JSON_OCCURRENCES) int occurrences,
             @JsonProperty(value = JSON_MATCHES) int matches,
             @JsonProperty(value = JSON_SCORE) double score,
             @JsonProperty(value = JSON_MORPHOLOGICAL_VARIATION_LIST) List<MorphologicalVariation> mvList,
             @JsonProperty(value = JSON_STATUS) String status) {
         super();
-        this.termString = topic_string;
+        this.termString = termString;
         this.occurrences = occurrences;
         this.matches = matches;
         this.score = score;
         this.mvList = mvList == null ? Collections.EMPTY_LIST : mvList;
-        this.originalTopic = topic_string;
+        this.originalTerm = termString;
         try {
         	if (status != null)
         		this.status = Status.valueOf(status);
@@ -159,8 +160,8 @@ public class Term implements Comparable<Term> {
 		this.status = status;
 	}
 
-	public String getOriginalTopic() {
-		return originalTopic;
+	public String getOriginalTerm() {
+		return originalTerm;
 	}
 
     @Override
@@ -202,13 +203,13 @@ public class Term implements Comparable<Term> {
 
     @Override
     public String toString() {
-        return "Topic{" + "topicString=" + termString + '}';
+        return "Term{" + "termString=" + termString + '}';
     }
 
     public static class MorphologicalVariation {
 
         /**
-         * The string form of this topic as it occurs
+         * The string form of this term as it occurs
          */
         public final String string;
         /**
@@ -270,39 +271,39 @@ public class Term implements Comparable<Term> {
     
     public static class Builder {
     	
-    	Term topic;
+    	Term term;
     	
-    	public Builder(String topicString) {
-    		topic = new Term(topicString);
+    	public Builder(String termString) {
+    		term = new Term(termString);
     	}
     	
     	public Builder occurrences(int occurences) {
-    		topic.occurrences = occurences;
+    		term.occurrences = occurences;
     		return this;
     	}
     	
     	public Builder matches(int matches) {
-    		topic.matches = matches;
+    		term.matches = matches;
     		return this;
     	}
     	
     	public Builder score(double score) {
-    		topic.score = score;
+    		term.score = score;
     		return this;
     	}
     	
     	public Builder dbpediaUrl(URL url) {
-    		topic.dbpediaUrl = url;
+    		term.dbpediaUrl = url;
     		return this;
     	}
     	
     	public Builder status(Status status) {
-    		topic.status = status;
+    		term.status = status;
     		return this;
     	}
     	
     	public Term build() {
-    		return topic;
+    		return term;
     	}
     }
 

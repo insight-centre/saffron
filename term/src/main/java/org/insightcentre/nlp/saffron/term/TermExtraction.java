@@ -180,13 +180,13 @@ public class TermExtraction {
         this.features = config.features;
         assert (!this.features.isEmpty());
         this.refFile = config.corpus == null ? null : config.corpus.toFile();
-        this.maxTopics = config.maxTopics;
+        this.maxTopics = config.maxTerms;
         this.keyFeature = config.baseFeature;
         this.configBlacklist = config.blacklist == null ? new HashSet<>() : config.blacklist;
         if(config.blacklistFile != null) {
             loadBlacklistFromFile (this.configBlacklist, config.blacklistFile);
         }
-        this.oneTopicPerDoc = config.oneTopicPerDoc;
+        this.oneTopicPerDoc = config.oneTermPerDoc;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {

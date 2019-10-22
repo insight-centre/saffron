@@ -418,7 +418,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 1, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+            config.oneTermPerDoc);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -510,7 +510,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+            config.oneTermPerDoc);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -599,7 +599,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+            config.oneTermPerDoc);
         Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
         assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("plan")));

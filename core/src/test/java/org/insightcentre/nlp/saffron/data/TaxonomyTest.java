@@ -152,9 +152,9 @@ public class TaxonomyTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\"root\":\"Root topic\",\"children\":[{\"root\": \"topic1\"}]}";
+        final String data = "{\"root\":\"Root term\",\"children\":[{\"root\": \"term1\"}]}";
         final Taxonomy taxonomy = mapper.readValue(data, Taxonomy.class);
-        assertEquals("Root topic", taxonomy.root);
+        assertEquals("Root term", taxonomy.root);
         assertEquals(1, taxonomy.children.size());
         assertEquals(0, taxonomy.children.get(0).children.size());
         final String json = mapper.writeValueAsString(taxonomy);
@@ -342,7 +342,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   removeDescendent(String topicString)
+     *   removeDescendent(String termString)
      * 
      */
     
@@ -528,7 +528,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   setParentChildStatus(String childTopic, Status status)
+     *   setParentChildStatus(String childTerm, Status status)
      * 
      */
     
@@ -860,7 +860,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   getParent(String topicChild)
+     *   getParent(String termChild)
      * 
      */
     
@@ -950,7 +950,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   removeChildBranch(String topicString)
+     *   removeChildBranch(String termString)
      * 
      */
     
@@ -1345,7 +1345,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   updateParent(String topicChild, String topicNewParent)
+     *   updateParent(String termChild, String termNewParent)
      * 
      */
     

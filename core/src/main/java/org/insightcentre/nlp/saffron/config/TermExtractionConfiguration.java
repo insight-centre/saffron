@@ -14,8 +14,8 @@ import org.insightcentre.nlp.saffron.data.SaffronPath;
 public class TermExtractionConfiguration {
     /** Minimum threshold score to extract */
     public double threshold = 0.0;
-    /** Maximum number of topics to extract */
-    public int maxTopics = 100;
+    /** Maximum number of terms to extract */
+    public int maxTerms = 100;
     /** The shortest length of term to consider */
     public int ngramMin = 1;
     /** The longest term to consider */
@@ -55,66 +55,26 @@ public class TermExtractionConfiguration {
     /** The position of the head of a noun phrase (true=final) */
     public boolean headTokenFinal = true;
     /**
-     * A list of topics that should never be generated
+     * A list of terms that should never be generated
      */
     public Set<String> blacklist = Collections.EMPTY_SET;
     /**
      * A file containing a list of black terms
      */
     public SaffronPath blacklistFile;
+
     /**
-     * If set always output at least one topic for each input document (overrides maxTopics
+     * If set always output at least one term for each input document (overrides maxTerms
      * if necessary)
      */
-
-    public void setCorpus(SaffronPath corpus) {
-        this.corpus = corpus;
-    }
-
-    public SaffronPath getCorpus() {
-        return this.corpus;
-    }
-
-    public void setPosModel(SaffronPath posModel) {
-        this.posModel = posModel;
-    }
-
-    public SaffronPath getPosModel() {
-        return this.posModel;
-    }
-
-    public void setTokenizerModel(SaffronPath tokenizerModel) {
-        this.tokenizerModel = tokenizerModel;
-    }
-
-    public SaffronPath getTokenizerModel() {
-        return this.tokenizerModel;
-    }
-
-    public void setLemmatizerModel(SaffronPath lemmatizerModel) {
-        this.lemmatizerModel = lemmatizerModel;
-    }
-
-    public SaffronPath getLemmatizerModel() {
-        return this.lemmatizerModel;
-    }
-
-    public void setStopWords(SaffronPath stopWords) {
-        this.stopWords = stopWords;
-    }
-
-    public SaffronPath getStopWords() {
-        return this.stopWords;
-    }
-
-    public boolean oneTopicPerDoc;
+    public boolean oneTermPerDoc;
     
     /** The Weighting method to use */
     public enum WeightingMethod {
         one, voting, puatr
     };
     
-    /** The features for topic extraction */
+    /** The features for term extraction */
     public enum Feature {
         weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ novelTopicModel, /*linkProbability, keyConceptRelatedness*/
     };
@@ -280,4 +240,43 @@ public class TermExtractionConfiguration {
         "nbsp"
     };
 
+    public void setCorpus(SaffronPath corpus) {
+        this.corpus = corpus;
+    }
+
+    public SaffronPath getCorpus() {
+        return this.corpus;
+    }
+
+    public void setPosModel(SaffronPath posModel) {
+        this.posModel = posModel;
+    }
+
+    public SaffronPath getPosModel() {
+        return this.posModel;
+    }
+
+    public void setTokenizerModel(SaffronPath tokenizerModel) {
+        this.tokenizerModel = tokenizerModel;
+    }
+
+    public SaffronPath getTokenizerModel() {
+        return this.tokenizerModel;
+    }
+
+    public void setLemmatizerModel(SaffronPath lemmatizerModel) {
+        this.lemmatizerModel = lemmatizerModel;
+    }
+
+    public SaffronPath getLemmatizerModel() {
+        return this.lemmatizerModel;
+    }
+
+    public void setStopWords(SaffronPath stopWords) {
+        this.stopWords = stopWords;
+    }
+
+    public SaffronPath getStopWords() {
+        return this.stopWords;
+    }
 }
