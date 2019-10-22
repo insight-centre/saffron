@@ -10,14 +10,14 @@ import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
-import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics.WordTrie;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms.WordTrie;
 
 /**
  * A task to enrich terms based on a single document
  *
  * @author John McCrae
  */
-public class EnrichTopicTask implements Runnable {
+public class EnrichTermTask implements Runnable {
 
     private final Document doc;
     private final ThreadLocal<POSTagger> tagger;
@@ -29,7 +29,7 @@ public class EnrichTopicTask implements Runnable {
     private final ConcurrentLinkedQueue<DocumentTerm> finalDocTerms;
     private final HashMap<String, DocumentTerm> docTerms = new HashMap<>();
 
-    public EnrichTopicTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie termStrings, ConcurrentLinkedQueue<DocumentTerm> docTerms) {
+    public EnrichTermTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie termStrings, ConcurrentLinkedQueue<DocumentTerm> docTerms) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;

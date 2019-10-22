@@ -7,7 +7,7 @@ import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
-import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics.WordTrie;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms.WordTrie;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -21,9 +21,9 @@ import static org.mockito.Mockito.when;
  *
  * @author John McCrae
  */
-public class EnrichTopicTaskTest {
+public class EnrichTermTaskTest {
 
-    public EnrichTopicTaskTest() {
+    public EnrichTermTaskTest() {
     }
 
     @BeforeClass
@@ -76,7 +76,7 @@ public class EnrichTopicTaskTest {
         ConcurrentLinkedQueue<DocumentTerm> docTerms = new ConcurrentLinkedQueue<>();
                 
         
-        EnrichTopicTask instance = new EnrichTopicTask(doc, tagger, null, tokenizer, summary, termStrings, docTerms);
+        EnrichTermTask instance = new EnrichTermTask(doc, tagger, null, tokenizer, summary, termStrings, docTerms);
         instance.run();
         
         assertEquals(3, summary.termFrequency.size());

@@ -48,7 +48,7 @@ import org.insightcentre.nlp.saffron.term.FrequencyStats;
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-public class EnrichTopics {
+public class EnrichTerms {
 
     /**
      * Count how many times t occurs in s
@@ -162,7 +162,7 @@ public class EnrichTopics {
             final ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
 
             for (Document d : corpus.getDocuments()) {
-                service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(termStrings, tokenizer), dts));
+                service.submit(new EnrichTermTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(termStrings, tokenizer), dts));
             }
 
             service.shutdown();

@@ -33,7 +33,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train.StringPair;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
-import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms;
 
 /**
  * The code to train a Saffron Instance
@@ -113,7 +113,7 @@ public class Trainer extends AbstractHandler {
             status.setStatusMessage("Enriching terms from corpus");
             Set<String> terms = new HashSet<>();
             flatten(taxonomy, terms);
-            EnrichTopics.Result result = EnrichTopics.enrich(terms, searcher, config.termExtraction);
+            EnrichTerms.Result result = EnrichTerms.enrich(terms, searcher, config.termExtraction);
 
             status.stage++;
             status.setStatusMessage("Building term map");
