@@ -69,14 +69,14 @@ public class EnrichTopicTaskTest {
             
         };
         FrequencyStats summary = new FrequencyStats();
-        WordTrie topicStrings = new WordTrie("");
-        topicStrings.addTokenized(new String[] { "test", "document" });
-        topicStrings.addTokenized(new String[] { "document" });
-        topicStrings.addTokenized(new String[] { "work" });
-        ConcurrentLinkedQueue<DocumentTerm> docTopics = new ConcurrentLinkedQueue<>();
+        WordTrie termStrings = new WordTrie("");
+        termStrings.addTokenized(new String[] { "test", "document" });
+        termStrings.addTokenized(new String[] { "document" });
+        termStrings.addTokenized(new String[] { "work" });
+        ConcurrentLinkedQueue<DocumentTerm> docTerms = new ConcurrentLinkedQueue<>();
                 
         
-        EnrichTopicTask instance = new EnrichTopicTask(doc, tagger, null, tokenizer, summary, topicStrings, docTopics);
+        EnrichTopicTask instance = new EnrichTopicTask(doc, tagger, null, tokenizer, summary, termStrings, docTerms);
         instance.run();
         
         assertEquals(3, summary.termFrequency.size());

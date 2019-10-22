@@ -459,18 +459,18 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Initializing term extractor");
         TermExtraction extractor = new TermExtraction(config.termExtraction);
         _status.setStatusMessage("Extracting Terms");
-        TermExtraction.Result res = extractor.extractTopics(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
+        TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
         //res.normalize();
 
         _status.setStatusMessage("Writing extracted terms");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.topics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.terms);
 
         _status.setStatusMessage("Writing document term correspondence");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTopics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTerms);
 
-        data.setDocTerms(saffronDatasetName, res.docTopics);
+        data.setDocTerms(saffronDatasetName, res.docTerms);
 
         _status.stage++;
         _status.setStatusMessage("Extracting authors from corpus");
@@ -486,7 +486,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Linking to DBpedia");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
-        List<Term> terms = new ArrayList<>(res.topics);
+        List<Term> terms = new ArrayList<>(res.terms);
         data.setTerms(saffronDatasetName, terms);
 
         _status.setStatusMessage("Saving linked terms");
@@ -496,7 +496,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting authors to terms");
         ConnectAuthorTerm cr = new ConnectAuthorTerm(config.authorTerm);
-        Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, res.docTopics, searcher.getDocuments(), _status);
+        Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, res.docTerms, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))
@@ -507,7 +507,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting terms");
         TermSimilarity ts = new TermSimilarity(config.termSim);
-        final List<TermTerm> termSimilarity = ts.termSimilarity(res.docTopics, _status);
+        final List<TermTerm> termSimilarity = ts.termSimilarity(res.docTerms, _status);
 
         _status.setStatusMessage("Saving term connections");
         if (storeCopy.equals("true"))
@@ -536,7 +536,7 @@ public class Executor extends AbstractHandler {
         }
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
-        SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, termMap, model);
+        SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
         _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, bwList.taxoWhiteList, bwList.taxoBlackList);

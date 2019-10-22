@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics.WordTrie;
 
 /**
- * A task to enrich topics based on a single document
+ * A task to enrich terms based on a single document
  *
  * @author John McCrae
  */
@@ -25,18 +25,18 @@ public class EnrichTopicTask implements Runnable {
     private final ThreadLocal<Tokenizer> tokenizer;
     private final FrequencyStats stats = new FrequencyStats();
     private final FrequencyStats summary;
-    private final WordTrie topicStrings;
-    private final ConcurrentLinkedQueue<DocumentTerm> finalDocTopics;
-    private final HashMap<String, DocumentTerm> docTopics = new HashMap<>();
+    private final WordTrie termStrings;
+    private final ConcurrentLinkedQueue<DocumentTerm> finalDocTerms;
+    private final HashMap<String, DocumentTerm> docTerms = new HashMap<>();
 
-    public EnrichTopicTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie topicStrings, ConcurrentLinkedQueue<DocumentTerm> docTopics) {
+    public EnrichTopicTask(Document doc, ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer, FrequencyStats summary, WordTrie termStrings, ConcurrentLinkedQueue<DocumentTerm> docTerms) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
         this.tokenizer = tokenizer;
         this.summary = summary;
-        this.topicStrings = topicStrings;
-        this.finalDocTopics = docTopics;
+        this.termStrings = termStrings;
+        this.finalDocTerms = docTerms;
     }
 
     @Override
@@ -68,7 +68,7 @@ public class EnrichTopicTask implements Runnable {
                         }
                         for(WordTrie t : tries2) {
                             if(t.present) {
-                                processTopic(t.word);
+                                processTerm(t.word);
                             }
                         }
                         tries = tries2;
@@ -82,8 +82,8 @@ public class EnrichTopicTask implements Runnable {
             synchronized (summary) {
                 summary.add(stats);
             }
-            for(DocumentTerm dt : docTopics.values()) {
-                finalDocTopics.add(dt);
+            for(DocumentTerm dt : docTerms.values()) {
+                finalDocTerms.add(dt);
             }
         } catch (Exception x) {
             x.printStackTrace();
@@ -98,16 +98,16 @@ public class EnrichTopicTask implements Runnable {
                 tries2.add(t);
             }
         }
-        if(topicStrings.containsKey(tokens[i])) {
-            tries2.add(topicStrings.get(tokens[i]));
+        if(termStrings.containsKey(tokens[i])) {
+            tries2.add(termStrings.get(tokens[i]));
         }
         return tries2;
     }
 
-    private void processTopic(String topicCandidate) {
-        stats.termFrequency.put(topicCandidate, stats.termFrequency.getInt(topicCandidate) + 1);
-        stats.docFrequency.put(topicCandidate, 1);
-        docTopics.put(topicCandidate, new DocumentTerm(doc.id, topicCandidate, stats.termFrequency.getInt(topicCandidate), null, null, null));
+    private void processTerm(String termCandidate) {
+        stats.termFrequency.put(termCandidate, stats.termFrequency.getInt(termCandidate) + 1);
+        stats.docFrequency.put(termCandidate, 1);
+        docTerms.put(termCandidate, new DocumentTerm(doc.id, termCandidate, stats.termFrequency.getInt(termCandidate), null, null, null));
 
     }
 

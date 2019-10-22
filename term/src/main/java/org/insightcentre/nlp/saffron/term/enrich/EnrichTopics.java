@@ -43,7 +43,7 @@ import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 
 /**
- * This is used to create a Doc-Topics file from a taxonomy, such as those used
+ * This is used to create a Doc-Terms file from a taxonomy, such as those used
  * in TExEval
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
@@ -73,7 +73,7 @@ public class EnrichTopics {
         return n;
     }
 
-    public static Result enrich(Set<String> topicStrings, Corpus corpus, TermExtractionConfiguration config) {
+    public static Result enrich(Set<String> termStrings, Corpus corpus, TermExtractionConfiguration config) {
         final ThreadLocal<Tokenizer> tokenizer;
         final ThreadLocal<POSTagger> tagger;
         final ThreadLocal<Lemmatizer> lemmatizer;
@@ -148,10 +148,10 @@ public class EnrichTopics {
             }
             nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
         }
-        return enrich(topicStrings, corpus, nThreads, tagger, lemmatizer, tokenizer);
+        return enrich(termStrings, corpus, nThreads, tagger, lemmatizer, tokenizer);
     }
 
-    public static Result enrich(Set<String> topicStrings, Corpus corpus, int nThreads,
+    public static Result enrich(Set<String> termStrings, Corpus corpus, int nThreads,
             ThreadLocal<POSTagger> tagger, ThreadLocal<Lemmatizer> lemmatizer, ThreadLocal<Tokenizer> tokenizer) {
         try {
             ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
@@ -162,22 +162,22 @@ public class EnrichTopics {
             final ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
 
             for (Document d : corpus.getDocuments()) {
-                service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(topicStrings, tokenizer), dts));
+                service.submit(new EnrichTopicTask(d, tagger, lemmatizer, tokenizer, summary, makeTrie(termStrings, tokenizer), dts));
             }
 
             service.shutdown();
             service.awaitTermination(2, TimeUnit.DAYS);
-            List<DocumentTerm> docTopics = new ArrayList<>(dts);
-            List<Term> topics = new ArrayList<>();
-            for (String topic : topicStrings) {
-                topics.add(new Term(topic, summary.termFrequency.getInt(topic), summary.docFrequency.getInt(topic),
-                        (double) summary.docFrequency.getInt(topic) / corpus.size(),
+            List<DocumentTerm> docTerms = new ArrayList<>(dts);
+            List<Term> terms = new ArrayList<>();
+            for (String term : termStrings) {
+                terms.add(new Term(term, summary.termFrequency.getInt(term), summary.docFrequency.getInt(term),
+                        (double) summary.docFrequency.getInt(term) / corpus.size(),
                         Collections.EMPTY_LIST, Status.none.toString()));
             }
 
-            TFIDF.addTfidf(docTopics);
+            TFIDF.addTfidf(docTerms);
 
-            return new Result(docTopics, topics);
+            return new Result(docTerms, terms);
         } catch (InterruptedException x) {
             throw new RuntimeException(x);
         }
@@ -185,12 +185,12 @@ public class EnrichTopics {
 
     public static class Result {
 
-        public final List<DocumentTerm> docTopics;
-        public final List<Term> topics;
+        public final List<DocumentTerm> docTerms;
+        public final List<Term> terms;
 
-        public Result(List<DocumentTerm> docTopics, List<Term> topics) {
-            this.docTopics = docTopics;
-            this.topics = topics;
+        public Result(List<DocumentTerm> docTerms, List<Term> terms) {
+            this.docTerms = docTerms;
+            this.terms = terms;
         }
 
     }
@@ -209,8 +209,8 @@ public class EnrichTopics {
                 {
                     accepts("t", "The taxonomy to enrich (in TExEval format)").withRequiredArg().ofType(File.class);
                     accepts("c", "The corpus to load").withRequiredArg().ofType(File.class);
-                    accepts("o", "The output topic list").withRequiredArg().ofType(File.class);
-                    accepts("d", "The output doc-topic list").withRequiredArg().ofType(File.class);
+                    accepts("o", "The output term list").withRequiredArg().ofType(File.class);
+                    accepts("d", "The output doc-term list").withRequiredArg().ofType(File.class);
                     accepts("cfg", "The configuration (Used of tokenization, tagging and lemmatization of the corpus)").withRequiredArg().ofType(File.class);
                 }
             };
@@ -223,13 +223,13 @@ public class EnrichTopics {
                 return;
             }
 
-            File topicOutFile = (File) os.valueOf("o");
-            if (topicOutFile == null) {
+            File termOutFile = (File) os.valueOf("o");
+            if (termOutFile == null) {
                 badOptions(p, "Output file not given");
             }
 
-            File docTopicOutFile = (File) os.valueOf("d");
-            if (docTopicOutFile == null) {
+            File docTermOutFile = (File) os.valueOf("d");
+            if (docTermOutFile == null) {
                 badOptions(p, "Output file not given");
             }
 
@@ -257,12 +257,12 @@ public class EnrichTopics {
 
             final Corpus corpus = CorpusTools.readFile(corpusFile);
 
-            final Set<String> topics = readTExEval(taxoFile);
+            final Set<String> terms = readTExEval(taxoFile);
 
-            Result res = enrich(topics, corpus, config);
+            Result res = enrich(terms, corpus, config);
 
-            mapper.writerWithDefaultPrettyPrinter().writeValue(topicOutFile, res.topics);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(docTopicOutFile, res.docTopics);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(termOutFile, res.terms);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(docTermOutFile, res.docTerms);
         } catch (Exception x) {
             x.printStackTrace();
             return;
@@ -290,31 +290,31 @@ public class EnrichTopics {
     private static class TFIDF {
 
         /**
-         * Add the TF-IDF value to an existing set of unique document topic
+         * Add the TF-IDF value to an existing set of unique document term
          * connections
          *
-         * @param docTopics The list of values to add TF-IDF scores to
+         * @param docTerms The list of values to add TF-IDF scores to
          */
-        public static void addTfidf(List<DocumentTerm> docTopics) {
-            Object2DoubleMap<String> topicDf = new Object2DoubleOpenHashMap<>();
+        public static void addTfidf(List<DocumentTerm> docTerms) {
+            Object2DoubleMap<String> termDf = new Object2DoubleOpenHashMap<>();
             HashSet<String> docNames = new HashSet<>();
-            for (DocumentTerm dt : docTopics) {
+            for (DocumentTerm dt : docTerms) {
                 // We assume there are no duplicates in the DT list 
-                topicDf.put(dt.getTermString(), topicDf.getDouble(dt.getTermString()) + 1.0);
+                termDf.put(dt.getTermString(), termDf.getDouble(dt.getTermString()) + 1.0);
                 docNames.add(dt.getDocumentId());
             }
             double n = docNames.size();
-            for (DocumentTerm dt : docTopics) {
-                dt.setTfIdf((double) dt.getOccurrences() * Math.log(n / topicDf.getDouble(dt.getTermString())));
+            for (DocumentTerm dt : docTerms) {
+                dt.setTfIdf((double) dt.getOccurrences() * Math.log(n / termDf.getDouble(dt.getTermString())));
             }
         }
     }
 
-    private static WordTrie makeTrie(Set<String> topicStrings, ThreadLocal<Tokenizer> _tokenizer) {
+    private static WordTrie makeTrie(Set<String> termStrings, ThreadLocal<Tokenizer> _tokenizer) {
         Tokenizer tokenizer = _tokenizer.get();
         WordTrie trie = new WordTrie("");
-        for (String topicString : topicStrings) {
-            trie.addTokenized(tokenizer.tokenize(topicString.toLowerCase()));
+        for (String termString : termStrings) {
+            trie.addTokenized(tokenizer.tokenize(termString.toLowerCase()));
         }
         return trie;
     }

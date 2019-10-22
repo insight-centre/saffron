@@ -147,10 +147,10 @@ public class TermExtractionTest {
     }
 
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics() throws Exception {
+    public void testExtractTerms() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -226,14 +226,14 @@ public class TermExtractionTest {
             }
 
         }, tokenizer);
-        Result res = instance.extractTopics(searcher);
+        Result res = instance.extractTerms(searcher);
     }
     
         /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics2() throws Exception {
+    public void testExtractTerms2() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -327,16 +327,16 @@ public class TermExtractionTest {
                 config.baseFeature,  
                 config.blacklist,  
                 true);
-        Result res = instance.extractTopics(searcher);
-        assert(res.topics.size() > 1);
+        Result res = instance.extractTerms(searcher);
+        assert(res.terms.size() > 1);
     }
     
     
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopicsWithBlackWhite() throws Exception {
+    public void testExtractTermsWithBlackWhite() throws Exception {
         System.out.println("extractStatsBlackWhite");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -421,9 +421,9 @@ public class TermExtractionTest {
             config.oneTermPerDoc);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("good time")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time")));
     }
     
     @Test
@@ -513,10 +513,10 @@ public class TermExtractionTest {
             config.oneTermPerDoc);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("great time")));
-        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("good time") && t.getStatus() == Status.accepted));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("great time")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time") && t.getStatus() == Status.accepted));
     }
     
     @Test
@@ -600,10 +600,10 @@ public class TermExtractionTest {
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
             config.oneTermPerDoc);
-        Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
+        Result res = instance.extractTerms(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Term t) -> t.getString().equals("plan")));
-        assert(!res.topics.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("plan")));
+        assert(!res.terms.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
 
     }
 }

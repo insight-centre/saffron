@@ -117,7 +117,7 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Building term map");
-            Map<String, Term> termMap = loadMap(result.topics, mapper, status);
+            Map<String, Term> termMap = loadMap(result.terms, mapper, status);
 
             status.stage++;
             final Map<String, double[]> glove;
@@ -141,7 +141,7 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Initializing Features");
-            Features features = new Features(null, null, Train.indexDocTerms(result.docTopics),
+            Features features = new Features(null, null, Train.indexDocTerms(result.docTerms),
                     glove, termMap, hypernyms, model.features.featureSelection);
 
             status.stage++;
