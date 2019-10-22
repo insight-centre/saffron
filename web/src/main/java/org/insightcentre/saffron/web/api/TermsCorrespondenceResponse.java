@@ -12,7 +12,7 @@ public class TermsCorrespondenceResponse {
         return this.termsList;
     }
 
-    public void setTopics(List<TermCorrespondenceResponse> termsList) {
+    public void setTerms(List<TermCorrespondenceResponse> termsList) {
         this.termsList = termsList;
     }
 }

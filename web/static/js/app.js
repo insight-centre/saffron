@@ -359,7 +359,7 @@ angular.module('app').component('editparents', {
                 "status": term.status,
                 "collapsed_branch" : "-".repeat(depth) + term.root
             }
-            if (current_term["term_id"] === "HEAD_TOPIC") {
+            if (current_term["term_id"] === "HEAD_TERM") {
                 current_term["term_string"] = "Root";
                 current_term["collapsed_branch"] = "Root";
             }

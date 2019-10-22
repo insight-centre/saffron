@@ -12,7 +12,7 @@ public class TermsExtractionResponse {
         return this.termsList;
     }
 
-    public void setTopics(List<TermExtractionResponse> termsList) {
+    public void setTerms(List<TermExtractionResponse> termsList) {
         this.termsList = termsList;
     }
 }

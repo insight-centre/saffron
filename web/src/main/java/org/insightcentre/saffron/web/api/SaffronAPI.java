@@ -179,7 +179,7 @@ public class SaffronAPI {
                 SearchResponse entity = new SearchResponse();
                 entity.setId(doc.getString("_id"));
                 entity.setLocation(doc.getString("document_id"));
-                entity.setTopicString(doc.getString("term"));
+                entity.setTermString(doc.getString("term"));
 
                 searchResponses.add(entity);
 
@@ -552,7 +552,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getAuthorSimilarity(name);
             APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -576,7 +576,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
             APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -600,7 +600,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getDocumentTermCorrespondence(name);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -624,7 +624,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -648,7 +648,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -675,7 +675,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getTermExtraction(name);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -699,7 +699,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getTermExtractionForTerm(name, termId);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
-            returnEntity.setTopics(termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();

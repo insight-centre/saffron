@@ -32,7 +32,7 @@ public class Greedy implements TaxonomySearch {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(termMap.size() == 0) {
-            return new Taxonomy("NO TOPICS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
+            return new Taxonomy("NO TERMS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
         } else if(termMap.size() == 1) {
             // It is not possible to construct a taxonomy from 1 term
             return new Taxonomy(termMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, Status.none);

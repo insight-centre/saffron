@@ -63,9 +63,9 @@ public class FOAF {
     public static Property thumbnail = m_model.createProperty(NS + "thumbnail");
     public static Property tipjar = m_model.createProperty(NS + "tipjar");
     public static Property title = m_model.createProperty(NS + "title");
-    public static Property term = m_model.createProperty(NS + "topic");
+    public static Property topic = m_model.createProperty(NS + "topic");
     public static Property page = m_model.createProperty(NS + "page");
-    public static Property term_interest = m_model.createProperty(NS + "topic_interest");
+    public static Property topic_interest = m_model.createProperty(NS + "topic_interest");
     public static Property weblog = m_model.createProperty(NS + "weblog");
     public static Property workInfoHomepage = m_model.createProperty(NS + "workInfoHomepage");
     public static Property workplaceHomepage = m_model.createProperty(NS + "workplaceHomepage");

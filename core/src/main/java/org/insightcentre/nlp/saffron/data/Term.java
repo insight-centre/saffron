@@ -68,9 +68,9 @@ public class Term implements Comparable<Term> {
     /**
      * The original string
      */
-    public final static String JSON_ORIGINAL_TOPIC = "original_term";
+    public final static String JSON_ORIGINAL_TERM = "original_term";
     @JsonAlias("original_topic")
-    @JsonProperty(JSON_ORIGINAL_TOPIC)
+    @JsonProperty(JSON_ORIGINAL_TERM)
     private final String originalTerm;
 
     private Term(String termString) {

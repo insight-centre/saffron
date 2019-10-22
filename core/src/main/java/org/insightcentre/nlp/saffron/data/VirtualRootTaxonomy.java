@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class VirtualRootTaxonomy extends Taxonomy{
 
-	public static final String VIRTUAL_ROOT = "HEAD_TOPIC";
+	public static final String VIRTUAL_ROOT = "HEAD_TERM";
 	
 	public VirtualRootTaxonomy() {
 		super();

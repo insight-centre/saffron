@@ -21,8 +21,8 @@ public class TermTerm {
     private Status status;
 
     @JsonCreator
-    public TermTerm(@JsonAlias("topic1_id") @JsonProperty("term1_id") String term1, 
-    				  @JsonAlias("topic2_id") @JsonProperty("term2_id") String term2,
+    public TermTerm(@JsonAlias("topic1_id") @JsonProperty(JSON_TERM1_ID) String term1, 
+    				  @JsonAlias("topic2_id") @JsonProperty(JSON_TERM2_ID) String term2,
                       @JsonProperty("similarity") double similarity) {
         this.term1 = term1;
         this.term2 = term2;

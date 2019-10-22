@@ -61,8 +61,8 @@ public class APIUtils {
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setSimilarity(doc.getDouble("similarity"));
-            entity.setTopicString1(doc.getString("term1"));
-            entity.setTopicString2(doc.getString("term2"));
+            entity.setTermString1(doc.getString("term1"));
+            entity.setTermString2(doc.getString("term2"));
 
             termsResponse.add(entity);
         }

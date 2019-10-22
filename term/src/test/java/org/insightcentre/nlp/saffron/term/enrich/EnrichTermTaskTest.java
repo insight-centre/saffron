@@ -43,7 +43,7 @@ public class EnrichTermTaskTest {
     }
 
     /**
-     * Test of run method, of class EnrichTopicTask.
+     * Test of run method, of class EnrichTermTask.
      */
     @Test
     public void testRun() {
