@@ -12,11 +12,11 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Term;
 
 /**
- * Compares the result of two topic extractions
+ * Compares the result of two term extractions
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-public class TopicExtractionBenchmark {
+public class TermExtractionBenchmark {
 
     public static class Scores {
 
@@ -43,27 +43,27 @@ public class TopicExtractionBenchmark {
 
     public static Scores evaluate(List<Term> extracted, List<Term> gold, boolean retain) {
         Collections.sort(extracted);
-        final Set<String> extractedTopics = new TreeSet<>();
+        final Set<String> extractedTerms = new TreeSet<>();
         if (retain) {
             for (Term t : extracted) {
-                extractedTopics.add(t.getString().toLowerCase());
+                extractedTerms.add(t.getString().toLowerCase());
             }
         }
-        Set<String> goldTopics = new TreeSet<>();
+        Set<String> goldTerms = new TreeSet<>();
         for (Term t : gold) {
-            if (!retain || extractedTopics.contains(t.getString().toLowerCase())) {
-                goldTopics.add(t.getString().toLowerCase());
+            if (!retain || extractedTerms.contains(t.getString().toLowerCase())) {
+                goldTerms.add(t.getString().toLowerCase());
             }
         }
-        final int K = Math.max(extracted.size(), goldTopics.size());
+        final int K = Math.max(extracted.size(), goldTerms.size());
         int found = 0;
         double[] recall = new double[K];
         double[] precision = new double[K];
         for (int i = 0; i < K; i++) {
-            if (i < extracted.size() && goldTopics.contains(extracted.get(i).getString().toLowerCase())) {
+            if (i < extracted.size() && goldTerms.contains(extracted.get(i).getString().toLowerCase())) {
                 found++;
             }
-            recall[i] = (double) found / goldTopics.size();
+            recall[i] = (double) found / goldTerms.size();
             precision[i] = (double) found / Math.min(extracted.size(), i + 1);
         }
         return new Scores(recall, precision);
@@ -81,9 +81,9 @@ public class TopicExtractionBenchmark {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("o", "The output topic file").withRequiredArg().ofType(File.class);
-                    accepts("g", "The gold topic file").withRequiredArg().ofType(File.class);
-                    accepts("r", "Do not limit the system to only the reference topics (topics also in gold standard)");
+                    accepts("o", "The output term file").withRequiredArg().ofType(File.class);
+                    accepts("g", "The gold term file").withRequiredArg().ofType(File.class);
+                    accepts("r", "Do not limit the system to only the reference terms (terms also in gold standard)");
                 }
             };
             final OptionSet os;
