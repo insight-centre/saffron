@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.data;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -18,6 +19,7 @@ public class Term implements Comparable<Term> {
      * The unique string for this topic
      */
 	public final static String JSON_TERM_STRING = "term_string";
+	@JsonAlias("topic_string") //Enable compatibility with previous Saffron version
 	@JsonProperty(JSON_TERM_STRING)
     private String termString;
 	
@@ -78,7 +80,7 @@ public class Term implements Comparable<Term> {
     
     @JsonCreator
     public Term(
-            @JsonProperty(value = JSON_TERM_STRING, required = true) String topic_string,
+            @JsonAlias("topic_string") @JsonProperty(value = JSON_TERM_STRING, required = true) String topic_string,
             @JsonProperty(value = JSON_OCCURRENCES) int occurrences,
             @JsonProperty(value = JSON_MATCHES) int matches,
             @JsonProperty(value = JSON_SCORE) double score,

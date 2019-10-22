@@ -1,10 +1,12 @@
 package org.insightcentre.nlp.saffron.data.connections;
 
+import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Objects;
 
 /**
  * The link between a document and a topic
@@ -19,6 +21,7 @@ public class DocumentTerm {
     private final String documentId;
 	
 	public static final String JSON_TERM_STRING = "term_string";
+	@JsonAlias("topic_string") //Enable compatibility with 3.3
 	@JsonProperty(JSON_TERM_STRING)
     private String termString;
 	
@@ -44,7 +47,7 @@ public class DocumentTerm {
 
     @JsonCreator
     public DocumentTerm(@JsonProperty(value=JSON_DOCUMENT_ID,required=true) String document_id, 
-                         @JsonProperty(value=JSON_TERM_STRING,required=true) String topic_string, 
+                         @JsonAlias("topic_string") @JsonProperty(value=JSON_TERM_STRING,required=true) String topic_string, 
                          @JsonProperty(JSON_OCCURRENCES) int occurences, 
                          @JsonProperty(JSON_PATTERN) String pattern, 
                          @JsonProperty(JSON_ACRONYM) String acronym,

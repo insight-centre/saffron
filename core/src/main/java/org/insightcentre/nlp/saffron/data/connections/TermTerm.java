@@ -1,10 +1,13 @@
 package org.insightcentre.nlp.saffron.data.connections;
 
+import java.util.Objects;
+
+import org.insightcentre.nlp.saffron.data.Status;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Objects;
-import org.insightcentre.nlp.saffron.data.Status;
 
 /**
  *
@@ -18,8 +21,8 @@ public class TermTerm {
     private Status status;
 
     @JsonCreator
-    public TermTerm(@JsonProperty("term1_id") String term1, 
-                      @JsonProperty("term2_id") String term2,
+    public TermTerm(@JsonAlias("topic1_id") @JsonProperty("term1_id") String term1, 
+    				  @JsonAlias("topic2_id") @JsonProperty("term2_id") String term2,
                       @JsonProperty("similarity") double similarity) {
         this.term1 = term1;
         this.term2 = term2;
@@ -27,12 +30,14 @@ public class TermTerm {
     }
 
     public final static String JSON_TERM1_ID = "term1_id";
+    @JsonAlias("topic1_id")
     @JsonProperty(JSON_TERM1_ID)
     public String getTerm1() {
         return term1;
     }
 
     public final static String JSON_TERM2_ID = "term2_id";
+    @JsonAlias("topic2_id")
     @JsonProperty(JSON_TERM2_ID)
     public String getTerm2() {
         return term2;

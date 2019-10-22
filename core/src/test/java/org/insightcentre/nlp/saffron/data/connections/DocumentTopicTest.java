@@ -44,6 +44,22 @@ public class DocumentTopicTest {
         assertEquals("t1", tt.getTermString());
         final String json = mapper.writeValueAsString(tt);
         assertEquals(tt, mapper.readValue(json, DocumentTerm.class));
-        
+    }
+    
+    /**
+     * Test compatibility with data from Saffron 3.3
+     * 
+     * To be deprecated in version 4
+     * @throws IOException
+     */
+    @Test
+    public void test2() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        final String data = "{\""+ DocumentTerm.JSON_DOCUMENT_ID +"\": \"doc1\", \""+ "topic_string" + "\": \"t1\"}";
+        final DocumentTerm tt = mapper.readValue(data, DocumentTerm.class);
+        assertEquals("doc1", tt.getDocumentId());
+        assertEquals("t1", tt.getTermString());
+        final String json = mapper.writeValueAsString(tt);
+        assertEquals(tt, mapper.readValue(json, DocumentTerm.class));
     }
 }
