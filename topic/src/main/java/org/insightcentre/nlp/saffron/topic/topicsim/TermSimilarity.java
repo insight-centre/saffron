@@ -36,15 +36,15 @@ public class TermSimilarity {
         this.topN = config.topN;
     }
 
-    public List<TermTerm> topicSimilarity(List<DocumentTerm> documentTopics) {
-        return topicSimilarity(documentTopics, new DefaultSaffronListener());
+    public List<TermTerm> termSimilarity(List<DocumentTerm> documentTerms) {
+        return termSimilarity(documentTerms, new DefaultSaffronListener());
     }
     
-    public List<TermTerm> topicSimilarity(List<DocumentTerm> documentTopics, SaffronListener log) {
-        List<TermTerm> topicTopics = new ArrayList<>();
+    public List<TermTerm> termSimilarity(List<DocumentTerm> documentTerms, SaffronListener log) {
+        List<TermTerm> termTerms = new ArrayList<>();
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
-        log.log(String.format("%s doc-topics\n", documentTopics.size()));
-        for (DocumentTerm dt : documentTopics) {
+        log.log(String.format("%s doc-terms\n", documentTerms.size()));
+        for (DocumentTerm dt : documentTerms) {
             if (!vectors.containsKey(dt.getTermString())) {
                 vectors.put(dt.getTermString(), new Object2IntOpenHashMap<String>());
             }
@@ -78,10 +78,10 @@ public class TermSimilarity {
             while (topM.size() > topN) {
                 topM.pollFirst();
             }
-            topicTopics.addAll(topM);
+            termTerms.addAll(topM);
         }
 
-        return topicTopics;
+        return termTerms;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

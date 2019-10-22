@@ -20,7 +20,7 @@ import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.data.Term;
 
 /**
- * Link topics to DBpedia (by name only more or less)
+ * Link terms to DBpedia (by name only more or less)
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
@@ -55,17 +55,17 @@ public class LinkToDBpedia implements Closeable {
     }
 
     /**
-     * Checks if a topic and DBPedia title have the same case, excluding the
+     * Checks if a term and DBPedia title have the same case, excluding the
      * first letter of each word. e.g. 'bliss'=='Bliss' but 'bliss' != 'BLISS'
      */
-    static boolean has_same_case(String topic, String title) {
-        String[] topic_words = topic.split(" ");
+    static boolean has_same_case(String term, String title) {
+        String[] term_words = term.split(" ");
         String[] title_words = title.split("_");
-        for (int i = 0; i < topic_words.length && i < title_words.length; i++) {
-            String topic_word = topic_words[i];
+        for (int i = 0; i < term_words.length && i < title_words.length; i++) {
+            String term_word = term_words[i];
             String title_word = title_words[i];
-            for (int j = 0; j < topic_word.length() && j < title_word.length(); j++) {
-                char c1 = topic_word.charAt(j);
+            for (int j = 0; j < term_word.length() && j < title_word.length(); j++) {
+                char c1 = term_word.charAt(j);
                 char c2 = title_word.charAt(j);
                 if (Character.toLowerCase(c1) != Character.toLowerCase(c2)) {
                     break;
@@ -78,17 +78,17 @@ public class LinkToDBpedia implements Closeable {
         return true;
     }
 
-    void remove_different_case(List<Candidate> topic2titles, Term topic) {
-        Iterator<Candidate> i = topic2titles.iterator();
+    void remove_different_case(List<Candidate> term2titles, Term term) {
+        Iterator<Candidate> i = term2titles.iterator();
         while (i.hasNext()) {
-            if (!has_same_case(topic.getString(), i.next().variant)) {
+            if (!has_same_case(term.getString(), i.next().variant)) {
                 i.remove();
             }
         }
     }
 
-    void remove_listof_pages(List<Candidate> topic2titles) {
-        Iterator<Candidate> i = topic2titles.iterator();
+    void remove_listof_pages(List<Candidate> term2titles) {
+        Iterator<Candidate> i = term2titles.iterator();
         while (i.hasNext()) {
             Candidate c = i.next();
             if (c.dbpediaKey.startsWith("List_of") || c.dbpediaKey.startsWith("List_of")) {
@@ -109,8 +109,8 @@ public class LinkToDBpedia implements Closeable {
         return true;
     }
 
-    void remove_titled(List<Candidate> topic2titles) {
-        Iterator<Candidate> i = topic2titles.iterator();
+    void remove_titled(List<Candidate> term2titles) {
+        Iterator<Candidate> i = term2titles.iterator();
         while (i.hasNext()) {
             Candidate c = i.next();
             if (c.dbpediaKey.contains("_") && is_titled(c.dbpediaKey, "_")) {
@@ -119,15 +119,15 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    Term pick_best_matches(List<Candidate> topic2titles, Term original) {
+    Term pick_best_matches(List<Candidate> term2titles, Term original) {
         // TODO: Do something better here
-        if (topic2titles.size() == 1) {
+        if (term2titles.size() == 1) {
             try {
-                original.setDbpediaUrl(new URL("http://dbpedia.org/resource/" + topic2titles.get(0).dbpediaKey));
+                original.setDbpediaUrl(new URL("http://dbpedia.org/resource/" + term2titles.get(0).dbpediaKey));
             } catch (MalformedURLException ex) {
-                System.err.println("Bad URL " + topic2titles.get(0).dbpediaKey);
+                System.err.println("Bad URL " + term2titles.get(0).dbpediaKey);
             }
-        } else if (topic2titles.size() > 1) {
+        } else if (term2titles.size() > 1) {
             System.err.println("Multiple candidates for " + original.getString());
         }
         return original;
@@ -144,9 +144,9 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    List<Candidate> candidates(Term topic) {
+    List<Candidate> candidates(Term term) {
         try {
-            statement.setString(1, topic.getString());
+            statement.setString(1, term.getString());
             ResultSet results = statement.executeQuery();
             List<Candidate> candidates = new ArrayList<>();
             while (results.next()) {
@@ -158,14 +158,13 @@ public class LinkToDBpedia implements Closeable {
         }
     }
 
-    public Term matchDBpediaArticle(Term topic) {
-        List<Candidate> topic2titles = candidates(topic);
-        remove_different_case(topic2titles, topic);
-        //replace_redirects(topic2titles);
-        remove_listof_pages(topic2titles);
-        remove_titled(topic2titles);
+    public Term matchDBpediaArticle(Term term) {
+        List<Candidate> term2titles = candidates(term);
+        remove_different_case(term2titles, term);
+        remove_listof_pages(term2titles);
+        remove_titled(term2titles);
 
-        return pick_best_matches(topic2titles, topic);
+        return pick_best_matches(term2titles, term);
     }
 
     private static void badOptions(OptionParser p, String message) throws IOException {
@@ -179,9 +178,9 @@ public class LinkToDBpedia implements Closeable {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("t", "The list of topics to read").withRequiredArg().ofType(File.class);
+                    accepts("t", "The list of terms to read").withRequiredArg().ofType(File.class);
                     accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("o", "The list of topics to write to").withRequiredArg().ofType(File.class);
+                    accepts("o", "The list of terms to write to").withRequiredArg().ofType(File.class);
                 }
             };
             final OptionSet os;
@@ -209,9 +208,9 @@ public class LinkToDBpedia implements Closeable {
             ObjectMapper mapper = new ObjectMapper();
             Configuration config = mapper.readValue(configFile, Configuration.class);
 
-            List<Term> outTopics = mapper.readValue(input, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            List<Term> outTerms = mapper.readValue(input, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            mapper.writerWithDefaultPrettyPrinter().writeValue(output, outTopics);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, outTerms);
 
         } catch (Throwable t) {
             t.printStackTrace();

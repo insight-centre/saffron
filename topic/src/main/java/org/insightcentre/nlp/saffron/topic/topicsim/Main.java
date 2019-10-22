@@ -27,8 +27,8 @@ public class Main {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use (optional)").withRequiredArg().ofType(File.class);
-                accepts("d", "The document-topic alignments").withRequiredArg().ofType(File.class);
-                accepts("o", "Where to write the output topic alignments to").withRequiredArg().ofType(File.class);
+                accepts("d", "The document-term alignments").withRequiredArg().ofType(File.class);
+                accepts("o", "Where to write the output term alignments to").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
             
@@ -43,8 +43,8 @@ public class Main {
             if(configuration != null && !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
-            final File docTopicModelFile = (File)os.valueOf("d");
-            if(docTopicModelFile == null || !docTopicModelFile.exists()) {
+            final File docTermModelFile = (File)os.valueOf("d");
+            if(docTermModelFile == null || !docTermModelFile.exists()) {
                 badOptions(p, "Corpus does not exist");
             }
             final File outputFile = (File)os.valueOf("o");
@@ -55,13 +55,13 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             TermSimilarityConfiguration config = configuration == null ? new TermSimilarityConfiguration () : mapper.readValue(configuration, TermSimilarityConfiguration.class);
-            List<DocumentTerm> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
+            List<DocumentTerm> docTerms = mapper.readValue(docTermModelFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
 
             TermSimilarity ts = new TermSimilarity(config);
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             
-            ow.writeValue(outputFile, ts.topicSimilarity(docTopics));
+            ow.writeValue(outputFile, ts.termSimilarity(docTerms));
             
         } catch(Throwable t) {
             t.printStackTrace();

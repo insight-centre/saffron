@@ -507,7 +507,7 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Connecting terms");
         TermSimilarity ts = new TermSimilarity(config.termSim);
-        final List<TermTerm> termSimilarity = ts.topicSimilarity(res.docTopics, _status);
+        final List<TermTerm> termSimilarity = ts.termSimilarity(res.docTopics, _status);
 
         _status.setStatusMessage("Saving term connections");
         if (storeCopy.equals("true"))

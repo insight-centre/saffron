@@ -13,18 +13,18 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 public class TFIDF {
     /**
      * Add the TF-IDF value to an existing set of unique document topic connections
-     * @param docTopics The list of values to add TF-IDF scores to
+     * @param docTerms The list of values to add TF-IDF scores to
      */
-    public static void addTfidf(List<DocumentTerm> docTopics) {
+    public static void addTfidf(List<DocumentTerm> docTerms) {
         Object2DoubleMap<String> topicDf = new Object2DoubleOpenHashMap<>();
         HashSet<String> docNames = new HashSet<>();
-        for(DocumentTerm dt : docTopics) {
+        for(DocumentTerm dt : docTerms) {
             // We assume there are no duplicates in the DT list 
             topicDf.put(dt.getTermString(), topicDf.getDouble(dt.getTermString()) + 1.0);
             docNames.add(dt.getDocumentId());
         }
         double n = docNames.size();
-        for(DocumentTerm dt : docTopics) {
+        for(DocumentTerm dt : docTerms) {
             dt.setTfIdf((double) dt.getOccurrences() * Math.log(n / topicDf.getDouble(dt.getTermString())));
         }
     }
