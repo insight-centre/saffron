@@ -31,9 +31,9 @@ public class Main {
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration").withRequiredArg().ofType(File.class);
                 accepts("t", "The text corpus").withRequiredArg().ofType(File.class);
-                accepts("d", "The document topic mapping").withRequiredArg().ofType(File.class);
-                accepts("p", "The topics").withRequiredArg().ofType(File.class);
-                accepts("o", "The output author-topic mapping").withRequiredArg().ofType(File.class);
+                accepts("d", "The document term mapping").withRequiredArg().ofType(File.class);
+                accepts("p", "The terms").withRequiredArg().ofType(File.class);
+                accepts("o", "The output author-term mapping").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
             
@@ -52,13 +52,13 @@ public class Main {
             if(corpusFile == null || !corpusFile.exists()) {
                 badOptions(p, "Corpus does not exist");
             }
-            final File docTopicFile = (File)os.valueOf("d");
-            if(docTopicFile == null || !docTopicFile.exists()) {
-                badOptions(p, "Doc-topic do not exist");
+            final File docTermFile = (File)os.valueOf("d");
+            if(docTermFile == null || !docTermFile.exists()) {
+                badOptions(p, "Doc-term do not exist");
             }
-            final File topicFile = (File)os.valueOf("p");
-            if(topicFile == null || !topicFile.exists()) {
-                badOptions(p, "Topics do not exist");
+            final File termFile = (File)os.valueOf("p");
+            if(termFile == null || !termFile.exists()) {
+                badOptions(p, "Terms do not exist");
             }
 
             final File output = (File)os.valueOf("o");
@@ -70,14 +70,14 @@ public class Main {
 
             AuthorTermConfiguration config          = configurationFile == null ? new AuthorTermConfiguration() : mapper.readValue(configurationFile, AuthorTermConfiguration.class);
             Corpus corpus                 = CorpusTools.readFile(corpusFile);
-            List<DocumentTerm> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
-            List<Term> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
+            List<Term> terms            = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             ConnectAuthorTerm cr = new ConnectAuthorTerm(config);
 
-            Collection<AuthorTerm> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
+            Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, docTerms, corpus.getDocuments());
             
-            mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTopics);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTerms);
             
         } catch(Throwable t) {
             t.printStackTrace();

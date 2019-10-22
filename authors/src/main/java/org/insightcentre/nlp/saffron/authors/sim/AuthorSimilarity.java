@@ -34,9 +34,9 @@ public class AuthorSimilarity {
     }
        
     public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, SaffronListener log) {
-        List<AuthorAuthor> topicAuthors = new ArrayList<>();
+        List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
-        //System.err.printf("%d author topics\n", ats.size());
+        //System.err.printf("%d author terms\n", ats.size());
         for (AuthorTerm at : ats) {
             log.tick();
             if (!vectors.containsKey(at.getAuthorId())) {
@@ -73,11 +73,11 @@ public class AuthorSimilarity {
             while (topN.size() > top_n) {
                 topN.pollFirst();
             }
-            topicAuthors.addAll(topN);
+            termAuthors.addAll(topN);
         }
         
         log.endTick();
-        return topicAuthors;
+        return termAuthors;
     }
 
     private double sim(Object2DoubleMap<String> v1, Object2DoubleMap<String> v2) {

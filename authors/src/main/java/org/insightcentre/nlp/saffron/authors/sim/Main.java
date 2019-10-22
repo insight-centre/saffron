@@ -27,7 +27,7 @@ public class Main {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration to use (optional)").withRequiredArg().ofType(File.class);
-                accepts("d", "The author-topic alignments").withRequiredArg().ofType(File.class);
+                accepts("d", "The author-term alignments").withRequiredArg().ofType(File.class);
                 accepts("o", "Where to write the output author alignments to").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
@@ -43,8 +43,8 @@ public class Main {
             if(configuration != null && !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
-            final File docTopicModelFile = (File)os.valueOf("d");
-            if(docTopicModelFile == null || !docTopicModelFile.exists()) {
+            final File docTermModelFile = (File)os.valueOf("d");
+            if(docTermModelFile == null || !docTermModelFile.exists()) {
                 badOptions(p, "Alignment does not exist");
             }
             final File outputFile = (File)os.valueOf("o");
@@ -55,13 +55,13 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             AuthorSimilarityConfiguration config = configuration == null ? new AuthorSimilarityConfiguration () : mapper.readValue(configuration, AuthorSimilarityConfiguration.class);
-            List<AuthorTerm> docTopics = mapper.readValue(docTopicModelFile, mapper.getTypeFactory().constructCollectionType(List.class, AuthorTerm.class));
+            List<AuthorTerm> docTerms = mapper.readValue(docTermModelFile, mapper.getTypeFactory().constructCollectionType(List.class, AuthorTerm.class));
 
             AuthorSimilarity ts = new AuthorSimilarity(config);
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             
-            ow.writeValue(outputFile, ts.authorSimilarity(docTopics));
+            ow.writeValue(outputFile, ts.authorSimilarity(docTerms));
             
         } catch(Throwable t) {
             t.printStackTrace();
