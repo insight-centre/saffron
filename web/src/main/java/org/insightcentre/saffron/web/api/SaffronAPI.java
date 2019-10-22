@@ -134,7 +134,7 @@ public class SaffronAPI {
     @Path("/{param}/terms")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRunTerms(@PathParam("param") String runId) {
-        List<TopicResponse> termsResponse = new ArrayList<>();
+        List<TermResponse> termsResponse = new ArrayList<>();
 
         FindIterable<Document> terms;
 
@@ -142,7 +142,7 @@ public class SaffronAPI {
             terms = saffron.getTerms(runId);
 
             for (Document doc : terms) {
-                TopicResponse entity = new TopicResponse();
+                TermResponse entity = new TermResponse();
                 entity.setId(doc.getString("_id"));
                 entity.setMatches(doc.getInteger("matches"));
                 entity.setOccurrences(doc.getInteger("occurences"));
@@ -266,8 +266,8 @@ public class SaffronAPI {
             @PathParam("term_id") String termId) {
 
 
-        List<TopicResponse> termsResponse = new ArrayList<>();
-        TopicsResponse resp = new TopicsResponse();
+        List<TermResponse> termsResponse = new ArrayList<>();
+        TermsResponse resp = new TermsResponse();
         FindIterable<Document> terms;
 
         saffron.deleteTerm(name, termId);
@@ -501,8 +501,8 @@ public class SaffronAPI {
     public Response getAuthorTerms(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<AuthorTopicsResponse> termsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
             runs = saffron.getAuthorTerms(name);
             APIUtils.populateAuthorTermsResp(runs, termsResponse);
@@ -524,8 +524,8 @@ public class SaffronAPI {
     public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<AuthorTopicsResponse> termsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
             runs = saffron.getAuthorTermsForTerm(name, termId);
             APIUtils.populateAuthorTermsResp(runs, termsResponse);
@@ -595,8 +595,8 @@ public class SaffronAPI {
     public Response getTermCorrespondence(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> termsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
             runs = saffron.getDocumentTermCorrespondence(name);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
@@ -619,8 +619,8 @@ public class SaffronAPI {
     public Response getTermCorrespondenceForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> termsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
             runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
@@ -643,8 +643,8 @@ public class SaffronAPI {
     public Response getTermCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> termsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
             runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
@@ -670,8 +670,8 @@ public class SaffronAPI {
     public Response getTermExtraction(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicExtractionResponse> termsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
         try {
             runs = saffron.getTermExtraction(name);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
@@ -694,8 +694,8 @@ public class SaffronAPI {
     public Response getTermExtractionForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<TopicExtractionResponse> termsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
         try {
             runs = saffron.getTermExtractionForTerm(name, termId);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
@@ -719,14 +719,14 @@ public class SaffronAPI {
     public Response getTermSimilarity(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> termsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
             runs = saffron.getTermsSimilarity(name);
 
             for (Document doc : runs) {
 
-                TopicSimilarityResponse entity = new TopicSimilarityResponse();
+                TermSimilarityResponse entity = new TermSimilarityResponse();
                 entity.setId(doc.get("_id").toString());
                 entity.setRun(doc.getString("run"));
                 entity.setRunDate(doc.getDate("run_date"));
@@ -757,8 +757,8 @@ public class SaffronAPI {
     public Response getTermSimilarityBetweenTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
 
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> termsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
             runs = saffron.getTermsSimilarityBetweenTerms(name, term1, term2);
 
@@ -783,8 +783,8 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term) {
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> termsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
             runs = saffron.getTermsSimilarityForTerm(name, term);
 

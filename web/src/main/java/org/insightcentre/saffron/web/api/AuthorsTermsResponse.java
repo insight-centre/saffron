@@ -5,14 +5,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @XmlRootElement()
-public class TopicsCorrespondenceResponse {
-    List<TopicCorrespondenceResponse> termsList = new ArrayList<>();
+public class AuthorsTermsResponse {
+    List<AuthorTermsResponse> termsList = new ArrayList<>();
 
-    public List<TopicCorrespondenceResponse> getTerms() {
+    public List<AuthorTermsResponse> getTerms() {
         return this.termsList;
     }
 
-    public void setTopics(List<TopicCorrespondenceResponse> termsList) {
+    public void setTerms(List<AuthorTermsResponse> termsList) {
         this.termsList = termsList;
     }
 }

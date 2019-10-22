@@ -7,16 +7,16 @@ import java.util.List;
 
 
 @XmlRootElement()
-public class TopicsResponse extends BaseResponse {
+public class TermsResponse extends BaseResponse {
 
 
-    List<TopicResponse> termsList = new ArrayList<>();
+    List<TermResponse> termsList = new ArrayList<>();
 
-    public List<TopicResponse> getTerms() {
+    public List<TermResponse> getTerms() {
         return this.termsList;
     }
 
-    public void setTerms(TopicResponse termsList) {
+    public void setTerms(TermResponse termsList) {
         this.termsList.add(termsList);
     }
 }

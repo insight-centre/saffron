@@ -5,7 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 @XmlRootElement()
-public class AuthorTopicsResponse {
+public class AuthorTermsResponse {
 
     private double similarity;
     private String id;

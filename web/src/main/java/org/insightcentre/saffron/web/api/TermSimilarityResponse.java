@@ -5,7 +5,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import java.util.Date;
 
 @XmlRootElement()
-public class TopicSimilarityResponse {
+public class TermSimilarityResponse {
 
     private double similarity;
     private String id;

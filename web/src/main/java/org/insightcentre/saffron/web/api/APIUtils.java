@@ -34,10 +34,10 @@ public class APIUtils {
         return crunchifyBuilder;
     }
 
-    protected void populateAuthorTermsResp(FindIterable<Document> runs, List<AuthorTopicsResponse> termsResponse) {
+    protected void populateAuthorTermsResp(FindIterable<Document> runs, List<AuthorTermsResponse> termsResponse) {
         for (Document doc : runs) {
 
-            AuthorTopicsResponse entity = new AuthorTopicsResponse();
+            AuthorTermsResponse entity = new AuthorTermsResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
@@ -68,10 +68,10 @@ public class APIUtils {
         }
     }
 
-    protected void populateTermCorrespondenceResp(FindIterable<Document> runs, List<TopicCorrespondenceResponse> termsResponse) {
+    protected void populateTermCorrespondenceResp(FindIterable<Document> runs, List<TermCorrespondenceResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
+            TermCorrespondenceResponse entity = new TermCorrespondenceResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setTerm(doc.getString("term_string"));
@@ -87,10 +87,10 @@ public class APIUtils {
         }
     }
 
-    protected void populateTermExtractionResp(FindIterable<Document> runs, List<TopicExtractionResponse> termsResponse) {
+    protected void populateTermExtractionResp(FindIterable<Document> runs, List<TermExtractionResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicExtractionResponse entity = new TopicExtractionResponse();
+            TermExtractionResponse entity = new TermExtractionResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
@@ -105,10 +105,10 @@ public class APIUtils {
         }
     }
 
-    protected void populateTermSimilarityResp(FindIterable<Document> runs, List<TopicSimilarityResponse> termsResponse) {
+    protected void populateTermSimilarityResp(FindIterable<Document> runs, List<TermSimilarityResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicSimilarityResponse entity = new TopicSimilarityResponse();
+            TermSimilarityResponse entity = new TermSimilarityResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));

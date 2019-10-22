@@ -4,7 +4,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import java.util.List;
 
 @XmlRootElement()
-public class TopicResponse {
+public class TermResponse {
     private String termString;
     private Integer occurrences;
     private Integer matches;

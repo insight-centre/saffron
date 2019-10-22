@@ -5,27 +5,17 @@ import java.util.Date;
 import java.util.List;
 
 @XmlRootElement()
-public class TopicCorrespondenceResponse {
+public class TermExtractionResponse {
 
     private String id;
-    private String acronym;
     private String term;
-    private String pattern;
+    private Integer matches;
     private Integer occurences;
-    private String documentId;
-    private String tfidf;
+    private Double score;
+    private List<String> mvList;
     private Date runDate;
     private String run;
-
-
-
-    public void setAcronym(String acronym) {
-        this.acronym = acronym;
-    }
-
-    public String getAcronym() {
-        return acronym;
-    }
+    private String dbpediaUrl;
 
     public void setTerm(String term) {
         this.term = term;
@@ -36,15 +26,21 @@ public class TopicCorrespondenceResponse {
     }
 
 
-    public void setDocumentId(String documentId) {
-        this.documentId = documentId;
+    public void setScore(Double score) {
+        this.score = score;
     }
 
-    public String getDocumentId() {
-        return documentId;
+    public Double getScore() {
+        return score;
     }
 
+    public void setMvList(List<String> mvList) {
+        this.mvList = mvList;
+    }
 
+    public List<String> getMvList() {
+        return mvList;
+    }
 
     public void setRunDate(Date runDate) {
         this.runDate = runDate;
@@ -62,6 +58,13 @@ public class TopicCorrespondenceResponse {
         return run;
     }
 
+    public void setDbpediaUrl(String dbpediaUrl) {
+        this.dbpediaUrl = dbpediaUrl;
+    }
+
+    public String getDbpediaUrl() {
+        return dbpediaUrl;
+    }
 
     public void setId(String id) {
         this.id = id;
@@ -79,19 +82,11 @@ public class TopicCorrespondenceResponse {
         return occurences;
     }
 
-    public void setPattern(String pattern) {
-        this.pattern = pattern;
+    public void setMatches(Integer matches) {
+        this.matches = matches;
     }
 
-    public String getPattern() {
-        return pattern;
-    }
-
-    public void setTfidf(String tfidf) {
-        this.tfidf = tfidf;
-    }
-
-    public String getTfidf() {
-        return tfidf;
+    public Integer getMatches() {
+        return matches;
     }
 }
