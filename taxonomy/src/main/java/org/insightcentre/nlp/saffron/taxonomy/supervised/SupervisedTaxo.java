@@ -25,9 +25,9 @@ public class SupervisedTaxo {
     private final svm_model classifier;
     private final ArrayList<String> attributes;
 
-    public SupervisedTaxo(List<DocumentTerm> docTopics,
-            Map<String, Term> topicMap, Model model) throws IOException {
-        this.features = Train.makeFeatures(docTopics, topicMap, model);
+    public SupervisedTaxo(List<DocumentTerm> docTerms,
+            Map<String, Term> termMap, Model model) throws IOException {
+        this.features = Train.makeFeatures(docTerms, termMap, model);
         this.classifier = readClassifier(model);
         this.attributes = Train.buildAttributes(features.featureNames());
     }

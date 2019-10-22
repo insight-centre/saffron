@@ -61,19 +61,19 @@ public class HeadAndBagTest {
     @Test
     public void testExtractTaxonomy() throws Exception {
         System.out.println("extractTaxonomy");
-        Set<String> topics = new HashSet<>();
-        topics.add("");
-        topics.add("a");
-        topics.add("b");
-        topics.add("c");
-        topics.add("ab");
-        topics.add("ac");
-        topics.add("abc");
-        topics.add("ba");
-        topics.add("bd");
+        Set<String> terms = new HashSet<>();
+        terms.add("");
+        terms.add("a");
+        terms.add("b");
+        terms.add("c");
+        terms.add("ab");
+        terms.add("ac");
+        terms.add("abc");
+        terms.add("ba");
+        terms.add("bd");
         
         HeadAndBag instance = new HeadAndBag(new TestSupervisedTaxo(), 0.5);
-        Taxonomy result = instance.extractTaxonomy(topics);
+        Taxonomy result = instance.extractTaxonomy(terms);
         assertEquals("", result.root);
         assertEquals(2, result.children.size());
     }

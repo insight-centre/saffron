@@ -141,7 +141,7 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Initializing Features");
-            Features features = new Features(null, null, Train.indexDocTopics(result.docTopics),
+            Features features = new Features(null, null, Train.indexDocTerms(result.docTopics),
                     glove, termMap, hypernyms, model.features.featureSelection);
 
             status.stage++;

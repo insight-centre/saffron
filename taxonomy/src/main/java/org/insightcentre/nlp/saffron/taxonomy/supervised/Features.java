@@ -23,23 +23,23 @@ import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 public class Features {
 
     private final Matrix svdMatrixAve, svdMatrixMinMax;
-    private final Map<String, IntSet> topicDocuments;
+    private final Map<String, IntSet> termDocuments;
     private final Map<String, double[]> vectors;
     private final TaxonomyExtractionConfiguration.FeatureSelection selection;
-    private final Map<String, Term> topicMap;
+    private final Map<String, Term> termMap;
     private final Set<Hypernym> hypernyms;
 
     public Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, 
-            Map<String, IntSet> topicDocuments, 
+            Map<String, IntSet> termDocuments, 
             Map<String, double[]> vectors,
-            Map<String, Term> topicMap,
+            Map<String, Term> termMap,
             Set<Hypernym> hypernyms,
             TaxonomyExtractionConfiguration.FeatureSelection selection) {
         this.svdMatrixAve = svdMatrixAve;
         this.svdMatrixMinMax = svdMatrixMinMax;
-        this.topicDocuments = topicDocuments;
+        this.termDocuments = termDocuments;
         this.vectors = vectors;
-        this.topicMap = topicMap;
+        this.termMap = termMap;
         this.hypernyms = hypernyms;
         this.selection = selection;
     }
@@ -47,9 +47,9 @@ public class Features {
     Features(Matrix svdMatrixAve, Matrix svdMatrixMinMax, Features other) {
         this.svdMatrixAve = svdMatrixAve;
         this.svdMatrixMinMax = svdMatrixMinMax;
-        this.topicDocuments = other.topicDocuments;
+        this.termDocuments = other.termDocuments;
         this.vectors = other.vectors;
-        this.topicMap = other.topicMap;
+        this.termMap = other.termMap;
         this.selection = other.selection;
         this.hypernyms = other.hypernyms;
     }
@@ -229,8 +229,8 @@ public class Features {
      * @return
      */
     public double topicComplementDiff(String top, String bottom) {
-        IntSet s1 = topicDocuments.get(top);
-        IntSet s2 = topicDocuments.get(bottom);
+        IntSet s1 = termDocuments.get(top);
+        IntSet s2 = termDocuments.get(bottom);
         if (s1 != null && s2 != null && !s1.isEmpty() && !s2.isEmpty()) {
             s1 = new IntRBTreeSet(s1);
             int n1 = s1.size();
@@ -250,9 +250,9 @@ public class Features {
      * @return 
      */
     public double relFreq(String top, String bottom) {
-        if(topicMap != null) {
-            Term t1 = topicMap.get(top);
-            Term t2 = topicMap.get(bottom);
+        if(termMap != null) {
+            Term t1 = termMap.get(top);
+            Term t2 = termMap.get(bottom);
             if(t1 != null && t2 != null && t1.getOccurrences() > 0 && t2.getOccurrences() > 0) {
                 return Math.log((double)t1.getOccurrences()) - Math.log((double)t2.getOccurrences());
             }
@@ -292,9 +292,9 @@ public class Features {
             v.add(svdSimAve(top, bottom));
         if((selection == null || selection.svdSimMinMax) && vectors != null && svdMatrixMinMax != null)
             v.add(svdSimMixMax(top, bottom));
-        if((selection == null || selection.topicDiff) && topicDocuments != null)
+        if((selection == null || selection.topicDiff) && termDocuments != null)
             v.add(topicComplementDiff(top, bottom));
-        if((selection == null || selection.relFreq) && topicMap != null)
+        if((selection == null || selection.relFreq) && termMap != null)
             v.add(relFreq(top, bottom));
         if((selection == null || selection.wnDirect) && hypernyms != null)
             v.add(wnDirect(top, bottom));
@@ -315,9 +315,9 @@ public class Features {
             v.add("svdSimAve");
         if((selection == null || selection.svdSimMinMax) && vectors != null && svdMatrixMinMax != null)
             v.add("svdSimMixMax");
-        if((selection == null || selection.topicDiff) && topicDocuments != null)
+        if((selection == null || selection.topicDiff) && termDocuments != null)
             v.add("topicComplementDiff");
-        if((selection == null || selection.relFreq) && topicMap != null)
+        if((selection == null || selection.relFreq) && termMap != null)
             v.add("relFreq");
         if((selection == null || selection.wnDirect) && hypernyms != null)
             v.add("wnDirect");

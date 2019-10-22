@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 
 /**
- * Develop a taxonomy by greedily splitting the set of topics
+ * Develop a taxonomy by greedily splitting the set of terms
  * 
  * @author John McCrae
  */
@@ -29,12 +29,12 @@ public class HeadAndBag {
     }
 
     
-    public Taxonomy extractTaxonomy(Set<String> topics) {
+    public Taxonomy extractTaxonomy(Set<String> terms) {
      
         HashMap<String, List<ScoredString>> scoresByChild = new HashMap<>();
-        for(String t1 : topics) {
+        for(String t1 : terms) {
             List<ScoredString> list = new ArrayList<>();
-            for(String t2 : topics) {
+            for(String t2 : terms) {
                 if(!t1.equals(t2)) {
                     double score = classifier.predict(t2, t1);
                     if(score > 0)
@@ -53,14 +53,14 @@ public class HeadAndBag {
             scoresByChild.put(t1, list);
         }
         
-        Set<String> topics2 = new HashSet<>(topics);
-        return buildTaxonomy(topics2, scoresByChild);
+        Set<String> terms2 = new HashSet<>(terms);
+        return buildTaxonomy(terms2, scoresByChild);
     }
     
-    private Taxonomy buildTaxonomy(Set<String> topics, Map<String, List<ScoredString>> scoresByChild) {
-        HeadResult head = findHead(topics, scoresByChild);
-        topics.remove(head.head);
-        List<Set<String>> bags = buildBags(topics, scoresByChild);
+    private Taxonomy buildTaxonomy(Set<String> terms, Map<String, List<ScoredString>> scoresByChild) {
+        HeadResult head = findHead(terms, scoresByChild);
+        terms.remove(head.head);
+        List<Set<String>> bags = buildBags(terms, scoresByChild);
         Taxonomy taxonomy = new Taxonomy(head.head, head.score, head.score, "", "", new ArrayList<Taxonomy>(), Status.none);
         for(Set<String> bag : bags) {
             taxonomy.children.add(buildTaxonomy(bag, scoresByChild));
@@ -68,9 +68,9 @@ public class HeadAndBag {
         return taxonomy;
     }
     
-    private List<Set<String>> buildBags(Set<String> topics, Map<String, List<ScoredString>> scoresByChild) {
+    private List<Set<String>> buildBags(Set<String> terms, Map<String, List<ScoredString>> scoresByChild) {
         List<Set<String>> bags = new ArrayList<>();
-        for(String t : topics) {
+        for(String t : terms) {
             List<ScoredString> scores = scoresByChild.get(t);
             double[] costs = new double[bags.size() + 1];
             costs[0] = bags.size() * splitPenalty;
@@ -113,17 +113,17 @@ public class HeadAndBag {
         
     }
     
-    private HeadResult findHead(Set<String> topics, Map<String, List<ScoredString>> scoresByChild) {
+    private HeadResult findHead(Set<String> terms, Map<String, List<ScoredString>> scoresByChild) {
         Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for(Map.Entry<String, List<ScoredString>> e : scoresByChild.entrySet()) {
             for(ScoredString ss : e.getValue()) {
-                if(topics.contains(ss.s))
+                if(terms.contains(ss.s))
                     scores.put(ss.s, scores.getDouble(ss.s) + ss.score);
             }
         }
         double costMax = Double.NEGATIVE_INFINITY;
         String head = null;
-        for(String t : topics) {
+        for(String t : terms) {
             double score = scores.getDouble(t);
             if(score > costMax) {
                 costMax = score;

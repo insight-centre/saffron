@@ -24,31 +24,31 @@ public class BeamSearch implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> topicMap,
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);
         TaxonomyScore score = emptyScore;
-        Solution soln = Solution.empty(topicMap.keySet());
+        Solution soln = Solution.empty(termMap.keySet());
         double s2 = 0.0;
         Set<String> whiteHeads = new HashSet<>();
 
         for (TaxoLink sp : whiteList) {
             soln = soln.add(sp.top, sp.bottom,
-                    topicMap.get(sp.top).getScore(),
-                    topicMap.get(sp.bottom).getScore(),
+                    termMap.get(sp.top).getScore(),
+                    termMap.get(sp.bottom).getScore(),
                     score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
             score = score.next(sp.top, sp.bottom, soln);
             whiteHeads.add(sp.bottom);
         }
         previous.push(new Soln(soln, score, s2, false), s2);
-        for (String t1 : topicMap.keySet()) {
+        for (String t1 : termMap.keySet()) {
             if(whiteHeads.contains(t1)) 
                 continue;
             Beam<Soln> next = new Beam<>(beamSize);
             // We are looking for t1's parent
-            for (String t2 : topicMap.keySet()) {
+            for (String t2 : termMap.keySet()) {
                 if (!t1.equals(t2)) {
                     final TaxoLink taxoLink = new TaxoLink(t2, t1);
                     if (blackList.contains(taxoLink)) {
@@ -60,8 +60,8 @@ public class BeamSearch implements TaxonomySearch {
                                 + linkScore;
                         if (next.canPush(totalScore)) {
                             Solution s = prevSoln.soln.add(t2, t1,
-                                    topicMap.get(t2).getScore(),
-                                    topicMap.get(t1).getScore(), linkScore, false);
+                                    termMap.get(t2).getScore(),
+                                    termMap.get(t1).getScore(), linkScore, false);
                             if (s != null) {
                                 Soln candidate = new Soln(s,
                                         prevSoln.score.next(t2, t1, s),

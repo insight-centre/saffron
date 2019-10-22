@@ -36,8 +36,8 @@ public class Main {
             final OptionParser p = new OptionParser() {
                 {
                     accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("d", "The document topic alignment").withRequiredArg().ofType(File.class);
-                    accepts("t", "The topics to load").withRequiredArg().ofType(File.class);
+                    accepts("d", "The document term alignment").withRequiredArg().ofType(File.class);
+                    accepts("t", "The terms to load").withRequiredArg().ofType(File.class);
                     accepts("o", "Where to write the output taxonomy").withRequiredArg().ofType(File.class);
                 }
             };
@@ -54,13 +54,13 @@ public class Main {
             if (configuration == null || !configuration.exists()) {
                 badOptions(p, "Configuration does not exist");
             }
-            final File docTopicFile = (File) os.valueOf("d");
-            if (docTopicFile != null && !docTopicFile.exists()) {
-                badOptions(p, "Doc-topic file does not exist");
+            final File docTermFile = (File) os.valueOf("d");
+            if (docTermFile != null && !docTermFile.exists()) {
+                badOptions(p, "Doc-term file does not exist");
             }
-            final File topicFile = (File) os.valueOf("t");
-            if (topicFile == null || !topicFile.exists()) {
-                badOptions(p, "Topic file does not exist");
+            final File termFile = (File) os.valueOf("t");
+            if (termFile == null || !termFile.exists()) {
+                badOptions(p, "Term file does not exist");
             }
             final File output = (File) os.valueOf("o");
             if (output == null) {
@@ -75,16 +75,16 @@ public class Main {
                     || config.taxonomy.search == null) {
                 badOptions(p, "Configuration does not have a model file");
             }
-            List<DocumentTerm> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
-            List<Term> topics = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
+            List<Term> terms = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            Map<String, Term> topicMap = loadMap(topics, mapper, new DefaultSaffronListener());
+            Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
             
             Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
-            SupervisedTaxo supTaxo = new SupervisedTaxo(docTopics, topicMap, model);
-            TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
-            final Taxonomy graph = search.extractTaxonomy(topicMap);
+            SupervisedTaxo supTaxo = new SupervisedTaxo(docTerms, termMap, model);
+            TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
+            final Taxonomy graph = search.extractTaxonomy(termMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
 
@@ -94,11 +94,10 @@ public class Main {
         }
     }
 
-    public static Map<String, Term> loadMap(List<Term> topics, ObjectMapper mapper, SaffronListener log) throws IOException {
+    public static Map<String, Term> loadMap(List<Term> terms, ObjectMapper mapper, SaffronListener log) throws IOException {
         Map<String, Term> tMap = new HashMap<>();
-        //System.err.printf("%d topics\n", topics.size());
-        for (Term topic : topics) {
-            tMap.put(topic.getString(), topic);
+        for (Term term : terms) {
+            tMap.put(term.getString(), term);
         }
         return tMap;
     }
