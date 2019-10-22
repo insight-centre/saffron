@@ -14,9 +14,9 @@ import static org.junit.Assert.*;
  *
  * @author jmccrae
  */
-public class DocumentTopicTest {
+public class TermTermTest {
 
-    public DocumentTopicTest() {
+    public TermTermTest() {
     }
 
     @BeforeClass
@@ -38,12 +38,14 @@ public class DocumentTopicTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\""+ DocumentTerm.JSON_DOCUMENT_ID +"\": \"doc1\", \""+ DocumentTerm.JSON_TERM_STRING + "\": \"t1\"}";
-        final DocumentTerm tt = mapper.readValue(data, DocumentTerm.class);
-        assertEquals("doc1", tt.getDocumentId());
-        assertEquals("t1", tt.getTermString());
+        final String data = "{\""+ TermTerm.JSON_TERM1_ID + "\": \"t1\", \""+ TermTerm.JSON_TERM2_ID + "\": \"t2\", \""+ TermTerm.JSON_SIMILARITY + "\": 0.3 }";
+        final TermTerm tt = mapper.readValue(data, TermTerm.class);
+        assertEquals("t1", tt.getTerm1());
+        assertEquals("t2", tt.getTerm2());
+        assertEquals(0.3, tt.getSimilarity(), 0.0);
         final String json = mapper.writeValueAsString(tt);
-        assertEquals(tt, mapper.readValue(json, DocumentTerm.class));
+        assertEquals(tt, mapper.readValue(json, TermTerm.class));
+        
     }
     
     /**
@@ -55,11 +57,13 @@ public class DocumentTopicTest {
     @Test
     public void test2() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\""+ DocumentTerm.JSON_DOCUMENT_ID +"\": \"doc1\", \""+ "topic_string" + "\": \"t1\"}";
-        final DocumentTerm tt = mapper.readValue(data, DocumentTerm.class);
-        assertEquals("doc1", tt.getDocumentId());
-        assertEquals("t1", tt.getTermString());
+        final String data = "{\""+ "topic1_id" + "\": \"t1\", \""+ "topic2_id" + "\": \"t2\", \""+ TermTerm.JSON_SIMILARITY + "\": 0.3 }";
+        final TermTerm tt = mapper.readValue(data, TermTerm.class);
+        assertEquals("t1", tt.getTerm1());
+        assertEquals("t2", tt.getTerm2());
+        assertEquals(0.3, tt.getSimilarity(), 0.0);
         final String json = mapper.writeValueAsString(tt);
-        assertEquals(tt, mapper.readValue(json, DocumentTerm.class));
+        assertEquals(tt, mapper.readValue(json, TermTerm.class));
+        
     }
 }
