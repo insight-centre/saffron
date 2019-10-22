@@ -10,14 +10,14 @@ import java.util.List;
 public class TopicsResponse extends BaseResponse {
 
 
-    List<TopicResponse> topicsList = new ArrayList<>();
+    List<TopicResponse> termsList = new ArrayList<>();
 
-    public List<TopicResponse> getTopics() {
-        return this.topicsList;
+    public List<TopicResponse> getTerms() {
+        return this.termsList;
     }
 
-    public void setTopics(TopicResponse topicsList) {
-        this.topicsList.add(topicsList);
+    public void setTerms(TopicResponse termsList) {
+        this.termsList.add(termsList);
     }
 }
 

@@ -9,7 +9,7 @@ public class TopicCorrespondenceResponse {
 
     private String id;
     private String acronym;
-    private String topic;
+    private String term;
     private String pattern;
     private Integer occurences;
     private String documentId;
@@ -27,12 +27,12 @@ public class TopicCorrespondenceResponse {
         return acronym;
     }
 
-    public void setTopic(String topic) {
-        this.topic = topic;
+    public void setTerm(String term) {
+        this.term = term;
     }
 
-    public String getTopic() {
-        return topic;
+    public String getTerm() {
+        return term;
     }
 
 

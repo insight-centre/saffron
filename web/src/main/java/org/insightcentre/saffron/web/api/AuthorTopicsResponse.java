@@ -9,8 +9,8 @@ public class AuthorTopicsResponse {
 
     private double similarity;
     private String id;
-    private String authorTopic;
-    private String topicString;
+    private String authorTerm;
+    private String termString;
     private Integer matches;
     private Integer occurences;
     private Double score;
@@ -21,20 +21,20 @@ public class AuthorTopicsResponse {
 
 
 
-    public void setAuthorTopic(String authorTopic) {
-        this.authorTopic = authorTopic;
+    public void setAuthorTerm(String authorTerm) {
+        this.authorTerm = authorTerm;
     }
 
-    public String getAuthorTopic() {
-        return authorTopic;
+    public String getAuthorTerm() {
+        return authorTerm;
     }
 
-    public void setTopicString(String topicString) {
-        this.topicString = topicString;
+    public void setTermString(String termString) {
+        this.termString = termString;
     }
 
-    public String getTopicString() {
-        return topicString;
+    public String getTermString() {
+        return termString;
     }
 
 

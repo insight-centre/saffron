@@ -54,7 +54,7 @@ public class RDFConversion {
             res.addLiteral(DCTerms.type, d.getMimeType());
         }
 
-        for (DocumentTerm dt : data.getTopicByDoc(datasetName, d.id)) {
+        for (DocumentTerm dt : data.getTermByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
                     base == null ? "../term/" + encode(dt.getTermString()) 
                             : base + "/rdf/term/" + encode(dt.getTermString())));
@@ -67,12 +67,12 @@ public class RDFConversion {
         return model;
     }
 
-    public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName) {
+    public static Model termToRDF(Term t, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        return topicToRDF(t, data, datasetName, model, null);
+        return termToRDF(t, data, datasetName, model, null);
     }
     
-    public static Model topicToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
+    public static Model termToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
         Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
                 .addProperty(RDF.type, SKOS.Concept)
                 .addProperty(RDFS.label, t.getString())
@@ -90,14 +90,14 @@ public class RDFConversion {
                             model.createTypedLiteral(mv.occurrences)));
         }
         
-        for(AuthorTerm at : data.getAuthorByTopic(datasetName, t.getString())) {
+        for(AuthorTerm at : data.getAuthorByTerm(datasetName, t.getString())) {
             res.addProperty(SAFFRON.author, 
                     model.createResource(base == null ?
                             "../author/" + encode(at.getAuthorId())
                             : base + "/rdf/author/" + encode(at.getAuthorId())));
         }
         
-        for(TermTerm tt : data.getTopicByTopic1(datasetName, t.getString(), null)) {
+        for(TermTerm tt : data.getTermByTerm1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
                             base == null ? encode(tt.getTerm2())
@@ -132,8 +132,8 @@ public class RDFConversion {
                     base == null ? encode(aa.author2_id)
                             : base + "/rdf/author/" + aa.author2_id));
         }
-        for(AuthorTerm at : data.getTopicByAuthor(datasetName, author.id)) {
-            res.addProperty(SAFFRON.authorTopic, model.createResource(
+        for(AuthorTerm at : data.getTermByAuthor(datasetName, author.id)) {
+            res.addProperty(SAFFRON.authorTerm, model.createResource(
                     base == null ? "../term/" + encode(at.getTermId()) 
                             : base + "/rdf/term/" + encode(at.getTermId())));
         }
@@ -159,8 +159,8 @@ public class RDFConversion {
         for(Author auth : data.getAllAuthors(datasetName)) {
             authorToRdf(auth, data, datasetName, model, base);
         }
-        for(Term topic : data.getAllTopics(datasetName)) {
-            topicToRDF(topic, data, datasetName, model, base);
+        for(Term term : data.getAllTerms(datasetName)) {
+            termToRDF(term, data, datasetName, model, base);
         }
         return model;
     }

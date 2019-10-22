@@ -8,7 +8,7 @@ import java.util.List;
 public class TopicExtractionResponse {
 
     private String id;
-    private String topic;
+    private String term;
     private Integer matches;
     private Integer occurences;
     private Double score;
@@ -17,15 +17,12 @@ public class TopicExtractionResponse {
     private String run;
     private String dbpediaUrl;
 
-
-
-
-    public void setTopic(String topic) {
-        this.topic = topic;
+    public void setTerm(String term) {
+        this.term = term;
     }
 
-    public String getTopic() {
-        return topic;
+    public String getTerm() {
+        return term;
     }
 
 

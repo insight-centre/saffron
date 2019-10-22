@@ -5,7 +5,7 @@ import java.util.List;
 
 @XmlRootElement()
 public class TopicResponse {
-    private String topicString;
+    private String termString;
     private Integer occurrences;
     private Integer matches;
     private double score;
@@ -14,12 +14,12 @@ public class TopicResponse {
     private String status;
 
 
-    public void setTopicString(String topicString) {
-        this.topicString = topicString;
+    public void setTermString(String termString) {
+        this.termString = termString;
     }
 
-    public String getTopicString() {
-        return topicString;
+    public String getTermString() {
+        return termString;
     }
 
     public void setStatus(String status) {

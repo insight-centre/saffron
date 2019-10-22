@@ -110,14 +110,14 @@ public class Trainer extends AbstractHandler {
             DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status, true);
 
             status.stage++;
-            status.setStatusMessage("Enriching topics from corpus");
-            Set<String> topics = new HashSet<>();
-            flatten(taxonomy, topics);
-            EnrichTopics.Result result = EnrichTopics.enrich(topics, searcher, config.termExtraction);
+            status.setStatusMessage("Enriching terms from corpus");
+            Set<String> terms = new HashSet<>();
+            flatten(taxonomy, terms);
+            EnrichTopics.Result result = EnrichTopics.enrich(terms, searcher, config.termExtraction);
 
             status.stage++;
-            status.setStatusMessage("Building topic map");
-            Map<String, Term> topicMap = loadMap(result.topics, mapper, status);
+            status.setStatusMessage("Building term map");
+            Map<String, Term> termMap = loadMap(result.topics, mapper, status);
 
             status.stage++;
             final Map<String, double[]> glove;
@@ -142,7 +142,7 @@ public class Trainer extends AbstractHandler {
             status.stage++;
             status.setStatusMessage("Initializing Features");
             Features features = new Features(null, null, Train.indexDocTopics(result.docTopics),
-                    glove, topicMap, hypernyms, model.features.featureSelection);
+                    glove, termMap, hypernyms, model.features.featureSelection);
 
             status.stage++;
             if (glove != null) {
@@ -171,10 +171,10 @@ public class Trainer extends AbstractHandler {
 
     }
 
-    private void flatten(Taxonomy taxonomy, Set<String> topics) {
-        topics.add(taxonomy.root);
+    private void flatten(Taxonomy taxonomy, Set<String> terms) {
+        terms.add(taxonomy.root);
         for (Taxonomy child : taxonomy.children) {
-            flatten(child, topics);
+            flatten(child, terms);
         }
     }
 

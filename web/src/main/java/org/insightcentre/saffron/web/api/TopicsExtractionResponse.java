@@ -6,13 +6,13 @@ import java.util.List;
 
 @XmlRootElement()
 public class TopicsExtractionResponse {
-    List<TopicExtractionResponse> topicsList = new ArrayList<>();
+    List<TopicExtractionResponse> termsList = new ArrayList<>();
 
-    public List<TopicExtractionResponse> getTopics() {
-        return this.topicsList;
+    public List<TopicExtractionResponse> getTerms() {
+        return this.termsList;
     }
 
-    public void setTopics(List<TopicExtractionResponse> topicsList) {
-        this.topicsList = topicsList;
+    public void setTopics(List<TopicExtractionResponse> termsList) {
+        this.termsList = termsList;
     }
 }
