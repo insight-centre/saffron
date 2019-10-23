@@ -211,7 +211,13 @@ public class Executor extends AbstractHandler {
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
         for (Document doc : docs) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
-            JSONArray docList = (JSONArray) jsonObj.get("documents");
+            JSONArray docList;
+            try {
+                docList = (JSONArray) jsonObj.get("documents");
+            } catch (Exception e) {
+                docList = new JSONArray();
+            }
+
             for (int i = 0; i < docList.length(); i++) {
                 JSONObject obj = (JSONObject) docList.get(i);
 

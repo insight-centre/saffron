@@ -38,6 +38,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.print.Doc;
+import javax.servlet.http.HttpServlet;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.net.URL;
@@ -45,7 +46,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class MongoDBHandler implements SaffronDataSource {
+public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     final String url;
     final int port;
@@ -514,6 +515,12 @@ public class MongoDBHandler implements SaffronDataSource {
         }
     }
 
+    public static String formatSize(long v) {
+        if (v < 1024) return v + " B";
+        int z = (63 - Long.numberOfLeadingZeros(v)) / 10;
+        return String.format("%.1f %sB", (double)v / (1L << (z*10)), " KMGTPE".charAt(z));
+    }
+
     public MongoDBHandler(String url, int port, String dbName, String collectionName) {
         this.url = url;
         this.port = port;
@@ -648,7 +655,7 @@ public class MongoDBHandler implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
         final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(runId);
-
+        System.out.println("In fromMongo()");
         Taxonomy docs = this.getTaxonomy(runId);
         saffron.setTaxonomy(docs);
 
@@ -689,6 +696,14 @@ public class MongoDBHandler implements SaffronDataSource {
         }
         saffron.setDocTopics((List<DocumentTopic>) mapper.readValue(docTopicsArray.toString(),
                 tf.constructCollectionType(List.class, DocumentTopic.class)));
+
+        long heapSize = Runtime.getRuntime().totalMemory();
+
+        // Get maximum size of heap in bytes. The heap cannot grow beyond this size.// Any attempt will result in an OutOfMemoryException.
+        long heapMaxSize = Runtime.getRuntime().maxMemory();
+
+        // Get amount of free memory within the heap in bytes. This size will increase // after garbage collection and decrease as new objects are created.
+        long heapFreeSize = Runtime.getRuntime().freeMemory();
 
         Iterable<org.bson.Document> topicsDocs = this.getTopics(runId);
         JSONArray jsonTopicsArray = new JSONArray();
