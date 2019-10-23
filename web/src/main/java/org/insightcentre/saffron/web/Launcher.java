@@ -108,19 +108,19 @@ public class Launcher {
 //            context.addServlet(helloHolder, "/*");
 //            context.setAttribute("my.greeting", "you");
 //            context.addServlet(SaffronAPI.class, "/*");
-            ResourceConfig resourceConfig = new ResourceConfig();
-            MyAppBinder binder = new MyAppBinder();
-            resourceConfig.register(binder);
+//            ResourceConfig resourceConfig = new ResourceConfig();
+//            MyAppBinder binder = new MyAppBinder();
+//            resourceConfig.register(binder);
 
             //context.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/*");
             ServletHolder jerseyServlet = context.addServlet(
                     org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-            ServletHolder jerseyServlet2 = new ServletHolder(new
-                    org.glassfish.jersey.servlet.ServletContainer(resourceConfig));
+//            ServletHolder jerseyServlet2 = new ServletHolder(new
+//                    org.glassfish.jersey.servlet.ServletContainer(resourceConfig));
 //            ServletHolder jerseyServlet = context.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/*")
 //
             jerseyServlet.setInitOrder(0);
-            jerseyServlet.setInitParameter("test", "test");
+//            jerseyServlet.setInitParameter("test", "test");
             jerseyServlet.setInitParameter(
                     "jersey.config.server.provider.classnames",
                     SaffronAPI.class.getCanonicalName());
