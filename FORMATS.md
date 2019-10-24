@@ -58,7 +58,12 @@ term string
 
 
 
-### Doc-Term
+### Doc-Terms ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-terms.json))
+
+* `document_id`: A unique string to identify the document, made up of the document filename (preceded by _zip_filename if the dataset is submitted as a .zip file)  
+* `term_string`: The string that names the term (must be unique)
+* `occurrences`: The number of occurrences of the term in the single document
+
 
 ### Term-Sim ([term-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/term-sim.json))
 
@@ -67,7 +72,7 @@ This file gathers and compares all pair of terms extracted in the previous stage
 * `term1_id`: The first term's term string
 * `term2_id`: The second term's term string
 * `similarity`: The similarity of the two terms 
-* `status`: Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **mone**
+* `status`: Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **none**
 
 ## Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
 
@@ -83,14 +88,25 @@ The file contains the following:
 
 
 
-If authors are present in the original corpus:
+If authors are present in the original corpus as metadat:
 ### Author-Terms
+
+An edge linking an author to a term
+
+* `author_id`: The ID of the author
+* `term_id`: The term string of the term
+* `matches`: The number of times this term is used in documents by this author
+* `occurrences`: The number of occurrences of the term by this author
+* `paper_count`: The number of documents from the author containing this term
+* `tfirf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
+extraction of topical hierarchies for Expertise Mining" (Georgeta Bordea (2013)) 
+for evaluations of different methods)
+* `score`: The score of the this linking
+* `researcher_score`: Score for author's ranking for this particular term
+
 ### Author-Sim
 
-
-
-
-Author-Author
+???
 -------------
 
 An edge in the author-author graph
@@ -99,34 +115,10 @@ An edge in the author-author graph
 * `author2_id`: The ID of the second author
 * `similarity`: The similarity score between these authors
 
-Author-Term
-------------
 
-An edge linking an author to a term
 
-* `author_id`: The ID of the author
-* `term_id`: The term string of the term
-* `matches`: The number of times this term is used in documents by this author
-* `occurrences`: The number of documents by this author containing the term
-* `tfirf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
-extraction of topical hierarchies for Expertise Mining" (Georgeta Bordea (2013)) 
-for evaluations of different methods)
-* `score`: The score of the this linking
-* `researcher_score`: Score for author's ranking for this particular term
 
-Document-Term ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-terms.json))
---------------
 
-The connection between a document and a term
-
-* `document_id`: The ID of the document
-* `term_string`: The term string of the term
-* `occurrences`: The number of times this term occurs in this document
-* `pattern`: The pattern used to match the term
-* `acronym`: The acronym form (if any)
-* `score`: The weight of this link
-* `tfidf`: Saffron internal value
-* `unembedded_occ`: Saffron internal value
 
 
 
