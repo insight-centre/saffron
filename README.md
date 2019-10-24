@@ -97,7 +97,9 @@ For example
 
     ./saffron.sh corpus.json output/
 
-The following results are generated  (see [Saffron Formats](FORMATS.md) for more details on the information contained in each file)
+The following files are generated if STORE_LOCAL_COPY was originally set to true (see [Saffron Formats](FORMATS.md) for more details on the information contained in each file)
+
+If using the Web interface, the files will be stored in /web/data/
 
 * `terms-extracted.json`: The terms with weights (and DBpedia links)
 * `doc-terms.json`: The document term map with weights
