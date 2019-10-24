@@ -43,31 +43,30 @@ A single author of a document in a corpus.
 ## Ouput formats
 
 
-### Topics and Topics-Extracted ([topics.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topics.json) and [topics-extracted.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topics-extracted.json))
+### Terms-Extracted ([terms-extracted.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/terms-extracted.json))
 
 Each element in these two files represents a single term extracted from the corpus. The files contains the following annotations
 
-* `topic_string`: The string that names the topic (must be unique)
-* `occurrences`: The total number of occurrences of a topic in the corpus
-* `matches`: The number of documents in the corpus containing this topic
-* `score`: The importance of the topic to this corpus (between 0 and 1)
+* `term_string`: The string that names the term (must be unique)
+* `occurrences`: The total number of occurrences of a term in the corpus
+* `matches`: The number of documents in the corpus containing this term
+* `score`: The importance of the term to this corpus (between 0 and 1)
 * `status`: Whether the term was validated or not (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **none**
 * `mv_list`: A list of alternative (morphological variants) forms of this 
-topic string
+term string
    * `string`: The form of this variant
-* `originalTopic`: TBD
 
 
 
-### Doc-Topic
+### Doc-Term
 
-### Topic-Sim ([topic-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topic-sim.json))
+### Term-Sim ([term-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/term-sim.json))
 
 This file gathers and compares all pair of terms extracted in the previous stage. Each element describes one edge, ie. a relation between two terms, and their similarity score (see the [pairwise scoring](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach#211-pairwise-scoring) step for more explanation on how this is calculated).
 
-* `topic1_id`: The first topic's topic string
-* `topic2_id`: The second topic's topic string
-* `similarity`: The similarity of the two topics 
+* `term1_id`: The first term's term string
+* `term2_id`: The second term's term string
+* `similarity`: The similarity of the two terms 
 * `status`: Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **mone**
 
 ## Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
@@ -75,11 +74,9 @@ This file gathers and compares all pair of terms extracted in the previous stage
 This file represents the whole taxonomy. Each element describes a term and how it is related to other terms in the taxonomy. 
 The file contains the following:
 
-* `root`: The topic string of this topic or `HEAD_TOPIC` for the root of the taxonomy
-* `score`: The weighting given to the root topic
-* `linkScore`: The likelihood of the link from this topic to its root being correct
-* `originalParent`: The parent assigned before the latest edition (see [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode))
-* `originalTopic`: 
+* `root`: The term string of this term or `HEAD_TERM` for the root of the taxonomy
+* `score`: The weighting given to the root term
+* `linkScore`: The likelihood of the link from this term to its root being correct
 * `children`: A list of children of this node (these are also Taxonomy objects)
 * `status`:
 * `parent`:
@@ -87,7 +84,7 @@ The file contains the following:
 
 
 If authors are present in the original corpus:
-### Author-Topics
+### Author-Terms
 ### Author-Sim
 
 
@@ -102,30 +99,30 @@ An edge in the author-author graph
 * `author2_id`: The ID of the second author
 * `similarity`: The similarity score between these authors
 
-Author-Topic
+Author-Term
 ------------
 
-An edge linking an author to a topic
+An edge linking an author to a term
 
 * `author_id`: The ID of the author
-* `topic_id`: The topic string of the topic
-* `matches`: The number of times this topic is used in documents by this author
-* `occurrences`: The number of documents by this author containing the topic
+* `term_id`: The term string of the term
+* `matches`: The number of times this term is used in documents by this author
+* `occurrences`: The number of documents by this author containing the term
 * `tfirf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
 extraction of topical hierarchies for Expertise Mining" (Georgeta Bordea (2013)) 
 for evaluations of different methods)
 * `score`: The score of the this linking
-* `researcher_score`: Score for author's ranking for this particular topic
+* `researcher_score`: Score for author's ranking for this particular term
 
-Document-Topic ([doc-topics.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-topics.json))
+Document-Term ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-terms.json))
 --------------
 
-The connection between a document and a topic
+The connection between a document and a term
 
 * `document_id`: The ID of the document
-* `topic_string`: The topic string of the topic
-* `occurrences`: The number of times this topic occurs in this document
-* `pattern`: The pattern used to match the topic
+* `term_string`: The term string of the term
+* `occurrences`: The number of times this term occurs in this document
+* `pattern`: The pattern used to match the term
 * `acronym`: The acronym form (if any)
 * `score`: The weight of this link
 * `tfidf`: Saffron internal value
