@@ -59,9 +59,9 @@ To change the Mongo HOST and PORT, simply edit the same file on the following:
     export MONGO_URL=localhost
     export MONGO_PORT=27017
     
-By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to true: 
+By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to **true**: 
     
-    export STORE_LOCAL_COPY=false
+    export STORE_LOCAL_COPY=true
 
 
 
@@ -101,7 +101,7 @@ The following files are generated if STORE_LOCAL_COPY was originally set to true
 
 If using the Web interface, the files will be stored in /web/data/
 
-* `terms-extracted.json`: The terms with weights (and DBpedia links)
+* `terms.json`: The terms with weights
 * `doc-terms.json`: The document term map with weights
 * `author-terms.json`: The connection between authors and terms
 * `author-sim.json`: The author-author similarity graph
@@ -110,7 +110,7 @@ If using the Web interface, the files will be stored in /web/data/
 * `config.json`: the configuration file for the run
  
 
-To create a .dot file, you can use the command line:
+To create a .dot file for the generated taxonomy, you can use the command line:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
