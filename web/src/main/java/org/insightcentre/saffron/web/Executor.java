@@ -464,8 +464,8 @@ public class Executor extends AbstractHandler {
         //res.normalize();
 
         _status.setStatusMessage("Writing extracted topics");
-        if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
+        //if (storeCopy.equals("true"))
+        //    ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
 
         _status.setStatusMessage("Writing document topic correspondence");
         if (storeCopy.equals("true"))
@@ -485,7 +485,7 @@ public class Executor extends AbstractHandler {
         data.setCorpus(saffronDatasetName, corpus);
 
         _status.stage++;
-        _status.setStatusMessage("Linking to DBpedia");
+        _status.setStatusMessage("Building concepts (skipped)");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
         List<Topic> topics = new ArrayList<>(res.topics);
         data.setTopics(saffronDatasetName, topics);

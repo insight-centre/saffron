@@ -61,7 +61,7 @@ echo "########################################"
 if [ -z $DBP_CONFIG ]
 then
     echo "Skipping"
-    cp $OUTPUT/topics-extracted.json $OUTPUT/topics.json
+    mv $OUTPUT/topics-extracted.json $OUTPUT/topics.json
 else
 $DIR/dbpedia-lookup -c $DBP_CONFIG -t $OUTPUT/topics-extracted.json \
     -o $OUTPUT/topics.json
