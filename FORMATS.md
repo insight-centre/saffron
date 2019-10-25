@@ -43,7 +43,7 @@ A single author of a document in a corpus.
 ## Ouput formats
 
 
-### Terms-Extracted ([terms-extracted.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/terms-extracted.json))
+### Terms ([terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/terms.json))
 
 Each element in these two files represents a single term extracted from the corpus. The files contains the following annotations
 
