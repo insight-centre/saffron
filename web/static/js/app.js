@@ -112,23 +112,53 @@ angular.module('app').component('toptopics', {
             $http.get(apiUrlWithSaffron + "topics").then(
                 function (response) {
                     response = response.data;
+                    console.log(response)
                     response.sort((a, b) => (a.score < b.score) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+30);
+
+                    // normalize saffron  score 
+                    maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
+                    minScore = Math.min.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
+                    
+                    function normalizeScore(min, max) {
+                        var delta = max - min;
+                        return function(val){
+                            return ((val - min) / delta).toFixed(2);
+                        };
+
+                     }
+
+                    scoreList = []
+                    response.forEach((responseObj) => scoreList.push(responseObj.score.toPrecision(3)));
+                    normalizedScore = scoreList.map(normalizeScore(minScore,maxScore));
+                    response.forEach((responseObj, indx) =>{
+                        responseObj.score = normalizedScore[indx]
+                    });
+
+
+
                     ctrl.topics = [];
                     for (t = 0; t < response.length; t++) {
                         if(response[t].status !== "rejected") {
                             ctrl.topics.push({
                                 "topic_string": response[t].topicString,
+                                "score": response[t].score, //toFixed(2)
+
                                 "pos": (t + 1 + ctrl.n2)
+
                             });                            
                         }
                     }
+
                     ctrl.n = ctrl.n2;
                 },
                 function (response) {
                     console.log(response);
                     console.log("Failed to get top topics");
                 }
+
+
+
             );
         };
         this.topicForward = function () {
@@ -170,11 +200,13 @@ angular.module('app').component('edittopics', {
                 }
             },
 
+
             function (response) {
                 console.log(response);
                 console.log("Failed to get topics");
             }
         );
+
 
         // enabling multiple selections
         $scope.checkAll = function() {
@@ -250,6 +282,11 @@ angular.module('app').component('edittopics', {
                     }
                 }, topic);
             }
+
+
+            // added 
+                                console.log(ctrl.topic)
+
         };
 
         // reject one or multiple topics only in the UI
@@ -331,6 +368,8 @@ angular.module('app').component('edittopics', {
     }
 });
 
+
+// end of edit topic page 
 angular.module('app').component('editparents', {
     templateUrl: '/edit-parents-component.html',
     controller: function ($http, $scope) {
