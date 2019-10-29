@@ -35,14 +35,7 @@ public class Launcher {
     public static Executor executor;
     public static Home home;
 
-    //FIXME: The MongoDB configurations should not be encapsulated within the MongoDBHandler
-    // and provided by a centralised Config class
-    static String mongoUrl = System.getenv("MONGO_URL");
-    static String mongoPort = System.getenv("MONGO_PORT");
-    static String mongoDbName = System.getenv("MONGO_DB_NAME");
-
-    public static final MongoDBHandler saffron = new MongoDBHandler(
-            mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+    public static final MongoDBHandler saffron = new MongoDBHandler();
 
 
     private static void badOptions(OptionParser p, String message) throws IOException {
@@ -84,9 +77,6 @@ public class Launcher {
 
             Server server = new Server(port);
             ResourceHandler resourceHandler = new ResourceHandler();
-
-
-
             // This is the path on the server
             // This is the local directory that is used to 
             resourceHandler.setResourceBase("static");
@@ -94,7 +84,6 @@ public class Launcher {
                 System.err.println("No static folder, please run the command in the right folder.");
                 System.exit(-1);
             }
-            //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory, saffron);
             executor = new Executor(saffron, directory, (File)os.valueOf("l"));
@@ -103,31 +92,12 @@ public class Launcher {
 
             ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
             context.setContextPath("/");
-
-//            ServletHolder helloHolder = new ServletHolder(saffron);
-//            context.addServlet(helloHolder, "/*");
-//            context.setAttribute("my.greeting", "you");
-//            context.addServlet(SaffronAPI.class, "/*");
-//            ResourceConfig resourceConfig = new ResourceConfig();
-//            MyAppBinder binder = new MyAppBinder();
-//            resourceConfig.register(binder);
-
-            //context.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/*");
             ServletHolder jerseyServlet = context.addServlet(
                     org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-//            ServletHolder jerseyServlet2 = new ServletHolder(new
-//                    org.glassfish.jersey.servlet.ServletContainer(resourceConfig));
-//            ServletHolder jerseyServlet = context.addServlet(new ServletHolder(new ServletContainer(resourceConfig)), "/*")
-//
             jerseyServlet.setInitOrder(0);
-//            jerseyServlet.setInitParameter("test", "test");
             jerseyServlet.setInitParameter(
                     "jersey.config.server.provider.classnames",
                     SaffronAPI.class.getCanonicalName());
-
-            //context.addServlet(jerseyServlet2, "/api/*");
-
-
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
 

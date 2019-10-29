@@ -165,7 +165,6 @@ public class Executor extends AbstractHandler {
             writer.write(buf, 0, p);
         }
         response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-
         String mongoUrl = System.getenv("MONGO_URL");
         if (mongoUrl == null) {
             mongoUrl = "localhost";
@@ -174,12 +173,8 @@ public class Executor extends AbstractHandler {
         if (mongoPort == null) {
             mongoPort = "27017";
         }
-        String mongoDbName = System.getenv("MONGO_DB_NAME");
-        if (mongoDbName == null) {
-            mongoDbName = "saffron_test";
-        }
 
-        MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+        MongoDBHandler mongo = new MongoDBHandler();
         FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
         String run = mongo.getRun(saffronDatasetName);
         JSONObject configObj = new JSONObject(run);
@@ -561,20 +556,8 @@ public class Executor extends AbstractHandler {
     }
 
     public BlackWhiteList extractBlackWhiteList(String datasetName) {
-        String mongoUrl = System.getenv("MONGO_URL");
-        if (mongoUrl == null) {
-            mongoUrl = "localhost";
-        }
-        String mongoPort = System.getenv("MONGO_PORT");
-        if (mongoPort == null) {
-            mongoPort = "27017";
-        }
-        String mongoDbName = System.getenv("MONGO_DB_NAME");
-        if (mongoDbName == null) {
-            mongoDbName = "saffron_test";
-        }
 
-        MongoDBHandler mongo = new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+        MongoDBHandler mongo = new MongoDBHandler();
 
         if (!mongo.getTopics(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();

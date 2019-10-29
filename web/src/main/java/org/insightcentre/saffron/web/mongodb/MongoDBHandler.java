@@ -48,6 +48,9 @@ import java.util.*;
 
 public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
+
+
+
     final String url;
     final int port;
     String dbName;
@@ -67,6 +70,10 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     private final Map<String, MongoDBHandler.SaffronDataImpl> data = new HashMap<>();
 
     public final String type = "mongodb";
+
+    static String mongoUrl = System.getenv("MONGO_URL");
+    static String mongoPort = System.getenv("MONGO_PORT");
+    static String mongoDbName = System.getenv("MONGO_DB_NAME");
 
     private static class SaffronDataImpl {
 
@@ -521,11 +528,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return String.format("%.1f %sB", (double)v / (1L << (z*10)), " KMGTPE".charAt(z));
     }
 
-    public MongoDBHandler(String url, int port, String dbName, String collectionName) {
-        this.url = url;
-        this.port = port;
-        this.dbName = dbName;
-        this.collectionName = collectionName;
+    public MongoDBHandler() {
+        this.url = mongoUrl;
+        this.port = new Integer(mongoPort);
+        this.dbName = mongoDbName;
+        this.collectionName = "saffron_runs";
         MongoClientOptions options = MongoClientOptions.builder().cursorFinalizerEnabled(false).build();
 
         this.mongoClient = new MongoClient(url, port);
@@ -545,12 +552,9 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     private void initialiseInMemoryDatabase() {
         try {
-    	    FindIterable<org.bson.Document> runs = this.getAllRuns();
-
-            for (org.bson.Document doc : runs) {
-                JSONObject configObj = new JSONObject(doc);
-                configObj.get("id").toString();
-                this.fromMongo(configObj.get("id").toString());
+    	    List<SaffronRun> runs = this.getAllRuns();
+            for (SaffronRun doc : runs) {
+                this.fromMongo(doc.id);
             }
         } catch (JSONException e) {
             throw new RuntimeException("An error has ocurring while loading database into memory", e);
@@ -750,10 +754,18 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return true;
     }
 
-    public FindIterable<Document>  getAllRuns() {
+    public List<SaffronRun>  getAllRuns() {
         try {
+            List<SaffronRun> runList = new ArrayList<>();
             FindIterable<Document> docs = MongoUtils.getDocs(this);
-            return docs;
+            for (org.bson.Document doc : docs) {
+                String id = doc.getString("id");
+                Date runDate = doc.getDate("run_date");
+                String config = doc.getString("config");
+                SaffronRun run = new SaffronRun(id, runDate, config);
+                runList.add(run);
+            }
+            return runList;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1494,7 +1506,21 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public Iterable<Topic> getAllTopics(String datasetName) {
-        return null;
+        FindIterable<Document> docs = this.getTopics(datasetName);
+        List<Topic> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+
+            String topicString = doc.getString("topic_string");
+            int occurrences = doc.getInteger("occurences");
+            int matches = doc.getInteger("matches");
+            double score = doc.getDouble("score");
+            String status = doc.getString("status");
+            List<Topic.MorphologicalVariation> mvList = new ArrayList<>();
+            Topic topic = new Topic(topicString, occurrences, matches, score, mvList, status);
+            returnList.add(topic);
+        }
+        Iterable<Topic> topics = returnList;
+        return topics;
     }
 
     @Override
@@ -1514,7 +1540,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public Iterable<TopicTopic> getAllTopicSimilarities(String name) {
-        return null;
+        FindIterable<Document> docs = this.getTopics(name);
+        List<TopicTopic> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+            String topic1 = doc.getString("topic1_id");
+            String topic2 = doc.getString("topic2_id");
+            double similarity = doc.getDouble("similarity");
+            TopicTopic topic = new TopicTopic(topic1, topic2, similarity);
+            returnList.add(topic);
+        }
+        Iterable<TopicTopic> topics = returnList;
+        return topics;
     }
 
     @Override

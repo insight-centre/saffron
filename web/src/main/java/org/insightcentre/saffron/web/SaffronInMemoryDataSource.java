@@ -694,6 +694,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
+    public List<SaffronRun> getAllRuns() {
+        return null;
+    }
+
+    @Override
     public List<TopicAndScore> getTaxoChildrenScored(String runId, String topic_string) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {

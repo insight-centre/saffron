@@ -24,6 +24,10 @@ public class SaffronService {
     public SaffronService(SaffronDataSource dataSource) {
     	this.dataSource = dataSource;
     }
+
+	public SaffronDataSource getSaffronDataSource() {
+		return this.dataSource;
+	}
     
 	/**
 	 * Update the revision status of multiple topics in a given taxonomy.

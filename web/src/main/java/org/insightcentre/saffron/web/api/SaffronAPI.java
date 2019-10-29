@@ -31,6 +31,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Topic;
@@ -50,17 +51,6 @@ import com.mongodb.client.FindIterable;
 public class SaffronAPI {
 
     private final org.insightcentre.saffron.web.api.APIUtils APIUtils = new APIUtils();
-    
-//    //FIXME The REST interface should not know or care about MongoDB configuration.
-//    // This information should be restricted to Model layers dealing exclusively with MongoDB
-//    static String mongoUrl = System.getenv("MONGO_URL");
-//    static String mongoPort = System.getenv("MONGO_PORT");
-//    static String mongoDbName = System.getenv("MONGO_DB_NAME");
-//
-//    protected MongoDBHandler saffron = new MongoDBHandler(
-//            mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-//
-//
     protected final SaffronService saffronService;
     protected final MongoDBHandler saffron;
     protected final Launcher launcher;
@@ -68,7 +58,7 @@ public class SaffronAPI {
     public SaffronAPI() {
         this.launcher = new Launcher();
         this.saffron = this.launcher.saffron;
-        this.saffronService = new SaffronService(saffron);
+        this.saffronService = new SaffronService(this.launcher.saffron);
     }
 
 
@@ -81,7 +71,7 @@ public class SaffronAPI {
         Taxonomy taxonomy;
         try {
 
-            taxonomy = saffron.getTaxonomy(name);
+            taxonomy = saffronService.getSaffronDataSource().getTaxonomy(name);
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = mapper.writeValueAsString(taxonomy);
             return Response.ok(jsonString).build();
@@ -97,15 +87,15 @@ public class SaffronAPI {
         List<BaseResponse> runsResponse = new ArrayList<>();
         
 
-        FindIterable<Document> runs;
+        List<SaffronRun> runs;
 
         try {
-            runs = saffron.getAllRuns();
+            runs = saffronService.getSaffronDataSource().getAllRuns();
 
-            for (Document doc : runs) {
+            for (SaffronRun doc : runs) {
                 BaseResponse entity = new BaseResponse();
-                entity.setId(doc.getString("id"));
-                entity.setRunDate(doc.getDate("run_date"));
+                entity.setId(doc.id);
+                entity.setRunDate(doc.runDate);
                 runsResponse.add(entity);
             }
         } catch (Exception x) {
@@ -120,10 +110,7 @@ public class SaffronAPI {
     @DELETE
     @Path("/{param}")
     public Response deleteRun(@PathParam("param") String name) {
-
-        //SaffronData.fromMongo(name);
-        
-        saffron.deleteRun(name);
+        saffronService.getSaffronDataSource().deleteRun(name);
         return Response.ok("Run " + name + " Deleted").build();
     }
 
@@ -151,20 +138,19 @@ public class SaffronAPI {
     public Response getRunTopics(@PathParam("param") String runId) {
         List<TopicResponse> topicsResponse = new ArrayList<>();
 
-        FindIterable<Document> topics;
+        Iterable<Topic> topics;
         
         try {
-            topics = saffron.getTopics(runId);
+            topics = saffronService.getSaffronDataSource().getAllTopics(runId);
 
-            for (Document doc : topics) {
+            for (Topic doc : topics) {
                 TopicResponse entity = new TopicResponse();
-                entity.setId(doc.getString("_id"));
-                entity.setMatches(doc.getInteger("matches"));
-                entity.setOccurrences(doc.getInteger("occurences"));
-                entity.setScore(doc.getDouble("score"));
-                entity.setTopicString(doc.getString("topic_string"));
-                entity.setMvList((List<String>) doc.get("mvList"));
-                entity.setStatus(doc.getString("status"));
+                entity.setId(doc.topicString);
+                entity.setMatches(doc.matches);
+                entity.setOccurrences(doc.occurrences);
+                entity.setScore(doc.score);
+                entity.setTopicString(doc.topicString);
+                entity.setStatus(doc.status.toString());
                 topicsResponse.add(entity);
             }
 
@@ -221,15 +207,10 @@ public class SaffronAPI {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            originalTaxo = saffron.getTaxonomy(runId);
-//            for (org.bson.Document doc : runs) {
-//                JSONObject jsonObj = new JSONObject(doc.toJson());
-//                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-//
-//            }
+            originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(runId);
+
             Taxonomy descendent = originalTaxo.descendent(topic_id);
             String json = new Gson().toJson(descendent);
-            //saffron.close();
             return Response.ok(json).build();
 
         } catch (Exception e) {
@@ -250,16 +231,10 @@ public class SaffronAPI {
         try {
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
             
-            originalTaxo = saffron.getTaxonomy(runId);
-//            for (org.bson.Document doc : runs) {
-//                JSONObject jsonObj = new JSONObject(doc.toJson());
-//                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-//
-//            }
+            originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(runId);
             Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
             Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
             String json = gson.toJson(antecendent);
-            //saffron.close();
             return Response.ok(json).build();
 
         } catch (Exception e) {
@@ -284,8 +259,8 @@ public class SaffronAPI {
         List<TopicResponse> topicsResponse = new ArrayList<>();
         TopicsResponse resp = new TopicsResponse();
         FindIterable<Document> topics;
-        
-        saffron.deleteTopic(name, topicId);
+
+        saffronService.getSaffronDataSource().deleteTopic(name, topicId);
 
         return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
@@ -302,7 +277,7 @@ public class SaffronAPI {
 
         
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-        Taxonomy originalTaxo = saffron.getTaxonomy(name);
+        Taxonomy originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(name);
 
         try {
 
@@ -313,9 +288,9 @@ public class SaffronAPI {
             } else if (status.equals("none")) {
                 finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
             }
-            saffron.updateTopic(name, topicId, status);
+            saffronService.getSaffronDataSource().updateTopic(name, topicId, status);
             saffron.updateTopicSimilarity(name, topicId, topic_id2, status);
-            saffron.updateTaxonomy(name, finalTaxon);
+            saffronService.getSaffronDataSource().updateTaxonomy(name, finalTaxon);
             //saffron.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -342,7 +317,7 @@ public class SaffronAPI {
             JSONArray obj = (JSONArray) jsonObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
                 JSONObject json = obj.getJSONObject(i);
-                saffron.deleteTopic(name, json.get("id").toString());
+                saffronService.getSaffronDataSource().deleteTopic(name, json.get("id").toString());
             }
         }
         return Response.ok("Topics " + jsonObj + " Deleted").build();
@@ -382,14 +357,6 @@ public class SaffronAPI {
         }
 
         //build answer
-        /*JSONArray returnJsonArray = new JSONArray();
-        JSONObject returnJson = new JSONObject();
-        returnJson.put("id", name);
-        returnJson.put("success", true);
-        returnJson.put("new_parent", newParentString);
-        returnJsonArray.put(returnJson);
-
-        return Response.ok(returnJsonArray.toString()).build();*/
         return Response.ok("All parents successfully updated").build();
     }
 
