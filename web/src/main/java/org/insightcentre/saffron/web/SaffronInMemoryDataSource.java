@@ -17,6 +17,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -695,7 +696,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
     @Override
     public List<SaffronRun> getAllRuns() {
-        return null;
+        throw new NotImplementedException();
     }
 
     @Override

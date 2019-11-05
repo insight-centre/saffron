@@ -349,26 +349,29 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             this.authors = new HashMap<>();
 
 
-           // JSONArray documentArray = (JSONArray) corpus.get("documents");
-            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData =
-                    new ArrayList<>();
-//            if (documentArray != null) {
-//                for (int i=0;i<documentArray.length();i++){
-//
-//                    JSONObject obj = documentArray.getJSONObject(i);
-//                    String contents = "";
-//                    if (obj.has("contents"))
-//                        contents = obj.getString("contents");
-//                    SaffronPath path = new SaffronPath();
-//                    path.setPath(obj.getString("id"));
-//                    List<Author> authors = new ArrayList<>();
-//                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
-//                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
-//                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
-//
-//                    docData.add(doc);
-//                }
-//            }
+            JSONArray documentArray = null;
+            try {
+                documentArray = (JSONArray) corpus.get("documents");
+            } catch (Exception e) {
+                documentArray = new JSONArray();
+            }
+
+            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData = new ArrayList<>();
+            if (documentArray != null) {
+                for (int i=0;i<documentArray.length();i++){
+                    JSONObject obj = documentArray.getJSONObject(i);
+                    String contents = "";
+                    if (obj.has("contents"))
+                        contents = obj.getString("contents");
+                    SaffronPath path = new SaffronPath();
+                    path.setPath(obj.getString("id"));
+                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
+                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
+                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+
+                    docData.add(doc);
+                }
+            }
             for (org.insightcentre.nlp.saffron.data.Document d : docData) {
                 this.corpus.put(d.id, d);
                 for (Author a : d.getAuthors()) {
@@ -659,7 +662,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
         final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(runId);
-        System.out.println("In fromMongo()");
         Taxonomy docs = this.getTaxonomy(runId);
         saffron.setTaxonomy(docs);
 
@@ -700,14 +702,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         }
         saffron.setDocTopics((List<DocumentTopic>) mapper.readValue(docTopicsArray.toString(),
                 tf.constructCollectionType(List.class, DocumentTopic.class)));
-
-        long heapSize = Runtime.getRuntime().totalMemory();
-
-        // Get maximum size of heap in bytes. The heap cannot grow beyond this size.// Any attempt will result in an OutOfMemoryException.
-        long heapMaxSize = Runtime.getRuntime().maxMemory();
-
-        // Get amount of free memory within the heap in bytes. This size will increase // after garbage collection and decrease as new objects are created.
-        long heapFreeSize = Runtime.getRuntime().freeMemory();
 
         Iterable<org.bson.Document> topicsDocs = this.getTopics(runId);
         JSONArray jsonTopicsArray = new JSONArray();
@@ -1276,9 +1270,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         Iterable<org.bson.Document> corpusJson = this.getCorpus(runId);
         for (org.bson.Document doc : corpusJson) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
-            GridFS gridFs = getGridFS();
-           // GridFSInputFile gfsFile = gridFs.findOne()
-
             saffron.setCorpus(jsonObj);
         }
     }

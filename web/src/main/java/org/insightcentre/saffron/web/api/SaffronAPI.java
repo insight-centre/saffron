@@ -71,7 +71,7 @@ public class SaffronAPI {
         Taxonomy taxonomy;
         try {
 
-            taxonomy = saffronService.getSaffronDataSource().getTaxonomy(name);
+            taxonomy = saffronService.getTaxonomy(name);
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = mapper.writeValueAsString(taxonomy);
             return Response.ok(jsonString).build();
@@ -85,12 +85,10 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllRuns() {
         List<BaseResponse> runsResponse = new ArrayList<>();
-        
-
         List<SaffronRun> runs;
 
         try {
-            runs = saffronService.getSaffronDataSource().getAllRuns();
+            runs = saffronService.getAllRuns();
 
             for (SaffronRun doc : runs) {
                 BaseResponse entity = new BaseResponse();
@@ -110,7 +108,7 @@ public class SaffronAPI {
     @DELETE
     @Path("/{param}")
     public Response deleteRun(@PathParam("param") String name) {
-        saffronService.getSaffronDataSource().deleteRun(name);
+        saffronService.deleteRun(name);
         return Response.ok("Run " + name + " Deleted").build();
     }
 
@@ -141,7 +139,7 @@ public class SaffronAPI {
         Iterable<Topic> topics;
         
         try {
-            topics = saffronService.getSaffronDataSource().getAllTopics(runId);
+            topics = saffronService.getAllTopics(runId);
 
             for (Topic doc : topics) {
                 TopicResponse entity = new TopicResponse();
@@ -207,7 +205,7 @@ public class SaffronAPI {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(runId);
+            originalTaxo = saffronService.getTaxonomy(runId);
 
             Taxonomy descendent = originalTaxo.descendent(topic_id);
             String json = new Gson().toJson(descendent);
@@ -229,9 +227,7 @@ public class SaffronAPI {
 
 
         try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-            
-            originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(runId);
+            Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
             Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
             String json = gson.toJson(antecendent);
@@ -255,12 +251,7 @@ public class SaffronAPI {
     public Response deleteTopic(@PathParam("param") String name,
             @PathParam("topic_id") String topicId) {
 
-
-        List<TopicResponse> topicsResponse = new ArrayList<>();
-        TopicsResponse resp = new TopicsResponse();
-        FindIterable<Document> topics;
-
-        saffronService.getSaffronDataSource().deleteTopic(name, topicId);
+        saffronService.deleteTopic(name, topicId);
 
         return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
     }
@@ -277,7 +268,7 @@ public class SaffronAPI {
 
         
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-        Taxonomy originalTaxo = saffronService.getSaffronDataSource().getTaxonomy(name);
+        Taxonomy originalTaxo = saffronService.getTaxonomy(name);
 
         try {
 
@@ -288,9 +279,9 @@ public class SaffronAPI {
             } else if (status.equals("none")) {
                 finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
             }
-            saffronService.getSaffronDataSource().updateTopic(name, topicId, status);
+            saffronService.updateTopic(name, topicId, status);
             saffron.updateTopicSimilarity(name, topicId, topic_id2, status);
-            saffronService.getSaffronDataSource().updateTaxonomy(name, finalTaxon);
+            saffronService.updateTaxonomy(name, finalTaxon);
             //saffron.close();
         } catch (Exception e) {
             e.printStackTrace();
@@ -317,7 +308,7 @@ public class SaffronAPI {
             JSONArray obj = (JSONArray) jsonObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
                 JSONObject json = obj.getJSONObject(i);
-                saffronService.getSaffronDataSource().deleteTopic(name, json.get("id").toString());
+                saffronService.deleteTopic(name, json.get("id").toString());
             }
         }
         return Response.ok("Topics " + jsonObj + " Deleted").build();

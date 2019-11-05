@@ -3,10 +3,7 @@ package org.insightcentre.saffron.web;
 import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
@@ -25,9 +22,143 @@ public class SaffronService {
     	this.dataSource = dataSource;
     }
 
-	public SaffronDataSource getSaffronDataSource() {
-		return this.dataSource;
+
+	/**
+	 * Return a Taxonomy for a given taxonomy ID.
+	 *
+	 * @param taxonomyId - the identifier of the taxonomy
+	 */
+	public Taxonomy getTaxonomy(String taxonomyId) {
+
+		if (taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+		try {
+			return dataSource.getTaxonomy(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException("The taxonomy " + taxonomyId + " could not be retrieved: " + e.getMessage());
+		}
 	}
+
+	/**
+	 * Return all previous Saffron Runs to the user.
+	 *
+	 */
+	public List<SaffronRun> getAllRuns() {
+		try {
+			return dataSource.getAllRuns();
+		} catch (Exception e) {
+			throw new RuntimeException("No Saffron Runs could not be retrieved from the data source: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Return all previous Saffron Runs to the user.
+	 * @param taxonomyId - the identifier of the taxonomy
+	 *
+	 */
+	public void deleteRun(String taxonomyId) {
+        if (taxonomyId == "") {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+		try {
+			dataSource.deleteRun(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException("The Saffron run " + taxonomyId + " could not be deleted: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Get all Topics for a given taxonomy ID.
+	 * @param taxonomyId - the identifier of the taxonomy
+	 *
+	 */
+	public Iterable<Topic> getAllTopics(String taxonomyId) {
+        if (taxonomyId == "") {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+		try {
+			return dataSource.getAllTopics(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException(
+					"No topics could be retrieved for the taxonomy " + taxonomyId + ": " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Deletes a topic from a given taxonomy
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param topicID - the identifier of the topic to be deleted
+	 *
+	 */
+	public void deleteTopic(String taxonomyId, String topicID) {
+        if (taxonomyId == "") {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+        if (topicID == "") {
+            InvalidValueException exception = new InvalidValueException("The topic id cannot be empty");
+            exception.addParameterValue("topicID", "");
+            throw exception;
+        }
+		try {
+			dataSource.deleteTopic(taxonomyId, topicID);
+		} catch (Exception e) {
+			throw new RuntimeException("The Saffron topic " + topicID + " could not be deleted from the taxonomy: " + taxonomyId + ": " + e.getMessage());
+		}
+	}
+
+
+	/**
+	 * Return all previous Saffron Runs to the user.
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param topicID - the identifier of the topic to be deleted
+	 * @param status - the new status for the given topic identifier
+	 *
+	 */
+	public void updateTopic(String taxonomyId, String topicID, String status) {
+		if (taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+
+		boolean topicUpdated = dataSource.updateTopic(taxonomyId, topicID, status);
+		if(!topicUpdated)
+			throw new RuntimeException("An error has ocurred when updating the topic in the database.");
+	}
+
+
+	/**
+	 * Return all previous Saffron Runs to the user.
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param taxonomy - The taxonomy object that should be updated
+	 *
+	 */
+	public void updateTaxonomy(String taxonomyId, Taxonomy taxonomy) {
+		if (taxonomyId == "") {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+		if (taxonomy.root == null || taxonomy.root.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The taxonomy root string cannot be empty or null");
+			exception.addParameterValue("taxonomy.root", taxonomy.root);
+			throw exception;
+		}
+
+		boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
+		if(!taxonomyUpdated)
+			throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
+	}
+
     
 	/**
 	 * Update the revision status of multiple topics in a given taxonomy.
@@ -104,7 +235,7 @@ public class SaffronService {
 	 * Update multiple parent-child relationships in a given taxonomy.
 	 * 
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
-	 * @param parentChildStatusMap - the relations to be changed. Tuples of type <Parent,Child,status>
+	 * @param parentChildStatusList - the relations to be changed. Tuples of type <Parent,Child,status>
 	 */
 	public void updateParentRelationshipStatus(String taxonomyId, List<Pair<String,String>> parentChildStatusList) {
 		RuntimeException agException = null;
