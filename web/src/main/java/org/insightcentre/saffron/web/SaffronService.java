@@ -30,7 +30,7 @@ public class SaffronService {
 	 */
 	public Taxonomy getTaxonomy(String taxonomyId) {
 
-		if (taxonomyId.equals("") || taxonomyId == null) {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -60,7 +60,7 @@ public class SaffronService {
 	 *
 	 */
 	public void deleteRun(String taxonomyId) {
-        if (taxonomyId.equals("") || taxonomyId == null) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
@@ -78,7 +78,7 @@ public class SaffronService {
 	 *
 	 */
 	public Iterable<Topic> getAllTopics(String taxonomyId) {
-        if (taxonomyId.equals("") || taxonomyId == null) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
@@ -98,7 +98,7 @@ public class SaffronService {
 	 *
 	 */
 	public void deleteTopic(String taxonomyId, String topicID) {
-        if (taxonomyId.equals("") || taxonomyId == null) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
@@ -124,7 +124,7 @@ public class SaffronService {
 	 *
 	 */
 	public void updateTopic(String taxonomyId, String topicID, String status) {
-		if (taxonomyId.equals("") || taxonomyId == null) {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -143,7 +143,7 @@ public class SaffronService {
 	 *
 	 */
 	public void updateTaxonomy(String taxonomyId, Taxonomy taxonomy) {
-		if (taxonomyId.equals("") || taxonomyId == null) {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
