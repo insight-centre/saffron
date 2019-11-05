@@ -55,7 +55,7 @@ public class SaffronService {
 	}
 
 	/**
-	 * Return all previous Saffron Runs to the user.
+	 * Deletes a specified Saffron run for a given Taxonomy ID
 	 * @param taxonomyId - the identifier of the taxonomy
 	 *
 	 */
@@ -130,6 +130,17 @@ public class SaffronService {
 			throw exception;
 		}
 
+        if (topicID == null || topicID.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The topic id cannot be empty");
+            exception.addParameterValue("topicID", "");
+            throw exception;
+        }
+        if (status == null || status.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The status cannot be empty");
+            exception.addParameterValue("status", "");
+            throw exception;
+        }
+
 		boolean topicUpdated = dataSource.updateTopic(taxonomyId, topicID, status);
 		if(!topicUpdated)
 			throw new RuntimeException("An error has ocurred when updating the topic in the database.");
@@ -137,7 +148,7 @@ public class SaffronService {
 
 
 	/**
-	 * Return all previous Saffron Runs to the user.
+	 * Update the Taxonomy for a given Taxonomy ID with a new Taxonomy Object
 	 * @param taxonomyId - the identifier of the taxonomy
 	 * @param taxonomy - The taxonomy object that should be updated
 	 *
