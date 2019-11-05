@@ -117,7 +117,7 @@ public class SaffronService {
 
 
 	/**
-	 * Return all previous Saffron Runs to the user.
+	 * This method updates the topic status for a given topic and taxonomy ID
 	 * @param taxonomyId - the identifier of the taxonomy
 	 * @param topicID - the identifier of the topic to be deleted
 	 * @param status - the new status for the given topic identifier
