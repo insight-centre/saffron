@@ -30,7 +30,7 @@ public class SaffronService {
 	 */
 	public Taxonomy getTaxonomy(String taxonomyId) {
 
-		if (taxonomyId == "") {
+		if (taxonomyId.equals("") || taxonomyId == null) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -60,7 +60,7 @@ public class SaffronService {
 	 *
 	 */
 	public void deleteRun(String taxonomyId) {
-        if (taxonomyId == "") {
+        if (taxonomyId.equals("") || taxonomyId == null) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
@@ -78,7 +78,7 @@ public class SaffronService {
 	 *
 	 */
 	public Iterable<Topic> getAllTopics(String taxonomyId) {
-        if (taxonomyId == "") {
+        if (taxonomyId.equals("") || taxonomyId == null) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
@@ -98,12 +98,12 @@ public class SaffronService {
 	 *
 	 */
 	public void deleteTopic(String taxonomyId, String topicID) {
-        if (taxonomyId == "") {
+        if (taxonomyId.equals("") || taxonomyId == null) {
             InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
             exception.addParameterValue("taxonomyId", "");
             throw exception;
         }
-        if (topicID == "") {
+        if (topicID.equals("") || topicID == null) {
             InvalidValueException exception = new InvalidValueException("The topic id cannot be empty");
             exception.addParameterValue("topicID", "");
             throw exception;
@@ -124,7 +124,7 @@ public class SaffronService {
 	 *
 	 */
 	public void updateTopic(String taxonomyId, String topicID, String status) {
-		if (taxonomyId == "") {
+		if (taxonomyId.equals("") || taxonomyId == null) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -143,7 +143,7 @@ public class SaffronService {
 	 *
 	 */
 	public void updateTaxonomy(String taxonomyId, Taxonomy taxonomy) {
-		if (taxonomyId == "") {
+		if (taxonomyId.equals("") || taxonomyId == null) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -195,7 +195,7 @@ public class SaffronService {
 		 * 2 - If new status = "rejected" then
 		 * 3 - remove the topic from the taxonomy and update the taxonomy in the database
 		 */
-		if (taxonomyId == "") {
+		if (taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -268,7 +268,7 @@ public class SaffronService {
 		 * 3 - If status = "accepted" then, change both topic status to "accepted"
 		 */
 		
-		if (taxonomyId == null || taxonomyId == "") {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -354,7 +354,7 @@ public class SaffronService {
 		 * 4 - Change status of child - new parent relation to accepted.
 		 */
 		
-		if (taxonomyId == null || taxonomyId == "") {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
