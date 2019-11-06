@@ -11,33 +11,93 @@ and we will describe the properties each files has, with a link to an example (a
 
 This file contains the description of the corpus, including all the metadata. It is a collection of documents, each element being a different dicument with its own metadata and link to the file containing the text. A corpus has the following properties:
 
-* `documents`: An array of documents in the corpus
+* `documents`: A list of documents in the corpus
 
-    ### Document 
+    Each element of the list should have *at least* one of the following four:
 
-    A single document in a corpus. At least one of the following four must be present
-
-    * `file`: A string referring to the original version of this document on disk
+    * `file`: A string referring to the original version of this document on disk (absolute or relative path)
     * `id`: A unique string to identify the document
     * `url`: The URL of the file
     * `contents`: The text contents of the file
     
-    In addition the following may be provided
-    
+    In addition the following may be provided:
     * `name`: The human readable name of the document
     * `mime_type`: The MIME type of the document
     * `authors`: An array of authors of this document
+            
+        For each author of the document, provide:
+        - Either the name of the author as a string
+        - Or if more details on the author:
+            * `name`: The author's name (required)
+            * `id`: A unique string to identify the author (optional)
+            * `name_variants`: An array of strings given other known variants of the name (optional)
+            
     * `metadata`: An object containing any other properties
+        Each property is in the form: 
+        
+            "property name":"property value", separated by commas
 
-    ### Author
-    
-    A single author of a document in a corpus.
-    
-    * `id`: A unique string to identify the author (optional)
-    * `name`: The author's name (required)
-    * `name_variants`: An array of strings given other known variants of the name
 
 ### Config ([config.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/config.json))
+
+This input file for the command line interface (generated automatically if using the user interface) describes all options from the different steps of Saffron.
+
+It contains each of the Saffron steps:
+
+* `termExtraction`: The term extraction phase of Saffron
+    * `threshold` : 0.0
+
+    * `maxTopics` : 100
+    
+    * `ngramMin` : 1
+    
+    * `ngramMax` : 4
+    
+    * `minTermFreq` : 2
+    
+    * `maxDocs` : 2147483647
+    
+    * `method` : "voting"
+    
+    * `features` : [ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ]
+    
+    * `corpus` : "${saffron.home}/models/wiki-terms.json.gz"
+    
+    * `baseFeature` : "comboBasic"
+    
+    * `numThreads` : 0
+    
+    * `posModel` : "${saffron.home}/models/en-pos-maxent.bin"
+    
+    * `tokenizerModel` : null
+    
+    * `lemmatizerModel` : "${saffron.home}/models/en-lemmatizer.dict.txt"
+    
+    * `stopWords` : null
+    
+    * `preceedingTokens` : [ "NN", "JJ", "NNP", "NNS" ]
+    
+    * `middleTokens` : [ "IN" ]
+    
+    * `headTokens` : [ "NN", "CD", "NNS" ]
+    
+    * `headTokenFinal` : true
+    
+    * `blacklist` : [ ]
+    
+    * `blacklistFile` : null
+    
+    * `oneTopicPerDoc` : false
+
+
+
+* `authorTerm`: The phase of linking between authors and terms (if authors are present in the metadata, ignored otherwise)
+
+* `authorSim`: The phase of connecting authors together (if authors are present in the metadata, ignored otherwise)
+
+* `termSim`: The phase of connecting similar terms
+
+* `taxonomy`: The phase of creation of the taxonomy
 
 Domain Model
 ------------
