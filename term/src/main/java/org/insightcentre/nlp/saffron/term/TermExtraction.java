@@ -279,7 +279,7 @@ public class TermExtraction {
     }
 
     public Result extractTopics(final Corpus searcher, SaffronListener log) {
-        return extractTopics(searcher, Collections.EMPTY_SET, Collections.EMPTY_SET, log);
+        return extractTopics(searcher, new HashSet<>(), new HashSet<>(), log);
 
     }
 
