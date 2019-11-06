@@ -56,6 +56,7 @@ and change the following line to the name wanted
 
 To change the Mongo HOST and PORT, simply edit the same file on the following:
 
+    
     export MONGO_URL=localhost
     export MONGO_PORT=27017
     
@@ -64,12 +65,8 @@ By default all results will be stored in the Mongo database. However, you can ge
     export STORE_LOCAL_COPY=false
 
 
-
-Running
--------
-
-
-Start the Saffron Web server simply choose a directory for Saffron to create
+   
+To start the Saffron Web server, simply choose a directory for Saffron to create
 the models and run the command as follows
 
     ./saffron-web.sh
@@ -99,17 +96,21 @@ For example
 
 The following results are generated
 
+* `corpus-unconsolidated.json`: The unconsolidated corpus metadata
+* `domain-model.json`: The domain model (domain specific keywords)
 * `topics-extracted.json`: The initial unfiltered list of extracted topics
+* `doc-topics-extracted.json`: The connection of these topics to documents
+* `corpus.json`: The corpus metadata
+* `topics-dbpedia.json`: The topics with DBpedia links
 * `doc-topics.json`: The document topic map with weights
 * `topics.json`: The topics with weights (and DBpedia links)
 * `author-topics.json`: The connection between authors and topics
 * `topic-sim.json`: The topic-topic similarity graph
 * `author-sim.json`: The author-author similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
-* `config.json`: the configuration file for the run
  
 
-To create a .dot file, you can use the command line:
+To create a .dot file, use the command line:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
@@ -131,4 +132,5 @@ API Documentation
 For full API documentation, see here:
 
 https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
+
 

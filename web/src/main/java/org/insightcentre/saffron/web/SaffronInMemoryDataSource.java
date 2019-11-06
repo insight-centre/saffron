@@ -17,6 +17,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -691,6 +692,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         return saffron.getTaxoParents(topic_string);
+    }
+
+    @Override
+    public List<SaffronRun> getAllRuns() {
+        throw new NotImplementedException();
     }
 
     @Override
