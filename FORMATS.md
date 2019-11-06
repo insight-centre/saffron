@@ -41,29 +41,32 @@ This file contains the description of the corpus, including all the metadata. It
 ### Config ([config.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/config.json))
 
 This input file for the command line interface (generated automatically if using the user interface) describes all options from the different steps of Saffron.
+See the [wiki](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach) for the details on what each property is for.
 
 It contains each of the Saffron steps:
 
 * `termExtraction`: The term extraction phase of Saffron
-    * `threshold` : 0.0
+    * `threshold` : Sets a minimum Saffron score for the terms retrieved
 
-    * `maxTopics` : 100
+    * `maxTerms` : Sets the maximum number of terms retrieved 
     
-    * `ngramMin` : 1
+    * `ngramMin` : Sets the minimum number of words that can make up a term
     
-    * `ngramMax` : 4
+    * `ngramMax` : Sets the maximum number of words that can make up a term
     
-    * `minTermFreq` : 2
+    * `minTermFreq` : Sets the number of times a term must appear in the dataset to be retrieved
     
-    * `maxDocs` : 2147483647
+    * `maxDocs` : 
     
-    * `method` : "voting"
+    * `method` : Choose between two ranking procedures: "voting" (algorithm that integrates multiple score functions) and "single" (only one score function)
     
-    * `features` : [ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ]
+    * `features` : List of scoring functions if choosing the "Voting" method (by default set to [ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ], will be ignored if choosing the "Single" method)
     
-    * `corpus` : "${saffron.home}/models/wiki-terms.json.gz"
+                    Choose between:  "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf", "avgTermFreq", "basic", "novelTopicModel", "postRankDC", "relevance"
+                    
+    * `corpus` : Path to the model that contains XYZ (by default set to ${saffron.home}/models/wiki-terms.json.gz)
     
-    * `baseFeature` : "comboBasic"
+    * `baseFeature` : Choose the scoring function to use (if method set to "Single"), or the feature which will get more weight in the final score (if method set to "Voting"). Choose between "comboBasic"
     
     * `numThreads` : 0
     
