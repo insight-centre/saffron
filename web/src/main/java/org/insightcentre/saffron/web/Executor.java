@@ -73,7 +73,6 @@ public class Executor extends AbstractHandler {
     private Configuration defaultConfig;
     private final File logFile;
     static String storeCopy = System.getenv("STORE_LOCAL_COPY");
-    //private Configuration config;
 
     public Executor(SaffronDataSource data, File directory, File logFile) {
         this.data = data;
@@ -106,6 +105,10 @@ public class Executor extends AbstractHandler {
 
     public boolean isExecuting(String name) {
         return statuses.containsKey(name) && statuses.get(name).stage > 0 && !statuses.get(name).completed;
+    }
+
+    public File getParentDirectory() {
+        return this.parentDirectory;
     }
 
     @Override

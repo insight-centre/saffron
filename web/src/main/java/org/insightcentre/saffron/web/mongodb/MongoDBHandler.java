@@ -15,6 +15,7 @@ import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.combine;
@@ -29,6 +30,8 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.saffron.web.Executor;
+import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.json.JSONArray;
@@ -750,7 +753,14 @@ public class MongoDBHandler implements SaffronDataSource {
     public void deleteRun(String name) {
         Document document = new Document();
         document.put("run", name);
+        File directory = new File(this.getExecutor().getParentDirectory().getPath() + "/" + name );
+        this.getExecutor().getParentDirectory();
         MongoUtils.deleteRunFromMongo(name, this);
+        try {
+            FileUtils.deleteDirectory(directory);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
@@ -1418,7 +1428,6 @@ public class MongoDBHandler implements SaffronDataSource {
 
 
 
-
     public boolean updateTopicName(String id, String topic, String newTopic, String status) {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
@@ -1558,5 +1567,9 @@ public class MongoDBHandler implements SaffronDataSource {
         Document document = new Document();
         document.put("id", saffronDatasetName);
         return this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+    }
+
+    private Executor getExecutor() {
+        return Launcher.executor;
     }
 }
