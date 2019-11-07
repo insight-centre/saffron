@@ -284,9 +284,6 @@ angular.module('app').component('edittopics', {
             }
 
 
-            // added 
-                                console.log(ctrl.topic)
-
         };
 
         // reject one or multiple topics only in the UI
