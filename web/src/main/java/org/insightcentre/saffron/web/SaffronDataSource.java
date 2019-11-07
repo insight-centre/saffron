@@ -9,10 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
@@ -93,7 +90,7 @@ public interface SaffronDataSource extends Closeable {
 
     List<DocumentTerm> getDocTerms(String runId);
 
-    //public List<String> getAllRuns();
+    public List<SaffronRun> getAllRuns();
 
     public List<String> getTaxoParents(String runId, String termString);
 

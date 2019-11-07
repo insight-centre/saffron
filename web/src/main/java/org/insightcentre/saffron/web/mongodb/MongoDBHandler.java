@@ -13,6 +13,8 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
+import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSInputFile;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.bson.Document;
@@ -35,17 +37,16 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import javax.print.Doc;
+import javax.servlet.http.HttpServlet;
+import java.io.*;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 
-public class MongoDBHandler implements SaffronDataSource {
+public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     final String url;
     final int port;
@@ -66,6 +67,10 @@ public class MongoDBHandler implements SaffronDataSource {
     private final Map<String, MongoDBHandler.SaffronDataImpl> data = new HashMap<>();
 
     public final String type = "mongodb";
+
+    static String mongoUrl = System.getenv("MONGO_URL");
+    static String mongoPort = System.getenv("MONGO_PORT");
+    static String mongoDbName = System.getenv("MONGO_DB_NAME");
 
     private static class SaffronDataImpl {
 
@@ -340,19 +345,23 @@ public class MongoDBHandler implements SaffronDataSource {
             this.corpusByAuthor = new HashMap<>();
             this.authors = new HashMap<>();
 
-            JSONArray documentArray = (JSONArray) corpus.get("documents");
-            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData =
-                    new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+
+            JSONArray documentArray = null;
+            try {
+                documentArray = (JSONArray) corpus.get("documents");
+            } catch (Exception e) {
+                documentArray = new JSONArray();
+            }
+
+            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData = new ArrayList<>();
             if (documentArray != null) {
                 for (int i=0;i<documentArray.length();i++){
-
                     JSONObject obj = documentArray.getJSONObject(i);
                     String contents = "";
                     if (obj.has("contents"))
                         contents = obj.getString("contents");
                     SaffronPath path = new SaffronPath();
                     path.setPath(obj.getString("id"));
-                    List<Author> authors = new ArrayList<>();
                     org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
                             path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
                             Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
@@ -364,7 +373,7 @@ public class MongoDBHandler implements SaffronDataSource {
                 this.corpus.put(d.id, d);
                 for (Author a : d.getAuthors()) {
                     if (!corpusByAuthor.containsKey(a.id)) {
-                        corpusByAuthor.put(a.id, new ArrayList<org.insightcentre.nlp.saffron.data.Document>());
+                        corpusByAuthor.put(a.id, new ArrayList<>());
                     }
                     corpusByAuthor.get(a.id).add(d);
                     if (!authors.containsKey(a.id)) {
@@ -372,7 +381,6 @@ public class MongoDBHandler implements SaffronDataSource {
                     }
                 }
             }
-            //this.searcher = corpus;
         }
 
         public void setSearcher(DocumentSearcher searcher) {
@@ -514,11 +522,17 @@ public class MongoDBHandler implements SaffronDataSource {
         }
     }
 
-    public MongoDBHandler(String url, int port, String dbName, String collectionName) {
-        this.url = url;
-        this.port = port;
-        this.dbName = dbName;
-        this.collectionName = collectionName;
+    public static String formatSize(long v) {
+        if (v < 1024) return v + " B";
+        int z = (63 - Long.numberOfLeadingZeros(v)) / 10;
+        return String.format("%.1f %sB", (double)v / (1L << (z*10)), " KMGTPE".charAt(z));
+    }
+
+    public MongoDBHandler() {
+        this.url = mongoUrl;
+        this.port = new Integer(mongoPort);
+        this.dbName = mongoDbName;
+        this.collectionName = "saffron_runs";
         MongoClientOptions options = MongoClientOptions.builder().cursorFinalizerEnabled(false).build();
 
         this.mongoClient = new MongoClient(url, port);
@@ -538,12 +552,9 @@ public class MongoDBHandler implements SaffronDataSource {
 
     private void initialiseInMemoryDatabase() {
         try {
-    	    FindIterable<org.bson.Document> runs = this.getAllRuns();
-
-            for (org.bson.Document doc : runs) {
-                JSONObject configObj = new JSONObject(doc);
-                configObj.get("id").toString();
-                this.fromMongo(configObj.get("id").toString());
+    	    List<SaffronRun> runs = this.getAllRuns();
+            for (SaffronRun doc : runs) {
+                this.fromMongo(doc.id);
             }
         } catch (JSONException e) {
             throw new RuntimeException("An error has ocurring while loading database into memory", e);
@@ -648,7 +659,6 @@ public class MongoDBHandler implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
         final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(runId);
-
         Taxonomy docs = this.getTaxonomy(runId);
         saffron.setTaxonomy(docs);
 
@@ -735,10 +745,18 @@ public class MongoDBHandler implements SaffronDataSource {
         return true;
     }
 
-    public FindIterable<Document>  getAllRuns() {
+    public List<SaffronRun>  getAllRuns() {
         try {
+            List<SaffronRun> runList = new ArrayList<>();
             FindIterable<Document> docs = MongoUtils.getDocs(this);
-            return docs;
+            for (org.bson.Document doc : docs) {
+                String id = doc.getString("id");
+                Date runDate = doc.getDate("run_date");
+                String config = doc.getString("config");
+                SaffronRun run = new SaffronRun(id, runDate, config);
+                runList.add(run);
+            }
+            return runList;
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1477,7 +1495,21 @@ public class MongoDBHandler implements SaffronDataSource {
 
     @Override
     public Iterable<Term> getAllTerms(String datasetName) {
-        return null;
+        FindIterable<Document> docs = this.getTerms(datasetName);
+        List<Term> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+
+            String termString = doc.getString("term_string");
+            int occurrences = doc.getInteger("occurences");
+            int matches = doc.getInteger("matches");
+            double score = doc.getDouble("score");
+            String status = doc.getString("status");
+            List<Term.MorphologicalVariation> mvList = new ArrayList<>();
+            Term term = new Term(termString, occurrences, matches, score, mvList, status);
+            returnList.add(term);
+        }
+        Iterable<Term> terms = returnList;
+        return terms;
     }
 
     @Override
@@ -1497,7 +1529,17 @@ public class MongoDBHandler implements SaffronDataSource {
 
     @Override
     public Iterable<TermTerm> getAllTermSimilarities(String name) {
-        return null;
+        FindIterable<Document> docs = this.getTerms(name);
+        List<TermTerm> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+            String term1 = doc.getString("term1_id");
+            String term2 = doc.getString("term2_id");
+            double similarity = doc.getDouble("similarity");
+            TermTerm term = new TermTerm(term1, term2, similarity);
+            returnList.add(term);
+        }
+        Iterable<TermTerm> terms = returnList;
+        return terms;
     }
 
     @Override
@@ -1534,8 +1576,32 @@ public class MongoDBHandler implements SaffronDataSource {
             FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
             findOptions.upsert(true);
             findOptions.returnDocument(ReturnDocument.AFTER);
+
+            GridFS gridFs = getGridFS();
+            if (doc.get("documents") != null) {
+                ArrayList<Document> docList = (ArrayList) doc.get("documents");
+                for (Document d : docList) {
+                    if (d.getString("contents") != null) {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
+
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.save();
+                    } else {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.get("metadata").toString().getBytes()));
+
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.save();
+                    }
+
+                }
+
+            }
             if (getCorpusCount(saffronDatasetName) > 0)
                 this.corpusCollection.findOneAndDelete(doc);
+            doc.remove("documents");
+
 
             this.corpusCollection.insertOne(doc);
 
@@ -1544,7 +1610,6 @@ public class MongoDBHandler implements SaffronDataSource {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         return false;
     }
@@ -1559,5 +1624,10 @@ public class MongoDBHandler implements SaffronDataSource {
         Document document = new Document();
         document.put("id", saffronDatasetName);
         return this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+    }
+
+    public GridFS getGridFS() {
+        DB db = mongoClient.getDB(this.dbName);
+        return new GridFS(db, "corpusCollection");
     }
 }

@@ -3,10 +3,7 @@ package org.insightcentre.saffron.web;
 import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
@@ -24,6 +21,155 @@ public class SaffronService {
     public SaffronService(SaffronDataSource dataSource) {
     	this.dataSource = dataSource;
     }
+
+
+	/**
+	 * Return a Taxonomy for a given taxonomy ID.
+	 *
+	 * @param taxonomyId - the identifier of the taxonomy
+	 */
+	public Taxonomy getTaxonomy(String taxonomyId) {
+
+		if (taxonomyId == null || taxonomyId.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+		try {
+			return dataSource.getTaxonomy(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException("The taxonomy " + taxonomyId + " could not be retrieved: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Return all previous Saffron Runs to the user.
+	 *
+	 */
+	public List<SaffronRun> getAllRuns() {
+		try {
+			return dataSource.getAllRuns();
+		} catch (Exception e) {
+			throw new RuntimeException("No Saffron Runs could not be retrieved from the data source: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Deletes a specified Saffron run for a given Taxonomy ID
+	 * @param taxonomyId - the identifier of the taxonomy
+	 *
+	 */
+	public void deleteRun(String taxonomyId) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+		try {
+			dataSource.deleteRun(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException("The Saffron run " + taxonomyId + " could not be deleted: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Get all Terms for a given taxonomy ID.
+	 * @param taxonomyId - the identifier of the taxonomy
+	 *
+	 */
+	public Iterable<Term> getAllTerms(String taxonomyId) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+		try {
+			return dataSource.getAllTerms(taxonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException(
+					"No terms could be retrieved for the taxonomy " + taxonomyId + ": " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Deletes a term from a given taxonomy
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param termID - the identifier of the term to be deleted
+	 *
+	 */
+	public void deleteTerm(String taxonomyId, String termID) {
+        if (taxonomyId == null || taxonomyId.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+            exception.addParameterValue("taxonomyId", "");
+            throw exception;
+        }
+        if (termID.equals("") || termID == null) {
+            InvalidValueException exception = new InvalidValueException("The term id cannot be empty");
+            exception.addParameterValue("termID", "");
+            throw exception;
+        }
+		try {
+			dataSource.deleteTerm(taxonomyId, termID);
+		} catch (Exception e) {
+			throw new RuntimeException("The Saffron term " + termID + " could not be deleted from the taxonomy: " + taxonomyId + ": " + e.getMessage());
+		}
+	}
+
+
+	/**
+	 * This method updates the term status for a given term and taxonomy ID
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param termID - the identifier of the term to be deleted
+	 * @param status - the new status for the given term identifier
+	 *
+	 */
+	public void updateTerm(String taxonomyId, String termID, String status) {
+		if (taxonomyId == null || taxonomyId.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+
+        if (termID == null || termID.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The term id cannot be empty");
+            exception.addParameterValue("termID", "");
+            throw exception;
+        }
+        if (status == null || status.equals("")) {
+            InvalidValueException exception = new InvalidValueException("The status cannot be empty");
+            exception.addParameterValue("status", "");
+            throw exception;
+        }
+
+		boolean termUpdated = dataSource.updateTerm(taxonomyId, termID, status);
+		if(!termUpdated)
+			throw new RuntimeException("An error has ocurred when updating the term in the database.");
+	}
+
+
+	/**
+	 * Update the Taxonomy for a given Taxonomy ID with a new Taxonomy Object
+	 * @param taxonomyId - the identifier of the taxonomy
+	 * @param taxonomy - The taxonomy object that should be updated
+	 *
+	 */
+	public void updateTaxonomy(String taxonomyId, Taxonomy taxonomy) {
+		if (taxonomyId == null || taxonomyId.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
+			exception.addParameterValue("taxonomyId", "");
+			throw exception;
+		}
+		if (taxonomy.root == null || taxonomy.root.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The taxonomy root string cannot be empty or null");
+			exception.addParameterValue("taxonomy.root", taxonomy.root);
+			throw exception;
+		}
+
+		boolean taxonomyUpdated = dataSource.updateTaxonomy(taxonomyId, taxonomy);
+		if(!taxonomyUpdated)
+			throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
+	}
+
     
 	/**
 	 * Update the revision status of multiple terms in a given taxonomy.
@@ -60,7 +206,7 @@ public class SaffronService {
 		 * 2 - If new status = "rejected" then
 		 * 3 - remove the term from the taxonomy and update the taxonomy in the database
 		 */
-		if (taxonomyId == "") {
+		if (taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -100,7 +246,7 @@ public class SaffronService {
 	 * Update multiple parent-child relationships in a given taxonomy.
 	 * 
 	 * @param taxonomyId - the identifier of the taxonomy to be modified
-	 * @param parentChildStatusMap - the relations to be changed. Tuples of type <Parent,Child,status>
+	 * @param parentChildStatusList - the relations to be changed. Tuples of type <Parent,Child,status>
 	 */
 	public void updateParentRelationshipStatus(String taxonomyId, List<Pair<String,String>> parentChildStatusList) {
 		RuntimeException agException = null;
@@ -133,7 +279,7 @@ public class SaffronService {
 		 * 3 - If status = "accepted" then, change both term status to "accepted"
 		 */
 		
-		if (taxonomyId == null || taxonomyId == "") {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
@@ -219,7 +365,7 @@ public class SaffronService {
 		 * 4 - Change status of child - new parent relation to accepted.
 		 */
 		
-		if (taxonomyId == null || taxonomyId == "") {
+		if (taxonomyId == null || taxonomyId.equals("")) {
 			InvalidValueException exception = new InvalidValueException("The taxonomy id cannot be empty or null");
 			exception.addParameterValue("taxonomyId", "");
 			throw exception;
