@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 /**
  * Term extraction configuration
  * @author John McCrae &lt;john@mccr.ae&gt;
@@ -15,6 +17,7 @@ public class TermExtractionConfiguration {
     /** Minimum threshold score to extract */
     public double threshold = 0.0;
     /** Maximum number of terms to extract */
+    @JsonAlias("maxTopics") //Enable compatibility with 3.3
     public int maxTerms = 100;
     /** The shortest length of term to consider */
     public int ngramMin = 1;
