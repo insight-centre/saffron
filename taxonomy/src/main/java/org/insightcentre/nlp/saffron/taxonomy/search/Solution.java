@@ -75,7 +75,7 @@ public class Solution {
             }
             // top is not yet in taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))));
+            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom))), "none");
             newHeads.remove(bottom);
             newHeads.put(top, t2);
             return new Solution(newHeads, topics, size + 1);
@@ -92,7 +92,7 @@ public class Solution {
                     Map<String, Taxonomy> newHeads = new HashMap<>(heads);
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top,
-                                    new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>())));
+                                    new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>(), "none")));
                     return new Solution(newHeads, topics, size + 1);
                 }
             }
@@ -100,9 +100,9 @@ public class Solution {
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
             Taxonomy t = new Taxonomy(top, topScore, Double.NaN, new ArrayList<Taxonomy>() {
                 {
-                    add(new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>()));
+                    add(new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>(), "none"));
                 }
-            });
+            }, "none");
             newHeads.put(top, t);
             return new Solution(newHeads, topics, size + 2);
         }
@@ -144,7 +144,7 @@ public class Solution {
                 newChildren.add(insertIntoTaxo(t, top, bottom));
             }
         }
-        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, newChildren);
+        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, newChildren, "none");
     }
 
     /**

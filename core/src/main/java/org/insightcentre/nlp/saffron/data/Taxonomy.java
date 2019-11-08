@@ -37,17 +37,23 @@ public class Taxonomy {
     public final double linkScore;
     /** The list of child nodes */
     public final List<Taxonomy> children;
+    /** The status of the topic string */
+    public String status;
+
+
 
     @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
     public Taxonomy(@JsonProperty("root") String root,
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
-                    @JsonProperty("children") List<Taxonomy> children) {
+                    @JsonProperty("children") List<Taxonomy> children,
+                    @JsonProperty("status") String status) {
         this.root = root;
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
+        this.status = status;
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
     
@@ -70,6 +76,24 @@ public class Taxonomy {
      * Get the string for the root topic
      * @return 
      */
+    public String getStatus() {
+        return status;
+    }
+
+
+    /**
+     * Set the string for the root topic
+     * @return
+     */
+    public void setStatus(String status) {
+
+        this.status = status;
+    }
+
+    /**
+     * Get the string for the root topic
+     * @return
+     */
     public String getRoot() {
         return root;
     }
@@ -82,7 +106,6 @@ public class Taxonomy {
 
         this.root = root;
     }
-
 
     /**
      * Get the double of linkScore
@@ -156,7 +179,7 @@ public class Taxonomy {
             }
 
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -173,7 +196,7 @@ public class Taxonomy {
         }
         newChildren.add(child);
 
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
 
@@ -417,7 +440,7 @@ public class Taxonomy {
      * @return A new taxonomy instance
      */
     public Taxonomy withLinkScore(double linkScore) {
-        return new Taxonomy(this.root, this.score, linkScore, this.children);
+        return new Taxonomy(this.root, this.score, linkScore, this.children, this.status);
     }
         
     /**
@@ -429,7 +452,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             newChildren.add(t.deepCopy());
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -452,7 +475,7 @@ public class Taxonomy {
 
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -473,7 +496,29 @@ public class Taxonomy {
                 newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, newChildren);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
+    }
+
+    /**
+     * Create a deep copy of this taxonomy
+     * @return A copy of this taxonomy
+     */
+    public Taxonomy deepCopySetTopicStatus(String topicString, String status) {
+
+        List<Taxonomy> newChildren = new ArrayList<>();
+        for(Taxonomy t : children) {
+
+            if (!t.root.equals(topicString)) {
+
+                newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+
+            } else {
+                t.setStatus(status);
+                t.setRoot(topicString);
+                newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+            }
+        }
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
 
