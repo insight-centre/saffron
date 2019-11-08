@@ -91,7 +91,7 @@ public class BeamSearchTest {
     /**
      * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
      */
-    @Test
+    //@Test
     public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
         System.out.println("extractTaxonomyWithBlackWhiteList");
         HashMap<String, Topic> topics = new HashMap<>();
@@ -119,7 +119,7 @@ public class BeamSearchTest {
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("ab")));
     }
 
-    @Test
+    //@Test
     public void randomizedTest() throws Exception {
         int n = 10;
         int trials = 100;
