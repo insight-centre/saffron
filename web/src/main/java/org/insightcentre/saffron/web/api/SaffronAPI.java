@@ -4,10 +4,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -835,6 +832,33 @@ public class SaffronAPI {
 
 
     @GET
+    @Path("/{param}/docs")
+    public Response getOriginalDocuments(@PathParam("param") String name) {
+
+        HashMap<String, String> runs;
+        String file = "";
+        try {
+            runs = saffron.getCorpusFiles(name);
+            List <HashMap<String, String>> returnList = new ArrayList<>();
+            runs.forEach((k,v)->{
+                HashMap<String, String> item = new HashMap<>();
+                item.put(k, v);
+                returnList.add(item);
+            });
+            Gson gson = new Gson();
+            String json = gson.toJson(returnList);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to get documents from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok(file).build();
+
+    }
+
+    @GET
     @Path("/{param}/docs/doc/{document_id}")
     public Response getOriginalDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
 
@@ -845,25 +869,16 @@ public class SaffronAPI {
             runs = saffron.getCorpus(name);
 
             for (Document doc : runs) {
-
-                System.out.println(documentId);
-                String id = doc.get("id").toString();
                 List documents = (ArrayList)doc.get("documents");
-                System.out.println(documents.size());
                 for (Object text : documents) {
                     String json = new Gson().toJson(text);
 
                     JSONObject jsonObj = new JSONObject(json);
-                    System.out.println(jsonObj.get("name"));
                     if (jsonObj.get("id").equals(documentId)) {
                         file = jsonObj.get("contents").toString();
-                        System.out.println(file);
                     }
                 }
-
-
             }
-
             return Response.ok(file).build();
 
         } catch (Exception x) {

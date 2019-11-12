@@ -4,13 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Enumeration;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
+
+import com.google.common.collect.Iterators;
 import org.apache.commons.collections4.Predicate;
 import org.apache.commons.collections4.iterators.FilterIterator;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -18,6 +18,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.documentindex.tika.DocumentAnalyzer;
 
 /**
@@ -74,6 +75,10 @@ public class CorpusTools {
     public static Corpus fromJson(File jsonFile) throws IOException {
         return new ObjectMapper().readValue(jsonFile, IndexedCorpus.class);
     }
+
+
+
+
 
     /**
      * Create a corpus from a folder, each file will be considered a single
@@ -200,6 +205,89 @@ public class CorpusTools {
             }
             return n;
         }
+
+
+    /**
+     * Create a corpus from a json file which contains a reference to a file location
+     *
+     * @param jsonFile The json file
+     * @return A corpus object
+     */
+    public static Corpus fromJsonFiles(File jsonFile) {
+        return new JSONCorpus(jsonFile);
+    }
+
+    private static class JSONCorpus implements Corpus {
+
+        private final List<File> jsonFile;
+
+        public JSONCorpus(File jsonFile) {
+            List<File> jsonFileList = new ArrayList<>();
+            Corpus corpus = null;
+            try {
+                corpus = new ObjectMapper().readValue(jsonFile, IndexedCorpus.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            corpus.getDocuments().forEach(doc -> {
+                SaffronPath path = doc.getFile();
+                String docFileName = path.resolve(doc.getFile().getPath());
+                jsonFileList.add(new File(docFileName));
+            });
+            this.jsonFile = jsonFileList;
+        }
+
+        @Override
+        public Iterable<Document> getDocuments() {
+
+            return () -> {
+                try {
+                    final Enumeration<? extends File> zes = Collections.enumeration(jsonFile);
+                    return new FilterIterator<>(
+                            new Iterator<Document>() {
+                                @Override
+                                public boolean hasNext() {
+                                    return zes.hasMoreElements();
+                                }
+
+                                @Override
+                                public Document next() {
+                                    try {
+                                        File ze = zes.nextElement();
+                                        while (ze.isDirectory() && zes.hasMoreElements()) {
+                                            ze = zes.nextElement();
+                                        }
+                                        return DocumentAnalyzer.analyze(ze, ze.getName().replaceAll("/|\\\\", "_"));
+                                    } catch (IOException x) {
+                                        throw new RuntimeException(x);
+                                    }
+                                }
+                            }, o -> o != null);
+
+                } catch (Exception x) {
+                    throw new RuntimeException(x);
+                }
+            };
+        }
+
+        private int _size = -1;
+
+        @Override
+        public int size() {
+            if(_size < 0) {
+                try {
+                    _size = Iterators.size(jsonFile.iterator());
+                } catch(Exception x) {
+                    throw new RuntimeException(x);
+                }
+            }
+            return _size;
+        }
+
+
+    }
+
+
 
     /**
      * Create a corpus from a zip file, each file will be considered a single

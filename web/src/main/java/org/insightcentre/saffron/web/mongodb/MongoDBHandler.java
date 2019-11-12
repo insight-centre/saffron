@@ -14,6 +14,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -781,14 +782,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         JSONObject jsonObj = new JSONObject();
 
         try {
-            //MongoDBHandler mongo = new MongoDBHandler("localhost", 27017, "saffron", "saffron_runs");
-
             Iterable<org.bson.Document> docs = getRunFromMongo(runId, runCollection);
             for (org.bson.Document doc : docs) {
                 jsonObj = new JSONObject(doc.toJson());
 
             }
-            //this.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1224,11 +1222,18 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId) {
-        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
-        if (saffron == null) {
-            throw new NoSuchElementException("Saffron run does not exist");
+        // Don't retrieve from memory, instead get from saffron data source
+        String contents = this.getCorpusFile(runId, docId);
+        try {
+            SaffronPath path = new SaffronPath();
+            path.setPath(docId);
+            org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
+                    path, docId, null, docId, "text",
+                    Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+            return doc;
+        } catch (Exception e) {
+            throw new NoSuchElementException("Contents of Corpus cannot be retrieved");
         }
-        return saffron.getDoc(docId);
     }
    
     @Override
@@ -1588,17 +1593,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
                         gfsFile.setFilename(d.getString("id"));
                         gfsFile.put("documentType", "text");
+                        gfsFile.put("taxonomyId", saffronDatasetName);
                         gfsFile.save();
                     } else {
                         GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.get("metadata").toString().getBytes()));
 
                         gfsFile.setFilename(d.getString("id"));
                         gfsFile.put("documentType", "text");
+                        gfsFile.put("taxonomyId", saffronDatasetName);
                         gfsFile.save();
                     }
-
                 }
-
             }
             if (getCorpusCount(saffronDatasetName) > 0)
                 this.corpusCollection.findOneAndDelete(doc);
@@ -1625,7 +1630,66 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public FindIterable<Document> getCorpus(String saffronDatasetName) {
         Document document = new Document();
         document.put("id", saffronDatasetName);
-        return this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+        FindIterable<Document> docs = this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+
+        return docs;
+    }
+
+    public HashMap<String, String> getCorpusFiles(String saffronDatasetName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        HashMap<String, String> map = new HashMap<>();
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    map.put(f.getFilename(), sb.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
+    }
+
+    public String getCorpusFile(String saffronDatasetName, String fileName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        String map = "";
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    if (f.getFilename().equals(fileName))
+                        map = sb.toString();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
     }
 
     public GridFS getGridFS() {
