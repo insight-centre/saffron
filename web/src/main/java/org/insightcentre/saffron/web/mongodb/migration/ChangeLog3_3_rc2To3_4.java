@@ -33,7 +33,6 @@ public class ChangeLog3_3_rc2To3_4 {
         
         while (topicDocs.hasNext()) {
         	DBObject obj = topicDocs.next();
-        	Term term = new ObjectMapper().readValue(JSON.serialize(obj),Term.class);
         	
         	obj.put("term_string",obj.get("topic_string"));
         	obj.removeField("topic_string");
@@ -54,7 +53,6 @@ public class ChangeLog3_3_rc2To3_4 {
         
         while (topicDocs.hasNext()) {
         	DBObject obj = topicDocs.next();
-        	Term term = new ObjectMapper().readValue(JSON.serialize(obj),Term.class);
         	
         	obj.put("term_string",obj.get("topic_string"));
         	obj.removeField("topic_string");
@@ -73,7 +71,6 @@ public class ChangeLog3_3_rc2To3_4 {
         
         while (topicDocs.hasNext()) {
         	DBObject obj = topicDocs.next();
-        	Term term = new ObjectMapper().readValue(JSON.serialize(obj),Term.class);
         	
         	obj.put("term",obj.get("topic"));
         	obj.removeField("topic");
@@ -91,7 +88,6 @@ public class ChangeLog3_3_rc2To3_4 {
         
         while (topicDocs.hasNext()) {
         	DBObject obj = topicDocs.next();
-        	Term term = new ObjectMapper().readValue(JSON.serialize(obj),Term.class);
         	
         	obj.put("author_term",obj.get("author_topic"));
         	obj.removeField("author_topic");
@@ -112,7 +108,6 @@ public class ChangeLog3_3_rc2To3_4 {
         
         while (topicDocs.hasNext()) {
         	DBObject obj = topicDocs.next();
-        	Term term = new ObjectMapper().readValue(JSON.serialize(obj),Term.class);
 
         	obj.put("term1_id",obj.get("topic1_id"));
         	obj.removeField("topic1_id");
