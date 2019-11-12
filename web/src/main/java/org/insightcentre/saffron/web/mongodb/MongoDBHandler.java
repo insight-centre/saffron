@@ -48,7 +48,7 @@ import java.util.*;
 
 public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
-    final String url;
+    final String host;
     final int port;
     String dbName;
     final String collectionName;
@@ -68,7 +68,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public final String type = "mongodb";
 
-    static String mongoUrl = System.getenv("MONGO_URL");
+    static String mongoHost = System.getenv("MONGO_HOST");
     static String mongoPort = System.getenv("MONGO_PORT");
     static String mongoDbName = System.getenv("MONGO_DB_NAME");
 
@@ -529,13 +529,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     public MongoDBHandler() {
-        this.url = mongoUrl;
+        this.host = mongoHost;
         this.port = new Integer(mongoPort);
         this.dbName = mongoDbName;
         this.collectionName = "saffron_runs";
         MongoClientOptions options = MongoClientOptions.builder().cursorFinalizerEnabled(false).build();
 
-        this.mongoClient = new MongoClient(url, port);
+        this.mongoClient = new MongoClient(host, port);
         this.database = mongoClient.getDatabase(dbName);
         this.runCollection = database.getCollection(collectionName);
         this.termsCollection = database.getCollection(collectionName + "_terms");
@@ -548,6 +548,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.corpusCollection = database.getCollection(collectionName + "_corpus");
 
         this.initialiseInMemoryDatabase();
+    }
+    
+    public String getMongoUrl() {
+    	StringBuilder url = new StringBuilder();
+    	url.append("mongodb://").append(this.host).append(":").append(this.port).append("/").append(this.dbName);
+    	
+    	return url.toString();
     }
 
     private void initialiseInMemoryDatabase() {
