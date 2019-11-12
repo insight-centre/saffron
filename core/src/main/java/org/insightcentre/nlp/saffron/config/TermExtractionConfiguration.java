@@ -70,6 +70,7 @@ public class TermExtractionConfiguration {
      * If set always output at least one term for each input document (overrides maxTerms
      * if necessary)
      */
+    @JsonAlias("oneTopicPerDoc") //Enable compatibility with 3.3
     public boolean oneTermPerDoc;
     
     /** The Weighting method to use */

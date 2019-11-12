@@ -598,22 +598,38 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         
         File termSimFile = new File(directory, "term-sim.json");
         if (!termSimFile.exists()) {
-            throw new FileNotFoundException("Could not find term-sim.json");
+        	//Enable compatibility with version 3.3
+        	termSimFile = new File(directory, "topic-sim.json");
+        	if (!termSimFile.exists()) {
+        		throw new FileNotFoundException("Could not find term-sim.json");
+        	}
         }
         
         File authorTermFile = new File(directory, "author-terms.json");
         if (!authorTermFile.exists()) {
-            throw new FileNotFoundException("Could not find author-terms.json");
+        	//Enable compatibility with version 3.3
+        	authorTermFile = new File(directory, "author-topics.json");
+        	if (!authorTermFile.exists()) {
+        		throw new FileNotFoundException("Could not find author-terms.json");
+        	}
         }
         
         File docTermsFile = new File(directory, "doc-terms.json");
         if (!docTermsFile.exists()) {
-            throw new FileNotFoundException("Could not find doc-terms.json");
+        	//Enable compatibility with version 3.3
+        	docTermsFile = new File(directory, "doc-topics.json");
+        	if (!docTermsFile.exists()) {
+        		throw new FileNotFoundException("Could not find doc-terms.json");
+        	}
         }
         
         File termsFile = new File(directory, "terms.json");
         if (!termsFile.exists()) {
-            throw new FileNotFoundException("Could not find terms.json");
+        	//Enable compatibility with version 3.3
+        	termsFile = new File(directory, "topics.json");
+        	if (!termsFile.exists()) {
+        		throw new FileNotFoundException("Could not find terms.json");
+        	}
         }
         
         File indexFile = new File(directory, "index");
