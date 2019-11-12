@@ -27,8 +27,8 @@ public class ChangeLog3_3_rc2To3_4 {
 
 	@ChangeSet(order = "001", id = "migrateTopicCollectionToTerm", author = "bianca_pereira")
     public void migrateTopicCollectionToTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
-        final DBCollection topicCollection = db.getCollection("saffron_run_topics");
-        final DBCollection termCollection = db.getCollection("saffron_run_terms");
+        final DBCollection topicCollection = db.getCollection("saffron_runs_topics");
+        final DBCollection termCollection = db.getCollection("saffron_runs_terms");
         DBCursor topicDocs = topicCollection.find();
         
         while (topicDocs.hasNext()) {
@@ -48,8 +48,8 @@ public class ChangeLog3_3_rc2To3_4 {
 	
 	@ChangeSet(order = "002", id = "migrateTopicsCorrespondenceCollectionToTerm", author = "bianca_pereira")
     public void migrateTopicsCorrespondenceCollectionToTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
-        final DBCollection topicCollection = db.getCollection("saffron_run_topics_correspondence");
-        final DBCollection termCollection = db.getCollection("saffron_run_terms_correspondence");
+        final DBCollection topicCollection = db.getCollection("saffron_runs_topics_correspondence");
+        final DBCollection termCollection = db.getCollection("saffron_runs_terms_correspondence");
         DBCursor topicDocs = topicCollection.find();
         
         while (topicDocs.hasNext()) {
@@ -67,8 +67,8 @@ public class ChangeLog3_3_rc2To3_4 {
 	
 	@ChangeSet(order = "003", id = "migrateTopicsExtractionCollectionToTerm", author = "bianca_pereira")
     public void migrateTopicsExtractionCollectionToTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
-        final DBCollection topicCollection = db.getCollection("saffron_run_topics_extraction");
-        final DBCollection termCollection = db.getCollection("saffron_run_terms_extraction");
+        final DBCollection topicCollection = db.getCollection("saffron_runs_topics_extraction");
+        final DBCollection termCollection = db.getCollection("saffron_runs_terms_extraction");
         DBCursor topicDocs = topicCollection.find();
         
         while (topicDocs.hasNext()) {
@@ -85,8 +85,8 @@ public class ChangeLog3_3_rc2To3_4 {
 	
 	@ChangeSet(order = "004", id = "migrateAuthorTopicsCollectionToTerm", author = "bianca_pereira")
     public void migrateAuthorTopicsCollectionToTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
-        final DBCollection topicCollection = db.getCollection("saffron_run_author_topics");
-        final DBCollection termCollection = db.getCollection("saffron_run_author_terms");
+        final DBCollection topicCollection = db.getCollection("saffron_runs_author_topics");
+        final DBCollection termCollection = db.getCollection("saffron_runs_author_terms");
         DBCursor topicDocs = topicCollection.find();
         
         while (topicDocs.hasNext()) {
@@ -106,8 +106,8 @@ public class ChangeLog3_3_rc2To3_4 {
 	
 	@ChangeSet(order = "005", id = "migrateTopicsSimilarityCollectionToTerm", author = "bianca_pereira")
     public void migrateTopicsSimilarityCollectionToTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
-        final DBCollection topicCollection = db.getCollection("saffron_run_topics_similarity");
-        final DBCollection termCollection = db.getCollection("saffron_run_terms_similarity");
+        final DBCollection topicCollection = db.getCollection("saffron_runs_topics_similarity");
+        final DBCollection termCollection = db.getCollection("saffron_runs_terms_similarity");
         DBCursor topicDocs = topicCollection.find();
         
         while (topicDocs.hasNext()) {
