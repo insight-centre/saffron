@@ -7,27 +7,27 @@ import java.util.Date;
 public class AuthorSimilarityResponse {
     private double similarity;
     private String id;
-    private String topicString1;
-    private String topicString2;
+    private String termString1;
+    private String termString2;
     private Date runDate;
     private String run;
 
 
 
-    public void setTopicString1(String topicString1) {
-        this.topicString1 = topicString1;
+    public void setTermString1(String termString1) {
+        this.termString1 = termString1;
     }
 
-    public String getTopicString1() {
-        return topicString1;
+    public String getTermString1() {
+        return termString1;
     }
 
-    public void setTopicString2(String topicString2) {
-        this.topicString2 = topicString2;
+    public void setTermString2(String termString2) {
+        this.termString2 = termString2;
     }
 
-    public String getTopicString2() {
-        return topicString2;
+    public String getTermString2() {
+        return termString2;
     }
 
 

@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A taxonomy with the relative size of each topic.
+ * A taxonomy with the relative size of each term.
  * 
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
