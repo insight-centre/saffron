@@ -7,13 +7,13 @@ import java.util.List;
 @XmlRootElement()
 public class AuthorsSimilarityResponse extends BaseResponse {
 
-    List<AuthorSimilarityResponse> topicsList = new ArrayList<>();
+    List<AuthorSimilarityResponse> termsList = new ArrayList<>();
 
-    public List<AuthorSimilarityResponse> getTopics() {
-        return this.topicsList;
+    public List<AuthorSimilarityResponse> getTerms() {
+        return this.termsList;
     }
 
-    public void setTopics(List<AuthorSimilarityResponse> topicsList) {
-        this.topicsList = topicsList;
+    public void setTerms(List<AuthorSimilarityResponse> termsList) {
+        this.termsList = termsList;
     }
 }

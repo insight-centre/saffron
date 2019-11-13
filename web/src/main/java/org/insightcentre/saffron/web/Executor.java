@@ -26,7 +26,7 @@ import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
-import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTopic;
+import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTerm;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
 import org.insightcentre.nlp.saffron.config.*;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
@@ -35,11 +35,11 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
@@ -47,7 +47,7 @@ import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
-import org.insightcentre.nlp.saffron.topic.topicsim.TopicSimilarity;
+import org.insightcentre.nlp.saffron.topic.topicsim.TermSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -181,26 +181,26 @@ public class Executor extends AbstractHandler {
         String confJson = (String) configObj.get("config");
         JSONObject config = new JSONObject(confJson);
         JSONObject termExtractionConfig = (JSONObject) config.get("termExtraction");
-        JSONObject authorTopicConfig = (JSONObject) config.get("authorTopic");
+        JSONObject authorTermConfig = (JSONObject) config.get("authorTerm");
         JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
-        JSONObject topicSimConfig = (JSONObject) config.get("topicSim");
+        JSONObject termSimConfig = (JSONObject) config.get("termSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
         final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms
                 = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
-        AuthorTopicConfiguration authorTopic
-                = new ObjectMapper().readValue(authorTopicConfig.toString(), AuthorTopicConfiguration.class);
+        AuthorTermConfiguration authorTerm
+                = new ObjectMapper().readValue(authorTermConfig.toString(), AuthorTermConfiguration.class);
         AuthorSimilarityConfiguration authorSimilarityConfiguration
                 = new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
-        TopicSimilarityConfiguration topicSimilarityConfiguration
-                = new ObjectMapper().readValue(topicSimConfig.toString(), TopicSimilarityConfiguration.class);
+        TermSimilarityConfiguration termSimilarityConfiguration
+                = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
-        newConfig.authorTopic = authorTopic;
+        newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
-        newConfig.topicSim = topicSimilarityConfiguration;
+        newConfig.termSim = termSimilarityConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -457,22 +457,21 @@ public class Executor extends AbstractHandler {
         DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, _status, isInitialRun);
 
         _status.stage++;
-        _status.setStatusMessage("Initializing topic extractor");
-        //TopicExtraction extractor = new TopicExtraction(config.termExtraction);
+        _status.setStatusMessage("Initializing term extractor");
         TermExtraction extractor = new TermExtraction(config.termExtraction);
-        _status.setStatusMessage("Extracting Topics");
-        TermExtraction.Result res = extractor.extractTopics(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
+        _status.setStatusMessage("Extracting Terms");
+        TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
         //res.normalize();
 
-        _status.setStatusMessage("Writing extracted topics");
+        _status.setStatusMessage("Writing extracted terms");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics-extracted.json"), res.topics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.terms);
 
-        _status.setStatusMessage("Writing document topic correspondence");
+        _status.setStatusMessage("Writing document term correspondence");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-topics.json"), res.docTopics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTerms);
 
-        data.setDocTopics(saffronDatasetName, res.docTopics);
+        data.setDocTerms(saffronDatasetName, res.docTerms);
 
         _status.stage++;
         _status.setStatusMessage("Extracting authors from corpus");
@@ -488,39 +487,39 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Linking to DBpedia");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
-        List<Topic> topics = new ArrayList<>(res.topics);
-        data.setTopics(saffronDatasetName, topics);
+        List<Term> terms = new ArrayList<>(res.terms);
+        data.setTerms(saffronDatasetName, terms);
 
-        _status.setStatusMessage("Saving linked topics");
+        _status.setStatusMessage("Saving linked terms");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topics.json"), topics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms.json"), terms);
 
         _status.stage++;
-        _status.setStatusMessage("Connecting authors to topics");
-        ConnectAuthorTopic cr = new ConnectAuthorTopic(config.authorTopic);
-        Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, res.docTopics, searcher.getDocuments(), _status);
+        _status.setStatusMessage("Connecting authors to terms");
+        ConnectAuthorTerm cr = new ConnectAuthorTerm(config.authorTerm);
+        Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, res.docTerms, searcher.getDocuments(), _status);
 
         _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-topics.json"), authorTopics);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-terms.json"), authorTerms);
 
-        data.setAuthorTopics(saffronDatasetName, authorTopics);
+        data.setAuthorTerms(saffronDatasetName, authorTerms);
 
         _status.stage++;
-        _status.setStatusMessage("Connecting topics");
-        TopicSimilarity ts = new TopicSimilarity(config.topicSim);
-        final List<TopicTopic> topicSimilarity = ts.topicSimilarity(res.docTopics, _status);
+        _status.setStatusMessage("Connecting terms");
+        TermSimilarity ts = new TermSimilarity(config.termSim);
+        final List<TermTerm> termSimilarity = ts.termSimilarity(res.docTerms, _status);
 
-        _status.setStatusMessage("Saving topic connections");
+        _status.setStatusMessage("Saving term connections");
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "topic-sim.json"), topicSimilarity);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "term-sim.json"), termSimilarity);
 
-        data.setTopicSim(saffronDatasetName, topicSimilarity);
+        data.setTermSim(saffronDatasetName, termSimilarity);
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to authors");
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
-        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTopics, _status);
+        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, _status);
 
         _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))
@@ -529,20 +528,19 @@ public class Executor extends AbstractHandler {
         data.setAuthorSim(saffronDatasetName, authorSim);
 
         _status.stage++;
-        _status.setStatusMessage("Building topic map");
-        Map<String, Topic> topicMap = loadMap(topics, mapper, _status);
+        _status.setStatusMessage("Building term map");
+        Map<String, Term> termMap = loadMap(terms, mapper, _status);
 
-        //Taxonomy graph = extractTaxonomy(res.docTopics, topicMap);
         _status.setStatusMessage("Reading model");
         if (config.taxonomy.modelFile == null) {
             config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/default.json");
         }
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 
-        SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTopics, topicMap, model);
+        SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
         _status.setStatusMessage("Building taxonomy");
-        TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, topicMap.keySet());
-        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(topicMap, bwList.taxoWhiteList, bwList.taxoBlackList);
+        TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
+        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
         _status.setStatusMessage("Saving taxonomy");
 
@@ -559,10 +557,10 @@ public class Executor extends AbstractHandler {
 
         MongoDBHandler mongo = new MongoDBHandler();
 
-        if (!mongo.getTopics(datasetName).iterator().hasNext()) {
+        if (!mongo.getTerms(datasetName).iterator().hasNext()) {
             return new BlackWhiteList();
         } else {
-            return BlackWhiteList.from(mongo.getTopics(datasetName), mongo.getTaxonomy(datasetName));
+            return BlackWhiteList.from(mongo.getTerms(datasetName), mongo.getTaxonomy(datasetName));
 
         }
     }

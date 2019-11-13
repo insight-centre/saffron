@@ -26,8 +26,8 @@ public interface TaxonomyScore {
      * Generate a new taxonomy score for the solution which differs from this
      * solution only by adding the link bottom -&gt; top
      *
-     * @param top The broader topic
-     * @param bottom The narrower topic
+     * @param top The broader term
+     * @param bottom The narrower term
      * @param soln The new solution
      * @return An object that is updated for this case
      */
@@ -38,12 +38,12 @@ public interface TaxonomyScore {
      * @param config The configuration
      * @param score The value of the score (should be config.score)
      * @param classifier The classification function
-     * @param topics The list of topics
+     * @param terms The list of terms
      * @return A taxonomy scoring object initialized for the empty taxonomy
      */
     public static TaxonomyScore create(TaxonomySearchConfiguration config,
             TaxonomySearchConfiguration.Score score,
-            SupervisedTaxo classifier, Set<String> topics) {
+            SupervisedTaxo classifier, Set<String> terms) {
         if (null != score) {
             switch (score) {
                 case simple:
@@ -54,8 +54,8 @@ public interface TaxonomyScore {
                     if (config.baseScore == TaxonomySearchConfiguration.Score.bhattacharryaPoisson) {
                         throw new IllegalArgumentException("Recursive score");
                     }
-                    return new BhattacharryaPoisson(TaxonomyScore.create(config, config.baseScore, classifier, topics),
-                            topics, config.aveChildren, config.alpha);
+                    return new BhattacharryaPoisson(TaxonomyScore.create(config, config.baseScore, classifier, terms),
+                            terms, config.aveChildren, config.alpha);
             }
         }
         throw new IllegalArgumentException("Unknown score");

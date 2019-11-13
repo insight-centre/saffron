@@ -34,7 +34,7 @@ import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;
@@ -131,25 +131,25 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics")
+    @Path("/{param}/terms")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getRunTopics(@PathParam("param") String runId) {
-        List<TopicResponse> topicsResponse = new ArrayList<>();
+    public Response getRunTerms(@PathParam("param") String runId) {
+        List<TermResponse> termsResponse = new ArrayList<>();
 
-        Iterable<Topic> topics;
+        Iterable<Term> terms;
         
         try {
-            topics = saffronService.getAllTopics(runId);
+            terms = saffronService.getAllTerms(runId);
 
-            for (Topic doc : topics) {
-                TopicResponse entity = new TopicResponse();
-                entity.setId(doc.topicString);
-                entity.setMatches(doc.matches);
-                entity.setOccurrences(doc.occurrences);
-                entity.setScore(doc.score);
-                entity.setTopicString(doc.topicString);
-                entity.setStatus(doc.status.toString());
-                topicsResponse.add(entity);
+            for (Term doc: terms) {
+                TermResponse entity = new TermResponse();
+                entity.setId(doc.getString());
+                entity.setMatches(doc.getMatches());
+                entity.setOccurrences(doc.getOccurrences());
+                entity.setScore(doc.getScore());
+                entity.setTermString(doc.getString());
+                entity.setStatus(doc.getStatus().toString());
+                termsResponse.add(entity);
             }
 
             //saffron.close();
@@ -158,7 +158,7 @@ public class SaffronAPI {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
-        String json = new Gson().toJson(topicsResponse);
+        String json = new Gson().toJson(termsResponse);
         return Response.ok(json).build();
     }
 
@@ -169,16 +169,16 @@ public class SaffronAPI {
     public Response getSearch(@PathParam("param") String runId, @PathParam("term") String term) {
         List<SearchResponse> searchResponses = new ArrayList<>();
 
-        FindIterable<Document> topics;
+        FindIterable<Document> terms;
         
         try {
-            topics = saffron.searchTaxonomy(runId, term);
+            terms = saffron.searchTaxonomy(runId, term);
 
-            for (Document doc : topics) {
+            for (Document doc : terms) {
                 SearchResponse entity = new SearchResponse();
                 entity.setId(doc.getString("_id"));
                 entity.setLocation(doc.getString("document_id"));
-                entity.setTopicString(doc.getString("topic"));
+                entity.setTermString(doc.getString("term"));
 
                 searchResponses.add(entity);
 
@@ -196,18 +196,18 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics/{topic_id}/children")
+    @Path("/{param}/terms/{term_id}/children")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicChildren(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
+    public Response getTermChildren(@PathParam("param") String runId, @PathParam("term_id") String termId) {
 
-        
+
         try {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
             originalTaxo = saffronService.getTaxonomy(runId);
 
-            Taxonomy descendent = originalTaxo.descendent(topic_id);
+            Taxonomy descendent = originalTaxo.descendent(termId);
             String json = new Gson().toJson(descendent);
             return Response.ok(json).build();
 
@@ -221,14 +221,14 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics/{topic_id}/parent")
+    @Path("/{param}/terms/{term_id}/parent")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicParent(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
+    public Response getTermParent(@PathParam("param") String runId, @PathParam("term_id") String termId) {
 
 
         try {
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
-            Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
+            Taxonomy antecendent = originalTaxo.antecendent(termId, "", originalTaxo, null);
             Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
             String json = gson.toJson(antecendent);
             return Response.ok(json).build();
@@ -245,25 +245,25 @@ public class SaffronAPI {
 
     @DELETE
     @JSONP
-    @Path("/{param}/topics/{topic_id}")
+    @Path("/{param}/terms/{term_id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response deleteTopic(@PathParam("param") String name,
-            @PathParam("topic_id") String topicId) {
+    public Response deleteTerm(@PathParam("param") String name,
+            @PathParam("term_id") String termId) {
 
-        saffronService.deleteTopic(name, topicId);
+        saffronService.deleteTerm(name, termId);
 
-        return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
+        return Response.ok("Term " + name + " " + termId + " Deleted").build();
     }
 
     @POST
     @JSONP
-    @Path("/{param}/topics/{topic_id}/{topic_id2}/{status}")
+    @Path("/{param}/terms/{term_id}/{term_id2}/{status}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response rejectTopic(@PathParam("param") String name,
-            @PathParam("topic_id") String topicId,
-            @PathParam("topic_id") String topic_id2,
+    public Response rejectTerm(@PathParam("param") String name,
+            @PathParam("term_id") String termId,
+            @PathParam("term_id") String termId2,
             @PathParam("status") String status) {
 
         
@@ -273,34 +273,34 @@ public class SaffronAPI {
         try {
 
             if (status.equals("rejected")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.rejected);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.rejected);
             } else if (status.equals("accepted")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.accepted);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.accepted);
             } else if (status.equals("none")) {
-                finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.none);
             }
-            saffronService.updateTopic(name, topicId, status);
-            saffron.updateTopicSimilarity(name, topicId, topic_id2, status);
+            saffronService.updateTerm(name, termId, status);
+            saffron.updateTermSimilarity(name, termId, termId2, status);
             saffronService.updateTaxonomy(name, finalTaxon);
             //saffron.close();
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topicId + " from the taxonomy " + name);
+            System.err.println("Failed to reject the term " + termId + " from the taxonomy " + name);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
         }
-        return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
+        return Response.ok("Term " + name + " " + termId + " Deleted").build();
     }
 
     @POST
-    @Path("/{param}/topics")
+    @Path("/{param}/terms")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postDeleteManyTopics(@PathParam("param") String name, InputStream incomingData) {
+    public Response postDeleteManyTerms(@PathParam("param") String name, InputStream incomingData) {
 
         
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        FindIterable<Document> topics;
+        FindIterable<Document> terms;
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
         Iterator<String> keys = jsonObj.keys();
         while (keys.hasNext()) {
@@ -308,17 +308,17 @@ public class SaffronAPI {
             JSONArray obj = (JSONArray) jsonObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
                 JSONObject json = obj.getJSONObject(i);
-                saffronService.deleteTopic(name, json.get("id").toString());
+                saffronService.deleteTerm(name, json.get("id").toString());
             }
         }
-        return Response.ok("Topics " + jsonObj + " Deleted").build();
+        return Response.ok("Terms " + jsonObj + " Deleted").build();
     }
 
     @POST
-    @Path("/{param}/topics/changeroot")
+    @Path("/{param}/terms/changeroot")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postChangeTopicRoot(@PathParam("param") String runId, InputStream incomingData) {
+    public Response postChangeTermRoot(@PathParam("param") String runId, InputStream incomingData) {
 
     	List<Pair<String,String>> childNewParentList = new ArrayList<Pair<String,String>>();
         
@@ -331,12 +331,12 @@ public class SaffronAPI {
             JSONArray obj = (JSONArray) jsonRqObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
                 JSONObject json = obj.getJSONObject(i);
-                String topicString = json.get("id").toString();
+                String termString = json.get("id").toString();
                 String newParentString = json.get("new_parent").toString();
                 //FIXME Current parent does not really matter
                 String oldParentString = json.get("current_parent").toString();
 
-                childNewParentList.add(new ImmutablePair<String,String>(topicString, newParentString));
+                childNewParentList.add(new ImmutablePair<String,String>(termString, newParentString));
             }
         }
 
@@ -354,10 +354,10 @@ public class SaffronAPI {
 
     @POST
     @JSONP
-    @Path("/{param}/topics/update")
+    @Path("/{param}/terms/update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopic(@PathParam("param") String runId, InputStream incomingData) {
+    public Response updateTerm(@PathParam("param") String runId, InputStream incomingData) {
 
     	/*
     	 * 1 - Read and validate JSON input
@@ -367,15 +367,15 @@ public class SaffronAPI {
     	*/
 
     	//1 - Read and validate JSON input
-    	/*List<Topic> topics = null;
+    	/*List<Term> terms = null;
 		try {
-			topics = Arrays.asList(new ObjectMapper().readValue(incomingData, Topic[].class));
+			terms = Arrays.asList(new ObjectMapper().readValue(incomingData, Term[].class));
 		} catch (Exception e) {
 			//2 - If everything is ok continue, otherwise send an error code
 			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
 		}*/
 
-    	List<Topic> topics = new ArrayList<Topic>();
+    	List<Term> terms = new ArrayList<Term>();
 
     	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
     	JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
@@ -386,10 +386,10 @@ public class SaffronAPI {
 	    	JSONArray obj = (JSONArray) jsonRqObj.get(key);
 	    	for (int i = 0; i < obj.length(); i++) {
 	    		JSONObject json = obj.getJSONObject(i);
-                String topicString = json.get("topic").toString();
+                String termString = json.get("term").toString();
                 String status = json.get("status").toString();
                 try {
-                	topics.add(new Topic.Builder(topicString).status(Status.valueOf(status)).build());
+                	terms.add(new Term.Builder(termString).status(Status.valueOf(status)).build());
                 } catch (Exception e) {
         			//2 - If everything is ok continue, otherwise send an error code
         			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
@@ -399,21 +399,21 @@ public class SaffronAPI {
 
 		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
     	try {
-    		saffronService.updateTopicStatus(runId, topics);
+    		saffronService.updateTermStatus(runId, terms);
     	} catch (Exception e) {
     		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
     	}
 
 		//4 - If everything is ok return an OK code, otherwise send an error code
-		return Response.ok("Topics for run ID: " + runId + " Updated").build();
+		return Response.ok("Terms for run ID: " + runId + " Updated").build();
     }
 
 	@POST
     @JSONP
-    @Path("/{param}/topics/updaterelationship")
+    @Path("/{param}/terms/updaterelationship")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopicRelationship(@PathParam("param") String runId, InputStream incomingData) {
+    public Response updateTermRelationship(@PathParam("param") String runId, InputStream incomingData) {
 		/*
 		 * 1 - Read and validate JSON input
 		 * 2 - If everything is ok, continue, otherwise send a code error
@@ -436,11 +436,11 @@ public class SaffronAPI {
 	            JSONArray obj = (JSONArray) jsonRqObj.get(key);
 	            for (int i = 0; i < obj.length(); i++) {
 	            	JSONObject json = obj.getJSONObject(i);
-	                String topicChild = json.get("topic_child").toString();
+	                String termChild = json.get("term_child").toString();
 	                //FIXME: getting the current parent is irrelevant, unless we are considering concurrent requests, which we are not
 	                String status = json.get("status").toString();
 
-	                parentChildStatusList.add(new ImmutablePair<String,String>(topicChild, status));
+	                parentChildStatusList.add(new ImmutablePair<String,String>(termChild, status));
 	            }
             } catch (Exception e) {
             	//2 - If everything is ok continue, otherwise send an error code
@@ -457,30 +457,29 @@ public class SaffronAPI {
     	}
 
     	//4 - If everything is ok return an OK code, otherwise send an error code
-        return Response.ok("Topics for run ID: " + runId + " Updated").build();
+        return Response.ok("Terms for run ID: " + runId + " Updated").build();
     }
 
     @PUT
-    @Path("/{param}/topics/{topic_id}")
+    @Path("/{param}/terms/{term_id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response putNewTopic(InputStream incomingData) {
+    public Response putNewTerm(InputStream incomingData) {
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
+        return Response.ok("Terms " + crunchifyBuilder.toString() + " Deleted").build();
     }
 
     @GET
-    @Path("/{param}/authortopics/")
-    public Response getAuthorTopics(@PathParam("param") String name) {
+    @Path("/{param}/authorterms/")
+    public Response getAuthorTerms(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        
-        List<AuthorTopicsResponse> topicsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
-            runs = saffron.getAuthorTopics(name);
-            APIUtils.populateAuthorTopicsResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getAuthorTerms(name);
+            APIUtils.populateAuthorTermsResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -488,23 +487,22 @@ public class SaffronAPI {
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author topics").build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author terms").build();
         }
 
     }
 
     @GET
-    @Path("/{param}/authortopics/{topic_id}")
-    public Response getAuthorTopics(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+    @Path("/{param}/authorterms/{term_id}")
+    public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<AuthorTopicsResponse> topicsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
-        
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
-            runs = saffron.getAuthorTopicsForTopic(name, topicId);
-            APIUtils.populateAuthorTopicsResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getAuthorTermsForTerm(name, termId);
+            APIUtils.populateAuthorTermsResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -522,13 +520,12 @@ public class SaffronAPI {
     public Response getAuthorSimilarity(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> topicsResponse = new ArrayList<>();
+        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
-        
         try {
             runs = saffron.getAuthorSimilarity(name);
-            APIUtils.populateAuthorSimilarityResponse(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -543,17 +540,16 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/authorsimilarity/{topic1}/{topic2}")
-    public Response getAuthorSimilarityForTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
+    @Path("/{param}/authorsimilarity/{term1}/{term2}")
+    public Response getAuthorSimilarityForTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
 
         FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> topicsResponse = new ArrayList<>();
+        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
-        
         try {
-            runs = saffron.getAuthorSimilarityForTopic(name, topic1, topic2);
-            APIUtils.populateAuthorSimilarityResponse(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
+            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -568,17 +564,16 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topiccorrespondence/")
-    public Response getTopicCorrespondence(@PathParam("param") String name) {
+    @Path("/{param}/termcorrespondence/")
+    public Response getTermCorrespondence(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
-        
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
-            runs = saffron.getDocumentTopicCorrespondence(name);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getDocumentTermCorrespondence(name);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -593,17 +588,16 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topiccorrespondence/{topic_id}")
-    public Response getTopicCorrespondenceForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+    @Path("/{param}/termcorrespondence/{term_id}")
+    public Response getTermCorrespondenceForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
-        
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
-            runs = saffron.getDocumentTopicCorrespondenceForTopic(name, topicId);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -619,16 +613,16 @@ public class SaffronAPI {
 
     @GET
     @Path("/{param}/docs/{document_id}")
-    public Response getTopicCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+    public Response getTermCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
 
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         
         try {
-            runs = saffron.getDocumentTopicCorrespondenceForDocument(name, documentId);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -646,17 +640,16 @@ public class SaffronAPI {
 
 
     @GET
-    @Path("/{param}/topicextraction/")
-    public Response getTopicExtraction(@PathParam("param") String name) {
+    @Path("/{param}/termextraction/")
+    public Response getTermExtraction(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicExtractionResponse> topicsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
-        
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
         try {
-            runs = saffron.getTopicExtraction(name);
-            APIUtils.populateTopicExtractionResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getTermExtraction(name);
+            APIUtils.populateTermExtractionResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -671,17 +664,16 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicextraction/{topic_id}")
-    public Response getTopicExtractionForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
+    @Path("/{param}/termextraction/{term_id}")
+    public Response getTermExtractionForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
 
         FindIterable<Document> runs;
-        List<TopicExtractionResponse> topicsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
-        
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
         try {
-            runs = saffron.getTopicExtractionForTopic(name, topicId);
-            APIUtils.populateTopicExtractionResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            runs = saffron.getTermExtractionForTerm(name, termId);
+            APIUtils.populateTermExtractionResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -696,30 +688,29 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicsimilarity/")
+    @Path("/{param}/termsimilarity/")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarity(@PathParam("param") String name) {
+    public Response getTermSimilarity(@PathParam("param") String name) {
 
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
-        
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
-            runs = saffron.getTopicsSimilarity(name);
+            runs = saffron.getTermsSimilarity(name);
 
             for (Document doc : runs) {
 
-                TopicSimilarityResponse entity = new TopicSimilarityResponse();
+                TermSimilarityResponse entity = new TermSimilarityResponse();
                 entity.setId(doc.get("_id").toString());
                 entity.setRun(doc.getString("run"));
                 entity.setRunDate(doc.getDate("run_date"));
                 entity.setSimilarity(doc.getDouble("similarity"));
-                entity.setTopicString1(doc.getString("topic1"));
-                entity.setTopicString2(doc.getString("topic2"));
+                entity.setTermString1(doc.getString("term1"));
+                entity.setTermString2(doc.getString("term2"));
 
-                topicsResponse.add(entity);
+                termsResponse.add(entity);
             }
-            returnEntity.setTopics(topicsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
 
             String json = new Gson().toJson(returnEntity);
@@ -735,19 +726,18 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicsimilarity/{topic1}/{topic2}")
+    @Path("/{param}/termsimilarity/{term1}/{term2}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarityBetweenTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
+    public Response getTermSimilarityBetweenTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
 
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
-        
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
-            runs = saffron.getTopicsSimilarityBetweenTopics(name, topic1, topic2);
+            runs = saffron.getTermsSimilarityBetweenTerms(name, term1, term2);
 
-            APIUtils.populateTopicSimilarityResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            APIUtils.populateTermSimilarityResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
 
             String json = new Gson().toJson(returnEntity);
@@ -763,18 +753,17 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicsimilarity/{topic}")
+    @Path("/{param}/termsimilarity/{term}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarityForTopic(@PathParam("param") String name, @PathParam("topic") String topic) {
+    public Response getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term) {
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
-        
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
-            runs = saffron.getTopicsSimilarityForTopic(name, topic);
+            runs = saffron.getTermsSimilarityForTerm(name, term);
 
-            APIUtils.populateTopicSimilarityResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
+            APIUtils.populateTermSimilarityResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
             //saffron.close();
 
             String json = new Gson().toJson(returnEntity);

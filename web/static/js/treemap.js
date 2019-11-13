@@ -326,7 +326,7 @@ if (window.location.hash === "") {
             // console.log(res);
             //var data = d3.nest().key(function(d) { return d.region; }).key(function(d) { return d.subregion; }).entries(res);
             var data = convertData(res);
-            main({title: "Topic Frequencies"}, data);
+            main({title: "Term Frequencies"}, data);
         }
     });
 }

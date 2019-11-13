@@ -17,7 +17,7 @@ import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -70,7 +70,7 @@ public class TermExtractionTaskTest {
         final POSTagger tagger = mock(POSTagger.class);
         when(tagger.tag(tokens)).thenReturn(tags);
         FrequencyStats result = new FrequencyStats();
-        ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
         CasingStats casing = new CasingStats();
         ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override
@@ -572,7 +572,7 @@ public class TermExtractionTaskTest {
         final POSTagger tagger = mock(POSTagger.class);
         when(tagger.tag(tokens)).thenReturn(tags);
         FrequencyStats result = new FrequencyStats();
-        ConcurrentLinkedQueue<DocumentTopic> dts = new ConcurrentLinkedQueue<>();
+        ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
         CasingStats casing = new CasingStats();
         ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
             @Override

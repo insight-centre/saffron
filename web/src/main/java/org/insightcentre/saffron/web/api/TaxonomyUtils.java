@@ -22,12 +22,12 @@ public class TaxonomyUtils {
         return graph;
     }
 
-    public static Taxonomy updateTaxonomyParentRelationship(Taxonomy originalTaxo, String topicString, String newParentString, String oldParentString, Taxonomy topic, Taxonomy newParent) {
+    public static Taxonomy updateTaxonomyParentRelationship(Taxonomy originalTaxo, String termString, String newParentString, String oldParentString, Taxonomy term, Taxonomy newParent) {
         Taxonomy finalTaxon;
-        newParent = newParent.addChild(topic, newParent, oldParentString);
-        finalTaxon = originalTaxo.deepCopyNewParent(topicString, oldParentString, newParentString, topic, newParent);
-        finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
-        finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
+        newParent = newParent.addChild(term, newParent, oldParentString);
+        finalTaxon = originalTaxo.deepCopyNewParent(termString, oldParentString, newParentString, term, newParent);
+        finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, term, finalTaxon);
+        finalTaxon = finalTaxon.deepCopySetTermRelationshipStatus(termString, Status.accepted);
         return finalTaxon;
     }
 }
