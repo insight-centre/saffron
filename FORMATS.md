@@ -51,15 +51,15 @@ Configuration for the options of the term extraction phase. All properties are i
 * `termExtraction`: Which element contains the following properties to define:
     * `threshold` : Sets a minimum Saffron score for the terms retrieved
 
-    * `maxTerms` : Sets the maximum number of terms retrieved 
+    * `maxTerms` : Sets the maximum number of terms to extract . Default to 100
     
-    * `ngramMin` : Sets the minimum number of words that can make up a term
+    * `ngramMin` : Sets the shortest length of term to consider (in terms of number of words). Default to 1
     
-    * `ngramMax` : Sets the maximum number of words that can make up a term
+    * `ngramMax` : Sets the longest length of term to consider  (in terms of number of words). Default to 4
     
-    * `minTermFreq` : Sets the number of times a term must appear in the dataset to be retrieved
+    * `minTermFreq` : Sets the number of times a term must appear in the dataset to be retrieved. Default to 2
     
-    * `maxDocs` : A limit on the number of documents that can be contained in the corpus (default to 2147483647)
+    * `maxDocs` : A limit on the number of documents that can be contained in the corpus (default to 2147483647) **to be checked**
     
     * `method` : Choose between two ranking procedures: "voting" (algorithm that integrates multiple score functions) and "single" (only one score function)
     
@@ -67,33 +67,34 @@ Configuration for the options of the term extraction phase. All properties are i
     
         Options are:  "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf", "avgTermFreq", "basic", "novelTopicModel", "postRankDC", "relevance"
                     
-    * `corpus` : Path to the model that contains XYZ (by default set to ${saffron.home}/models/wiki-terms.json.gz)
+    * `corpus` : Path to the model that contains XYZ (by default set to ${saffron.home}/models/wiki-terms.json.gz)  **to be checked**
     
-    * `baseFeature` : Choose the scoring function to use (if method set to "Single"), or the feature which will get more weight in the final score (if method set to "Voting"). Choose between "comboBasic"
+    * `baseFeature` : If `method` is set to "single", give here the unique scoring function to use .
+    If `method` is set to "voting", choose the scoring function that will get more weight in the calculation of the final score. (Choose between the options given above in `features`)
     
-    * `numThreads` : 0
+    * `numThreads` : 0  **to be checked**
     
-    * `posModel` : "${saffron.home}/models/en-pos-maxent.bin"
+    * `posModel` : The path to the part-of-speech tagger's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported (default to "${saffron.home}/models/en-pos-maxent.bin")
     
-    * `tokenizerModel` : null
+    * `tokenizerModel` : The path to the tokenizer's model.  By default set to "null" (the configuration will automatically uses the one English tokenizer that is provided by OpenNLP). Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported **to be checked**
     
-    * `lemmatizerModel` : "${saffron.home}/models/en-lemmatizer.dict.txt"
+    * `lemmatizerModel` : The path to the lemmatizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported (default to"${saffron.home}/models/en-lemmatizer.dict.txt"
     
-    * `stopWords` : null
+    * `stopWords` : The path to the list of stop words (one per line) if different from the [default ones](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/resources/stopwords/README)
     
-    * `preceedingTokens` : [ "NN", "JJ", "NNP", "NNS" ]
+    * `preceedingTokens` : The set of tags allowed in non-final position in a noun phrase. Default set to [ "NN", "JJ", "NNP", "NNS" ]
     
-    * `middleTokens` : [ "IN" ]
+    * `middleTokens` : The set of tags allowed in non-final position, but not completing. Default set to [ "IN" ]
     
-    * `headTokens` : [ "NN", "CD", "NNS" ]
+    * `headTokens` : The set of final tags allows in a noun phrase. Default set to [ "NN", "CD", "NNS" ]
     
-    * `headTokenFinal` : true
+    * `headTokenFinal` : The position of the head of a noun phrase (true=final). Degault set to "true"
     
-    * `blacklist` : [ ]
+    * `blacklist` : A list of terms that should never be generated. Default is an empty list
     
-    * `blacklistFile` : null
+    * `blacklistFile` : The path to a file containing a list of black terms. Default to null
     
-    * `oneTopicPerDoc` : false
+    * `oneTopicPerDoc` : If set always output at least one topic for each input document (overrides maxTerms if necessary). Default to false
 
 
 ##### 2.   Author - Term linking
