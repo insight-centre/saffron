@@ -85,17 +85,18 @@ Command Line Interface
 ======================
 
 All steps of Saffron can be executed by running the `saffron.sh` script. This 
-script takes two arguments
+script takes thress arguments
 
 1. The corpus, which may be 
     1. A folder containing files in TXT, DOC or PDF
     2. A zip file containing files in TXT, DOC or PDF
     3. A Json metadata file describing the corpus (see [Saffron Formats](FORMATS.md))
 2. The output folder to which the results are written
+3. The configuration file (as described in [Saffron Formats](FORMATS.md))
 
 For example
 
-    ./saffron.sh corpus.json output/
+    ./saffron.sh corpus.json output/ config.json
 
 The following results are generated
 
