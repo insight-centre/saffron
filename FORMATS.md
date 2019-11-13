@@ -6,7 +6,7 @@ and we will describe the properties each files has, with a link to an example (a
 
 ## Input formats
 
-### Corpus  ([corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/corpus.json))
+### Corpus  ([corpus_with_authors.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/corpus_with_authors.json))
 ------
 
 This file contains the description of the corpus, including all the metadata. It is a collection of documents, each element being a different dicument with its own metadata and link to the file containing the text. A corpus has the following properties:
