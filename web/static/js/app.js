@@ -142,7 +142,7 @@ angular.module('app').component('toptopics', {
                         if(response[t].status !== "rejected") {
                             ctrl.topics.push({
                                 "topic_string": response[t].topicString,
-                                "score": response[t].score, //toFixed(2)
+                                "score": response[t].score, 
 
                                 "pos": (t + 1 + ctrl.n2)
 
