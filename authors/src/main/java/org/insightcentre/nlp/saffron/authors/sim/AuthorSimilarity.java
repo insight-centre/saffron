@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
 /**
  *
@@ -29,20 +29,20 @@ public class AuthorSimilarity {
         this.top_n = config.topN;
     }
 
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats) {
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats) {
         return authorSimilarity(ats, new DefaultSaffronListener());
     }
        
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats, SaffronListener log) {
-        List<AuthorAuthor> topicAuthors = new ArrayList<>();
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, SaffronListener log) {
+        List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
-        //System.err.printf("%d author topics\n", ats.size());
-        for (AuthorTopic at : ats) {
+        //System.err.printf("%d author terms\n", ats.size());
+        for (AuthorTerm at : ats) {
             log.tick();
-            if (!vectors.containsKey(at.author_id)) {
-                vectors.put(at.author_id, new Object2DoubleOpenHashMap<String>());
+            if (!vectors.containsKey(at.getAuthorId())) {
+                vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
-            vectors.get(at.author_id).put(at.topic_id, at.score);
+            vectors.get(at.getAuthorId()).put(at.getTermId(), at.getScore());
         }
         //System.err.printf("\n%d vectors\n", vectors.size());
         for (String t1 : vectors.keySet()) {
@@ -73,11 +73,11 @@ public class AuthorSimilarity {
             while (topN.size() > top_n) {
                 topN.pollFirst();
             }
-            topicAuthors.addAll(topN);
+            termAuthors.addAll(topN);
         }
         
         log.endTick();
-        return topicAuthors;
+        return termAuthors;
     }
 
     private double sim(Object2DoubleMap<String> v1, Object2DoubleMap<String> v2) {

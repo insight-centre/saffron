@@ -39,7 +39,7 @@ import java.util.Arrays;
  */
 public class BhattacharryaPoisson implements TaxonomyScore {
     private final TaxonomyScore baseScore;
-    private final Object2IntMap<String> topic2index;
+    private final Object2IntMap<String> term2index;
     private final int[] f;
     private final int[] c;
     private final double[] p;
@@ -48,26 +48,26 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     //private double alpha;
     private final double r;
 
-    public BhattacharryaPoisson(TaxonomyScore baseScore, Set<String> topics, 
+    public BhattacharryaPoisson(TaxonomyScore baseScore, Set<String> terms, 
             double lambda, double alpha) {
         this.baseScore = baseScore;
-        this.topic2index = new Object2IntArrayMap<>();
+        this.term2index = new Object2IntArrayMap<>();
         int i = 0;
-        for(String t : topics) {
-            this.topic2index.put(t, i++);
+        for(String t : terms) {
+            this.term2index.put(t, i++);
         }
-        this.f = new int[topics.size()];
-        this.N = topics.size() - 1;
+        this.f = new int[terms.size()];
+        this.N = terms.size() - 1;
         this.p = dpois(lambda, N);
         f[0] = N;
-        this.c = new int[topics.size()];
+        this.c = new int[terms.size()];
         this.lambda = lambda;
         this.r = alpha * N;
     }
 
-    private BhattacharryaPoisson(TaxonomyScore baseScore, Object2IntMap<String> topic2index, int[] f, int[] c, double[] p, int N, double lambda, double r) {
+    private BhattacharryaPoisson(TaxonomyScore baseScore, Object2IntMap<String> term2index, int[] f, int[] c, double[] p, int N, double lambda, double r) {
         this.baseScore = baseScore;
-        this.topic2index = topic2index;
+        this.term2index = term2index;
         this.f = f;
         this.c = c;
         this.p = p;
@@ -87,7 +87,7 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     
     @Override
     public double deltaScore(TaxoLink taxoLink) {
-        int t = topic2index.get(taxoLink.top);
+        int t = term2index.get(taxoLink.top);
         final double delta;
         if(c[t] > 0) {
             delta =
@@ -108,13 +108,13 @@ public class BhattacharryaPoisson implements TaxonomyScore {
 
     @Override
     public TaxonomyScore next(String top, String bottom, Solution soln) {
-        int t = topic2index.get(top);
+        int t = term2index.get(top);
         int[] newC = Arrays.copyOf(c, c.length);
         newC[t]++;
         int[] newF = Arrays.copyOf(f, f.length);
         newF[c[t]]--;
         newF[newC[t]]++;
-        return new BhattacharryaPoisson(baseScore, topic2index, newF, newC, p, N, lambda, r);
+        return new BhattacharryaPoisson(baseScore, term2index, newF, newC, p, N, lambda, r);
     }
     // Calculates y ** x / x! mostly by the Sterling approximation
     // =~ 1/sqrt(2*pi*x) (e * y / x) ** x 
