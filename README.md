@@ -63,7 +63,19 @@ By default all results will be stored in the Mongo database. However, you can ge
     
     export STORE_LOCAL_COPY=true
 
-
+Upgrading from version 3.3 to 3.4		
+------		
+Before starting Saffron, edit the following file:		
+	upgrade3.3To3.4.sh		
+			
+and change the following configurations to reflect the database you want to upgrade:		
+  		
+	export MONGO_URL=localhost		
+    export MONGO_PORT=27017		
+    export MONGO_DB_NAME=saffron_test		
+    		
+Run the script by executing:		
+	./upgrade3.3To3.4.sh
 
 Running
 -------
@@ -132,4 +144,3 @@ API Documentation
 For full API documentation, see here:
 
 https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
-
