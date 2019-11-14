@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 
 /**
@@ -27,18 +27,18 @@ public class Greedy implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         TaxonomyScore score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
-        if(topicMap.size() == 0) {
-            return new Taxonomy("NO TOPICS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
-        } else if(topicMap.size() == 1) {
-            // It is not possible to construct a taxonomy from 1 topic
-            return new Taxonomy(topicMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
+        if(termMap.size() == 0) {
+            return new Taxonomy("NO TERMS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
+        } else if(termMap.size() == 1) {
+            // It is not possible to construct a taxonomy from 1 term
+            return new Taxonomy(termMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
         }
-        for (String t1 : topicMap.keySet()) {
-            for (String t2 : topicMap.keySet()) {
+        for (String t1 : termMap.keySet()) {
+            for (String t2 : termMap.keySet()) {
                 if (!t1.equals(t2)) {
                     candidates.add(new TaxoLink(t1, t2));
                 }
@@ -47,12 +47,12 @@ public class Greedy implements TaxonomySearch {
         candidates.removeAll(blackList);
         candidates.removeAll(whiteList);
 
-        Solution soln = Solution.empty(topicMap.keySet());
+        Solution soln = Solution.empty(termMap.keySet());
         for (TaxoLink sp : whiteList) {
-            if (topicMap.get(sp.top) != null && topicMap.get(sp.bottom) != null) {
+            if (termMap.get(sp.top) != null && termMap.get(sp.bottom) != null) {
                 soln = soln.add(sp.top, sp.bottom,
-                        topicMap.get(sp.top).score,
-                        topicMap.get(sp.bottom).score,
+                        termMap.get(sp.top).getScore(),
+                        termMap.get(sp.bottom).getScore(),
                         score.deltaScore(sp), true);
                 score = score.next(sp.top, sp.bottom, soln);
             }
@@ -75,8 +75,8 @@ public class Greedy implements TaxonomySearch {
             while (!candidates.isEmpty()) {
                 TaxoLink candidate = candidates.remove(0);
                 Solution soln2 = soln.add(candidate.top, candidate.bottom,
-                        topicMap.get(candidate.top).score,
-                        topicMap.get(candidate.bottom).score,
+                        termMap.get(candidate.top).getScore(),
+                        termMap.get(candidate.bottom).getScore(),
                         scores.getDouble(candidate), false);
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
