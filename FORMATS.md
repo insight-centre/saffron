@@ -48,7 +48,7 @@ It contains each of the Saffron steps:
 ##### 1.   Term Extraction
 Configuration for the options of the term extraction phase. All properties are included under the object:
 
-* `termExtraction`: Which element contains the following properties to define:
+* `termExtraction`: This element contains the following properties to set up:
     * `threshold` : Sets a minimum Saffron score for the terms retrieved
 
     * `maxTerms` : Sets the maximum number of terms to extract . Default to 100
@@ -59,59 +59,97 @@ Configuration for the options of the term extraction phase. All properties are i
     
     * `minTermFreq` : Sets the number of times a term must appear in the dataset to be retrieved. Default to 2
     
-    * `maxDocs` : A limit on the number of documents that can be contained in the corpus (default to 2147483647) **to be checked**
+    * `maxDocs` : The maximum number of documents to consider for the analysis. Default to 2147483647
     
     * `method` : Choose between two ranking procedures: "voting" (algorithm that integrates multiple score functions) and "single" (only one score function)
     
-    * `features` : List of scoring functions if choosing the "Voting" method above, or will be ignored the "Single" method was chosen (by default set to [ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ])
+    * `features` : List of scoring functions if choosing the "voting" method above, or will be ignored the "single" method was chosen. Default set to [ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ])
     
-        Options are:  "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf", "avgTermFreq", "basic", "novelTopicModel", "postRankDC", "relevance"
+        Choose between:  `comboBasic`, `weirdness`, `totalTfIdf`, `cValue`, `residualIdf`, `avgTermFreq`, `basic`, `novelTopicModel`, `postRankDC`, `relevance`
                     
     * `corpus` : Path to the model that contains XYZ (by default set to ${saffron.home}/models/wiki-terms.json.gz)  **to be checked**
     
-    * `baseFeature` : If `method` is set to "single", give here the unique scoring function to use .
+    * `baseFeature` : If `method` is set to "single", give here the unique scoring function to use.
     If `method` is set to "voting", choose the scoring function that will get more weight in the calculation of the final score. (Choose between the options given above in `features`)
     
     * `numThreads` : 0  **to be checked**
     
-    * `posModel` : The path to the part-of-speech tagger's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported (default to "${saffron.home}/models/en-pos-maxent.bin")
+    * `posModel` : The path to the part-of-speech tagger's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. Default to "${saffron.home}/models/en-pos-maxent.bin")
     
-    * `tokenizerModel` : The path to the tokenizer's model.  By default set to "null" (the configuration will automatically uses the one English tokenizer that is provided by OpenNLP). Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported **to be checked**
+    * `tokenizerModel` : The path to the tokenizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. Default to "null" (the configuration will automatically uses the one English tokenizer that is provided by OpenNLP)
     
-    * `lemmatizerModel` : The path to the lemmatizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported (default to"${saffron.home}/models/en-lemmatizer.dict.txt"
+    * `lemmatizerModel` : The path to the lemmatizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported.  Default to"${saffron.home}/models/en-lemmatizer.dict.txt"
     
     * `stopWords` : The path to the list of stop words (one per line) if different from the [default ones](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/resources/stopwords/README)
     
-    * `preceedingTokens` : The set of tags allowed in non-final position in a noun phrase. Default set to [ "NN", "JJ", "NNP", "NNS" ]
+    * `preceedingTokens` : The set of tags allowed in non-final position in a noun phrase. Default to [ "NN", "JJ", "NNP", "NNS" ]
     
-    * `middleTokens` : The set of tags allowed in non-final position, but not completing. Default set to [ "IN" ]
+    * `middleTokens` : The set of tags allowed in non-final position, but not completing. Default to [ "IN" ]
     
-    * `headTokens` : The set of final tags allows in a noun phrase. Default set to [ "NN", "CD", "NNS" ]
+    * `headTokens` : The set of final tags allows in a noun phrase. Default to [ "NN", "CD", "NNS" ]
     
-    * `headTokenFinal` : The position of the head of a noun phrase (true=final). Degault set to "true"
+    * `headTokenFinal` : The position of the head of a noun phrase (true=final). Default to "true"
     
     * `blacklist` : A list of terms that should never be generated. Default is an empty list
     
-    * `blacklistFile` : The path to a file containing a list of black terms. Default to null
+    * `blacklistFile` : The path to a file containing a list of terms that should never be generated (one term per line). Default to null
     
-    * `oneTopicPerDoc` : If set always output at least one topic for each input document (overrides maxTerms if necessary). Default to false
+    * `oneTopicPerDoc` : If set, always output at least one topic for each input document (overrides maxTerms if necessary). Default to false.
 
 
 ##### 2.   Author - Term linking
+The phase of linking between authors and terms (if authors are present in the metadata, ignored otherwise)
 
-* `authorTerm`: The phase of linking between authors and terms (if authors are present in the metadata, ignored otherwise)
+* `authorTerm`: An element which contains the following property to set up:
+    * `topN` : The maximum number of total author-term pairs to extract. Default to 1000
 
 ##### 3.   Author Similarity
+The phase of connecting authors with similar areas of expertise together (if authors are present in the metadata, ignored otherwise)
 
-* `authorSim`: The phase of connecting authors together (if authors are present in the metadata, ignored otherwise)
+* `authorSim`:  An element which contains the following properties to set up:
+
+    * `threshold` : The minimum threshold of similarity to accept. Default to 0.1
+    * `topN` : The maximum number of similar authors (per author) to extract. Default to 50
+
 
 ##### 4.   Term Similarity
+The phase of connecting similar terms
 
-* `termSim`: The phase of connecting similar terms
+* `termSim`:  An element which contains the following properties to set up:
+    * `threshold` : The minimum threshold for accepting similarity between two terms. Default to 0.1
+    * `topN` : The maximum number of terms to accept. Default to 50
 
-##### 5.   Taxnomy Construction
 
-* `taxonomy`: The phase of creation of the taxonomy
+##### 5.   Taxnomy Extraction
+The phase of supervised taxonomy extraction
+
+* `taxonomy`:  An element which contains the following properties to set up:  
+    * `negSampling` : The number of negative samples to generate when training. Default to 5.0  **not available in the interface?**  
+    * `features` : The features to use. Default to null.    **not available in the interface?**  
+        Choose between :  
+        * inclusion : uses the inclusion feature
+        * overlap : uses the overlap feature
+        * lcs : uses the longest common subsequence feature
+        * svdSimAve : uses the SVD Average Vector Similarity feature
+        * svdSimMinMax : uses the SVD Minimum-Maximum Vector Similarity feature
+        * topicDiff : uses the Topic Difference feature
+        * relFreq : uses the relative frequency feature
+        * wnDirect : uses direct wordnet
+        * wnIndirect : uses indirect wordnet
+    * `modelFile` : The model to be trained. Default to "${saffron.home}/models/default.json"
+    * `maxChildren` : A limit on the number of children to be added under one node (does not work in MST mode). Default to 2147483647   **not available in the interface?**
+    * `simThreshold` : Minimum threshold to accept for similarity. Default to 0.0   **not available in the interface?**
+
+    ###### 5.1.   Taxonomy Search
+    The phase of search in the taxonomy algorithm
+    * `search`:  An element which contains the following properties to set up:
+        * `algorithm` : The algorithm to use for finding a taxonomy. Choose between `greedy`, `beam`, `mst`. Default to greedy
+        * `beamSize` :  The size of the beam to use in the beam search (only if Beam search is chosen, ignored otherwise) . Default to 20
+        * `score` : The scoring function to optimize. Choose between `simple`, `transitive`, `bhattacharryaPoisson`. Default to simple
+        * `baseScore` : The base metric for Bhattacharrya-Poisson (BP) (only if BP search is chosen, ignored otherwise). Default to simple
+        * `aveChildren` : The average number of children (only if BP search is chosen, ignored otherwise). Default to 3.0
+        * `alpha` : The weighting to give to BP (against the base algorithm) (only if BP search is chosen, ignored otherwise). Default to 0.01
+
 
 Domain Model
 ------------
