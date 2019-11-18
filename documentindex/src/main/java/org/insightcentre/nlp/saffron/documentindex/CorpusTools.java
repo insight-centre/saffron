@@ -16,6 +16,7 @@ import org.apache.commons.collections4.iterators.FilterIterator;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
@@ -220,6 +221,7 @@ public class CorpusTools {
     private static class JSONCorpus implements Corpus {
 
         private final List<File> jsonFile;
+        List<Author> authors;
 
         public JSONCorpus(File jsonFile) {
             List<File> jsonFileList = new ArrayList<>();
@@ -233,6 +235,7 @@ public class CorpusTools {
                 SaffronPath path = doc.getFile();
                 String docFileName = path.resolve(doc.getFile().getPath());
                 jsonFileList.add(new File(docFileName));
+                authors = doc.authors;
             });
             this.jsonFile = jsonFileList;
         }
@@ -257,7 +260,7 @@ public class CorpusTools {
                                         while (ze.isDirectory() && zes.hasMoreElements()) {
                                             ze = zes.nextElement();
                                         }
-                                        return DocumentAnalyzer.analyze(ze, ze.getName().replaceAll("/|\\\\", "_"));
+                                        return DocumentAnalyzer.analyze(ze, ze.getName().replaceAll("/|\\\\", "_"), authors);
                                     } catch (IOException x) {
                                         throw new RuntimeException(x);
                                     }

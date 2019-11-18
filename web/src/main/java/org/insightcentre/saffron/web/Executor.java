@@ -47,6 +47,7 @@ import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
+import org.insightcentre.nlp.saffron.topic.tfidf.TFIDF;
 import org.insightcentre.nlp.saffron.topic.topicsim.TermSimilarity;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
@@ -519,6 +520,7 @@ public class Executor extends AbstractHandler {
 
         _status.stage++;
         _status.setStatusMessage("Connecting authors to terms");
+        TFIDF.addTfidf(res.docTerms);
         ConnectAuthorTerm cr = new ConnectAuthorTerm(config.authorTerm);
         Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, res.docTerms, searcher.getDocuments(), _status);
 
