@@ -16,44 +16,44 @@ import org.insightcentre.nlp.saffron.data.Taxonomy;
 public class Solution {
 
     public final Map<String, Taxonomy> heads;
-    public final Set<String> topics;
+    public final Set<String> terms;
     public final int size;
 
     /**
      * Create a new solution
      *
      * @param heads The heads of the taxonomy fragments
-     * @param topics The set of topics required to be in the solution
+     * @param terms The set of terms required to be in the solution
      */
-    public Solution(Map<String, Taxonomy> heads, Set<String> topics) {
+    public Solution(Map<String, Taxonomy> heads, Set<String> terms) {
         this.heads = heads;
-        this.topics = topics;
+        this.terms = terms;
         this.size = calcSize();
     }
 
-    private Solution(Map<String, Taxonomy> heads, Set<String> topics, int size) {
+    private Solution(Map<String, Taxonomy> heads, Set<String> terms, int size) {
         this.heads = heads;
-        this.topics = topics;
+        this.terms = terms;
         this.size = size;
     }
 
     /**
      * Create a new empty solution
      *
-     * @param topics The topics included in the complete solution
+     * @param terms The terms included in the complete solution
      * @return An empty solution
      */
-    public static Solution empty(Set<String> topics) {
-        return new Solution(new HashMap<String, Taxonomy>(), topics);
+    public static Solution empty(Set<String> terms) {
+        return new Solution(new HashMap<String, Taxonomy>(), terms);
     }
 
     /**
      * Add a link to create a new partial solution
      *
-     * @param top The top (broader) topic
-     * @param bottom The bottom (narrower) topic
-     * @param topScore The score of the top topic
-     * @param bottomScore The score of the bottom topic
+     * @param top The top (broader) term
+     * @param bottom The bottom (narrower) term
+     * @param topScore The score of the top term
+     * @param bottomScore The score of the bottom term
      * @param linkScore The link score
      * @param accepted Is this an accepted (whitelisted) term
      * @return
@@ -75,7 +75,7 @@ public class Solution {
                     newHeads.remove(bottom);
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top, heads.get(bottom).withLinkScore(linkScore).deepCopy()));
-                    return new Solution(newHeads, topics, size);
+                    return new Solution(newHeads, terms, size);
                 }
             }
             // top is not yet in taxonomy
@@ -83,7 +83,7 @@ public class Solution {
             Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), accepted ? Status.accepted : Status.none);
             newHeads.remove(bottom);
             newHeads.put(top, t2);
-            return new Solution(newHeads, topics, size + 1);
+            return new Solution(newHeads, terms, size + 1);
         } else {
             for (Map.Entry<String, Taxonomy> e : heads.entrySet()) {
                 if (e.getValue().hasDescendent(bottom)) {
@@ -98,7 +98,7 @@ public class Solution {
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top,
                                     new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none)));
-                    return new Solution(newHeads, topics, size + 1);
+                    return new Solution(newHeads, terms, size + 1);
                 }
             }
             // top and bottom are not in the taxonomy
@@ -109,7 +109,7 @@ public class Solution {
                 }
             }, Status.none);
             newHeads.put(top, t);
-            return new Solution(newHeads, topics, size + 2);
+            return new Solution(newHeads, terms, size + 2);
         }
     }
 
@@ -120,7 +120,7 @@ public class Solution {
      * @return true if the solution is valid
      */
     public boolean isComplete() {
-        return size() == topics.size() && heads.size() == 1;
+        return size() == terms.size() && heads.size() == 1;
     }
 
     /**
@@ -171,6 +171,6 @@ public class Solution {
 
     @Override
     public String toString() {
-        return "Solution{" + "heads=" + heads + ", topics=" + topics + ", size=" + size + '}';
+        return "Solution{" + "heads=" + heads + ", terms=" + terms + ", size=" + size + '}';
     }
 }

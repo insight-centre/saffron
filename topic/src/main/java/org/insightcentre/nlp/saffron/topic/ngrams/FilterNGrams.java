@@ -9,7 +9,7 @@ import java.util.Iterator;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  *
@@ -28,9 +28,9 @@ public class FilterNGrams {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("t", "The list of topics to read").withRequiredArg().ofType(File.class);
+                    accepts("t", "The list of terms to read").withRequiredArg().ofType(File.class);
                     accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("o", "The list of topics to write to").withRequiredArg().ofType(File.class);
+                    accepts("o", "The list of terms to write to").withRequiredArg().ofType(File.class);
                 }
             };
             final OptionSet os;
@@ -58,16 +58,16 @@ public class FilterNGrams {
             ObjectMapper mapper = new ObjectMapper();
             Configuration config = mapper.readValue(configFile, Configuration.class);
 
-            List<Topic> outTopics = new ArrayList<>();
-            Iterator<Topic> topics = mapper.readValues(new JsonFactory().createParser(input), Topic.class);
-            while (topics.hasNext()) {
-                Topic topic = topics.next();
-                if (!is_invalid(topic)) {
-                    outTopics.add(topic);
+            List<Term> outTerms = new ArrayList<>();
+            Iterator<Term> terms = mapper.readValues(new JsonFactory().createParser(input), Term.class);
+            while (terms.hasNext()) {
+                Term term = terms.next();
+                if (!is_invalid(term)) {
+                    outTerms.add(term);
                 }
             }
 
-            mapper.writeValue(output, outTopics);
+            mapper.writeValue(output, outTerms);
 
         } catch (Throwable t) {
             t.printStackTrace();
@@ -75,11 +75,11 @@ public class FilterNGrams {
         }
     }
 
-    private static boolean is_invalid(Topic topic) {
-        if(topic.dbpedia_url != null)
+    private static boolean is_invalid(Term term) {
+        if(term.getDbpediaUrl() != null)
             return false;
-        String[] words = topic.topicString.split("\\s+");
-        // The original Saffron implementation only filters topics of exactly
+        String[] words = term.getString().split("\\s+");
+        // The original Saffron implementation only filters terms of exactly
         // Length 2... We should probably fix this
         if(words.length != 2)
             return false;

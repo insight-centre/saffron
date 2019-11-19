@@ -25,7 +25,7 @@ var link = svg.selectAll(".link"),
 d3.json(apiUrl + saffronDatasetName, function(error, json) {
   if (error) throw error;
   root = json;
-  if (root.root === "HEAD_TOPIC") {
+  if (root.root === "HEAD_TERM") {
     root.root = "Root";
   }
   var links = graph.links;
@@ -97,7 +97,7 @@ function update() {
       .attr("class", nodeClass)
       .on("click", function (d) {
           if (!location.href.endsWith("/edit")) {
-            location.href = "topic/" + d.root;  
+            location.href = "term/" + d.root;  
           }
           
       })
@@ -108,7 +108,7 @@ function update() {
         if (location.href.endsWith("/edit")) {
             return location.href;  
           } else {
-            return "topic/" + d.root;  
+            return "term/" + d.root;  
           }
        })
       .append("text")

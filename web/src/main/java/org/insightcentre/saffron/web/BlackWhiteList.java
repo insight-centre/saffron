@@ -38,23 +38,23 @@ public class BlackWhiteList {
         this.taxoBlackList = new HashSet<>();
     }
 
-    public static BlackWhiteList from(FindIterable<Document> allTopics, Taxonomy taxonomy) {
+    public static BlackWhiteList from(FindIterable<Document> allTerms, Taxonomy taxonomy) {
 
-        Set<String> topicWhiteList = new HashSet<>();
-        Set<String> topicBlackList = new HashSet<>();
+        Set<String> termWhiteList = new HashSet<>();
+        Set<String> termBlackList = new HashSet<>();
 
-        for (Document t : allTopics) {
+        for (Document t : allTerms) {
             if (t.getString("status").equals("accepted")) {
-                topicWhiteList.add(t.getString("topic"));
+                termWhiteList.add(t.getString("term"));
 
-                if (!t.getString("topic").equals(t.getString("original_topic")) && t.getString("original_topic") != null) {
-                    topicBlackList.add(t.getString("original_topic"));
+                if (!t.getString("term").equals(t.getString("original_term")) && t.getString("original_term") != null) {
+                    termBlackList.add(t.getString("original_term"));
                 }
             } else if (t.getString("status").equals("rejected")) {
-                topicBlackList.add(t.getString("topic"));
+                termBlackList.add(t.getString("term"));
             }
         }
-        topicBlackList.removeAll(topicWhiteList);
+        termBlackList.removeAll(termWhiteList);
         Set<TaxoLink> taxoWhiteList = new HashSet<>();
         Set<TaxoLink> taxoBlackList = new HashSet<>();
 //        Taxonomy graph = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
@@ -70,16 +70,16 @@ public class BlackWhiteList {
 
         buildTaxoBWList(taxonomy, taxoWhiteList, taxoBlackList);
         taxoBlackList.removeAll(taxoWhiteList);
-        return new BlackWhiteList(topicWhiteList, topicBlackList, taxoWhiteList, taxoBlackList);
+        return new BlackWhiteList(termWhiteList, termBlackList, taxoWhiteList, taxoBlackList);
     }
 
     /**
      * Builds a list of accepted and denied relationships to be part of a
      * taxonomy.
      *
-     * The children topics are the ones to keep the "accepted" or "none"
+     * The children terms are the ones to keep the "accepted" or "none"
      * statuses with their parents. "Rejected" parents are kept as the
-     * "originalParent" of a topic
+     * "originalParent" of a term
      *
      * @param taxonomy - The taxonomy used as source for the acceptance and
      * denial lists
