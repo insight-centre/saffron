@@ -143,7 +143,7 @@ function update() {
       .text(function(d) { return d.name; })
 
     node.select("circle")
-         .style("fill", color);
+        .style("fill", color);
 
 }
 
