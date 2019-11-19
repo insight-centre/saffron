@@ -136,15 +136,14 @@ function update() {
       .attr("dy", ".35em")
       .text(function(d) { return "\u00a0\u00a0\u00a0" + d.root; });
 
-  nodeEnter.append("circle")
-    .on("mouseover", fade(.2))
-    .on("mouseout", fade2(1))
-    .attr("r", function(d) { return Math.max(Math.pow(d.score / ave * 10 ,0.3),5); })
-    .text(function(d) { return d.name; })
-    .style("fill", function (d) { if(d == root.root) {return "black";}else{return color(d);} })
+    nodeEnter.append("circle")
+      .on("mouseover", fade(.2))
+      .on("mouseout", fade2(1))
+      .attr("r", function(d) { return Math.max(Math.sqrt(d.score / ave * 10 || 4.5),5); })
+      .text(function(d) { return d.name; })
 
-  node.select("circle")
-    .style("fill", function (d) { if(d == root.root) {return "black";}else{return color(d);} })
+    node.select("circle")
+         .style("fill", color);
 
 }
 
