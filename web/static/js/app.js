@@ -582,7 +582,7 @@ angular.module('app').component('relatedauthors', {
         var ctrl = this;
         if (ctrl.term) {
             ctrl.title = "Major authors on this term";
-            $http.get('/' + saffronDatasetName + '/author-terms?term=' + ctrl.term).then(function (response) {
+            $http.get(apiUrlWithSaffron + 'authorterms/' + ctrl.term).then(function (response) {
                 ctrl.authors = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
@@ -626,15 +626,20 @@ angular.module('app').component('relateddocuments', {
         ctrl.n2 = 0;
         this.loadterms = function () {
             if (ctrl.term) {
-                $http.get('/' + saffronDatasetName + '/doc-terms?n=20&offset=' + ctrl.n2 + '&term=' + ctrl.term).then(function (response) {
+                $http.get(apiUrlWithSaffron + 'docs').then(function (response) {
                     ctrl.docs = [];
-                    for (t = 0; t < response.data.length; t++) {
-                        ctrl.docs.push({
-                            "doc": response.data[t],
-                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.term).join("<b>" + ctrl.term + "</b>")),
-                            "pos": (t + 1)
-                        });
-                    }
+                    var json = JSON.parse(JSON.stringify(response.data));
+                    json.forEach(function(obj) {
+                        var text = ""
+                        text = Object.values(obj)[0]
+                        text = text.split(ctrl.term).join("<b>" + ctrl.term + "</b>")
+                        if (text.includes(ctrl.term)) {
+                            ctrl.docs.push({
+                                "doc": Object.keys(obj)[0],
+                                "values": $sce.trustAsHtml(text.substring(text.indexOf(ctrl.term) -100, text.indexOf(ctrl.term) +100))
+                            });
+                        }
+                    })
                     ctrl.n = ctrl.n2;
                 });
             } else if (ctrl.author) {
