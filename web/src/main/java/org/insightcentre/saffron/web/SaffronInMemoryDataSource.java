@@ -1043,4 +1043,34 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         return saffron.getTermSim().stream().filter(tt -> tt.getTerm1().equals(term1) && tt.getTerm2().equals(term2)).collect(Collectors.toList());
     }
 
+
+	@Override
+	public List<Concept> getAllConcepts(String runId) {
+		throw new NotImplementedException("");
+	}
+
+	@Override
+	public Concept getConcept(String runId, String conceptId) {
+		throw new NotImplementedException("");
+	}
+
+	@Override
+	public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString) {
+		throw new NotImplementedException("");
+	}
+
+	@Override
+	public void addConcept(String runId, Concept conceptToBeAdded) {
+		throw new NotImplementedException("");
+	}
+
+	@Override
+	public void updateConcept(String runId, Concept conceptToBeUpdated) {
+		throw new NotImplementedException("");
+	}
+
+	@Override
+	public void removeConcept(String runId, String conceptId) {
+		throw new NotImplementedException("");
+	}
 }
