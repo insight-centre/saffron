@@ -61,20 +61,23 @@ To change the Mongo HOST and PORT, simply edit the same file on the following:
     
 By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to **true**: 
     
-    export STORE_LOCAL_COPY=true
+    export STORE_LOCAL_COPY=false
 
-Upgrading from version 3.3 to 3.4		
-------		
-Before starting Saffron, edit the following file:		
-	upgrade3.3To3.4.sh		
-			
-and change the following configurations to reflect the database you want to upgrade:		
-  		
-	export MONGO_URL=localhost		
-    export MONGO_PORT=27017		
-    export MONGO_DB_NAME=saffron_test		
-    		
-Run the script by executing:		
+Upgrading from version 3.3 to 3.4
+------
+
+Before starting Saffron, edit the following file:
+
+	upgrade3.3To3.4.sh
+	
+and change the following configurations to reflect the database you want to upgrade:
+  
+	export MONGO_URL=localhost
+    export MONGO_PORT=27017
+    export MONGO_DB_NAME=saffron_test
+    
+Run the script by executing:
+
 	./upgrade3.3To3.4.sh
 
 Running

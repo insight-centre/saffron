@@ -9,14 +9,11 @@ import java.util.List;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.json.JSONObject;
 
@@ -38,13 +35,13 @@ public interface SaffronDataSource extends Closeable {
 
 
     /**
-     * Add a document topic
+     * Add a document term
      * @param id The ID of the run
      * @param date The timestamp
-     * @param topics The doc-topics
+     * @param terms The doc-terms
      * @return True if successful
      */
-    boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> topics);
+    boolean addDocumentTermCorrespondence(String id, Date date, List<DocumentTerm> terms);
 
     /**
      * Create a new run
@@ -64,17 +61,17 @@ public interface SaffronDataSource extends Closeable {
     boolean addTaxonomy(String id, Date date, Taxonomy graph);
 
     /**
-     * Add the result of a topic extraction
+     * Add the result of a term extraction
      * @param id The ID of the run
      * @param date The timestamp
      * @param res The taxonomy to update
      * @return True if successful
      */
-    boolean addTopicExtraction(String id, Date date, Set<Topic> res);
+    boolean addTermExtraction(String id, Date date, Set<Term> res);
 
-    boolean addTopics(String id, Date date, List<Topic> topics);
+    boolean addTerms(String id, Date date, List<Term> terms);
 
-    boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity);
+    boolean addTermsSimilarity(String id, Date date, List<TermTerm> termSimilarity);
 
     /*
      * (non-Javadoc)
@@ -85,19 +82,19 @@ public interface SaffronDataSource extends Closeable {
 
     void deleteRun(String name);
 
-    void deleteTopic(String runId, String topic);
+    void deleteTerm(String runId, String term);
 
     String getRun(String runId);
 
     Taxonomy getTaxonomy(String runId);
 
-    List<DocumentTopic> getDocTopics(String runId);
+    List<DocumentTerm> getDocTerms(String runId);
 
-    //public List<String> getAllRuns();
+    public List<SaffronRun> getAllRuns();
 
-    public List<String> getTaxoParents(String runId, String topic_string);
+    public List<String> getTaxoParents(String runId, String termString);
 
-    public List<TopicAndScore> getTaxoChildrenScored(String runId, String topic_string);
+    public List<TermAndScore> getTaxoChildrenScored(String runId, String termString);
 
     public List<AuthorAuthor> getAuthorSimByAuthor1(String runId, String author1);
 
@@ -107,27 +104,27 @@ public interface SaffronDataSource extends Closeable {
 
     public List<Author> authorAuthorToAuthor2(String runId, List<AuthorAuthor> aas);
 
-    public List<String> getTaxoChildren(String runId, String topic_string);
+    public List<String> getTaxoChildren(String runId, String termString);
 
-    public List<TopicTopic> getTopicByTopic1(String runId, String topic1, List<String> _ignore);
+    public List<TermTerm> getTermByTerm1(String runId, String term1, List<String> _ignore);
 
-    public List<TopicTopic> getTopicByTopic2(String runId, String topic2);
+    public List<TermTerm> getTermByTerm2(String runId, String term2);
 
-    public List<AuthorTopic> getTopicByAuthor(String runId, String author);
+    public List<AuthorTerm> getTermByAuthor(String runId, String author);
 
-    public List<AuthorTopic> getAuthorByTopic(String runId, String topic);
+    public List<AuthorTerm> getAuthorByTerm(String runId, String term);
 
-    public List<Author> authorTopicsToAuthors(String runId, List<AuthorTopic> ats);
+    public List<Author> authorTermsToAuthors(String runId, List<AuthorTerm> ats);
 
-    public List<DocumentTopic> getTopicByDoc(String runId, String doc);
+    public List<DocumentTerm> getTermByDoc(String runId, String doc);
 
-    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTopic(String runId, String topic);
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String runId, String term);
 
-    public Topic getTopic(String runId, String topic);
+    public Term getTerm(String runId, String term);
 
     public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String runId, String authorId);
 
-    public Collection<String> getTopTopics(String runId, int from, int to);
+    public Collection<String> getTopTerms(String runId, int from, int to);
 
     public Author getAuthor(String runId, String authorId);
 
@@ -135,17 +132,17 @@ public interface SaffronDataSource extends Closeable {
 
     public DocumentSearcher getSearcher(String runId);
 
-    public void setDocTopics(String runId, List<DocumentTopic> docTopics);
+    public void setDocTerms(String runId, List<DocumentTerm> docTerms);
 
     public void setIndex(String runId, DocumentSearcher index);
 
     void setCorpus(String runId, Corpus corpus);
 
-    public void setTopics(String runId, List<Topic> _topics);
+    public void setTerms(String runId, List<Term> terms);
 
-    public void setAuthorTopics(String runId, Collection<AuthorTopic> authorTopics);
+    public void setAuthorTerms(String runId, Collection<AuthorTerm> authorTerms);
 
-    public void setTopicSim(String runId, List<TopicTopic> topicSim);
+    public void setTermSim(String runId, List<TermTerm> termSim);
 
     public void setAuthorSim(String runId, List<AuthorAuthor> authorSim);
 
@@ -156,18 +153,9 @@ public interface SaffronDataSource extends Closeable {
     boolean updateTaxonomy(String id, Taxonomy graph);
 
     //FIXME It should be called "updateStatus" instead
-    boolean updateTopic(String id, String topic, String status);
+    boolean updateTerm(String id, String term, String status);
 
-    boolean updateTopicName(String id, String topic, String newTopic, String status);
-
-//    default BlackWhiteList extractBlackWhiteList(String datasetName) {
-//        if(!getAllTopics(datasetName).iterator().hasNext())
-//            return new BlackWhiteList();
-//        else {
-//            return BlackWhiteList.from(getAllTopics(datasetName), getTaxonomy(datasetName));
-//
-//        }
-//    }
+    boolean updateTermName(String id, String term, String newTerm, String status);
 
     /**
      * Is this dataset present
@@ -185,31 +173,31 @@ public interface SaffronDataSource extends Closeable {
 
     public Iterable<String> runs();
 
-    public Taxonomy getTaxoDescendent(String runId, String topicString);
+    public Taxonomy getTaxoDescendent(String runId, String termString);
 
     public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName);
 
     public Iterable<Author> getAllAuthors(String datasetName);
 
-    public Iterable<Topic> getAllTopics(String datasetName);
+    public Iterable<Term> getAllTerms(String datasetName);
 
     public Date getDate(String doc);
 
-    public List<AuthorTopic> getAllAuthorTopics(String name);
+    public List<AuthorTerm> getAllAuthorTerms(String name);
 
-    public Iterable<DocumentTopic> getDocTopicByTopic(String name, String topicId);
+    public Iterable<DocumentTerm> getDocTermByTerm(String name, String termId);
 
-    public Iterable<TopicTopic> getAllTopicSimilarities(String name);
+    public Iterable<TermTerm> getAllTermSimilarities(String name);
 
-    public Iterable<TopicTopic> getTopicByTopics(String name, String topic1, String topic2);
+    public Iterable<TermTerm> getTermByTerms(String name, String term1, String term2);
 
-    public static class TopicAndScore {
+    public static class TermAndScore {
 
-        public final String topic;
+        public final String term;
         public final double score;
 
-        public TopicAndScore(String topic, double score) {
-            this.topic = topic;
+        public TermAndScore(String term, double score) {
+            this.term = term;
             this.score = score;
         }
 

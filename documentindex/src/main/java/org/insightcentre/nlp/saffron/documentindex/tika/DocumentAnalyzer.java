@@ -65,6 +65,32 @@ public class DocumentAnalyzer {
         String contents = removeLigatures(handler.toString());
         return new Document(SaffronPath.fromFile(f), id, null, name, mimeType, authors, new HashMap<>(), contents);
     }
+
+    public static Document analyze(File f, String id, List<Author> authorsList) throws IOException {
+        AutoDetectParser parser = new AutoDetectParser();
+        BodyContentHandler handler = new BodyContentHandler(-1);
+        Metadata metadata = new Metadata();
+        final InputStream stream;
+        stream = TikaInputStream.get(f.toPath());
+        try {
+            parser.parse(stream, handler, metadata);
+        } catch (SAXException | TikaException ex) {
+            throw new IOException(ex);
+        }
+
+        String mimeType = null;
+        if (metadata.get(Metadata.CONTENT_TYPE) != null) {
+            mimeType = removeLigatures(metadata.get(Metadata.CONTENT_TYPE));
+        }
+
+        String name = null;
+        if (metadata.get(TikaCoreProperties.TITLE) != null
+                && !metadata.get(TikaCoreProperties.TITLE).equals("")) {
+            name = removeLigatures(metadata.get(TikaCoreProperties.TITLE));
+        }
+        String contents = removeLigatures(handler.toString());
+        return new Document(SaffronPath.fromFile(f), id, null, name, mimeType, authorsList, new HashMap<>(), contents);
+    }
     
     public static Document analyze(InputStream stream, String id) throws IOException {
         AutoDetectParser parser = new AutoDetectParser();

@@ -6,17 +6,17 @@ import javax.xml.bind.annotation.XmlRootElement;
 @XmlRootElement()
 public class SearchResponse {
 
-    private String topicString;
+    private String termString;
     private String id;
     private String location;
     private String snippet;
 
-    public void setTopicString(String topicString) {
-        this.topicString = topicString;
+    public void setTermString(String termString) {
+        this.termString = termString;
     }
 
-    public String getTopicString() {
-        return topicString;
+    public String getTermString() {
+        return termString;
     }
 
     public void setLocation(String location) {

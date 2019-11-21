@@ -26,5 +26,5 @@ public class SAFFRON {
     public static final Property morphologicalVariant = m_model.createProperty( NS + "morphologicalVariant" );
     public static final Property author = m_model.createProperty( NS + "author" );
     public static final Property relatedAuthor = m_model.createProperty( NS + "relatedAuthor" );
-    public static final Property authorTopic = m_model.createProperty( NS + "authorTopic" );
+    public static final Property authorTerm = m_model.createProperty( NS + "authorTerm" );
 }
