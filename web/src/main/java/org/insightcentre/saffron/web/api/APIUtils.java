@@ -29,31 +29,31 @@ public class APIUtils {
                 crunchifyBuilder.append(line);
             }
         } catch (Exception e) {
-            System.out.println("Error Parsing: - ");
+            e.printStackTrace();
         }
         return crunchifyBuilder;
     }
 
-    protected void populateAuthorTopicsResp(FindIterable<Document> runs, List<AuthorTopicsResponse> topicsResponse) {
+    protected void populateAuthorTermsResp(FindIterable<Document> runs, List<AuthorTermsResponse> termsResponse) {
         for (Document doc : runs) {
 
-            AuthorTopicsResponse entity = new AuthorTopicsResponse();
+            AuthorTermsResponse entity = new AuthorTermsResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
-            entity.setAuthorTopic(doc.getString("author_topic"));
+            entity.setAuthorTerm(doc.getString("author_term"));
             entity.setMvList((List<String>) doc.get("mvList"));
-            entity.setTopicString(doc.getString("topicString"));
+            entity.setTermString(doc.getString("termString"));
             entity.setOccurrences(doc.getInteger("occurences"));
             entity.setMatches(doc.getInteger("matches"));
             entity.setScore(doc.getDouble("score"));
             entity.setDbpediaUrl(doc.getString("dbpedia_url"));
 
-            topicsResponse.add(entity);
+            termsResponse.add(entity);
         }
     }
 
-    protected void populateAuthorSimilarityResponse(FindIterable<Document> runs, List<AuthorSimilarityResponse> topicsResponse) {
+    protected void populateAuthorSimilarityResponse(FindIterable<Document> runs, List<AuthorSimilarityResponse> termsResponse) {
         for (Document doc : runs) {
 
             AuthorSimilarityResponse entity = new AuthorSimilarityResponse();
@@ -61,61 +61,62 @@ public class APIUtils {
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setSimilarity(doc.getDouble("similarity"));
-            entity.setTopicString1(doc.getString("topic1"));
-            entity.setTopicString2(doc.getString("topic2"));
+            entity.setTermString1(doc.getString("term1"));
+            entity.setTermString2(doc.getString("term2"));
 
-            topicsResponse.add(entity);
+            termsResponse.add(entity);
         }
     }
 
-    protected void populateTopicCorrespondenceResp(FindIterable<Document> runs, List<TopicCorrespondenceResponse> topicsResponse) {
+    protected void populateTermCorrespondenceResp(FindIterable<Document> runs, List<TermCorrespondenceResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicCorrespondenceResponse entity = new TopicCorrespondenceResponse();
+            TermCorrespondenceResponse entity = new TermCorrespondenceResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
+            entity.setTerm(doc.getString("term_string"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setAcronym(doc.getString("acronym"));
             entity.setOccurrences(doc.getInteger("occurences"));
             entity.setPattern(doc.getString("pattern"));
             entity.setTfidf(doc.getString("tfidf"));
-            entity.setTopic(doc.getString("topic"));
+
             entity.setDocumentId(doc.getString("document_id"));
 
-            topicsResponse.add(entity);
+            termsResponse.add(entity);
         }
     }
 
-    protected void populateTopicExtractionResp(FindIterable<Document> runs, List<TopicExtractionResponse> topicsResponse) {
+    protected void populateTermExtractionResp(FindIterable<Document> runs, List<TermExtractionResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicExtractionResponse entity = new TopicExtractionResponse();
+            TermExtractionResponse entity = new TermExtractionResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setScore(doc.getDouble("score"));
-            entity.setTopic(doc.getString("topic"));
+            entity.setTerm(doc.getString("term"));
             entity.setDbpediaUrl(doc.getString("dbpedia_url"));
             entity.setMvList((List<String>) doc.get("mvList"));
             entity.setOccurrences(doc.getInteger("occurrences"));
             entity.setMatches(doc.getInteger("matches"));
 
-            topicsResponse.add(entity);
+            termsResponse.add(entity);
         }
     }
 
-    protected void populateTopicSimilarityResp(FindIterable<Document> runs, List<TopicSimilarityResponse> topicsResponse) {
+    protected void populateTermSimilarityResp(FindIterable<Document> runs, List<TermSimilarityResponse> termsResponse) {
         for (Document doc : runs) {
 
-            TopicSimilarityResponse entity = new TopicSimilarityResponse();
+            TermSimilarityResponse entity = new TermSimilarityResponse();
             entity.setId(doc.getString("_id"));
             entity.setRun(doc.getString("run"));
             entity.setRunDate(doc.getDate("run_date"));
             entity.setSimilarity(doc.getDouble("similarity"));
-            entity.setTopicString1(doc.getString("topic1"));
-            entity.setTopicString2(doc.getString("topic2"));
+            entity.setTermString1(doc.getString("term1_id"));
+            entity.setTermString2(doc.getString("term2_id"));
 
-            topicsResponse.add(entity);
+            termsResponse.add(entity);
         }
     }
 }

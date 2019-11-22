@@ -4,14 +4,14 @@ Saffron 3 - Formats
 This document describes the formats used by Saffron 3. All formats are in Json
 and we will describe only the properties each has
 
-Corpus
+Corpus  ([corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/corpus.json))
 ------
 
 A collection of documents. A corpus has the following properties
 
 * `documents`: An array of documents in the corpus
 
-### Document
+### Document 
 
 A single document in a corpus. At least one of the following four must
 be present
@@ -43,7 +43,7 @@ The set of keywords that define a domain. This object has only one property
 
 * `terms`: An array of strings containing keywords
 
-Topic
+Topic ([topics.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topics.json))
 -----
 
 A single topic in the corpus. Contains the following annotations
@@ -62,7 +62,7 @@ A variant form of a topic
 
 * `string`: The form of this variant
 
-Taxonomy
+Taxonomy  ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
 --------
 
 The topic taxonomy containing the following
@@ -96,7 +96,7 @@ for evaluations of different methods)
 * `score`: The score of the this linking
 * `researcher_score`: Score for author's ranking for this particular topic
 
-Document-Topic
+Document-Topic ([doc-topics.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-topics.json))
 --------------
 
 The connection between a document and a topic
@@ -110,7 +110,7 @@ The connection between a document and a topic
 * `tfidf`: Saffron internal value
 * `unembedded_occ`: Saffron internal value
 
-Topic-Topic
+Topic-Topic ([topic-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/topic-sim.json))
 -----------
 
 An edge in the topic-topic graph

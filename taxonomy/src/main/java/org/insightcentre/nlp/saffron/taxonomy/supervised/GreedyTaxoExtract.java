@@ -11,8 +11,8 @@ import java.util.Objects;
 
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  * Greedily construct a taxonomy
@@ -30,11 +30,11 @@ public class GreedyTaxoExtract {
     }
 
     
-    public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {
+    public Taxonomy extractTaxonomy(List<DocumentTerm> docTerms, Map<String, Term> termMap) {
         HashMap<String, List<ScoredString>> scoresByChild = new HashMap<>();
-        for(String t1 : topicMap.keySet()) {
+        for(String t1 : termMap.keySet()) {
             List<ScoredString> list = new ArrayList<>();
-            for(String t2 : topicMap.keySet()) {
+            for(String t2 : termMap.keySet()) {
                 if(!t1.equals(t2)) {
                     double score = classifier.predict(t2, t1);
                     if(score > 0)
@@ -95,17 +95,17 @@ public class GreedyTaxoExtract {
             Taxonomy pTaxo = taxos.get(parent);
             Taxonomy cTaxo = taxos.get(child);
             if(pTaxo == null && cTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN,  "", "", new ArrayList<Taxonomy>(), Status.none);
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN,  "", "", new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo == null) {
-                pTaxo = new Taxonomy(parent, topicMap.get(parent).score, Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
             } else if(cTaxo == null && pTaxo.children.size() < maxChildren) {
-                cTaxo = new Taxonomy(child, topicMap.get(child).score, hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo.children.size() < maxChildren) {
@@ -136,40 +136,40 @@ public class GreedyTaxoExtract {
                 orphanIter.remove();
         }
         
-        return addOrphans(mergeTaxos(topTaxos, topicMap), orphans, topicMap);
+        return addOrphans(mergeTaxos(topTaxos, termMap), orphans, termMap);
     }
 
-    private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Topic> topicMap) {
+    private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Term> termMap) {
         for(String orphan : orphans) {
-            t.children.add(new Taxonomy(orphan, topicMap.get(orphan).score, Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
+            t.children.add(new Taxonomy(orphan, termMap.get(orphan).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
         }
         return t;
     }
     
     private Taxonomy mergeTaxos(HashMap<String, Taxonomy> topTaxos,
-            Map<String, Topic> topics) {
+            Map<String, Term> terms) {
         if(topTaxos.isEmpty()) {
             throw new RuntimeException("Did not extract any taxonomies (no terms?)");
         } else if(topTaxos.size() == 1) {
             return topTaxos.values().iterator().next();
         } else {
-            String topTopic = null;
+            String topTerm = null;
             double topScore = Double.NEGATIVE_INFINITY;
             int topOcc = Integer.MIN_VALUE;
-            for(String topicString : topTaxos.keySet()) {
-                Topic t = topics.get(topicString);
+            for(String termString : topTaxos.keySet()) {
+                Term t = terms.get(termString);
                 if(t != null) {
-                    if(t.score > topScore || 
-                            (t.score == topScore && t.occurrences > topOcc)) {
-                        topScore = t.score;
-                        topOcc = t.occurrences;
-                        topTopic = topicString;
+                    if(t.getScore() > topScore || 
+                            (t.getScore() == topScore && t.getOccurrences() > topOcc)) {
+                        topScore = t.getScore();
+                        topOcc = t.getOccurrences();
+                        topTerm = termString;
                     }
                 }
             }
-            if(topTopic == null)
+            if(topTerm == null)
                 throw new RuntimeException("Unreachable");
-            Taxonomy t = topTaxos.remove(topTopic);
+            Taxonomy t = topTaxos.remove(topTerm);
             t.children.addAll(topTaxos.values());
             if(!t.verifyTree())
                 throw new RuntimeException("loops!");

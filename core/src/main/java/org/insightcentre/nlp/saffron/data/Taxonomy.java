@@ -14,6 +14,10 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
+import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -23,30 +27,36 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * A taxonomy of topics
+ * A taxonomy of terms
  * 
  * @author John McCrae &lt;john@mccr.ae&gt;
+ * @author Bianca Pereira
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Taxonomy {
-    /** The topic string of this node in the taxonomy */
+	
+    /** The term string of this node in the taxonomy */
     public String root;
     /** The original parent node of this node in the taxonomy */
     public String originalParent;
-    /** The original Topic string of this node in the taxonomy */
-    public String originalTopic;
-    /** The score associated with this topic (its importance) */
+    /** The original Term string of this node in the taxonomy */
+    public String originalTerm;
+    /** The score associated with this term (its importance) */
     public final double score;
     /** The score relating this node to its parent (NaN if there is no parent) */
     public final double linkScore;
     /** The list of child nodes */
     public List<Taxonomy> children;
-    /** The status of the topic string */
+    /** The status of the term string */
     public Status status;
 
     public List<Taxonomy> parent;
 
-
+    protected Taxonomy() {
+    	score = 0.0;
+    	linkScore = 0.0;
+    	children = new ArrayList<Taxonomy>();
+    }
 
     @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -54,12 +64,12 @@ public class Taxonomy {
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
                     @JsonProperty("originalParent") String originalParent,
-                    @JsonProperty("originalTopic") String originalTopic,
+                    @JsonAlias("originalTopic") @JsonProperty("originalTerm") String originalTerm,
                     @JsonProperty("children") List<Taxonomy> children,
                     @JsonProperty("status") Status status) {
         this.root = root;
         this.originalParent = originalParent;
-        this.originalTopic = originalTopic;
+        this.originalTerm = originalTerm;
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
@@ -83,7 +93,7 @@ public class Taxonomy {
     }
 
     /**
-     * Get the string for the root topic
+     * Get the status of the relation between the root term and its parent
      * @return 
      */
     public Status getStatus() {
@@ -92,16 +102,45 @@ public class Taxonomy {
 
 
     /**
-     * Set the string for the root topic
+     * Set the status of the relation between the the root term and its parent
      * @return
      */
     public void setStatus(Status status) {
 
         this.status = status;
     }
+    
+    /**
+     * Traverse the taxonomy and modify the status of a parent-child relationship.
+     * 
+     * @param childTerm - the child term
+     * @param status - the new status
+     * @throws InvalidOperationException - thrown in case of a "rejected" status. Taxonomy is a single connected
+     *   component, therefore parent-child relations cannot be rejected.
+     */
+    public void setParentChildStatus(String childTerm, Status status) throws InvalidOperationException {
+    	/*
+    	 * 1 - If status = "rejected", reject the operation.
+    	 * 2 - Otherwise, traverse the taxonomy until finding "childTerm" then change the status of "childTerm"
+    	 */
+    	if (childTerm == null || childTerm.equals(""))
+    		throw new InvalidValueException("The child term cannot be empty or null.");
+    	if (status == null)
+    		throw new InvalidValueException("The status of parent-child relation cannot be null.");
+		if (status.equals(Status.rejected))
+			throw new InvalidOperationException("Parent-child relations cannot be rejected. Choose a new parent instead.");
+		
+		for(Taxonomy child: this.children) {
+			if (child.getRoot().equals(childTerm)) {
+				child.setStatus(status);
+			} else {
+				child.setParentChildStatus(childTerm, status);
+			}
+		}
+	}
 
     /**
-     * Get the string for the root topic
+     * Get the string for the root term
      * @return
      */
     public String getRoot() {
@@ -109,7 +148,7 @@ public class Taxonomy {
     }
 
     /**
-     * Set the string for the root topic
+     * Set the string for the root term
      * @return
      */
     public void setRoot(String root) {
@@ -173,15 +212,15 @@ public class Taxonomy {
     }
 
     /**
-     * Is the originalTopic value below the newParent in the taxonomy
-     * @param originalTopic The root value that may be in this taxonomy
+     * Is the originalTerm value below the newParent in the taxonomy
+     * @param originalTerm The root value that may be in this taxonomy
      * @return
      */
-    public boolean hasDescendentParent(String originalTopic) {
-        if(this.root.equals(originalTopic))
+    public boolean hasDescendentParent(String originalTerm) {
+        if(this.root.equals(originalTerm))
             return true;
         for(Taxonomy child : children) {
-            if(child.hasDescendent(originalTopic))
+            if(child.hasDescendent(originalTerm))
                 return true;
         }
         return false;
@@ -198,7 +237,7 @@ public class Taxonomy {
           if(this.root.equals(name)){
             return previousTaxo;
           }
-          for(Taxonomy child : children) {
+          for(Taxonomy child : this.getChildren()) {
               Taxonomy d = child.antecendent(name, previous, this, child);
               if (d != null)
                 return d;
@@ -207,34 +246,116 @@ public class Taxonomy {
     }
 
 
-
-
-
     /**
-     * Search this taxonomy for a taxonomy with a given root
-     * @param topic The name to search for
-     * @return A taxonomy whose root is name or null if no taxonomy is found
+     * Get the parent of a given term or {@code null} if child term does not exist in
+     * the taxonomy
+     * @param termChild - the child term
+     * @return a {@link String} representing the parent as in the taxonomy, or {@code null} if
+     * child does not exist
      */
-    public Taxonomy removeChild(String topic, Taxonomy taxonomy) {
-
-        List<Taxonomy> newChildren = new ArrayList<>();
-        Taxonomy parent = this.antecendent(topic, "", taxonomy, null);
-        for(Taxonomy childTaxo : taxonomy.getChildren()) {
-            if(!childTaxo.root.equals(parent.root)){
-                newChildren.add(childTaxo);
-            } else if (childTaxo.root.equals(parent.root)){
-                for(Taxonomy removal : parent.getChildren()) {
-
-                    if (!removal.root.equals(topic)) {
-                        newChildren.add(childTaxo);
-                    }
-                }
-            }
-
-        }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+    public Taxonomy getParent(String termChild) {
+    	
+    	if(termChild == null || termChild.equals(""))
+    		throw new InvalidValueException("term child cannot be null or empty");
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		if (child.getRoot().equals(termChild))
+    			return this;
+    		else {
+    			Taxonomy parent = child.getParent(termChild);
+    			if (parent != null)
+    				return parent;
+    		}
+    	}
+		return null;
+	}
+    
+    /**
+     * Update the parent of a given term
+     * 
+     * @param termChild - the term to be moved to a new parent
+     * @param termNewParent - the new parent term
+     * 
+     * @throws InvalidValueException - if any parameter is either {@code null} or an empty string
+     * @throws InvalidOperationException - if the new parent is a descendant of the termChild
+     * @throws RuntimeException - if either child or new parent term do not exist in this taxonomy
+     */
+    public void updateParent(String termChild, String termNewParent) {
+		/*
+		 * 1 - Verify if child exists, otherwise throw Exception
+		 * 2 - Find new parent. If parent is child of termChild then throw InvalidOperationException.
+		 * 3 - Remove termChild and its branch from older parent
+		 * 4 - Add termChild and its branch to the new parent.
+		 */
+    	
+    	if (termChild == null || termChild.equals(""))
+    		throw new InvalidValueException("The term child parameter cannot be null or empty");
+    	
+    	if (termNewParent == null || termNewParent.equals(""))
+    		throw new InvalidValueException("The new parent parameter cannot be null or empty");
+    	
+    	// 1 - Verify if child exists, otherwise throw Exception
+    	Taxonomy child = this.descendent(termChild);
+    	if (child == null)
+    		throw new RuntimeException("The child term '" + termChild + "' does not exist in this taxonomy");
+    	
+    	// 2 - Find new parent. If parent is child of termChild then throw InvalidOperationException.
+    	if (child.descendent(termNewParent) != null)
+    		throw new InvalidOperationException("The new parent '" + termNewParent + "' cannot be a descendent of the term '" + termChild+ "'.");
+    	Taxonomy newParent = this.descendent(termNewParent);
+    	if (newParent == null)
+    		throw new RuntimeException("The parent term '" + termNewParent + "' does not exist in this taxonomy");
+    	
+    	// 3 - Remove termChild and its branch from older parent
+    	Taxonomy oldParent = this.getParent(termChild);
+    	oldParent.removeChildBranch(termChild);
+    	
+    	// 4 - Add termChild and its branch to the new parent
+    	newParent.addChild(child);
     }
 
+    /**
+     * If a term exists in the taxonomy, remove it and move its children to the parent.
+     * 
+     * @param termString - the term to be removed
+     */
+    public void removeDescendent(String termString) {
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		if(child.getRoot().equals(termString)) {
+    			List<Taxonomy> newChildren = this.getChildren();
+    			for (Taxonomy grandchild: child.getChildren()) {
+    				newChildren.add(grandchild);
+    			}
+    			newChildren.remove(child);
+    			this.children = newChildren;
+    			return;
+    		} else {
+    			child.removeDescendent(termString);
+    		}
+    	}
+    }
+
+    /**
+     * Adds a taxonomy as child of this taxonomy node
+     * 
+     * @param child - the taxonomy to be added
+     * 
+     * @throws {@link InvalidValueException} - if the parameter is either null or an empty String root
+     * @throws {@link InvalidOperationException} - if there is already a term with same String root as
+     *  the one provided as parameter 
+     */
+    public void addChild(Taxonomy child) {
+    	
+    	if (child == null || child.getRoot().equals(""))
+    		throw new InvalidValueException("The child term cannot be empty or null.");
+    	
+    	if (this.hasDescendent(child.getRoot()))
+    		throw new InvalidOperationException("There is already a descendent with the specified term string value");
+    	else
+    		this.children.add(child);
+    }
+    
     /**
      * Search this taxonomy for a taxonomy with a given root
      * @param newParent The name to search for
@@ -252,7 +373,7 @@ public class Taxonomy {
 
         newChildren.add(child);
 
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
@@ -267,7 +388,7 @@ public class Taxonomy {
             for(Taxonomy childTaxo : this.getChildren()) {
                 newChildren.add(childTaxo);
             }
-            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
         }
 
         for(Taxonomy childTaxo : currentTaxo.getChildren()) {
@@ -276,15 +397,31 @@ public class Taxonomy {
             }
         }
         newChildren.add(child);
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
-
+    /**
+     * Remove a child term and all its branches, if the child exists
+     * 
+     * @param termString - the child to be removed
+     */
+    public void removeChildBranch(String termString) {
+    	
+    	if (termString == null || termString.equals(""))
+    		throw new InvalidValueException("The child term cannot be empty or null.");
+    	
+    	for(int i=0; i<this.children.size(); i++) {
+    		if (this.children.get(i).getRoot().equals(termString)) {
+    			this.children.remove(i);
+    			break;
+    		}
+    	}
+    }
 
     /**
-     * The size of the taxonomy (number of topics). Note this calculates the size 
+     * The size of the taxonomy (number of terms). Note this calculates the size 
      * and so takes O(N) time!
-     * @return The number of topics in the taxonomy
+     * @return The number of terms in the taxonomy
      */
     public int size() {
         int size = 1;
@@ -520,7 +657,7 @@ public class Taxonomy {
      * @return A new taxonomy instance
      */
     public Taxonomy withLinkScore(double linkScore) {
-        return new Taxonomy(this.root, this.score, linkScore, this.originalParent, this.originalTopic, this.children, this.status);
+        return new Taxonomy(this.root, this.score, linkScore, this.originalParent, this.originalTerm, this.children, this.status);
     }
         
     /**
@@ -532,7 +669,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             newChildren.add(t.deepCopy());
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
@@ -548,7 +685,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopy());
             }
             newChildren.add(newTaxo);
-            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
         }
 
         for(Taxonomy t : newParentTaxo.children) {
@@ -562,7 +699,7 @@ public class Taxonomy {
             }
         }
 
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
@@ -587,7 +724,7 @@ public class Taxonomy {
                     newChildren.add(t.deepCopyUpdatedTaxo(newParent, newTaxo, t));
             }
         }
-        return new Taxonomy(newParentTaxo.root, newParentTaxo.score, newParentTaxo.linkScore, newParentTaxo.originalParent, newParentTaxo.originalTopic, newChildren, newParentTaxo.status);
+        return new Taxonomy(newParentTaxo.root, newParentTaxo.score, newParentTaxo.linkScore, newParentTaxo.originalParent, newParentTaxo.originalTerm, newChildren, newParentTaxo.status);
     }
 
 
@@ -595,107 +732,107 @@ public class Taxonomy {
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopyNewParent(String topicString, String oldParent, String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
+    public Taxonomy deepCopyNewParent(String termString, String oldParent, String newParent, Taxonomy newTaxo, Taxonomy newParentTaxo) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
-            if (!t.root.equals(topicString)) {
+            if (!t.root.equals(termString)) {
                 if (t.root.equals(newParent)){
                     if (this.root.equals(newParent)) {
                         t.setStatus(Status.none);
                     }
                     for (Taxonomy newChild:newParentTaxo.children){
-                        if (newChild.root.equals(topicString)){
+                        if (newChild.root.equals(termString)){
                             t.children.add(newChild);
-                            newChildren.add(t.deepCopyNewParent(topicString, oldParent, newParent, newTaxo, newParentTaxo));
+                            newChildren.add(t.deepCopyNewParent(termString, oldParent, newParent, newTaxo, newParentTaxo));
                         }
                     }
 
                 } else {
-                    newChildren.add(t.deepCopyNewParent(topicString, oldParent, newParent, newTaxo, newParentTaxo));
+                    newChildren.add(t.deepCopyNewParent(termString, oldParent, newParent, newTaxo, newParentTaxo));
                 }
 
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopyNewTopic(String topicString, String newTopicString) {
+    public Taxonomy deepCopyNewTerm(String termString, String newTermString) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
-            if (!t.root.equals(topicString)) {
-                newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
+            if (!t.root.equals(termString)) {
+                newChildren.add(t.deepCopyNewTerm(termString, newTermString));
             } else {
-                t.setRoot(newTopicString);
-                newChildren.add(t.deepCopyNewTopic(topicString, newTopicString));
+                t.setRoot(newTermString);
+                newChildren.add(t.deepCopyNewTerm(termString, newTermString));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopySetTopicStatus(String topicString, Status status) {
+    public Taxonomy deepCopySetTermStatus(String termString, Status status) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
-            if (!t.root.equals(topicString)) {
-                newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+            if (!t.root.equals(termString)) {
+                newChildren.add(t.deepCopySetTermStatus(termString, status));
             } else {
-                t.setRoot(topicString);
-                newChildren.add(t.deepCopySetTopicStatus(topicString, status));
+                t.setRoot(termString);
+                newChildren.add(t.deepCopySetTermStatus(termString, status));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopySetTopicRelationshipStatus(String topicString, Status status) {
+    public Taxonomy deepCopySetTermRelationshipStatus(String termString, Status status) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
         for(Taxonomy t : children) {
 
-            if (!t.root.equals(topicString)) {
-                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
+            if (!t.root.equals(termString)) {
+                newChildren.add(t.deepCopySetTermRelationshipStatus(termString, status));
             } else {
                 t.setStatus(status);
-                newChildren.add(t.deepCopySetTopicRelationshipStatus(topicString, status));
+                newChildren.add(t.deepCopySetTermRelationshipStatus(termString, status));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
     }
 
     /**
      * Create a deep copy of this taxonomy
      * @return A copy of this taxonomy
      */
-    public Taxonomy deepCopyMoveChildTopics(String topicString, Taxonomy topic, Taxonomy topicParent) {
+    public Taxonomy deepCopyMoveChildTerms(String termString, Taxonomy term, Taxonomy termParent) {
 
         List<Taxonomy> newChildren = new ArrayList<>();
-        if (topic != null) {
-            for(Taxonomy t : topic.children) {
+        if (term != null) {
+            for(Taxonomy t : term.children) {
                 newChildren.add(t.deepCopy());
             }
-            for(Taxonomy t : topicParent.children) {
-                if (!t.root.equals(topicString)) {
+            for(Taxonomy t : termParent.children) {
+                if (!t.root.equals(termString)) {
                     newChildren.add(t.deepCopy());
                 }
             }
         }
 
-        return new Taxonomy(topicParent.root, topicParent.score, topicParent.linkScore, topicParent.originalParent, this.originalTopic, newChildren, this.status);
+        return new Taxonomy(termParent.root, termParent.score, termParent.linkScore, termParent.originalParent, this.originalTerm, newChildren, this.status);
     }
 
 
@@ -753,4 +890,47 @@ public class Taxonomy {
     public String toString() {
         return String.format("%s (%.4f) { %s }", root, score, children.toString());
     }
+    
+    public static class Builder{
+    	
+    	private Taxonomy taxonomy;
+    	
+    	public Builder() {
+    		taxonomy = new Taxonomy();
+    	}
+    	
+    	public Builder(Taxonomy taxonomy) {
+    		this.taxonomy = taxonomy;
+    	}
+    	
+    	public Builder root(String root) {
+    		taxonomy.root = root;
+    		return this;
+    	}
+    	
+    	public Builder originalParent(String originalParent) {
+    		taxonomy.originalParent = originalParent;
+    		return this;
+    	}
+    	
+    	public Builder originalTerm(String originalTerm) {
+    		taxonomy.originalTerm = originalTerm;
+    		return this;
+    	}
+    	
+    	public Builder status(Status status) {
+    		taxonomy.status = status;
+    		return this;
+    	}
+    	
+    	public Builder addChild(Taxonomy childBranch) {
+    		taxonomy.children.add(childBranch);
+    		
+    		return this;
+    	}
+    	
+    	public Taxonomy build() {
+    		return taxonomy;
+    	}
+	}
 }

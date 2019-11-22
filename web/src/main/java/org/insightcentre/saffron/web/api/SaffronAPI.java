@@ -1,70 +1,98 @@
 package org.insightcentre.saffron.web.api;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import javax.ws.rs.*;
-import javax.ws.rs.core.MediaType;
-
-import javax.ws.rs.core.Response;
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
 
-import com.google.gson.Gson;
-import com.mongodb.client.FindIterable;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.saffron.web.*;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.saffron.web.Executor;
+import org.insightcentre.saffron.web.Launcher;
+import org.insightcentre.saffron.web.SaffronService;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.mongodb.client.FindIterable;
 
 @Path("/api/v1/run")
 public class SaffronAPI {
 
     private final org.insightcentre.saffron.web.api.APIUtils APIUtils = new APIUtils();
+    protected final SaffronService saffronService;
+    protected final MongoDBHandler saffron;
+    protected final Launcher launcher;
+
+    public SaffronAPI() {
+        this.launcher = new Launcher();
+        this.saffron = this.launcher.saffron;
+        this.saffronService = new SaffronService(this.launcher.saffron);
+    }
+
 
     @GET
     @JSONP
     @Path("/{param}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRun(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> runs;
-        try {
-            runs = mongo.getTaxonomy(name);
-            for (Document doc : runs) {
-                return Response.ok(doc.toJson()).build();
-            }
-            mongo.close();
 
+        Taxonomy taxonomy;
+        try {
+
+            taxonomy = saffronService.getTaxonomy(name);
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonString = mapper.writeValueAsString(taxonomy);
+            return Response.ok(jsonString).build();
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
-
-        return Response.ok("OK").build();
-
     }
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAllRuns() {
         List<BaseResponse> runsResponse = new ArrayList<>();
-
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> runs;
+        List<SaffronRun> runs;
 
         try {
-            runs = mongo.getAllRuns();
+            runs = saffronService.getAllRuns();
 
-            for (Document doc : runs) {
+            for (SaffronRun doc : runs) {
                 BaseResponse entity = new BaseResponse();
-                entity.setId(doc.getString("id"));
-                entity.setRunDate(doc.getDate("run_date"));
+                entity.setId(doc.id);
+                entity.setRunDate(doc.runDate);
                 runsResponse.add(entity);
             }
-            mongo.close();
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
@@ -77,14 +105,7 @@ public class SaffronAPI {
     @DELETE
     @Path("/{param}")
     public Response deleteRun(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
-        //SaffronData.fromMongo(name);
-        mongo.deleteRun(name);
-
-        if (Launcher.home != null) {
-            Launcher.home.deleteSite(name);
-        }
-
+        saffronService.deleteRun(name);
         return Response.ok("Run " + name + " Deleted").build();
     }
 
@@ -107,35 +128,34 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics")
+    @Path("/{param}/terms")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getRunTopics(@PathParam("param") String runId) {
-        List<TopicResponse> topicsResponse = new ArrayList<>();
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> topics;
+    public Response getRunTerms(@PathParam("param") String runId) {
+        List<TermResponse> termsResponse = new ArrayList<>();
 
+        Iterable<Term> terms;
+        
         try {
-            topics = mongo.getTopics(runId);
+            terms = saffronService.getAllTerms(runId);
 
-            for (Document doc : topics) {
-                TopicResponse entity = new TopicResponse();
-                entity.setId(doc.getString("_id"));
-                entity.setMatches(doc.getInteger("matches"));
-                entity.setOccurrences(doc.getInteger("occurences"));
-                entity.setScore(doc.getDouble("score"));
-                entity.setTopicString(doc.getString("topicString"));
-                entity.setMvList((List<String>) doc.get("mvList"));
-                entity.setStatus(doc.getString("status"));
-                topicsResponse.add(entity);
+            for (Term doc: terms) {
+                TermResponse entity = new TermResponse();
+                entity.setId(doc.getString());
+                entity.setMatches(doc.getMatches());
+                entity.setOccurrences(doc.getOccurrences());
+                entity.setScore(doc.getScore());
+                entity.setTermString(doc.getString());
+                entity.setStatus(doc.getStatus().toString());
+                termsResponse.add(entity);
             }
 
-            mongo.close();
+            //saffron.close();
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
-        String json = new Gson().toJson(topicsResponse);
+        String json = new Gson().toJson(termsResponse);
         return Response.ok(json).build();
     }
 
@@ -145,23 +165,23 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSearch(@PathParam("param") String runId, @PathParam("term") String term) {
         List<SearchResponse> searchResponses = new ArrayList<>();
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> topics;
 
+        FindIterable<Document> terms;
+        
         try {
-            topics = mongo.searchTaxonomy(runId, term);
+            terms = saffron.searchTaxonomy(runId, term);
 
-            for (Document doc : topics) {
+            for (Document doc : terms) {
                 SearchResponse entity = new SearchResponse();
                 entity.setId(doc.getString("_id"));
                 entity.setLocation(doc.getString("document_id"));
-                entity.setTopicString(doc.getString("topic"));
+                entity.setTermString(doc.getString("term"));
 
                 searchResponses.add(entity);
 
             }
 
-            mongo.close();
+            //saffron.close();
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
@@ -173,25 +193,19 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics/{topic_id}/children")
+    @Path("/{param}/terms/{term_id}/children")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicChildren(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    public Response getTermChildren(@PathParam("param") String runId, @PathParam("term_id") String termId) {
+
 
         try {
 
             Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 
-            FindIterable<Document> runs = mongo.getTaxonomy(runId);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+            originalTaxo = saffronService.getTaxonomy(runId);
 
-            }
-
-            Taxonomy descendent = originalTaxo.descendent(topic_id);
+            Taxonomy descendent = originalTaxo.descendent(termId);
             String json = new Gson().toJson(descendent);
-            mongo.close();
             return Response.ok(json).build();
 
         } catch (Exception e) {
@@ -204,117 +218,86 @@ public class SaffronAPI {
 
     @GET
     @JSONP
-    @Path("/{param}/topics/{topic_id}/parent")
+    @Path("/{param}/terms/{term_id}/parent")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicParent(@PathParam("param") String runId, @PathParam("topic_id") String topic_id) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    public Response getTermParent(@PathParam("param") String runId, @PathParam("term_id") String termId) {
+
 
         try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            FindIterable<Document> runs = mongo.getTaxonomy(runId);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
-            }
-            Taxonomy antecendent = originalTaxo.antecendent(topic_id, "", originalTaxo, null);
-            String json = new Gson().toJson(antecendent);
-            mongo.close();
+            Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
+            Taxonomy antecendent = originalTaxo.antecendent(termId, "", originalTaxo, null);
+            Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
+            String json = gson.toJson(antecendent);
             return Response.ok(json).build();
 
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
         }
 
     }
 
-    private MongoDBHandler getMongoDBHandler() {
-        String mongoUrl = System.getenv("MONGO_URL");
-        if (mongoUrl == null) {
-            mongoUrl = "localhost";
-        }
-        String mongoPort = System.getenv("MONGO_PORT");
-        if (mongoPort == null) {
-            mongoPort = "27017";
-        }
-        String mongoDbName = System.getenv("MONGO_DB_NAME");
-        if (mongoDbName == null) {
-            mongoDbName = "saffron_test";
-        }
-        return new MongoDBHandler(mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
-    }
+
 
     @DELETE
     @JSONP
-    @Path("/{param}/topics/{topic_id}")
+    @Path("/{param}/terms/{term_id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response deleteTopic(@PathParam("param") String name,
-            @PathParam("topic_id") String topicId) {
+    public Response deleteTerm(@PathParam("param") String name,
+            @PathParam("term_id") String termId) {
 
-        MongoDBHandler mongo = getMongoDBHandler();
-        List<TopicResponse> topicsResponse = new ArrayList<>();
-        TopicsResponse resp = new TopicsResponse();
-        FindIterable<Document> topics;
+        saffronService.deleteTerm(name, termId);
 
-        topics = mongo.deleteTopic(name, topicId);
-
-        return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
+        return Response.ok("Term " + name + " " + termId + " Deleted").build();
     }
 
     @POST
     @JSONP
-    @Path("/{param}/topics/{topic_id}/{topic_id2}/{status}")
+    @Path("/{param}/terms/{term_id}/{term_id2}/{status}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response rejectTopic(@PathParam("param") String name,
-            @PathParam("topic_id") String topicId,
-            @PathParam("topic_id") String topic_id2,
+    public Response rejectTerm(@PathParam("param") String name,
+            @PathParam("term_id") String termId,
+            @PathParam("term_id") String termId2,
             @PathParam("status") String status) {
 
-        MongoDBHandler mongo = getMongoDBHandler();
+        
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-        FindIterable<Document> runs = mongo.getTaxonomy(name);
+        Taxonomy originalTaxo = saffronService.getTaxonomy(name);
 
         try {
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                Taxonomy originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
 
-                if (status.equals("rejected")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.rejected);
-                } else if (status.equals("accepted")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.accepted);
-                } else if (status.equals("none")) {
-                    finalTaxon = originalTaxo.deepCopySetTopicStatus(topicId, Status.none);
-                }
-
-                mongo.updateTopic(name, topicId, status);
-                mongo.updateTopicSimilarity(name, topicId, topic_id2, status);
+            if (status.equals("rejected")) {
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.rejected);
+            } else if (status.equals("accepted")) {
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.accepted);
+            } else if (status.equals("none")) {
+                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.none);
             }
-
-            mongo.updateTaxonomy(name, new Date(), finalTaxon);
-            mongo.close();
+            saffronService.updateTerm(name, termId, status);
+            saffron.updateTermSimilarity(name, termId, termId2, status);
+            saffronService.updateTaxonomy(name, finalTaxon);
+            //saffron.close();
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topicId + " from the taxonomy " + name);
+            System.err.println("Failed to reject the term " + termId + " from the taxonomy " + name);
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
 
         }
-        return Response.ok("Topic " + name + " " + topicId + " Deleted").build();
+        return Response.ok("Term " + name + " " + termId + " Deleted").build();
     }
 
     @POST
-    @Path("/{param}/topics")
+    @Path("/{param}/terms")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postDeleteManyTopics(@PathParam("param") String name, InputStream incomingData) {
+    public Response postDeleteManyTerms(@PathParam("param") String name, InputStream incomingData) {
 
-        MongoDBHandler mongo = getMongoDBHandler();
+        
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        FindIterable<Document> topics;
+        FindIterable<Document> terms;
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
         Iterator<String> keys = jsonObj.keys();
         while (keys.hasNext()) {
@@ -322,264 +305,202 @@ public class SaffronAPI {
             JSONArray obj = (JSONArray) jsonObj.get(key);
             for (int i = 0; i < obj.length(); i++) {
                 JSONObject json = obj.getJSONObject(i);
-                mongo.deleteTopic(name, json.get("id").toString());
+                saffronService.deleteTerm(name, json.get("id").toString());
             }
         }
-        return Response.ok("Topics " + jsonObj + " Deleted").build();
+        return Response.ok("Terms " + jsonObj + " Deleted").build();
     }
 
     @POST
-    @Path("/{param}/topics/changeroot")
+    @Path("/{param}/terms/changeroot")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response postChangeTopicRoot(@PathParam("param") String name, InputStream incomingData) {
+    public Response postChangeTermRoot(@PathParam("param") String runId, InputStream incomingData) {
 
-        MongoDBHandler mongo = getMongoDBHandler();
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-
+    	List<Pair<String,String>> childNewParentList = new ArrayList<Pair<String,String>>();
+        
+    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
 
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
         Iterator<String> keys = jsonRqObj.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
+            JSONArray obj = (JSONArray) jsonRqObj.get(key);
+            for (int i = 0; i < obj.length(); i++) {
+                JSONObject json = obj.getJSONObject(i);
+                String termString = json.get("id").toString();
+                String newParentString = json.get("new_parent").toString();
+                //FIXME Current parent does not really matter
+                String oldParentString = json.get("current_parent").toString();
 
-        try {
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            FindIterable<Document> runs = mongo.getTaxonomy(name);
-            for (org.bson.Document doc : runs) {
-                JSONObject jsonObj = new JSONObject(doc.toJson());
-                originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-
+                childNewParentList.add(new ImmutablePair<String,String>(termString, newParentString));
             }
-            JSONObject returnJson = new JSONObject();
-
-            JSONArray returnJsonArray = new JSONArray();
-            while (keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicString = json.get("id").toString();
-                    String newTopicString = json.get("new_id").toString();
-                    String newParentString = json.get("new_parent").toString();
-                    String oldParentString = json.get("current_parent").toString();
-
-                    if (!newParentString.equals(oldParentString)) {
-                        // If we are at top root, just use the resulting taxonomy
-
-                        Taxonomy topic = originalTaxo.descendent(topicString);
-                        Taxonomy newParent = originalTaxo.descendent(newParentString);
-                        if (topic.hasDescendentParent(newParentString)) {
-                            return Response.status(Response.Status.BAD_REQUEST).entity("The selected move parent target is a member of a child topic and cannot be moved").build();
-                        }
-
-                        newParent = newParent.addChild(topic, newParent, oldParentString);
-                        finalTaxon = originalTaxo.deepCopyNewParent(topicString, oldParentString, newParentString, topic, newParent);
-                        finalTaxon = finalTaxon.deepCopyNewTaxo(newParentString, topic, finalTaxon);
-                        //finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(newParentString, Status.accepted);
-                        finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicString, Status.accepted);
-                        returnJson.put("id", name);
-                        returnJson.put("success", true);
-                        returnJson.put("new_parent", newParentString);
-                        returnJsonArray.put(returnJson);
-                        mongo.updateTopic(name, topicString, "accepted");
-                    } else {
-                        Taxonomy topic = originalTaxo.descendent(topicString);
-                        topic.setRoot(newTopicString);
-                        finalTaxon = originalTaxo.deepCopyNewTopic(topicString, newTopicString);
-                        finalTaxon.originalParent = oldParentString;
-                        finalTaxon.originalTopic = topicString;
-                        mongo.updateTopicName(name, topicString, newTopicString, "accepted");
-                        mongo.updateTopicSimilarityName(name, topicString, newTopicString, "accepted");
-                        mongo.updateAuthorTopicName(name, topicString, newTopicString, "accepted");
-                        mongo.updateDocumentTopicName(name, topicString, newTopicString, "accepted");
-                        returnJson.put("id", name);
-                        returnJson.put("success", true);
-                        returnJson.put("new_id", newTopicString);
-                        returnJsonArray.put(returnJson);
-                    }
-
-                }
-            }
-            mongo.updateTaxonomy(name, new Date(), finalTaxon);
-            mongo.close();
-            return Response.ok(returnJsonArray.toString()).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
-
         }
 
+        try {
+            saffronService.updateParent(runId, childNewParentList);
+        } catch (Exception e) {
+        	e.printStackTrace();
+        	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+        }
+
+        //build answer
+        return Response.ok("All parents successfully updated").build();
     }
+
 
     @POST
     @JSONP
-    @Path("/{param}/topics/update")
+    @Path("/{param}/terms/update")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopic(@PathParam("param") String name, InputStream incomingData) {
+    public Response updateTerm(@PathParam("param") String runId, InputStream incomingData) {
 
-        MongoDBHandler mongo = getMongoDBHandler();
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+    	/*
+    	 * 1 - Read and validate JSON input
+    	 * 2 - If everything is ok continue, otherwise send an error code
+    	 * 3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how the changes are made.
+    	 * 4 - If everything is ok return an OK code, otherwise send an error code
+    	*/
 
-        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-        Iterator<String> keys = jsonRqObj.keys();
+    	//1 - Read and validate JSON input
+    	/*List<Term> terms = null;
+		try {
+			terms = Arrays.asList(new ObjectMapper().readValue(incomingData, Term[].class));
+		} catch (Exception e) {
+			//2 - If everything is ok continue, otherwise send an error code
+			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
+		}*/
 
-        try {
+    	List<Term> terms = new ArrayList<Term>();
 
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
+    	JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+    	Iterator<String> keys = jsonRqObj.keys();
+    	while (keys.hasNext()) {
+    		String key = keys.next();
 
-            while (keys.hasNext()) {
-                String key = keys.next();
+	    	JSONArray obj = (JSONArray) jsonRqObj.get(key);
+	    	for (int i = 0; i < obj.length(); i++) {
+	    		JSONObject json = obj.getJSONObject(i);
+                String termString = json.get("term").toString();
+                String status = json.get("status").toString();
+                try {
+                	terms.add(new Term.Builder(termString).status(Status.valueOf(status)).build());
+                } catch (Exception e) {
+        			//2 - If everything is ok continue, otherwise send an error code
+        			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
+        		}
+	    	}
+    	}
 
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicString = json.get("topic").toString();
-                    String status = json.get("status").toString();
-                    FindIterable<Document> runs = mongo.getTaxonomy(name);
-                    for (org.bson.Document doc : runs) {
-                        JSONObject jsonObj = new JSONObject(doc.toJson());
-                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
+		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
+    	try {
+    		saffronService.updateTermStatus(runId, terms);
+    	} catch (Exception e) {
+    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+    	}
 
-                    }
-                    Taxonomy topic = originalTaxo.descendent(topicString);
-                    Taxonomy topicParent = originalTaxo.antecendent(topicString, "", topic, null);
-//                    if (!status.equals("none")) {
-                    if (status.equals("rejected")) {
-
-                        finalTaxon = originalTaxo.deepCopyMoveChildTopics(topicString, topic, topicParent);
-                        // If we are at top root, just use the resulting taxonomy
-                        if (!finalTaxon.root.equals(originalTaxo.root)) {
-                            finalTaxon = finalTaxon.deepCopyUpdatedTaxo(topicString, finalTaxon, originalTaxo);
-                        }
-
-                    } else {
-                        finalTaxon = originalTaxo.deepCopySetTopicStatus(topicString, Status.accepted);
-                    }
-                    mongo.updateTopic(name, topicString, status);
-                    mongo.updateTaxonomy(name, new Date(), finalTaxon);
-//                    }
-                }
-            }
-
-            mongo.close();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
-
-        }
-
-        return Response.ok("Topics for run ID: " + name + " Updated").build();
+		//4 - If everything is ok return an OK code, otherwise send an error code
+		return Response.ok("Terms for run ID: " + runId + " Updated").build();
     }
 
-    @POST
+	@POST
     @JSONP
-    @Path("/{param}/topics/updaterelationship")
+    @Path("/{param}/terms/updaterelationship")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response updateTopicRelationship(@PathParam("param") String name, InputStream incomingData) {
+    public Response updateTermRelationship(@PathParam("param") String runId, InputStream incomingData) {
+		/*
+		 * 1 - Read and validate JSON input
+		 * 2 - If everything is ok, continue, otherwise send a code error
+		 * 3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how the changes are made.)
+		 * 4 - If everything is ok return an OK code, otherwise send an error code
+		 */
 
-        MongoDBHandler mongo = getMongoDBHandler();
-        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+		//1 - Read and validate JSON input
 
+		List<Pair<String,String>> parentChildStatusList = new ArrayList<Pair<String,String>>();
+
+		StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
+
         Iterator<String> keys = jsonRqObj.keys();
+        while (keys.hasNext()) {
+            String key = keys.next();
 
-        try {
+            try {
+	            JSONArray obj = (JSONArray) jsonRqObj.get(key);
+	            for (int i = 0; i < obj.length(); i++) {
+	            	JSONObject json = obj.getJSONObject(i);
+	                String termChild = json.get("term_child").toString();
+	                //FIXME: getting the current parent is irrelevant, unless we are considering concurrent requests, which we are not
+	                String status = json.get("status").toString();
 
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            while (keys.hasNext()) {
-                String key = keys.next();
-
-                JSONArray obj = (JSONArray) jsonRqObj.get(key);
-                for (int i = 0; i < obj.length(); i++) {
-                    JSONObject json = obj.getJSONObject(i);
-                    String topicChild = json.get("topic_child").toString();
-                    String topicParent = json.get("topic_parent").toString();
-                    String status = json.get("status").toString();
-                    FindIterable<Document> runs = mongo.getTaxonomy(name);
-                    for (org.bson.Document doc : runs) {
-                        JSONObject jsonObj = new JSONObject(doc.toJson());
-                        originalTaxo = Taxonomy.fromJsonString(jsonObj.toString());
-                    }
-                    if (!status.equals(Status.rejected.toString())) {
-                        if (status.equals(Status.accepted.toString())) {
-                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.accepted);
-                            mongo.updateTopic(name, topicChild, status);
-                        } else {
-                            finalTaxon = originalTaxo.deepCopySetTopicRelationshipStatus(topicChild, Status.none);
-                            mongo.updateTopic(name, topicChild, "none");
-                            finalTaxon = finalTaxon.deepCopySetTopicRelationshipStatus(topicParent, Status.none);
-                        }
-                        mongo.updateTaxonomy(name, new Date(), finalTaxon);
-
-                    }
-
-                }
+	                parentChildStatusList.add(new ImmutablePair<String,String>(termChild, status));
+	            }
+            } catch (Exception e) {
+            	//2 - If everything is ok continue, otherwise send an error code
+    			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
             }
-
-            mongo.close();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to update topic").build();
-
         }
 
-        return Response.ok("Topics for run ID: " + name + " Updated").build();
+        //3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how/if changes are made).
+    	try {
+    		saffronService.updateParentRelationshipStatus(runId, parentChildStatusList);
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+    	}
+
+    	//4 - If everything is ok return an OK code, otherwise send an error code
+        return Response.ok("Terms for run ID: " + runId + " Updated").build();
     }
 
     @PUT
-    @Path("/{param}/topics/{topic_id}")
+    @Path("/{param}/terms/{term_id}")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.TEXT_PLAIN)
-    public Response putNewTopic(InputStream incomingData) {
+    public Response putNewTerm(InputStream incomingData) {
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-        return Response.ok("Topics " + crunchifyBuilder.toString() + " Deleted").build();
+        return Response.ok("Terms " + crunchifyBuilder.toString() + " Deleted").build();
     }
 
     @GET
-    @Path("/{param}/authortopics/")
-    public Response getAuthorTopics(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/authorterms/")
+    public Response getAuthorTerms(@PathParam("param") String name) {
+
         FindIterable<Document> runs;
-        List<AuthorTopicsResponse> topicsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
-            runs = mongo.getAuthorTopics(name);
-            APIUtils.populateAuthorTopicsResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getAuthorTerms(name);
+            APIUtils.populateAuthorTermsResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author topics").build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author terms").build();
         }
 
     }
 
     @GET
-    @Path("/{param}/authortopics/{topic_id}")
-    public Response getAuthorTopics(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/authorterms/{term_id}")
+    public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
+
         FindIterable<Document> runs;
-        List<AuthorTopicsResponse> topicsResponse = new ArrayList<>();
-        AuthorsTopicsResponse returnEntity = new AuthorsTopicsResponse();
+        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
+        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
         try {
-            runs = mongo.getAuthorTopicsForTopic(name, topicId);
-            APIUtils.populateAuthorTopicsResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getAuthorTermsForTerm(name, termId);
+            APIUtils.populateAuthorTermsResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -594,15 +515,15 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/authorsimilarity/")
     public Response getAuthorSimilarity(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
+
         FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> topicsResponse = new ArrayList<>();
+        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
         try {
-            runs = mongo.getAuthorSimilarity(name);
-            APIUtils.populateAuthorSimilarityResponse(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getAuthorSimilarity(name);
+            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -616,17 +537,17 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/authorsimilarity/{topic1}/{topic2}")
-    public Response getAuthorSimilarityForTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/authorsimilarity/{term1}/{term2}")
+    public Response getAuthorSimilarityForTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
+
         FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> topicsResponse = new ArrayList<>();
+        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
         try {
-            runs = mongo.getAuthorSimilarityForTopic(name, topic1, topic2);
-            APIUtils.populateAuthorSimilarityResponse(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
+            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -640,17 +561,17 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topiccorrespondence/")
-    public Response getTopicCorrespondence(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/termcorrespondence/")
+    public Response getTermCorrespondence(@PathParam("param") String name) {
+
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
-            runs = mongo.getDocumentTopicCorrespondence(name);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getDocumentTermCorrespondence(name);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -664,17 +585,17 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topiccorrespondence/{topic_id}")
-    public Response getTopicCorrespondenceForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/termcorrespondence/{term_id}")
+    public Response getTermCorrespondenceForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
+
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
         try {
-            runs = mongo.getDocumentTopicCorrespondenceForTopic(name, topicId);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -689,16 +610,44 @@ public class SaffronAPI {
 
     @GET
     @Path("/{param}/docs/{document_id}")
-    public Response getTopicCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    public Response getTermCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+
         FindIterable<Document> runs;
-        List<TopicCorrespondenceResponse> topicsResponse = new ArrayList<>();
-        TopicsCorrespondenceResponse returnEntity = new TopicsCorrespondenceResponse();
+        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
+        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
+        
         try {
-            runs = mongo.getDocumentTopicCorrespondenceForDocument(name, documentId);
-            APIUtils.populateTopicCorrespondenceResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
+            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
+            String json = new Gson().toJson(returnEntity);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok("OK").build();
+
+    }
+
+
+
+
+    @GET
+    @Path("/{param}/termextraction/")
+    public Response getTermExtraction(@PathParam("param") String name) {
+
+        FindIterable<Document> runs;
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
+        try {
+            runs = saffron.getTermExtraction(name);
+            APIUtils.populateTermExtractionResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -712,17 +661,17 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicextraction/")
-    public Response getTopicExtraction(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    @Path("/{param}/termextraction/{term_id}")
+    public Response getTermExtractionForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
+
         FindIterable<Document> runs;
-        List<TopicExtractionResponse> topicsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
+        List<TermExtractionResponse> termsResponse = new ArrayList<>();
+        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
         try {
-            runs = mongo.getTopicExtraction(name);
-            APIUtils.populateTopicExtractionResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            runs = saffron.getTermExtractionForTerm(name, termId);
+            APIUtils.populateTermExtractionResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
 
@@ -736,54 +685,30 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicextraction/{topic_id}")
-    public Response getTopicExtractionForTopic(@PathParam("param") String name, @PathParam("topic_id") String topicId) {
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> runs;
-        List<TopicExtractionResponse> topicsResponse = new ArrayList<>();
-        TopicsExtractionResponse returnEntity = new TopicsExtractionResponse();
-        try {
-            runs = mongo.getTopicExtractionForTopic(name, topicId);
-            APIUtils.populateTopicExtractionResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
-            String json = new Gson().toJson(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-        }
-
-        return Response.ok("OK").build();
-
-    }
-
-    @GET
-    @Path("/{param}/topicsimilarity/")
+    @Path("/{param}/termsimilarity/")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarity(@PathParam("param") String name) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    public Response getTermSimilarity(@PathParam("param") String name) {
+
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
-            runs = mongo.getTopicsSimilarity(name);
+            runs = saffron.getTermsSimilarity(name);
 
             for (Document doc : runs) {
 
-                TopicSimilarityResponse entity = new TopicSimilarityResponse();
+                TermSimilarityResponse entity = new TermSimilarityResponse();
                 entity.setId(doc.get("_id").toString());
                 entity.setRun(doc.getString("run"));
                 entity.setRunDate(doc.getDate("run_date"));
                 entity.setSimilarity(doc.getDouble("similarity"));
-                entity.setTopicString1(doc.getString("topic1"));
-                entity.setTopicString2(doc.getString("topic2"));
+                entity.setTermString1(doc.getString("term1"));
+                entity.setTermString2(doc.getString("term2"));
 
-                topicsResponse.add(entity);
+                termsResponse.add(entity);
             }
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
 
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -798,19 +723,19 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicsimilarity/{topic1}/{topic2}")
+    @Path("/{param}/termsimilarity/{term1}/{term2}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarityBetweenTopics(@PathParam("param") String name, @PathParam("topic1") String topic1, @PathParam("topic2") String topic2) {
-        MongoDBHandler mongo = getMongoDBHandler();
-        FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
-        try {
-            runs = mongo.getTopicsSimilarityBetweenTopics(name, topic1, topic2);
+    public Response getTermSimilarityBetweenTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
 
-            APIUtils.populateTopicSimilarityResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+        FindIterable<Document> runs;
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
+        try {
+            runs = saffron.getTermsSimilarityBetweenTerms(name, term1, term2);
+
+            APIUtils.populateTermSimilarityResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
 
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -825,19 +750,18 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/topicsimilarity/{topic}")
+    @Path("/{param}/termsimilarity/{term}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getTopicSimilarityForTopic(@PathParam("param") String name, @PathParam("topic") String topic) {
-        MongoDBHandler mongo = getMongoDBHandler();
+    public Response getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term) {
         FindIterable<Document> runs;
-        List<TopicSimilarityResponse> topicsResponse = new ArrayList<>();
-        TopicsSimilarityResponse returnEntity = new TopicsSimilarityResponse();
+        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
+        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
-            runs = mongo.getTopicsSimilarityForTopic(name, topic);
+            runs = saffron.getTermsSimilarityForTerm(name, term);
 
-            APIUtils.populateTopicSimilarityResp(runs, topicsResponse);
-            returnEntity.setTopics(topicsResponse);
-            mongo.close();
+            APIUtils.populateTermSimilarityResp(runs, termsResponse);
+            returnEntity.setTerms(termsResponse);
+            //saffron.close();
 
             String json = new Gson().toJson(returnEntity);
             return Response.ok(json).build();
@@ -893,6 +817,66 @@ public class SaffronAPI {
         } else {
             return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
         }
+    }
+
+
+    @GET
+    @Path("/{param}/docs")
+    public Response getOriginalDocuments(@PathParam("param") String name) {
+
+        HashMap<String, String> runs;
+        String file = "";
+        try {
+            runs = saffron.getCorpusFiles(name);
+            List <HashMap<String, String>> returnList = new ArrayList<>();
+            runs.forEach((k,v)->{
+                HashMap<String, String> item = new HashMap<>();
+                item.put(k, v);
+                returnList.add(item);
+            });
+            Gson gson = new Gson();
+            String json = gson.toJson(returnList);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to get documents from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok(file).build();
+
+    }
+
+    @GET
+    @Path("/{param}/docs/doc/{document_id}")
+    public Response getOriginalDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+
+        FindIterable<Document> runs;
+        String file = "";
+        
+        try {
+            runs = saffron.getCorpus(name);
+
+            for (Document doc : runs) {
+                List documents = (ArrayList)doc.get("documents");
+                for (Object text : documents) {
+                    String json = new Gson().toJson(text);
+
+                    JSONObject jsonObj = new JSONObject(json);
+                    if (jsonObj.get("id").equals(documentId)) {
+                        file = jsonObj.get("contents").toString();
+                    }
+                }
+            }
+            return Response.ok(file).build();
+
+        } catch (Exception x) {
+            x.printStackTrace();
+            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+        }
+
+        return Response.ok(file).build();
+
     }
 
     @GET

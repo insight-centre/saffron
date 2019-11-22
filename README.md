@@ -39,37 +39,50 @@ following script
 
     ./install.sh
 
-Running
--------
+It also integrates on Mongo DB to store the data.
 
-Web Interface without MongoDB integration
-=========================================
-
-To start the Saffron Web server simply choose a directory for Saffron to create
-the models and run the command as follows
-
-    ./saffron-web.sh
-
-Then open the following url in a browser 
-
-    http://localhost:8080/
-
-Web Interface with Mongo DB integration 
-=======================================
 
 Install MongoDB with the defaults set and start up. Once started, open a Mongo 
-session by typing 'mongo' on a terminal. Create a saffron database by typing:
+session by typing 'mongo' on a terminal. 
 
-    use saffron
-
-To change the Mongo HOST and PORT, simply edit the following file
+A database "saffron-test" will automatically be created. To rename it or to store results in different databases, edit the following file: 
 
     ./saffron-web.sh
-    
-And edit the following:
+
+and change the following line to the name wanted
+
+    export MONGO_DB_NAME=saffron_test
+
+
+To change the Mongo HOST and PORT, simply edit the same file on the following:
 
     export MONGO_URL=localhost
     export MONGO_PORT=27017
+    
+By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to true: 
+    
+    export STORE_LOCAL_COPY=false
+
+Upgrading from version 3.3 to 3.4
+------
+
+Before starting Saffron, edit the following file:
+
+	upgrade3.3To3.4.sh
+	
+and change the following configurations to reflect the database you want to upgrade:
+  
+	export MONGO_URL=localhost
+    export MONGO_PORT=27017
+    export MONGO_DB_NAME=saffron_test
+    
+Run the script by executing:
+
+	./upgrade3.3To3.4.sh
+
+Running
+-------
+
 
 Start the Saffron Web server simply choose a directory for Saffron to create
 the models and run the command as follows
@@ -101,21 +114,17 @@ For example
 
 The following results are generated
 
-* `corpus-unconsolidated.json`: The unconsolidated corpus metadata
-* `domain-model.json`: The domain model (domain specific keywords)
 * `topics-extracted.json`: The initial unfiltered list of extracted topics
-* `doc-topics-extracted.json`: The connection of these topics to documents
-* `corpus.json`: The corpus metadata
-* `topics-dbpedia.json`: The topics with DBpedia links
 * `doc-topics.json`: The document topic map with weights
 * `topics.json`: The topics with weights (and DBpedia links)
 * `author-topics.json`: The connection between authors and topics
 * `topic-sim.json`: The topic-topic similarity graph
 * `author-sim.json`: The author-author similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
+* `config.json`: the configuration file for the run
  
 
-To create a .dot file, use the command line:
+To create a .dot file, you can use the command line:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
@@ -129,11 +138,12 @@ Documentation
 
 The JavaDoc is available at https://saffron.pages.insight-centre.org/saffron/
 
+The Wiki describes the web interface of the review mode https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode
+
 API Documentation
 =================
 
 For full API documentation, see here:
 
 https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
-
 

@@ -1,8 +1,11 @@
 package org.insightcentre.saffron.web.mongodb;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.InstanceCreator;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -10,7 +13,11 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
-import com.mongodb.client.model.Updates;
+import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSInputFile;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.combine;
@@ -18,55 +25,721 @@ import static com.mongodb.client.model.Updates.set;
 
 import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
+import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.saffron.web.SaffronDataSource;
+import org.insightcentre.saffron.web.api.TaxonomyUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.simple.parser.JSONParser;
 
-import java.io.Closeable;
-import java.io.File;
-import java.io.IOException;
+import javax.print.Doc;
+import javax.servlet.http.HttpServlet;
+import java.io.*;
+import java.lang.reflect.Type;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
-public class MongoDBHandler implements Closeable {
+public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
-    private final String url;
-    private final int port;
-    private String dbName;
-    private final String collectionName;
-    private final MongoClient mongoClient;
-    private final MongoDatabase database;
-    private final MongoCollection runCollection;
-    private final MongoCollection topicsCollection;
-    private final MongoCollection topicsCorrespondenceCollection;
-    private final MongoCollection topicsExtractionCollection;
-    private final MongoCollection authorTopicsCollection;
-    private final MongoCollection topicsSimilarityCollection;
-    private final MongoCollection authorSimilarityCollection;
-    private final MongoCollection taxonomyCollection;
-    private final MongoCollection corpusCollection;
+    final String host;
+    final int port;
+    String dbName;
+    final String collectionName;
+    MongoClient mongoClient;
+    final MongoDatabase database;
+    final MongoCollection runCollection;
+    final MongoCollection termsCollection;
+    final MongoCollection termsCorrespondenceCollection;
+    final MongoCollection termsExtractionCollection;
+    final MongoCollection authorTermsCollection;
+    final MongoCollection termsSimilarityCollection;
+    final MongoCollection authorSimilarityCollection;
+    final MongoCollection taxonomyCollection;
+    final MongoCollection corpusCollection;
 
-    public MongoDBHandler(String url, int port, String dbName, String collectionName) {
-        this.url = url;
-        this.port = port;
-        this.dbName = dbName;
-        this.collectionName = collectionName;
-        this.mongoClient = new MongoClient(url, port);
+    private final Map<String, MongoDBHandler.SaffronDataImpl> data = new HashMap<>();
+
+    public final String type = "mongodb";
+
+    static String mongoHost = System.getenv("MONGO_HOST");
+    static String mongoPort = System.getenv("MONGO_PORT");
+    static String mongoDbName = System.getenv("MONGO_DB_NAME");
+
+    private static class SaffronDataImpl {
+
+        private Taxonomy taxonomy;
+        private List<AuthorAuthor> authorSim;
+        private List<TermTerm> termSim;
+        private List<AuthorTerm> authorTerms;
+        private List<DocumentTerm> docTerms;
+        private HashMap<String, Term> terms;
+        private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
+        private HashMap<String, List<TermTerm>> termByTerm1, termByTerm2;
+        private HashMap<String, List<DocumentTerm>> docByTerm, termByDoc;
+        private HashMap<String, List<AuthorTerm>> authorByTerm, termByAuthor;
+        private List<String> termsSorted;
+        private HashMap<String, org.insightcentre.nlp.saffron.data.Document> corpus;
+        private HashMap<String, List<org.insightcentre.nlp.saffron.data.Document>> corpusByAuthor;
+        private HashMap<String, Author> authors;
+        private HashMap<String, IntList> taxoMap;
+        private DocumentSearcher searcher;
+        private final String id;
+
+        public SaffronDataImpl(String id) {
+            this.id = id;
+        }
+
+        public Taxonomy getTaxonomy() {
+            return taxonomy;
+        }
+
+        public void setTaxonomy(Taxonomy taxonomy) {
+            this.taxonomy = taxonomy;
+            this.taxoMap = getTaxoLocations(taxonomy);
+        }
+
+        public List<AuthorAuthor> getAuthorSim() {
+            return authorSim;
+        }
+
+        public void setAuthorSim(List<AuthorAuthor> authorSim) {
+            authorByAuthor1 = new HashMap<>();
+            authorByAuthor2 = new HashMap<>();
+            for (AuthorAuthor aa : authorSim) {
+                if (!authorByAuthor1.containsKey(aa.author1_id)) {
+                    authorByAuthor1.put(aa.author1_id, new ArrayList<AuthorAuthor>());
+                }
+                authorByAuthor1.get(aa.author1_id).add(aa);
+                if (!authorByAuthor2.containsKey(aa.author2_id)) {
+                    authorByAuthor2.put(aa.author2_id, new ArrayList<AuthorAuthor>());
+                }
+                authorByAuthor2.get(aa.author2_id).add(aa);
+            }
+
+            this.authorSim = authorSim;
+        }
+
+        public List<AuthorAuthor> getAuthorSimByAuthor1(String author1) {
+            List<AuthorAuthor> aas = authorByAuthor1.get(author1);
+            return aas == null ? Collections.EMPTY_LIST : aas;
+        }
+
+        public List<AuthorAuthor> getAuthorSimByAuthor2(String author2) {
+            List<AuthorAuthor> aas = authorByAuthor2.get(author2);
+            return aas == null ? Collections.EMPTY_LIST : aas;
+        }
+
+        public List<Author> authorAuthorToAuthor1(List<AuthorAuthor> aas) {
+            List<Author> as = new ArrayList<>();
+            for (AuthorAuthor aa : aas) {
+                Author a = getAuthor(aa.author1_id);
+                if (a != null) {
+                    as.add(a);
+                }
+            }
+            return as;
+        }
+
+        public List<Author> authorAuthorToAuthor2(List<AuthorAuthor> aas) {
+            List<Author> as = new ArrayList<>();
+            for (AuthorAuthor aa : aas) {
+                Author a = getAuthor(aa.author2_id);
+                if (a != null) {
+                    as.add(a);
+                }
+            }
+            return as;
+        }
+
+        public List<AuthorTerm> getAuthorTerms() {
+            return authorTerms;
+        }
+
+        public void setAuthorTerms(Collection<AuthorTerm> authorTerms) {
+            authorByTerm = new HashMap<>();
+            termByAuthor = new HashMap<>();
+            for (AuthorTerm at : authorTerms) {
+                if (!authorByTerm.containsKey(at.getTermId())) {
+                    authorByTerm.put(at.getTermId(), new ArrayList<AuthorTerm>());
+                }
+                authorByTerm.get(at.getTermId()).add(at);
+                if (!termByAuthor.containsKey(at.getAuthorId())) {
+                    termByAuthor.put(at.getAuthorId(), new ArrayList<AuthorTerm>());
+                }
+                termByAuthor.get(at.getAuthorId()).add(at);
+            }
+            this.authorTerms = new ArrayList<>(authorTerms);
+        }
+
+        public List<AuthorTerm> getAuthorByTerm(String term) {
+            if (authorByTerm == null){
+                authorByTerm = new HashMap<>();
+            }
+            List<AuthorTerm> ats = authorByTerm.get(term);
+            return ats == null ? Collections.EMPTY_LIST : ats;
+        }
+
+        public List<Author> authorTermsToAuthors(List<AuthorTerm> ats) {
+            List<Author> authors = new ArrayList<>();
+            for (AuthorTerm at : ats) {
+                Author a = getAuthor(at.getAuthorId());
+                if (a != null) {
+                    authors.add(a);
+                }
+            }
+            return authors;
+        }
+
+        public List<AuthorTerm> getTermByAuthor(String author) {
+            List<AuthorTerm> ats = termByAuthor.get(author);
+            return ats == null ? Collections.EMPTY_LIST : ats;
+        }
+
+        public List<DocumentTerm> getDocTerms() {
+            return docTerms;
+        }
+
+        public void setDocTerms(List<DocumentTerm> docTerms) {
+            docByTerm = new HashMap<>();
+            termByDoc = new HashMap<>();
+            for (DocumentTerm dt : docTerms) {
+                if (!docByTerm.containsKey(dt.getTermString())) {
+                    docByTerm.put(dt.getTermString(), new ArrayList<DocumentTerm>());
+                }
+                docByTerm.get(dt.getTermString()).add(dt);
+                if (!termByDoc.containsKey(dt.getDocumentId())) {
+                    termByDoc.put(dt.getDocumentId(), new ArrayList<DocumentTerm>());
+                }
+                termByDoc.get(dt.getDocumentId()).add(dt);
+            }
+            this.docTerms = docTerms;
+        }
+
+        public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String term) {
+            final List<DocumentTerm> dts = docByTerm.get(term);
+            if (dts == null) {
+                return Collections.EMPTY_LIST;
+            } else {
+                final List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<>();
+                for (DocumentTerm dt : dts) {
+                    org.insightcentre.nlp.saffron.data.Document d = corpus.get(dt.getDocumentId());
+                    if (d != null) {
+                        docs.add(d);
+                    }
+                }
+                return docs;
+            }
+        }
+
+        public List<DocumentTerm> getTermByDoc(String doc) {
+            List<DocumentTerm> dts = termByDoc.get(doc);
+            if (dts == null) {
+                return Collections.EMPTY_LIST;
+            } else {
+                return dts;
+            }
+        }
+
+        public Collection<String> getTopTerms(int from, int to) {
+            if (from < termsSorted.size() && to <= termsSorted.size()) {
+                return termsSorted.subList(from, to);
+            } else {
+                return Collections.EMPTY_LIST;
+            }
+        }
+
+        public Term getTerm(String term) {
+            return terms.get(term);
+        }
+
+        public Collection<Term> getTerms() {
+            return terms == null ? Collections.EMPTY_LIST : terms.values();
+        }
+
+        public void setTerms(Collection<Term> _terms) {
+            this.terms = new HashMap<>();
+            this.termsSorted = new ArrayList<>();
+            for (Term t : _terms) {
+                this.terms.put(t.getString(), t);
+                this.termsSorted.add(t.getString());
+            }
+            this.termsSorted.sort(new Comparator<String>() {
+                @Override
+                public int compare(String o1, String o2) {
+                    if (terms.containsKey(o1) && terms.containsKey(o2)) {
+                        double wt1 = terms.get(o1).getScore();
+                        double wt2 = terms.get(o2).getScore();
+                        if (wt1 > wt2) {
+                            return -1;
+                        } else if (wt2 > wt1) {
+                            return +1;
+                        }
+                    }
+                    return o1.compareTo(o2);
+                }
+            });
+        }
+
+        public List<TermTerm> getTermSim() {
+            return termSim;
+        }
+
+        public void setTermSim(List<TermTerm> termSim) {
+            termByTerm1 = new HashMap<>();
+            termByTerm2 = new HashMap<>();
+            for (TermTerm tt : termSim) {
+                if (!termByTerm1.containsKey(tt.getTerm1())) {
+                    termByTerm1.put(tt.getTerm1(), new ArrayList<TermTerm>());
+                }
+                termByTerm1.get(tt.getTerm1()).add(tt);
+                if (!termByTerm2.containsKey(tt.getTerm2())) {
+                    termByTerm2.put(tt.getTerm2(), new ArrayList<TermTerm>());
+                }
+                termByTerm2.get(tt.getTerm2()).add(tt);
+            }
+            this.termSim = termSim;
+        }
+
+        public List<TermTerm> getTermByTerm1(String term1, List<String> _ignore) {
+            Set<String> ignore = _ignore == null ? new HashSet<>() : new HashSet<>(_ignore);
+            List<TermTerm> tt = termByTerm1.get(term1);
+            if (tt != null) {
+                Iterator<TermTerm> itt = tt.iterator();
+                while (itt.hasNext()) {
+                    if (ignore.contains(itt.next().getTerm2())) {
+                        itt.remove();
+                    }
+                }
+                return tt;
+            } else {
+                return Collections.EMPTY_LIST;
+            }
+        }
+
+        public List<TermTerm> getTermByTerm2(String term2) {
+            List<TermTerm> tt = termByTerm2.get(term2);
+            return tt == null ? Collections.EMPTY_LIST : tt;
+        }
+
+        /**
+         * Is the Saffron data available. If this is false the getters of this
+         * class may return null;
+         *
+         * @return true if the code is loaded
+         */
+        public boolean isLoaded() {
+            return taxonomy != null && authorSim != null && termSim != null
+                    && authorTerms != null && docTerms != null && terms != null
+                    && corpus != null;
+        }
+
+        public void setCorpus(JSONObject corpus) {
+            this.corpus = new HashMap<>();
+            this.corpusByAuthor = new HashMap<>();
+            this.authors = new HashMap<>();
+
+
+            JSONArray documentArray = null;
+            try {
+                documentArray = (JSONArray) corpus.get("documents");
+            } catch (Exception e) {
+                documentArray = new JSONArray();
+            }
+
+            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData = new ArrayList<>();
+            if (documentArray != null) {
+                for (int i=0;i<documentArray.length();i++){
+                    JSONObject obj = documentArray.getJSONObject(i);
+                    String contents = "";
+                    if (obj.has("contents"))
+                        contents = obj.getString("contents");
+                    SaffronPath path = new SaffronPath();
+                    path.setPath(obj.getString("id"));
+                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
+                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
+                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+
+                    docData.add(doc);
+                }
+            }
+            for (org.insightcentre.nlp.saffron.data.Document d : docData) {
+                this.corpus.put(d.id, d);
+                for (Author a : d.getAuthors()) {
+                    if (!corpusByAuthor.containsKey(a.id)) {
+                        corpusByAuthor.put(a.id, new ArrayList<>());
+                    }
+                    corpusByAuthor.get(a.id).add(d);
+                    if (!authors.containsKey(a.id)) {
+                        authors.put(a.id, a);
+                    }
+                }
+            }
+        }
+
+        public void setSearcher(DocumentSearcher searcher) {
+        	this.searcher = searcher;
+        }
+        
+        public DocumentSearcher getSearcher() {
+            return searcher;
+        }
+
+        public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String authorId) {
+            List<org.insightcentre.nlp.saffron.data.Document> docs = corpusByAuthor.get(authorId);
+            return docs == null ? Collections.EMPTY_LIST : docs;
+        }
+
+        public Author getAuthor(String authorId) {
+            return authors.get(authorId);
+        }
+
+        public Collection<Author> getAuthors() {
+            return authors.values();
+        }
+
+        public org.insightcentre.nlp.saffron.data.Document getDoc(String docId) {
+            return corpus.get(docId);
+        }
+
+        public Collection<org.insightcentre.nlp.saffron.data.Document> getDocuments() {
+            return corpus.values();
+        }
+
+        private HashMap<String, IntList> getTaxoLocations(Taxonomy t) {
+            IntList il = new IntArrayList();
+            HashMap<String, IntList> map = new HashMap<>();
+            _getTaxoLocations(t, il, map);
+            return map;
+        }
+
+        private void _getTaxoLocations(Taxonomy t, IntList il, HashMap<String, IntList> map) {
+            map.put(t.root, il);
+            for (int i = 0; i < t.children.size(); i++) {
+                IntList il2 = new IntArrayList(il);
+                il2.add(i);
+                _getTaxoLocations(t.children.get(i), il2, map);
+            }
+        }
+
+        private Taxonomy taxoNavigate(Taxonomy t, IntList il) {
+            for (int i : il) {
+                t = t.children.get(i);
+            }
+            return t;
+        }
+
+        public List<String> getTaxoParents(String term_string) {
+            IntList il = taxoMap.get(term_string);
+            if (il != null) {
+                Taxonomy t = taxonomy;
+                List<String> route = new ArrayList<>();
+                for (int i : il) {
+                    route.add(t.root);
+                    t = t.children.get(i);
+                }
+                return route;
+            } else {
+                return Collections.EMPTY_LIST;
+            }
+        }
+
+        public Taxonomy getTaxoDescendent(String term_string) {
+
+            Taxonomy t = taxonomy;
+            return taxonomy.descendent(term_string);
+        }
+
+        public List<String> getTaxoChildren(String term_string) {
+            IntList il = taxoMap.get(term_string);
+            if (il != null) {
+                Taxonomy t = taxoNavigate(taxonomy, il);
+                List<String> children = new ArrayList<>();
+                for (Taxonomy t2 : t.children) {
+                    children.add(t2.root);
+                }
+                return children;
+            } else {
+                return Collections.EMPTY_LIST;
+            }
+        }
+
+        public List<TermAndScore> getTaxoChildrenScored(String term_string) {
+            IntList il = taxoMap.get(term_string);
+            if (il != null) {
+                Taxonomy t = taxoNavigate(taxonomy, il);
+                List<TermAndScore> children = new ArrayList<>();
+                for (Taxonomy t2 : t.children) {
+                    children.add(new TermAndScore(t2.root, t2.linkScore));
+                }
+                return children;
+            } else {
+                return Collections.EMPTY_LIST;
+            }
+        }
+
+        private void updateTermName(String term, String newTerm, Status status) {
+            Term t = terms.get(term);
+            if (t != null) {
+                for (AuthorTerm at : authorTerms) {
+                    if (at.getTermId().equals(term)) {
+                        at.setTermId(newTerm);
+                    }
+                }
+                for (DocumentTerm dt : docTerms) {
+                    if (dt.getTermString().equals(term)) {
+                        dt.setTermString(newTerm);
+                    }
+                }
+                for (TermTerm tt : termSim) {
+                    if (tt.getTerm1().equals(term)) {
+                        tt.setTerm1(newTerm);
+                    }
+                    if (tt.getTerm2().equals(term)) {
+                        tt.setTerm2(newTerm);
+                    }
+                }
+                updateTermNameInTaxonomy(taxonomy, term, newTerm);
+                t.setString(newTerm);
+                t.setStatus(status);
+            }
+        }
+
+        private void updateTermNameInTaxonomy(Taxonomy taxo, String term, String newTerm) {
+            if(taxo.root.equals(term)) {
+                taxo.root = newTerm;
+            } else {
+                for(Taxonomy child : taxo.getChildren()) {
+                    updateTermNameInTaxonomy(child, term, newTerm);
+                }
+            }
+        }
+    }
+
+    public static String formatSize(long v) {
+        if (v < 1024) return v + " B";
+        int z = (63 - Long.numberOfLeadingZeros(v)) / 10;
+        return String.format("%.1f %sB", (double)v / (1L << (z*10)), " KMGTPE".charAt(z));
+    }
+
+    public MongoDBHandler() {
+        this.host = mongoHost;
+        this.port = new Integer(mongoPort);
+        this.dbName = mongoDbName;
+        this.collectionName = "saffron_runs";
+        MongoClientOptions options = MongoClientOptions.builder().cursorFinalizerEnabled(false).build();
+
+        this.mongoClient = new MongoClient(host, port);
         this.database = mongoClient.getDatabase(dbName);
         this.runCollection = database.getCollection(collectionName);
-        this.topicsCollection = database.getCollection(collectionName + "_topics");
-        this.topicsCorrespondenceCollection = database.getCollection(collectionName + "_topics_correspondence");
-        this.topicsExtractionCollection = database.getCollection(collectionName + "_topics_extraction");
-        this.authorTopicsCollection = database.getCollection(collectionName + "_author_topics");
-        this.topicsSimilarityCollection = database.getCollection(collectionName + "_topics_similarity");
+        this.termsCollection = database.getCollection(collectionName + "_terms");
+        this.termsCorrespondenceCollection = database.getCollection(collectionName + "_terms_correspondence");
+        this.termsExtractionCollection = database.getCollection(collectionName + "_terms_extraction");
+        this.authorTermsCollection = database.getCollection(collectionName + "_author_terms");
+        this.termsSimilarityCollection = database.getCollection(collectionName + "_terms_similarity");
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
         this.taxonomyCollection = database.getCollection(collectionName + "_taxonomy");
         this.corpusCollection = database.getCollection(collectionName + "_corpus");
+
+        this.initialiseInMemoryDatabase();
+    }
+    
+    public String getMongoUrl() {
+    	StringBuilder url = new StringBuilder();
+    	url.append("mongodb://").append(this.host).append(":").append(this.port).append("/").append(this.dbName);
+    	
+    	return url.toString();
+    }
+
+    private void initialiseInMemoryDatabase() {
+        try {
+    	    List<SaffronRun> runs = this.getAllRuns();
+            for (SaffronRun doc : runs) {
+                this.fromMongo(doc.id);
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException("An error has ocurring while loading database into memory", e);
+        } catch (IOException e) {
+            throw new RuntimeException("An error has ocurring while loading database into memory", e);
+        }
+	}
+    
+    /**
+     * Load Saffron data from disk into MongoDB
+     *
+     * @param directory The directory containing the JSON files
+     * @return nothing
+     * @throws IOException
+     */
+    public void importFromDirectory(File directory, String name) throws IOException {
+    	
+    	String runId = directory.getName();
+    	
+    	File configFile = new File(directory, "config.json");
+    	if (!configFile.exists()) {
+            throw new FileNotFoundException("Could not find config.json");
+        }
+    	
+        File taxonomyFile = new File(directory, "taxonomy.json");
+        if (!taxonomyFile.exists()) {
+            throw new FileNotFoundException("Could not find taxonomy.json");
+        }
+        
+        File authorSimFile = new File(directory, "author-sim.json");
+        if (!authorSimFile.exists()) {
+            throw new FileNotFoundException("Could not find author-sim.json");
+        }
+        
+        File termSimFile = new File(directory, "term-sim.json");
+        if (!termSimFile.exists()) {
+        	//Enable compatibility with version 3.3
+        	termSimFile = new File(directory, "topic-sim.json");
+        	if (!termSimFile.exists()) {
+        		throw new FileNotFoundException("Could not find term-sim.json");
+        	}
+        }
+        
+        File authorTermFile = new File(directory, "author-terms.json");
+        if (!authorTermFile.exists()) {
+        	//Enable compatibility with version 3.3
+        	authorTermFile = new File(directory, "author-topics.json");
+        	if (!authorTermFile.exists()) {
+        		throw new FileNotFoundException("Could not find author-terms.json");
+        	}
+        }
+        
+        File docTermsFile = new File(directory, "doc-terms.json");
+        if (!docTermsFile.exists()) {
+        	//Enable compatibility with version 3.3
+        	docTermsFile = new File(directory, "doc-topics.json");
+        	if (!docTermsFile.exists()) {
+        		throw new FileNotFoundException("Could not find doc-terms.json");
+        	}
+        }
+        
+        File termsFile = new File(directory, "terms.json");
+        if (!termsFile.exists()) {
+        	//Enable compatibility with version 3.3
+        	termsFile = new File(directory, "topics.json");
+        	if (!termsFile.exists()) {
+        		throw new FileNotFoundException("Could not find terms.json");
+        	}
+        }
+        
+        File indexFile = new File(directory, "index");
+        if (!indexFile.exists()) {
+            throw new FileNotFoundException("Could not find index");
+        }
+        
+    	BufferedReader r = Files.newBufferedReader(Paths.get(configFile.getAbsolutePath()));
+    	StringBuilder sb = new StringBuilder();
+        Configuration newConfig = null;
+        try {
+            String line;
+            while ((line = r.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
+        } catch (Exception e) {
+        	throw new RuntimeException("The configuration file is in the wrong format.", e);
+        }        
+    	this.addRun(runId, new Date(), newConfig);
+    	
+    	
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        
+        this.setTaxonomy(runId, mapper.readValue(taxonomyFile, VirtualRootTaxonomy.class));
+        this.setAuthorSim(runId, mapper.readValue(authorSimFile,
+                tf.constructCollectionType(List.class, AuthorAuthor.class)));
+        this.setTermSim(runId,  mapper.readValue(termSimFile,
+                tf.constructCollectionType(List.class, TermTerm.class)));
+        this.setAuthorTerms(runId, mapper.readValue(authorTermFile,
+                tf.constructCollectionType(List.class, AuthorTerm.class)));
+        this.setDocTerms(runId, mapper.readValue(docTermsFile,
+                tf.constructCollectionType(List.class, DocumentTerm.class)));
+        this.setTerms(runId, mapper.readValue(termsFile,
+                tf.constructCollectionType(List.class, Term.class)));
+        this.setCorpus(runId, DocumentSearcherFactory.load(indexFile));
+        this.setIndex(runId, DocumentSearcherFactory.load(indexFile));
+    }
+
+	/**
+     * Load the Saffron data from mongo
+     *
+     * @param runId The runId for the saffron instance
+     * @return An initializes object
+     * @throws IOException
+     */
+    public void fromMongo(String runId) throws IOException {
+
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(runId);
+        Taxonomy docs = this.getTaxonomy(runId);
+        saffron.setTaxonomy(docs);
+
+        JSONArray authorSimDocsArray = new JSONArray();
+        Iterable<org.bson.Document> authorSimDocs = this.getAuthorSimilarity(runId);
+        for (org.bson.Document doc : authorSimDocs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            authorSimDocsArray.put(jsonObj);
+        }
+        saffron.setAuthorSim((List<AuthorAuthor>) mapper.readValue(authorSimDocsArray.toString(),
+                tf.constructCollectionType(List.class, AuthorAuthor.class)));
+
+        Iterable<org.bson.Document> termSimDocs = this.getTermsSimilarity(runId);
+        JSONArray termSimDocsArray = new JSONArray();
+        for (org.bson.Document doc : termSimDocs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            termSimDocsArray.put(jsonObj);
+        }
+        saffron.setTermSim((List<TermTerm>) mapper.readValue(termSimDocsArray.toString(),
+                tf.constructCollectionType(List.class, TermTerm.class)));
+
+        Iterable<org.bson.Document> authorTermsDocs = this.getAuthorTerms(runId);
+        JSONArray authorTermsDocsArray = new JSONArray();
+        for (org.bson.Document doc : authorTermsDocs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            authorTermsDocsArray.put(jsonObj);
+        }
+        saffron.setAuthorTerms((List<AuthorTerm>) mapper.readValue(authorTermsDocsArray.toString(),
+                tf.constructCollectionType(List.class, AuthorTerm.class)));
+
+
+        Iterable<org.bson.Document> docTermsDocs = this.getDocumentTermCorrespondence(runId);
+        JSONArray docTermsArray = new JSONArray();
+        for (org.bson.Document doc : docTermsDocs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+
+            docTermsArray.put(jsonObj);
+        }
+        saffron.setDocTerms((List<DocumentTerm>) mapper.readValue(docTermsArray.toString(),
+                tf.constructCollectionType(List.class, DocumentTerm.class)));
+
+        Iterable<org.bson.Document> termsDocs = this.getTerms(runId);
+        JSONArray jsonTermsArray = new JSONArray();
+        for (org.bson.Document doc : termsDocs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            jsonTermsArray.put(jsonObj);
+        }
+        saffron.setTerms((List<Term>) mapper.readValue(jsonTermsArray.toString(),
+                tf.constructCollectionType(List.class, Term.class)));
+
+        Iterable<org.bson.Document> corpus = this.getCorpus(runId);
+        for (org.bson.Document doc : corpus) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            saffron.setCorpus(jsonObj);
+        }
+
+        this.data.put(runId, saffron);
     }
 
     public void setDbName(String dbName) {
@@ -78,118 +751,154 @@ public class MongoDBHandler implements Closeable {
     }
 
     public boolean addRun(String id, Date date, Configuration config) {
+        final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(id);
+        this.data.put(id, saffron);
         Gson gson = new Gson();
         String json = gson.toJson(config);
         Document document = new Document();
         document.put("id", id);
         document.put("run_date", date);
         document.put("config", json);
-        runCollection.insertOne(document);
+        try {
+            this.runCollection.insertOne(document);
+
+            //this.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return true;
     }
 
-    public FindIterable<Document>  getAllRuns() {
-        FindIterable<Document> docs = runCollection.find();
-        return docs;
+    public List<SaffronRun>  getAllRuns() {
+        try {
+            List<SaffronRun> runList = new ArrayList<>();
+            FindIterable<Document> docs = MongoUtils.getDocs(this);
+            for (org.bson.Document doc : docs) {
+                String id = doc.getString("id");
+                Date runDate = doc.getDate("run_date");
+                String config = doc.getString("config");
+                SaffronRun run = new SaffronRun(id, runDate, config);
+                runList.add(run);
+            }
+            return runList;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
+
+
 
     public void deleteRun(String name) {
         Document document = new Document();
         document.put("run", name);
-        runCollection.findOneAndDelete(and(eq("id", name)));
-        topicsCollection.deleteMany(and(eq("run", name)));
-        topicsCorrespondenceCollection.deleteMany(and(eq("run", name)));
-        topicsExtractionCollection.deleteMany(and(eq("run", name)));
-        authorTopicsCollection.deleteMany(and(eq("run", name)));
-        topicsSimilarityCollection.deleteMany(and(eq("run", name)));
-        authorSimilarityCollection.deleteMany(and(eq("run", name)));
-        taxonomyCollection.findOneAndDelete(and(eq("id", name)));
+        MongoUtils.deleteRunFromMongo(name, this);
     }
 
-    public FindIterable<Document> getRun(String runId) {
+
+
+    @Override
+    public String getRun(String runId) {
+        JSONObject jsonObj = new JSONObject();
+
+        try {
+            Iterable<org.bson.Document> docs = getRunFromMongo(runId, runCollection);
+            for (org.bson.Document doc : docs) {
+                jsonObj = new JSONObject(doc.toJson());
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return jsonObj.toString();
+    }
+
+    public static FindIterable getRunFromMongo(String runId, MongoCollection runCollection) {
         return runCollection.find(and(eq("id", runId)));
     }
 
 
-    public FindIterable<Document> getTopicExtraction(String runId) {
-        return topicsExtractionCollection.find(and(eq("run", runId)));
+    public FindIterable<Document> getTermExtraction(String runId) {
+        return termsExtractionCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getTopicExtractionForTopic(String runId, String topicId) {
-        return topicsExtractionCollection.find(and(eq("run", runId), eq("topicId", topicId)));
+    public FindIterable<Document> getTermExtractionForTerm(String runId, String termId) {
+        return termsExtractionCollection.find(and(eq("run", runId), eq("termId", termId)));
     }
 
-    public boolean addTopicExtraction(String id, Date date, Set<Topic> res) {
+    //TODO: Create final variable with names of attributes in each collection
+    public boolean addTermExtraction(String id, Date date, Set<Term> res) {
         Document document = new Document();
 
         res.forEach(name -> {
-            document.put("_id", id + "_" + name.topicString);
+            document.put("_id", id + "_" + name.getString());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic", name.topicString);
-            document.put("score", name.score);
-            document.put("dbpedia_url", name.dbpedia_url);
-            document.put("mvList", name.mvList);
-            document.put("occurrences", name.occurrences);
-            document.put("matches", name.matches);
-            topicsExtractionCollection.insertOne(document);
+            document.put("term", name.getString());
+            document.put("score", name.getScore());
+            document.put("dbpedia_url", name.getDbpediaUrl());
+            document.put("mvList", name.getMorphologicalVariationList());
+            document.put("occurrences", name.getOccurrences());
+            document.put("matches", name.getMatches());
+            termsExtractionCollection.insertOne(document);
         });
         return true;
     }
 
 
 
-    public boolean addDocumentTopicCorrespondence(String id, Date date, List<DocumentTopic> topics) {
+    public boolean addDocumentTermCorrespondence(String id, Date date, List<DocumentTerm> terms) {
         Document document = new Document();
 
-        topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topic_string + "_" + name.document_id);
+        terms.forEach(name -> {
+            document.put("_id", id + "_" + name.getTermString() + "_" + name.getDocumentId());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic", name.topic_string);
-            document.put("acronym", name.acronym);
-            document.put("occurences", name.occurrences);
-            document.put("pattern", name.pattern);
-            document.put("tfidf", name.tfidf);
-            document.put("document_id", name.document_id);
-            topicsCorrespondenceCollection.insertOne(document);
+            document.put("term_string", name.getTermString());
+            document.put("acronym", name.getAcronym());
+            document.put("occurences", name.getOccurrences());
+            document.put("pattern", name.getPattern());
+            document.put("tfidf", name.getTfIdf());
+            document.put("document_id", name.getDocumentId());
+            termsCorrespondenceCollection.insertOne(document);
         });
         return true;
     }
 
-    public FindIterable<Document> getDocumentTopicCorrespondence(String runId) {
+
+
+    public FindIterable<Document> getDocumentTermCorrespondence(String runId) {
         Document document = new Document();
         document.put("run", runId);
-        return topicsCorrespondenceCollection.find(and(eq("run", runId)));
+        return this.termsCorrespondenceCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getDocumentTopicCorrespondenceForTopic(String runId, String topicId) {
+    public FindIterable<Document> getDocumentTermCorrespondenceForTerm(String runId, String termId) {
 
-        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("topic", topicId)));
+        return termsCorrespondenceCollection.find(and(eq("run", runId), eq("term", termId)));
     }
 
 
-    public FindIterable<Document> getDocumentTopicCorrespondenceForDocument(String runId, String docId) {
-        System.out.println("Document = " + docId);
-        return topicsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
+    public FindIterable<Document> getDocumentTermCorrespondenceForDocument(String runId, String docId) {
+        return termsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
     }
 
-    public boolean addTopics(String id, Date date, List<Topic> topics) {
+    public boolean addTerms(String id, Date date, List<Term> terms) {
         Document document = new Document();
 
-        topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topicString);
+        terms.forEach(name -> {
+            document.put("_id", id + "_" + name.getString());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic", name.topicString);
-            document.put("matches", name.matches);
-            document.put("occurences", name.occurrences);
-            document.put("score", name.score);
-            document.put("topicString", name.topicString);
-            document.put("mvList", name.mvList);
-            document.put("dbpedia_url", name.dbpedia_url);
-            document.put("status", "none");
-            topicsCollection.insertOne(document);
+            document.put("term", name.getString());
+            document.put("matches", name.getMatches());
+            document.put("occurences", name.getOccurrences());
+            document.put("score", name.getScore());
+            document.put("term_string", name.getString());
+            document.put("mvList", name.getMorphologicalVariationList());
+            document.put("dbpedia_url", name.getDbpediaUrl());
+            document.put("status", name.getStatus().toString());
+            termsCollection.insertOne(document);
         });
 
 
@@ -197,93 +906,90 @@ public class MongoDBHandler implements Closeable {
         return true;
     }
 
-    public FindIterable<Document> getTopics(String runId) {
-        FindIterable<Document> docs = topicsCollection.find(eq("run", runId));
-
+    public FindIterable<Document> getTerms(String runId) {
+        FindIterable<Document> docs = MongoUtils.getTermsFromMongo(runId, this);
         return docs;
     }
 
-    public FindIterable<Document> deleteTopic(String runId, String topic) {
+
+    public void deleteTerm(String runId, String term) {
 
         BasicDBObject updateFields = new BasicDBObject();
         updateFields.append("run", runId);
-        updateFields.append("topic", topic);
+        updateFields.append("term", term);
         BasicDBObject setQuery = new BasicDBObject();
         setQuery.append("$set", updateFields);
-        topicsCollection.findOneAndDelete(and(eq("run", runId), (eq("topic", topic))));
-        FindIterable<Document> docs = topicsCollection.find(eq("run", runId));
-
-        return docs;
+        termsCollection.findOneAndDelete(and(eq("run", runId), (eq("term", term))));
     }
 
 
 
 
-    public boolean addAuthorTopics(String id, Date date, List<Topic> topics) {
+    public boolean addAuthorTerms(String id, Date date, Collection<AuthorTerm> terms) {
         Document document = new Document();
-
-        topics.forEach(name -> {
-            document.put("_id", id + "_" + name.topicString);
+        int[] idx = { 0 };
+        terms.forEach(name -> {
+            document.put("_id", id + "_" + name.getTermId() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("author_topic", name.topicString);
-            document.put("matches", name.matches);
-            document.put("occurences", name.occurrences);
-            document.put("score", name.score);
-            document.put("topicString", name.topicString);
-            document.put("mvList", name.mvList);
-            document.put("dbpedia_url", name.dbpedia_url);
-            authorTopicsCollection.insertOne(document);
+            document.put("author_term", name.getTermId());
+            document.put("matches", name.getMatches());
+            document.put("occurences", name.getOccurrences());
+            document.put("score", name.getScore());
+            document.put("term_id", name.getTermId());
+            document.put("tfirf", name.getTfIrf());
+            document.put("paper_count", name.getPaperCount());
+            document.put("researcher_score", name.getResearcherScore());
+            authorTermsCollection.insertOne(document);
         });
         return true;
     }
 
-    public FindIterable<Document>  getAuthorTopics(String runId) {
+    public FindIterable<Document>  getAuthorTerms(String runId) {
         Document document = new Document();
         document.put("run", runId);
-        return authorTopicsCollection.find(and(eq("run", runId)));
+        return this.authorTermsCollection.find(and(eq("run", runId)));
 
     }
 
-    public FindIterable<Document>  getAuthorTopicsForTopic(String runId, String topic) {
+    public FindIterable<Document>  getAuthorTermsForTerm(String runId, String term) {
         Document document = new Document();
         document.put("run", runId);
-        return authorTopicsCollection.find(and(eq("run", runId), eq("author_topic", topic)));
+        return authorTermsCollection.find(and(eq("run", runId), eq("author_term", term)));
 
     }
 
-    public boolean addTopicsSimilarity(String id, Date date, List<TopicTopic> topicSimilarity) {
+    public boolean addTermsSimilarity(String id, Date date, List<TermTerm> termSimilarity) {
         Document document = new Document();
-
-        topicSimilarity.forEach(name -> {
-            document.put("_id", id + "_" + name.getTopic1() + "_" + name.getTopic2());
+        int[] idx = { 0 };
+        for (TermTerm term : termSimilarity) {
+            document.put("_id", id + "_" + term.getTerm1() + "_" + term.getTerm2() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("topic1", name.getTopic1());
-            document.put("topic2", name.getTopic2());
-            document.put("similarity", name.getSimilarity());
-
-            topicsSimilarityCollection.insertOne(document);
-        });
+            document.put("term1_id", term.getTerm1());
+            document.put("term2_id", term.getTerm2());
+            document.put("similarity", term.getSimilarity());
+            termsSimilarityCollection.insertOne(document);
+        }
         return true;
     }
 
-    public FindIterable<Document> getTopicsSimilarity(String runId) {
+    public FindIterable<Document> getTermsSimilarity(String runId) {
         Document document = new Document();
         document.put("run", runId);
-        return topicsSimilarityCollection.find(and(eq("run", runId)));
+        return this.termsSimilarityCollection.find(and(eq("run", runId)));
     }
 
-    public FindIterable<Document> getTopicsSimilarityBetweenTopics(String runId, String topic1, String topic2) {
+    public FindIterable<Document> getTermsSimilarityBetweenTerms(String runId, String term1, String term2) {
         Document document = new Document();
         document.put("run", runId);
-        return topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic1), eq("topic2", topic2)));
+        return this.termsSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term1), eq("term2", term2)));
     }
 
-    public FindIterable<Document> getTopicsSimilarityForTopic(String runId, String topic) {
+    public FindIterable<Document> getTermsSimilarityForTerm(String runId, String term) {
         Document document = new Document();
         document.put("run", runId);
-        return topicsSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic)));
+        return this.termsSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term)));
     }
 
     public boolean addAuthorSimilarity(String id, Date date, List<AuthorAuthor> authorSim) {
@@ -305,14 +1011,14 @@ public class MongoDBHandler implements Closeable {
     public FindIterable<Document> getAuthorSimilarity(String runId) {
         Document document = new Document();
         document.put("run", runId);
-        return authorSimilarityCollection.find(and(eq("run", runId)));
+        return this.authorSimilarityCollection.find(and(eq("run", runId)));
     }
 
 
-    public FindIterable<Document> getAuthorSimilarityForTopic(String runId, String topic1, String topic2) {
+    public FindIterable<Document> getAuthorSimilarityForTerm(String runId, String term1, String term2) {
         Document document = new Document();
         document.put("run", runId);
-        return authorSimilarityCollection.find(and(eq("run", runId), eq("topic1", topic1), eq("topic2", topic2)));
+        return this.authorSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term1), eq("term2_id", term2)));
     }
 
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
@@ -324,11 +1030,11 @@ public class MongoDBHandler implements Closeable {
             Document doc = Document.parse( mapper.writeValueAsString(graph) );
             doc.append("id", id);
             doc.append("date", date);
-            taxonomyCollection.insertOne(doc);
+            this.taxonomyCollection.insertOne(doc);
             return true;
 
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
 
 
@@ -336,33 +1042,325 @@ public class MongoDBHandler implements Closeable {
 
     }
 
-    public boolean updateTaxonomy(String id, Date date, Taxonomy graph) {
+    public boolean updateTaxonomy(String id, Taxonomy graph) {
         Document doc = new Document();
         doc.append("id", id);
         try {
             taxonomyCollection.findOneAndDelete(doc);
-            this.addTaxonomy(id, date, graph);
+            this.addTaxonomy(id, new Date(), graph);
             return true;
         } catch (Exception e){
             e.printStackTrace();
-            System.err.println("Failed to reject the topic from the taxonomy " + id);
+            System.err.println("Failed to reject the term from the taxonomy " + id);
             return false;
         }
 
     }
 
 
-
-    public FindIterable<Document> getTaxonomy(String runId) {
-        FindIterable<Document> docs = taxonomyCollection.find(eq("id", runId));
-        return docs;
+    @Override
+    public Taxonomy getTaxonomy(String runId)  {
+        Taxonomy graph = new Taxonomy("", 0, 0, "", "", new ArrayList<>(), Status.none);
+        FindIterable<Document> docs = MongoUtils.getTaxonomyFromMongo(runId, this);
+        graph = TaxonomyUtils.getTaxonomyFromDocs(docs, graph);
+        return graph;
     }
 
 
-    public boolean updateTopic(String id, String topic, String status) {
+
+
+    @Override
+    public List<DocumentTerm> getDocTerms(String runId) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getDocTerms();
+    }
+
+    @Override
+    public List<String> getTaxoParents(String runId, String term_string) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTaxoParents(term_string);
+    }
+
+    @Override
+    public List<TermAndScore> getTaxoChildrenScored(String runId, String term_string) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTaxoChildrenScored(term_string);
+    }
+
+    @Override
+    public List<AuthorAuthor> getAuthorSimByAuthor1(String runId, String author1) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getAuthorSimByAuthor1(author1);
+    }
+
+    @Override
+    public List<AuthorAuthor> getAuthorSimByAuthor2(String runId, String author1) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getAuthorSimByAuthor2(author1);
+    }
+
+    @Override
+    public List<Author> authorAuthorToAuthor1(String runId, List<AuthorAuthor> aas) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.authorAuthorToAuthor1(aas);
+    }
+
+    @Override
+    public List<Author> authorAuthorToAuthor2(String runId, List<AuthorAuthor> aas) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.authorAuthorToAuthor2(aas);
+    }
+
+    @Override
+    public List<String> getTaxoChildren(String runId, String term_string) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTaxoChildren(term_string);
+    }
+
+    @Override
+    public List<TermTerm> getTermByTerm1(String runId, String term1, List<String> _ignore) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTermByTerm1(term1, _ignore);
+    }
+
+    @Override
+    public List<TermTerm> getTermByTerm2(String runId, String term2) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTermByTerm2(term2);
+    }
+
+    @Override
+    public List<AuthorTerm> getTermByAuthor(String runId, String author) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTermByAuthor(author);
+    }
+
+    @Override
+    public List<AuthorTerm> getAuthorByTerm(String runId, String term) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getAuthorByTerm(term);
+    }
+
+    @Override
+    public List<Author> authorTermsToAuthors(String runId, List<AuthorTerm> ats) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.authorTermsToAuthors(ats);
+    }
+
+    @Override
+    public List<DocumentTerm> getTermByDoc(String runId, String doc) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTermByDoc(doc);
+    }
+
+    @Override
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String runId, String term) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getDocByTerm(term);
+    }
+
+    @Override
+    public Term getTerm(String runId, String term) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTerm(term);
+    }
+
+    @Override
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String runId, String authorId) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getDocsByAuthor(authorId);
+    }
+
+    @Override
+    public Collection<String> getTopTerms(String runId, int from, int to) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getTopTerms(from, to);
+    }
+
+    @Override
+    public Author getAuthor(String runId, String authorId) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getAuthor(authorId);
+    }
+
+    @Override
+    public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId) {
+        // Don't retrieve from memory, instead get from saffron data source
+        String contents = this.getCorpusFile(runId, docId);
+        try {
+            SaffronPath path = new SaffronPath();
+            path.setPath(docId);
+            org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
+                    path, docId, null, docId, "text",
+                    Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+            return doc;
+        } catch (Exception e) {
+            throw new NoSuchElementException("Contents of Corpus cannot be retrieved");
+        }
+    }
+   
+    @Override
+    public void setIndex(String runId, DocumentSearcher index) {
+    	MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }        
+        saffron.setSearcher(index);
+    }
+
+    @Override
+    public DocumentSearcher getSearcher(String runId) {
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getSearcher();
+    }
+
+    @Override
+    public void setDocTerms(String runId, List<DocumentTerm> docTerms) {
+        this.addDocumentTermCorrespondence(runId, new Date(), docTerms);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setDocTerms(docTerms);
+    }
+
+    @Override
+    public void setCorpus(String runId, Corpus corpus) {
+
+        this.addCorpus(runId, new Date(), corpus);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        Iterable<org.bson.Document> corpusJson = this.getCorpus(runId);
+        for (org.bson.Document doc : corpusJson) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            saffron.setCorpus(jsonObj);
+        }
+    }
+
+    @Override
+    public void setTerms(String runId, List<Term> _terms) {
+        this.addTerms(runId, new Date(), _terms);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setTerms(_terms);
+
+    }
+
+    @Override
+    public void setAuthorTerms(String runId, Collection<AuthorTerm> authorTerms) {
+       this.addAuthorTerms(runId, new Date(), authorTerms);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setAuthorTerms(authorTerms);
+    }
+
+    @Override
+    public void setTermSim(String runId, List<TermTerm> termSim) {
+        this.addTermsSimilarity(runId, new Date(), termSim);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setTermSim(termSim);
+    }
+
+    @Override
+    public void setAuthorSim(String runId, List<AuthorAuthor> authorSim) {
+        this.addAuthorSimilarity(runId, new Date(), authorSim);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setAuthorSim(authorSim);
+    }
+
+    @Override
+    public void setTaxonomy(String runId, Taxonomy taxonomy) {
+        this.addTaxonomy(runId, new Date(), taxonomy);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setTaxonomy(taxonomy);
+    }
+
+    @Override
+    public void remove(String runId) {
+
+    }
+
+
+    public boolean updateTerm(String id, String term, String status) {
 
         try {
-            Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
+            Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
             Bson update = set("status", status);
 
 
@@ -370,12 +1368,11 @@ public class MongoDBHandler implements Closeable {
             findOptions.upsert(true);
             findOptions.returnDocument(ReturnDocument.AFTER);
 
-            topicsCollection.findOneAndUpdate(condition, update, findOptions);
-            //this.updateTopicSimilarity(id, topic, status);
+            termsCollection.findOneAndUpdate(condition, update, findOptions);
             return true;
         } catch (Exception e ) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
@@ -383,10 +1380,10 @@ public class MongoDBHandler implements Closeable {
 
 
 
-    public boolean updateTopicSimilarity(String id, String topic1, String topic2, String status) {
+    public boolean updateTermSimilarity(String id, String term1, String term2, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic1),
-                Filters.eq("topic2", topic2));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term1", term1),
+                Filters.eq("term2", term2));
         Bson update = set("status", status);
 
 
@@ -395,72 +1392,72 @@ public class MongoDBHandler implements Closeable {
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
         try {
-            topicsSimilarityCollection.updateMany(condition, update);
+            termsSimilarityCollection.updateMany(condition, update);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic1 + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term1 + " from the taxonomy " + id);
             return false;
         }
 
     }
 
-    public boolean updateAuthorTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateAuthorTermName(String id, String term, String newTerm, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_topic", topic));
-        Bson update = combine(set("author_topic", newTopic), set("topicString", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_term", term));
+        Bson update = combine(set("author_term", newTerm), set("termString", newTerm),
+                set("originalTerm", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
         try {
-            topicsSimilarityCollection.updateMany(condition, update);
+            termsSimilarityCollection.updateMany(condition, update);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
     }
 
 
-    public boolean updateDocumentTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateDocumentTermName(String id, String term, String newTerm, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
-        Bson update = combine(set("topic", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
+        Bson update = combine(set("term", newTerm),
+                set("originalTerm", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
         try {
-            topicsCorrespondenceCollection.updateMany(condition, update);
+            termsCorrespondenceCollection.updateMany(condition, update);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
     }
 
-    public boolean updateTopicSimilarityName(String id, String topic, String newTopic, String status) {
+    public boolean updateTermSimilarityName(String id, String term, String newTerm, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic1", topic));
-        Bson update = combine(set("topic1", newTopic),
-                set("originalTopic", topic), set("status", status));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term1", term));
+        Bson update = combine(set("term1", newTerm),
+                set("originalTerm", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
         try {
-            topicsSimilarityCollection.updateMany(condition, update);
+            termsSimilarityCollection.updateMany(condition, update);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("Failed to reject the topic " + topic + " from the taxonomy " + id);
+            System.err.println("Failed to reject the term " + term + " from the taxonomy " + id);
             return false;
         }
 
@@ -469,25 +1466,121 @@ public class MongoDBHandler implements Closeable {
 
 
 
-    public boolean updateTopicName(String id, String topic, String newTopic, String status) {
+    public boolean updateTermName(String id, String term, String newTerm, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", topic));
-        Bson update = combine(set("topic", newTopic), set("topicString", newTopic), set("originalTopic", topic));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
+        Bson update = combine(set("term", newTerm), set("termString", newTerm), set("originalTerm", term));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
 
-        topicsCollection.findOneAndUpdate(condition, update, findOptions);
+        termsCollection.findOneAndUpdate(condition, update, findOptions);
         return true;
+    }
+
+    @Override
+    public boolean containsKey(String id) throws IOException {
+            String run = this.getRun(id);
+            if (!run.matches("\\{}")) {
+                //this.fromMongo(id);
+                return true;
+            }
+        return false;
+    }
+
+    @Override
+    public boolean isLoaded(String id) {
+        String run = this.getRun(id);
+        if (!run.matches("\\{}")) {
+            return true;
+        }
+        else {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+
+    }
+
+    @Override
+    public Iterable<String> runs() {
+        return null;
+    }
+
+    @Override
+    public Taxonomy getTaxoDescendent(String runId, String termString) {
+        return null;
+    }
+
+    @Override
+    public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName) {
+        return null;
+    }
+
+    @Override
+    public Iterable<Author> getAllAuthors(String datasetName) {
+        return null;
+    }
+
+    @Override
+    public Iterable<Term> getAllTerms(String datasetName) {
+        FindIterable<Document> docs = this.getTerms(datasetName);
+        List<Term> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+
+            String termString = doc.getString("term_string");
+            int occurrences = doc.getInteger("occurences");
+            int matches = doc.getInteger("matches");
+            double score = doc.getDouble("score");
+            String status = doc.getString("status");
+            List<Term.MorphologicalVariation> mvList = new ArrayList<>();
+            Term term = new Term(termString, occurrences, matches, score, mvList, status);
+            returnList.add(term);
+        }
+        Iterable<Term> terms = returnList;
+        return terms;
+    }
+
+    @Override
+    public Date getDate(String doc) {
+        return null;
+    }
+
+    @Override
+    public List<AuthorTerm> getAllAuthorTerms(String name) {
+        return null;
+    }
+
+    @Override
+    public Iterable<DocumentTerm> getDocTermByTerm(String name, String termId) {
+        return null;
+    }
+
+    @Override
+    public Iterable<TermTerm> getAllTermSimilarities(String name) {
+        FindIterable<Document> docs = this.getTerms(name);
+        List<TermTerm> returnList = new ArrayList<>();
+        for (Document doc : docs) {
+            String term1 = doc.getString("term1_id");
+            String term2 = doc.getString("term2_id");
+            double similarity = doc.getDouble("similarity");
+            TermTerm term = new TermTerm(term1, term2, similarity);
+            returnList.add(term);
+        }
+        Iterable<TermTerm> terms = returnList;
+        return terms;
+    }
+
+    @Override
+    public Iterable<TermTerm> getTermByTerms(String name, String term1, String term2) {
+        return null;
     }
 
 
     public FindIterable<Document> searchTaxonomy(String id, String term) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("topic", term));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
 
-        return topicsCorrespondenceCollection.find(condition);
+        return termsCorrespondenceCollection.find(condition);
     }
 
     /*
@@ -504,7 +1597,6 @@ public class MongoDBHandler implements Closeable {
     public boolean addCorpus(String saffronDatasetName, Date date, Corpus corpus) {
         ObjectMapper mapper = new ObjectMapper();
 
-
         try{
             Document doc = Document.parse( mapper.writeValueAsString(corpus) );
             doc.append("id", saffronDatasetName);
@@ -512,17 +1604,40 @@ public class MongoDBHandler implements Closeable {
             FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
             findOptions.upsert(true);
             findOptions.returnDocument(ReturnDocument.AFTER);
-            if (getCorpusCount(saffronDatasetName) > 0)
-                corpusCollection.findOneAndDelete(doc);
 
-            corpusCollection.insertOne(doc);
+            GridFS gridFs = getGridFS();
+            if (doc.get("documents") != null) {
+                ArrayList<Document> docList = (ArrayList) doc.get("documents");
+                for (Document d : docList) {
+                    if (d.getString("contents") != null) {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
+
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.put("taxonomyId", saffronDatasetName);
+                        gfsFile.save();
+                    } else {
+                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.get("metadata").toString().getBytes()));
+
+                        gfsFile.setFilename(d.getString("id"));
+                        gfsFile.put("documentType", "text");
+                        gfsFile.put("taxonomyId", saffronDatasetName);
+                        gfsFile.save();
+                    }
+                }
+            }
+            if (getCorpusCount(saffronDatasetName) > 0)
+                this.corpusCollection.findOneAndDelete(doc);
+            doc.remove("documents");
+
+
+            this.corpusCollection.insertOne(doc);
 
             return true;
 
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
-
 
         return false;
     }
@@ -536,6 +1651,70 @@ public class MongoDBHandler implements Closeable {
     public FindIterable<Document> getCorpus(String saffronDatasetName) {
         Document document = new Document();
         document.put("id", saffronDatasetName);
-        return corpusCollection.find(and(eq("id", saffronDatasetName)));
+        FindIterable<Document> docs = this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+
+        return docs;
+    }
+
+    public HashMap<String, String> getCorpusFiles(String saffronDatasetName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        HashMap<String, String> map = new HashMap<>();
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    map.put(f.getFilename(), sb.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
+    }
+
+    public String getCorpusFile(String saffronDatasetName, String fileName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        String map = "";
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    if (f.getFilename().equals(fileName))
+                        map = sb.toString();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
+    }
+
+    public GridFS getGridFS() {
+        DB db = mongoClient.getDB(this.dbName);
+        return new GridFS(db, "corpusCollection");
     }
 }
