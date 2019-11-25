@@ -950,6 +950,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public void deleteTerm(String runId, String term) {
 
+    	this.removeTermFromConcepts(runId, term);
+    	
         BasicDBObject updateFields = new BasicDBObject();
         updateFields.append("run", runId);
         updateFields.append("term", term);
@@ -961,6 +963,44 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     /*
      * Concept Manipulation
      */
+    
+    /**
+     * Removes a relationship between a term and multiple concepts
+     * 
+     * @author Bianca Pereira
+     * 
+     * @param runId - the run to be manipulated
+     * @param term - the string of the term to be removed
+     */
+    //FIXME Due to the way how relations between terms and concepts is instantiated, the delete
+    // operation is inefficient, requirement going through the whole database of concepts
+    public void removeTermFromConcepts(String runId, String term) {
+    	List<Concept> conceptListDb = getAllConcepts(runId);
+    	for(Concept concept: conceptListDb) {
+    		
+    		if (concept.getPreferredTerm().equals(term)) {
+    			// If term is a preferred term, then choose a random synonym to become
+    			// a preferred term, or remove the concept if no synonym is available
+	    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+	    			this.removeConcept(runId, concept.getId());
+	    		else {
+	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+	    		}
+    		} else if (concept.getSynonymsStrings().contains(term)) {
+    			// If term is not a preferred term, just remove it from the list of synonyms
+    			Set<Term> synonyms = concept.getSynonyms();
+    			Term toBeRemoved = null;
+    			for(Term toRemove: synonyms){
+    				if (toRemove.getString().equals(term)) {
+    					toBeRemoved = toRemove;
+    					break;
+    				}
+    			}
+    			synonyms.remove(toBeRemoved);
+    			concept.setSynonyms(synonyms);
+    		}
+    	}    	
+    }
     
     /**
      * Retrieves all concepts from the Database for a given runId
