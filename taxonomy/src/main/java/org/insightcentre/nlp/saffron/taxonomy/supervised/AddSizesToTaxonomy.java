@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  * Calculcate the sizes of the taxonomy
@@ -13,21 +13,21 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  */
 public class AddSizesToTaxonomy {
     
-    public static TaxonomyWithSize addSizes(Taxonomy taxonomy, List<DocumentTopic> docTopics) {
-        Object2IntOpenHashMap<String> topicFreq = new Object2IntOpenHashMap<>();
-        for(DocumentTopic dt : docTopics) {
-            topicFreq.put(dt.topic_string, dt.occurrences);
+    public static TaxonomyWithSize addSizes(Taxonomy taxonomy, List<DocumentTerm> docTerms) {
+        Object2IntOpenHashMap<String> termFreq = new Object2IntOpenHashMap<>();
+        for(DocumentTerm dt : docTerms) {
+            termFreq.put(dt.getTermString(), dt.getOccurrences());
         }
-        return _addSizes(taxonomy, topicFreq, 0);
+        return _addSizes(taxonomy, termFreq, 0);
     }
 
-    private static TaxonomyWithSize _addSizes(Taxonomy taxonomy, Object2IntOpenHashMap<String> topicFreq, int total) {
+    private static TaxonomyWithSize _addSizes(Taxonomy taxonomy, Object2IntOpenHashMap<String> termFreq, int total) {
         ArrayList<TaxonomyWithSize> children = new ArrayList<>();
-        int size = topicFreq.getInt(taxonomy.root) + total;
+        int size = termFreq.getInt(taxonomy.root) + total;
         for(Taxonomy t : taxonomy.children) {
-            children.add(_addSizes(t, topicFreq, size));
+            children.add(_addSizes(t, termFreq, size));
         }
-        return new TaxonomyWithSize(taxonomy.root, taxonomy.score, children, topicFreq.getInt(taxonomy.root));
+        return new TaxonomyWithSize(taxonomy.root, taxonomy.score, children, termFreq.getInt(taxonomy.root));
     }
     
 }

@@ -8,42 +8,42 @@ angular.module('app', ['ngMaterial', 'ui.bootstrap'])
         urlArray = $location.absUrl().split('/');
 
         return {
-            getTopic: function () {
+            getterm: function () {
                 return decodeURI(urlArray[5]);
             },
-            setTopic: function(value) {
-                topic = value;
+            setterm: function(value) {
+                term = value;
             }
         };
     });
 
-// general function to accept or reject child/related topics
-function acceptRejectTopics($http, topics, mainTopic, status){
-    topicsContainer = [];
-    angular.forEach(topics,function(item, index){
+// general function to accept or reject child/related terms
+function acceptRejectterms($http, terms, mainterm, status){
+    termsContainer = [];
+    angular.forEach(terms,function(item, index){
         if (item.checked === true){
-            topics.splice(index, 1);
-            topicsContainer.push({"topic1": item.topic_string, "topic2": mainTopic, "status": status});
+            terms.splice(index, 1);
+            termsContainer.push({"term1": item.term_string, "term2": mainterm, "status": status});
         }
     });
 
-    let finalTopics = {"topics": topicsContainer};
-    console.log(finalTopics);
-    console.log(apiUrlWithSaffron + 'topics/update');
+    let finalterms = {"terms": termsContainer};
+    console.log(finalterms);
+    console.log(apiUrlWithSaffron + 'terms/update');
 
-    $http.post(apiUrlWithSaffron + 'topics/update', finalTopics).then(
+    $http.post(apiUrlWithSaffron + 'terms/update', finalterms).then(
         function (response) {
             console.log(response);
-            console.log("Changed status: " + finalTopics);
+            console.log("Changed status: " + finalterms);
         },
         function (response) {
             console.log(response);
-            console.log("Failed to change status of topics");
+            console.log("Failed to change status of terms");
         }
     );
 }
 
-// general function to accept or reject child/related topics
+// general function to accept or reject child/related terms
 function deleteOneRun($http, id){
 
     $http.delete(apiUrl + id).then(
@@ -53,7 +53,7 @@ function deleteOneRun($http, id){
         },
         function (response) {
             console.log(response);
-            console.log("Failed to change status of topics");
+            console.log("Failed to change status of terms");
         }
     ).then(function() { location.reload(); });
 
@@ -72,7 +72,7 @@ function rerunTaxonomy($http, runId){
         },
         function (response) {
             console.log(response);
-            console.log("Failed to change status of topics");
+            console.log("Failed to change status of terms");
         }
     );
 }
@@ -87,10 +87,6 @@ angular.module('app').component('header', {
         "href": "/" + saffronDatasetName + "/",
         "text": "Home"
       });
-      ctrl.menuList.push({
-        "href": "/" + saffronDatasetName + "/edit",
-        "text": "Review Mode"
-      });
 
       ctrl.searchAction = "/" + saffronDatasetName + "/search/";
    },
@@ -101,24 +97,24 @@ angular.module('app').component('header', {
    }
 });
 
-// getting the top topics to fill the right sidebar on homepage of a run
-angular.module('app').component('toptopics', {
-    templateUrl: '/top-topics.html',
+// getting the top terms to fill the right sidebar on homepage of a run
+angular.module('app').component('topterms', {
+    templateUrl: '/top-terms.html',
     controller: function ($http) {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadTopics = function () {
-            $http.get(apiUrlWithSaffron + "topics").then(
+        this.loadterms = function () {
+            $http.get(apiUrlWithSaffron + "terms").then(
                 function (response) {
                     response = response.data;
                     response.sort((a, b) => (a.score < b.score) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+30);
-                    ctrl.topics = [];
+                    ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
                         if(response[t].status !== "rejected") {
-                            ctrl.topics.push({
-                                "topic_string": response[t].topicString,
+                            ctrl.terms.push({
+                                "term_string": response[t].termString,
                                 "pos": (t + 1 + ctrl.n2)
                             });                            
                         }
@@ -127,364 +123,49 @@ angular.module('app').component('toptopics', {
                 },
                 function (response) {
                     console.log(response);
-                    console.log("Failed to get top topics");
+                    console.log("Failed to get top terms");
                 }
             );
         };
-        this.topicForward = function () {
+        this.termForward = function () {
             ctrl.n2 += 30;
-            this.loadTopics();
+            this.loadterms();
         };
-        this.topicBack = function () {
+        this.termBack = function () {
             ctrl.n2 -= 30;
-            this.loadTopics();
+            this.loadterms();
         };
-        this.loadTopics();
+        this.loadterms();
     }
 });
 
-angular.module('app').component('edittopics', {
-    templateUrl: '/edit-topics-component.html',
-    controller: function ($http, $scope, $modal, $window, $location, sharedProperties) {
-        var ctrl = this;
-        ctrl.errorMessage = "";
-
-        $http.get(apiUrlWithSaffron + 'topics').then(
-            function (response) {
-                ctrl.topics =  [];
-                ctrl.rejected = [];
-                for (let t = 0; t < response.data.length; t++) {
-                    if (response.data[t].status !== "rejected") {
-                        ctrl.topics.push({
-                            "topic_string": response.data[t].topicString,
-                            "topic_id": response.data[t].id,
-                            "status": response.data[t].status
-                        });
-                    } else {
-                        ctrl.rejected.push({
-                            "topic_string": response.data[t].topicString,
-                            "topic_id": response.data[t].id,
-                            "status": response.data[t].status
-                        });
-                    }             
-                }
-            },
-
-            function (response) {
-                console.log(response);
-                console.log("Failed to get topics");
-            }
-        );
-
-        // enabling multiple selections
-        $scope.checkAll = function() {
-            $scope.checkedAll = (!$scope.checkedAll);
-            ctrl.checkedStatus = ($scope.checkedAll);
-
-            if($scope.checkedAll){
-                angular.forEach(ctrl.topics,function(item){
-                    item.checked = true;
-                });
-            } else {
-                angular.forEach(ctrl.topics,function(item){
-                    item.checked = false;
-                });
-            }
-        };
-
-        // adding selected status to item
-        ctrl.checkedStatus = false;
-        $scope.checkStatus = function(topicId,checkedValue){
-            ctrl.checkedStatus = false;
-            angular.forEach(ctrl.topics,function(item) {
-                if (item.topic_id === topicId){
-                    item.checked = checkedValue;
-                }
-                if (item.checked === true) {
-                    ctrl.checkedStatus = true;
-                }
-            }, topicId, checkedValue);
-        };
-
-        // accept one or multiple topics only in the UI
-        $scope.acceptTopics = function($event, topic){
-            $event.preventDefault();
-            if (topic == null) {
-                angular.forEach(ctrl.topics,function(element){
-                    if (element.checked === true) {
-                        element.status = "accepted";
-                        element.checked = false;
-                    }
-                });
-                ctrl.checkedStatus = false;
-                $scope.checkedAll = false;
-            } else {
-                ctrl.topics.forEach(function(element) {
-                    if (element.topic_string === topic.topic_string) {
-                        element.status = "accepted";
-                        element.checked = false;
-                        $scope.checkStatus(element.topic_id,false);
-                    }
-                }, topic);
-            }
-        };
-
-        // reject one or multiple topics only in the UI
-        $scope.rejectTopics = function($event, topic){
-            $event.preventDefault();
-            if (topic == null) {
-                angular.forEach(ctrl.topics,function(element){
-                    if (element.checked === true) {
-                        element.status = "rejected";
-                        element.checked = false;
-                    }
-                });
-                ctrl.checkedStatus = false;
-                $scope.checkedAll = false;
-            } else {
-                ctrl.topics.forEach(function(element) {
-                    if (element.topic_string === topic.topic_string) {
-                        element.status = "rejected";
-                        element.checked = false;
-                        $scope.checkStatus(element.topic_id,false);
-                    }
-                }, topic);
-            }
-        };
-
-        // reject one or multiple topics only in the UI
-        $scope.revertTopicDecision = function($event, topic){
-            $event.preventDefault();
-            if (topic == null) {
-                angular.forEach(ctrl.topics,function(element){
-                    if (element.checked === true) {
-                        element.status = "none";
-                        element.checked = false;
-                    }
-                });
-                ctrl.checkedStatus = false;
-                $scope.checkedAll = false;
-            } else {
-                ctrl.topics.forEach(function(element) {
-                    if (element.topic_string === topic.topic_string) {
-                        element.status = "none";
-                        element.checked = false;
-                        $scope.checkStatus(element.topic_id,false);
-                    }
-                }, topic);
-            }
-        };
-
-        $scope.showConfirm = function() {
-
-            var modalInstance = $modal.open({
-              animation: $scope.animationsEnabled,
-              templateUrl: 'modal.html',
-              controller: function($scope, $modalInstance) {
-                $scope.ok = function() {
-                    $modalInstance.close();
-                };
-
-                $scope.cancel = function() {
-                    $modalInstance.dismiss('cancel');
-                };
-              },
-              resolve: {
-              }
-            });
-
-            modalInstance.result.then(function(selectedItem) {
-                $scope.saveTopics();
-            }, function() {
-                // Saving cancelled
-            });            
-          };
-
-        // send all modifications to the API
-        $scope.saveTopics = function() {
-            var requestTopics = []
-            ctrl.topics.forEach(function(topic) {
-                if (topic.status !== undefined) {
-                    requestTopics.push({
-                        "topic": topic.topic_string,
-                        "status": topic.status
-                    });
-                }
-            });
-            let requestData = {
-                "topics": requestTopics
-            };
-            
-            $http.post(apiUrlWithSaffron + 'topics/update', requestData).then(
-                function (response) {
-                    console.log(response);
-                    console.log("Topics' status update successfully");
-                    $window.location.href = '/' + saffronDatasetName + '/edit';
-                },
-                function (response) {
-                    console.log(response);
-                    ctrl.errorMessage = "An error has occurred while updating the topic status. Please try again later or contact the administration.";
-                    console.log("Failed to update topics' status");
-                }
-            );
-        }
-    }
-});
-
-angular.module('app').component('editparents', {
-    templateUrl: '/edit-parents-component.html',
-    controller: function ($http, $scope) {
-        var ctrl = this;
-        ctrl.message = null;
-       
-        $scope.loadTopics = function() {
-             ctrl.topics = [];
-            $http.get(apiUrlWithSaffron).then(
-                function (response) {
-                    $scope.getChildren(response.data, "", null, 0);
-                },
-                function (error) {
-                    console.log(error);
-                    console.log("Failed to get taxonomy structure");
-                }
-            );          
-        }
-        
-        $scope.getChildren = function(topic, parent_branch, parent, depth) {
-            var current_topic = {
-                "topic_string": topic.root,
-                "branch": parent_branch,
-                "topic_id": topic.root,
-                "parent": parent,
-                "status": topic.status,
-                "collapsed_branch" : "-".repeat(depth) + topic.root
-            }
-            if (current_topic["topic_id"] === "HEAD_TOPIC") {
-                current_topic["topic_string"] = "Root";
-                current_topic["collapsed_branch"] = "Root";
-            }
-            ctrl.topics.push(current_topic);
-
-            for (let i = 0; i < topic.children.length; i++) {
-                $scope.getChildren(topic.children[i], parent_branch == "" ? current_topic["topic_string"] : parent_branch + " > " + current_topic["topic_string"], current_topic, depth+1);
-            }
-        };
-
-        $scope.changeParentStatus = function(topic, status) {
-            ctrl.activeTopic = null;
-            
-            var requestData = {
-              "topics": [
-                {
-                  "topic_child": topic.topic_id,
-                  "topic_parent": topic.parent.topic_id,
-                  "status": status
-                }
-              ]
-            };
-
-
-
-            $http.post(apiUrlWithSaffron + "topics/updaterelationship", requestData).then(
-                function (response) {
-                    topic.status = status;
-                },
-                function (error) {
-                    ctrl.message = {
-                    "text": "An error has ocurred while changing the status of '" + topic.topic_string + "' parent relationship. Try again later or contact the administration.",
-                    "type": "danger",
-                    "topic": requestData.topics[0].id
-                    }
-                }
-            )
-        }
-
-        $scope.changeParent = function(topic, new_parent) {
-
-            if (topic.parent == new_parent) {
-                ctrl.message = {
-                    "text": "'" + topic.topic_string + "' parent kept the same.",
-                    "type": "warning",
-                    "topic": requestData.topics[0].id
-                }
-                ctrl.activeTopic = null;
-                return;
-            }
-            var requestData = {
-                    "topics" : [{
-                        "id": topic.topic_id,
-                        "new_id": topic.topic_id,
-                        "current_parent": topic.parent.topic_id,
-                        "new_parent": new_parent.topic_id
-                    }]
-                };
-
-            $http.post(apiUrlWithSaffron + 'topics/changeroot', requestData).then(
-                function (response) {
-                    console.log(response);
-                    console.log("Parent topic update successfully");
-
-                    //Reload topics
-                    ctrl.message = {
-                        "text": "'" + topic.topic_string + "' parent successfuly changed from '" + topic.parent.topic_string + "' to '" + new_parent.topic_string +"'",
-                        "type": "success",
-                        "topic": requestData.topics[0].id
-                    }
-                    ctrl.activeTopic = null;
-                    $scope.loadTopics();             
-                },
-                function (response) {
-                    if (response.data === "The selected move parent target is a member of a child topic and cannot be moved") {
-                        ctrl.message = {
-                            "text": "It is not possible to change the parent of a topic to one of its children: circular inheritance problem. Choose an antecedent parent or a topic in a parallel branch instead.",
-                            "type": "error",
-                            "topic": requestData.topics[0].id
-                        };
-                    } else {
-                        ctrl.message = {
-                            "text": "An error has occurred. Please try again later or contact the administration.",
-                            "type": "error",
-                            "topic": requestData.topics[0].id
-                        }
-                    }
-                    ctrl.activeTopic = null;
-                }
-            );
-
-        };
-
-        $scope.loadTopics();
-    }
-    
-});
-
-// the main topic component
-angular.module('app').component('topic', {
-    templateUrl: '/topics.html',
+// the main term component
+angular.module('app').component('term', {
+    templateUrl: '/terms.html',
     controller: function ($http, $scope, $window, $location, sharedProperties) {
         var ctrl = this;
 
         // this method is used to fill the select for parent name
-        $http.get(apiUrlWithSaffron + 'topics').then(
+        $http.get(apiUrlWithSaffron + 'terms').then(
             function (response) {
-                ctrl.topics =  [];
+                ctrl.terms =  [];
                 for (let t = 0; t < response.data.length; t++) {
 
-                    // to avoid looking for the current topic again
-                    // I am registering the ctrl.topic here by matching the API
-                    if (sharedProperties.getTopic() === response.data[t].topicString) {
-                        ctrl.topic = response.data[t];
+                    // to avoid looking for the current term again
+                    // I am registering the ctrl.term here by matching the API
+                    if (sharedProperties.getterm() === response.data[t].termString) {
+                        ctrl.term = response.data[t];
                     }
 
-                    ctrl.topics.push({
-                        "topic_string": response.data[t].topicString,
-                        "topic_id": response.data[t].topicString,
+                    ctrl.terms.push({
+                        "term_string": response.data[t].termString,
+                        "term_id": response.data[t].termString,
                         "pos": (t + 1)
                     });
                 }
 
                 // get parent name
-                $http.get(apiUrlWithSaffron + 'topics/' + ctrl.topic.topicString + '/parent').then(
+                $http.get(apiUrlWithSaffron + 'terms/' + ctrl.term.termString + '/parent').then(
                     function (response) {
                         ctrl.parent_id = response.data.root;
                         ctrl.current_parent_id = response.data.root;
@@ -498,56 +179,56 @@ angular.module('app').component('topic', {
 
             function (response) {
                 console.log(response);
-                console.log("Failed to get topics");
+                console.log("Failed to get terms");
             }
         );
         
-        // function to save updates on topic name or topic parent
-        $scope.ApiSaveTopic = function(old_topic_id, new_topic_name, old_topic_parent, new_topic_parent, $event){
+        // function to save updates on term name or term parent
+        $scope.ApiSaveterm = function(old_term_id, new_term_name, old_term_parent, new_term_parent, $event){
             $event.preventDefault();
             let JsonData = {
-                    "topics": [
+                    "terms": [
                         {
-                            "id": old_topic_id,
-                            "new_id": new_topic_name,
-                            "current_parent": old_topic_parent,
-                            "new_parent": new_topic_parent
+                            "id": old_term_id,
+                            "new_id": new_term_name,
+                            "current_parent": old_term_parent,
+                            "new_parent": new_term_parent
                         }
                     ]
                 };
 
-            $http.post(apiUrlWithSaffron + 'topics/changeroot', JsonData).then(
+            $http.post(apiUrlWithSaffron + 'terms/changeroot', JsonData).then(
                 function (response) {
                     console.log(response);
-                    console.log("Post topic: " + new_topic_name);
-                    $window.location.href = '/' + saffronDatasetName + '/topic/' + new_topic_name;
+                    console.log("Post term: " + new_term_name);
+                    $window.location.href = '/' + saffronDatasetName + '/term/' + new_term_name;
                 },
                 function (response) {
                     console.log(response);
-                    console.log("Failed to put topic");
+                    console.log("Failed to put term");
                 }
             );
 
         };
 
-        // function to delete the main topic on topic page
-        $scope.ApiDeleteTopic = function(topic_string, $event){
+        // function to delete the main term on term page
+        $scope.ApiDeleteterm = function(term_string, $event){
             $event.preventDefault();
-            $http.post(apiUrlWithSaffron + 'topics/' + topic_string + '/rejected').then(
+            $http.post(apiUrlWithSaffron + 'terms/' + term_string + '/rejected').then(
                 function (response) {
                     console.log(response);
                     $window.location.href = '/' + saffronDatasetName + '/';
                 },
                 function (response) {
                     console.log(response);
-                    console.log("Failed to delete topic");
+                    console.log("Failed to delete term");
                 }
             );
         };
 
         ctrl.checkRerun = false;
         $scope.checkRerunStatus = function(){
-            angular.forEach(ctrl.topics,function(item) {
+            angular.forEach(ctrl.terms,function(item) {
                 if (item.checked === true) {
                     ctrl.checkedStatus = true;
                     return false;
@@ -571,11 +252,11 @@ angular.module('app').component('topic', {
     }
 });
 
-// the related topics component
-angular.module('app').component('relatedtopics', {
-    templateUrl: '/topic-list.html',
+// the related terms component
+angular.module('app').component('relatedterms', {
+    templateUrl: '/term-list.html',
     bindings: {
-        topic: '<',
+        term: '<',
         doc: '<',
         author: '<'
     },
@@ -583,21 +264,21 @@ angular.module('app').component('relatedtopics', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadTopics = function () {
+        this.loadterms = function () {
 
-            // if on topic page, show related topics
-            if (ctrl.topic) {
-                ctrl.title = "Related topics";
+            // if on term page, show related terms
+            if (ctrl.term) {
+                ctrl.title = "Related terms";
 
-                var url = apiUrlWithSaffron + 'topicsimilarity/' + sharedProperties.getTopic();
+                var url = apiUrlWithSaffron + 'termsimilarity/' + sharedProperties.getterm();
                 $http.get(url).then(function (response) {
-                    response = response.data.topicsList;
+                    response = response.data.termsList;
                     response.sort((a, b) => (a.similarity < b.similarity) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+20);
-                    ctrl.topics = [];
+                    ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
-                        ctrl.topics.push({
-                            "topic_string": response[t].topicString2,
+                        ctrl.terms.push({
+                            "term_string": response[t].termString2,
                             "score": Math.round(response[t].similarity * 100) + "%",
                             "pos": (t + 1 + ctrl.n2),
                             "left": t < response.length / 2,
@@ -609,19 +290,19 @@ angular.module('app').component('relatedtopics', {
 
             } else 
 
-            // if on a document page, show top topics from the document
+            // if on a document page, show top terms from the document
             if (ctrl.doc) {
-                ctrl.title = "Main topics";
+                ctrl.title = "Main terms";
 
                 var url = apiUrlWithSaffron + 'docs/' + ctrl.doc;
                 $http.get(url).then(function (response) {
-                    response = response.data.topicsList;
+                    response = response.data.termsList;
                     response.sort((a, b) => (a.occurences < b.occurences) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+20);
-                    ctrl.topics = [];
+                    ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
-                        ctrl.topics.push({
-                            "topic_string": response[t].topic,
+                        ctrl.terms.push({
+                            "term_string": response[t].term,
                             "pos": (t + 1 + ctrl.n2),
                             "left": t < response.length / 2,
                             "right": t >= response.length / 2
@@ -631,14 +312,14 @@ angular.module('app').component('relatedtopics', {
                 });
             } else 
 
-            // if on an author page, show top topics from that author <!-- not API ready, still from the JSON files -->
+            // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
             if (ctrl.author) {
-                ctrl.title = "Main topics";
-                $http.get('/' + saffronDatasetName + '/author-topics?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
-                    ctrl.topics = [];
+                ctrl.title = "Main terms";
+                $http.get('/' + saffronDatasetName + '/author-terms?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
+                    ctrl.terms = [];
                     for (t = 0; t < response.data.length; t++) {
-                        ctrl.topics.push({
-                            "topic_string": response.data[t].topic_id,
+                        ctrl.terms.push({
+                            "term_string": response.data[t].term_id,
                             "pos": (t + 1 + ctrl.n2),
                             "left": t < response.data.length / 2,
                             "right": t >= response.data.length / 2
@@ -649,15 +330,15 @@ angular.module('app').component('relatedtopics', {
             }
         };
 
-        this.topicForward = function () {
+        this.termForward = function () {
             ctrl.n2 += 20;
-            this.loadTopics();
+            this.loadterms();
         }
-        this.topicBack = function () {
+        this.termBack = function () {
             ctrl.n2 -= 20;
-            this.loadTopics();
+            this.loadterms();
         }
-        this.loadTopics();
+        this.loadterms();
 
         // Functionality for the new Saffron
         // editing abilities
@@ -668,11 +349,11 @@ angular.module('app').component('relatedtopics', {
             ctrl.checkedStatus = ($scope.checkedAll);
 
             if($scope.checkedAll){
-                angular.forEach(ctrl.topics,function(item){
+                angular.forEach(ctrl.terms,function(item){
                     item.checked = true;
                 });
             } else {
-                angular.forEach(ctrl.topics,function(item){
+                angular.forEach(ctrl.terms,function(item){
                     item.checked = false;
                 });
             }
@@ -681,7 +362,7 @@ angular.module('app').component('relatedtopics', {
         // adding selected status to item
         ctrl.checkedStatus = false;
         $scope.checkStatus = function(){
-            angular.forEach(ctrl.topics,function(item) {
+            angular.forEach(ctrl.terms,function(item) {
                 if (item.checked === true) {
                     ctrl.checkedStatus = true;
                     return false;
@@ -689,18 +370,18 @@ angular.module('app').component('relatedtopics', {
             });
         };
 
-        // accept one or multiple topics
-        $scope.ApiAcceptTopics = function($event, topics){
+        // accept one or multiple terms
+        $scope.ApiAcceptterms = function($event, terms){
             $event.preventDefault();
-            topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
+            terms ? terms.checked = true : '';
+            acceptRejectterms($http, ctrl.terms, ctrl.term, "accepted");
         };
 
-        // reject one or multiple topics
-        $scope.ApiRejectTopics = function($event, topics){
+        // reject one or multiple terms
+        $scope.ApiRejectterms = function($event, terms){
             $event.preventDefault();
-            topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
+            terms ? terms.checked = true : '';
+            acceptRejectterms($http, ctrl.terms, ctrl.term, "rejected");
         };
 
         // adding selected status to item
@@ -712,8 +393,8 @@ angular.module('app').component('relatedtopics', {
 angular.module('app').controller('Breadcrumbs', function ($scope, $http, $location, sharedProperties) {
     $scope.parents = [];
 
-    function getParents(topicName) {
-        var url = apiUrlWithSaffron + 'topics/' + topicName + '/parent';
+    function getParents(termName) {
+        var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
         $http.get(url).then(function (response) {
             if(response.data.root){
                 $scope.parents.unshift(response.data.root);
@@ -721,7 +402,7 @@ angular.module('app').controller('Breadcrumbs', function ($scope, $http, $locati
             }
         });
     }
-    getParents(sharedProperties.getTopic());
+    getParents(sharedProperties.getterm());
 });
 
 // retrain Saffron
@@ -773,7 +454,7 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     }
     getRuns();
 
-    // reject one or multiple topics
+    // reject one or multiple terms
     $scope.deleteRun = function($event, id){
         $event.preventDefault();
         if(confirm("Are you sure you want to delete this run?")) {
@@ -783,24 +464,24 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
 
 });
 
-// the child topics component
-angular.module('app').component('childtopics', {
-    templateUrl: '/topic-list.html',
+// the child terms component
+angular.module('app').component('childterms', {
+    templateUrl: '/term-list.html',
     bindings: {
-        topic: '<'
+        term: '<'
     },
     controller: function ($http, $scope, sharedProperties) {
         var ctrl = this;
-        ctrl.title = "Child topics";
+        ctrl.title = "Child terms";
 
-        var url = apiUrlWithSaffron + 'topics/' + sharedProperties.getTopic() + '/children';
+        var url = apiUrlWithSaffron + 'terms/' + sharedProperties.getterm() + '/children';
         $http.get(url).then(function (response) {
-            ctrl.topics = [];
+            ctrl.terms = [];
             console.log(response)
             for (t = 0; t < response.data.children.length; t++) {
                 if (response.data.children[t].status !== "rejected") {
-                    ctrl.topics.push({
-                        "topic_string": response.data.children[t].root,
+                    ctrl.terms.push({
+                        "term_string": response.data.children[t].root,
                         "score": Math.round(response.data.children[t].linkScore * 100) + "%",
                         "pos": (t + 1),
                         "left": t < response.data.children.length / 2,
@@ -819,11 +500,11 @@ angular.module('app').component('childtopics', {
             ctrl.checkedStatus = ($scope.checkedAll);
 
             if($scope.checkedAll){
-                angular.forEach(ctrl.topics,function(item){
+                angular.forEach(ctrl.terms,function(item){
                     item.checked = true;
                 });
             } else {
-                angular.forEach(ctrl.topics,function(item){
+                angular.forEach(ctrl.terms,function(item){
                     item.checked = false;
                 });
             }
@@ -832,7 +513,7 @@ angular.module('app').component('childtopics', {
         // adding selected status to item
         ctrl.checkedStatus = false;
         $scope.checkStatus = function(){
-            angular.forEach(ctrl.topics,function(item) {
+            angular.forEach(ctrl.terms,function(item) {
                 if (item.checked === true) {
                     ctrl.checkedStatus = true;
                     return false;
@@ -840,18 +521,18 @@ angular.module('app').component('childtopics', {
             });
         };
 
-        // accept one or multiple topics
-        $scope.ApiAcceptTopics = function($event, topics){
+        // accept one or multiple terms
+        $scope.ApiAcceptterms = function($event, terms){
             $event.preventDefault();
-            topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "accepted");
+            terms ? terms.checked = true : '';
+            acceptRejectterms($http, ctrl.terms, ctrl.term, "accepted");
         };
 
-        // reject one or multiple topics
-        $scope.ApiRejectTopics = function($event, topics){
+        // reject one or multiple terms
+        $scope.ApiRejectterms = function($event, terms){
             $event.preventDefault();
-            topics ? topics.checked = true : '';
-            acceptRejectTopics($http, ctrl.topics, ctrl.topic, "rejected");
+            terms ? terms.checked = true : '';
+            acceptRejectterms($http, ctrl.terms, ctrl.term, "rejected");
         };
     }
 });
@@ -861,10 +542,10 @@ angular.module('app').component('searchresults', {
     templateUrl: '/search-results.html',
     controller: function ($http, $sce) {
         var ctrl = this;
-        ctrl.title = "Topics";
+        ctrl.title = "terms";
         $http.get(apiUrlWithSaffron + 'search/' + searchQuery).then(function (response) {
             ctrl.results = response.data;
-            // removed because we don't have a way to highlight the topic in the file through the API yet
+            // removed because we don't have a way to highlight the term in the file through the API yet
             // for (i in ctrl.results) {
             //     ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
             // }
@@ -878,10 +559,10 @@ angular.module('app').component('homepage', {
     templateUrl: '/home.html',
     controller: function ($http, $sce) {
         var ctrl = this;
-        ctrl.title = "Topics";
+        ctrl.title = "terms";
         $http.get(apiUrlWithSaffron + 'search/' + searchQuery).then(function (response) {
             ctrl.results = response.data;
-            // removed because we don't have a way to highlight the topic in the file through the API yet
+            // removed because we don't have a way to highlight the term in the file through the API yet
             // for (i in ctrl.results) {
             //     ctrl.results[i].contents_highlighted = $sce.trustAsHtml(ctrl.results[i].contents.split(searchQuery).join("<b>" + searchQuery + "</b>"));
             // }
@@ -894,14 +575,14 @@ angular.module('app').component('homepage', {
 angular.module('app').component('relatedauthors', {
     templateUrl: '/author-list.html',
     bindings: {
-        topic: '<',
+        term: '<',
         author: '<'
     },
     controller: function ($http) {
         var ctrl = this;
-        if (ctrl.topic) {
-            ctrl.title = "Major authors on this topic";
-            $http.get('/' + saffronDatasetName + '/author-topics?topic=' + ctrl.topic).then(function (response) {
+        if (ctrl.term) {
+            ctrl.title = "Major authors on this term";
+            $http.get(apiUrlWithSaffron + 'authorterms/' + ctrl.term).then(function (response) {
                 ctrl.authors = [];
                 for (t = 0; t < response.data.length; t++) {
                     ctrl.authors.push({
@@ -936,24 +617,29 @@ angular.module('app').component('relatedauthors', {
 angular.module('app').component('relateddocuments', {
     templateUrl: '/document-list.html',
     bindings: {
-        topic: '<',
+        term: '<',
         author: '<'
     },
     controller: function ($http, $sce) {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadTopics = function () {
-            if (ctrl.topic) {
-                $http.get('/' + saffronDatasetName + '/doc-topics?n=20&offset=' + ctrl.n2 + '&topic=' + ctrl.topic).then(function (response) {
+        this.loadterms = function () {
+            if (ctrl.term) {
+                $http.get(apiUrlWithSaffron + 'docs').then(function (response) {
                     ctrl.docs = [];
-                    for (t = 0; t < response.data.length; t++) {
-                        ctrl.docs.push({
-                            "doc": response.data[t],
-                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.topic).join("<b>" + ctrl.topic + "</b>")),
-                            "pos": (t + 1)
-                        });
-                    }
+                    var json = JSON.parse(JSON.stringify(response.data));
+                    json.forEach(function(obj) {
+                        var text = ""
+                        text = Object.values(obj)[0]
+                        text = text.split(ctrl.term).join("<b>" + ctrl.term + "</b>")
+                        if (text.includes(ctrl.term)) {
+                            ctrl.docs.push({
+                                "doc": Object.keys(obj)[0],
+                                "values": $sce.trustAsHtml(text.substring(text.indexOf(ctrl.term) -100, text.indexOf(ctrl.term) +100))
+                            });
+                        }
+                    })
                     ctrl.n = ctrl.n2;
                 });
             } else if (ctrl.author) {
@@ -971,13 +657,13 @@ angular.module('app').component('relateddocuments', {
         };
         this.docForward = function () {
             ctrl.n2 += 20;
-            this.loadTopics();
+            this.loadterms();
         };
         this.docBackward = function () {
             ctrl.n2 -= 20;
-            this.loadTopics();
+            this.loadterms();
         };
-        this.loadTopics();
+        this.loadterms();
     }
 });
 

@@ -28,6 +28,7 @@ public class Author {
         this.nameVariants = nameVariants;
     }
 
+    @JsonCreator
     public Author(String name) {
         this.id = name;
         this.name = name;

@@ -7,11 +7,11 @@ import java.util.Collection;
 import java.util.List;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.config.AuthorTopicConfiguration;
+import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 
 /**
@@ -31,9 +31,9 @@ public class Main {
             final OptionParser p = new OptionParser() {{
                 accepts("c", "The configuration").withRequiredArg().ofType(File.class);
                 accepts("t", "The text corpus").withRequiredArg().ofType(File.class);
-                accepts("d", "The document topic mapping").withRequiredArg().ofType(File.class);
-                accepts("p", "The topics").withRequiredArg().ofType(File.class);
-                accepts("o", "The output author-topic mapping").withRequiredArg().ofType(File.class);
+                accepts("d", "The document term mapping").withRequiredArg().ofType(File.class);
+                accepts("p", "The terms").withRequiredArg().ofType(File.class);
+                accepts("o", "The output author-term mapping").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
             
@@ -52,13 +52,13 @@ public class Main {
             if(corpusFile == null || !corpusFile.exists()) {
                 badOptions(p, "Corpus does not exist");
             }
-            final File docTopicFile = (File)os.valueOf("d");
-            if(docTopicFile == null || !docTopicFile.exists()) {
-                badOptions(p, "Doc-topic do not exist");
+            final File docTermFile = (File)os.valueOf("d");
+            if(docTermFile == null || !docTermFile.exists()) {
+                badOptions(p, "Doc-term do not exist");
             }
-            final File topicFile = (File)os.valueOf("p");
-            if(topicFile == null || !topicFile.exists()) {
-                badOptions(p, "Topics do not exist");
+            final File termFile = (File)os.valueOf("p");
+            if(termFile == null || !termFile.exists()) {
+                badOptions(p, "Terms do not exist");
             }
 
             final File output = (File)os.valueOf("o");
@@ -68,16 +68,16 @@ public class Main {
             
             ObjectMapper mapper = new ObjectMapper();
 
-            AuthorTopicConfiguration config          = configurationFile == null ? new AuthorTopicConfiguration() : mapper.readValue(configurationFile, AuthorTopicConfiguration.class);
+            AuthorTermConfiguration config          = configurationFile == null ? new AuthorTermConfiguration() : mapper.readValue(configurationFile, AuthorTermConfiguration.class);
             Corpus corpus                 = CorpusTools.readFile(corpusFile);
-            List<DocumentTopic> docTopics = mapper.readValue(docTopicFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
-            List<Topic> topics            = mapper.readValue(topicFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
+            List<Term> terms            = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            ConnectAuthorTopic cr = new ConnectAuthorTopic(config);
+            ConnectAuthorTerm cr = new ConnectAuthorTerm(config);
 
-            Collection<AuthorTopic> authorTopics = cr.connectResearchers(topics, docTopics, corpus.getDocuments());
+            Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, docTerms, corpus.getDocuments());
             
-            mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTopics);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, authorTerms);
             
         } catch(Throwable t) {
             t.printStackTrace();
