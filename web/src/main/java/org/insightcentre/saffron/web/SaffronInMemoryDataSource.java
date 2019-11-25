@@ -1068,8 +1068,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
 
 	@Override
-	public List<Concept> getAllConcepts(String datasetName) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public List<Concept> getAllConcepts(String runId) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1077,8 +1077,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
 	@Override
-	public Concept getConcept(String datasetName, String conceptId) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public Concept getConcept(String runId, String conceptId) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1087,8 +1087,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
 	//FIXME Suboptimal
 	@Override
-	public List<Concept> getConceptsByPreferredTermString(String datasetName, String preferredTermString) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1102,8 +1102,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
 	@Override
-	public void addConcept(String datasetName, Concept conceptToBeAdded) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public void addConcept(String runId, Concept conceptToBeAdded) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1114,8 +1114,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
 	@Override
-	public void updateConcept(String datasetName, Concept conceptToBeUpdated) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public void updateConcept(String runId, Concept conceptToBeUpdated) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1126,13 +1126,13 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (c == null)
         	throw new NoSuchElementException("Concept with id '" + conceptToBeUpdated.getId() + "' run does not exist");
         
-        this.removeConcept(datasetName, c.getId());
-        this.addConcept(datasetName, conceptToBeUpdated);
+        this.removeConcept(runId, c.getId());
+        this.addConcept(runId, conceptToBeUpdated);
 	}
 
 	@Override
-	public void removeConcept(String datasetName, String conceptId) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public void removeConcept(String runId, String conceptId) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
         	throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -1141,22 +1141,22 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 	
 	//FIXME Suboptimal
-	public void removeTermFromConcepts(String datasetName, String term) {
-		SaffronDataImpl saffron = data.get(datasetName);
+	public void removeTermFromConcepts(String runId, String term) {
+		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
         	throw new NoSuchElementException("Saffron run does not exist");
         }
         
-        for(Concept concept: getAllConcepts(datasetName)) {
+        for(Concept concept: getAllConcepts(runId)) {
     		
     		if (concept.getPreferredTerm().equals(term)) {
     			// If term is a preferred term, then choose a random synonym to become
     			// a preferred term, or remove the concept if no synonym is available
 	    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
-	    			this.removeConcept(datasetName, concept.getId());
+	    			this.removeConcept(runId, concept.getId());
 	    		else {
 	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
-	    			this.updateConcept(datasetName, concept);
+	    			this.updateConcept(runId, concept);
 	    		}
     		} else if (concept.getSynonymsStrings().contains(term)) {
     			// If term is not a preferred term, just remove it from the list of synonyms
@@ -1170,7 +1170,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     			}
     			synonyms.remove(toBeRemoved);
     			concept.setSynonyms(synonyms);
-    			this.updateConcept(datasetName, concept);
+    			this.updateConcept(runId, concept);
     		}
     	}   
 	}
