@@ -1,7 +1,10 @@
 package org.insightcentre.saffron.web;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
@@ -65,8 +68,10 @@ public class SaffronService {
             exception.addParameterValue("taxonomyId", "");
             throw exception;
         }
+        File directory = new File(this.getExecutor().getParentDirectory().getPath() + "/" + taxonomyId );
 		try {
 			dataSource.deleteRun(taxonomyId);
+            FileUtils.deleteDirectory(directory);
 		} catch (Exception e) {
 			throw new RuntimeException("The Saffron run " + taxonomyId + " could not be deleted: " + e.getMessage());
 		}
@@ -393,4 +398,8 @@ public class SaffronService {
 		
 		this.updateParentRelationshipStatus(taxonomyId, termChild, Status.accepted.toString());
 	}
+
+    private Executor getExecutor() {
+        return Launcher.executor;
+    }
 }

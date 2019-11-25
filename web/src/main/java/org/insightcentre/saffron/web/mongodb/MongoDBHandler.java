@@ -18,6 +18,7 @@ import com.mongodb.gridfs.GridFSDBFile;
 import com.mongodb.gridfs.GridFSInputFile;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import static com.mongodb.client.model.Filters.*;
 import static com.mongodb.client.model.Updates.combine;
@@ -32,6 +33,8 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.saffron.web.Executor;
+import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.json.JSONArray;
@@ -1465,7 +1468,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
 
 
-
     public boolean updateTermName(String id, String term, String newTerm, String status) {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
@@ -1712,6 +1714,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         }
         return map;
     }
+
 
     public GridFS getGridFS() {
         DB db = mongoClient.getDB(this.dbName);
