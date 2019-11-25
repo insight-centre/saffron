@@ -1265,8 +1265,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             document.put("_id", id + "_" + name.getAuthor1_id() + "_" + name.getAuthor2_id());
             document.put("run", id);
             document.put("run_date", date);
-            document.put("author1", name.getAuthor1_id());
-            document.put("author2", name.getAuthor2_id());
+            document.put("author1_id", name.getAuthor1_id());
+            document.put("author2_id", name.getAuthor2_id());
             document.put("similarity", name.getSimilarity());
 
             authorSimilarityCollection.insertOne(document);
