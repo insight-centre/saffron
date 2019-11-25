@@ -26,6 +26,7 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -53,6 +54,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         private List<AuthorTerm> authorTerms;
         private List<DocumentTerm> docTerms;
         private HashMap<String, Term> terms;
+        private HashMap<String, Concept> concepts;
         private HashMap<String, List<AuthorAuthor>> authorByAuthor1, authorByAuthor2;
         private HashMap<String, List<TermTerm>> termByTerm1, termByTerm2;
         private HashMap<String, List<DocumentTerm>> docByTerm, termByDoc;
@@ -255,6 +257,27 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                     return o1.compareTo(o2);
                 }
             });
+        }
+        
+        public Concept getConcept(String id) {
+            return concepts.get(id);
+        }
+
+        public List<Concept> getConcepts() {
+            return concepts == null ? Collections.EMPTY_LIST : (List) concepts.values();
+        }
+        
+        public void addConcept(Concept concept) {
+        	if (this.concepts == null || this.concepts.size() == 0)
+        		this.concepts = new HashMap<>();
+        	this.concepts.put(concept.getId(), concept);
+        }
+
+        public void setConcepts(Collection<Concept> concepts) {
+            this.concepts = new HashMap<>();
+            for (Concept c: concepts) {
+                this.concepts.put(c.getId(), c);
+            }
         }
 
         public List<TermTerm> getTermSim() {
@@ -1045,32 +1068,110 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
 
 	@Override
-	public List<Concept> getAllConcepts(String runId) {
-		throw new NotImplementedException("");
+	public List<Concept> getAllConcepts(String datasetName) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getConcepts();
 	}
 
 	@Override
-	public Concept getConcept(String runId, String conceptId) {
-		throw new NotImplementedException("");
+	public Concept getConcept(String datasetName, String conceptId) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getConcept(conceptId);
+	}
+
+	//FIXME Suboptimal
+	@Override
+	public List<Concept> getConceptsByPreferredTermString(String datasetName, String preferredTermString) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        List<Concept> result = new ArrayList<Concept>();
+        for(Concept concept: saffron.getConcepts()) {
+        	if (concept.getPreferredTermString().equals(preferredTermString))
+        		result.add(concept);
+        }
+        
+        return result;
 	}
 
 	@Override
-	public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString) {
-		throw new NotImplementedException("");
+	public void addConcept(String datasetName, Concept conceptToBeAdded) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        if (conceptToBeAdded.getId() == null || conceptToBeAdded.getId().equals(""))
+        	throw new InvalidValueException("The concept id cannot be null or empty");
+        
+        saffron.addConcept(conceptToBeAdded);
 	}
 
 	@Override
-	public void addConcept(String runId, Concept conceptToBeAdded) {
-		throw new NotImplementedException("");
+	public void updateConcept(String datasetName, Concept conceptToBeUpdated) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        if (conceptToBeUpdated.getId() == null || conceptToBeUpdated.getId().equals(""))
+        	throw new InvalidValueException("The concept id cannot be null or empty");
+        
+        Concept c = saffron.getConcept(conceptToBeUpdated.getId());
+        if (c == null)
+        	throw new NoSuchElementException("Concept with id '" + conceptToBeUpdated.getId() + "' run does not exist");
+        
+        this.removeConcept(datasetName, c.getId());
+        this.addConcept(datasetName, conceptToBeUpdated);
 	}
 
 	@Override
-	public void updateConcept(String runId, Concept conceptToBeUpdated) {
-		throw new NotImplementedException("");
+	public void removeConcept(String datasetName, String conceptId) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+        	throw new NoSuchElementException("Saffron run does not exist");
+        }
+        List<Concept> concepts = saffron.getConcepts().stream().filter((Concept c) -> !c.getId().equals(conceptId)).collect(Collectors.toList());
+        saffron.setConcepts(concepts);
 	}
-
-	@Override
-	public void removeConcept(String runId, String conceptId) {
-		throw new NotImplementedException("");
+	
+	//FIXME Suboptimal
+	public void removeTermFromConcepts(String datasetName, String term) {
+		SaffronDataImpl saffron = data.get(datasetName);
+        if (saffron == null) {
+        	throw new NoSuchElementException("Saffron run does not exist");
+        }
+        
+        for(Concept concept: getAllConcepts(datasetName)) {
+    		
+    		if (concept.getPreferredTerm().equals(term)) {
+    			// If term is a preferred term, then choose a random synonym to become
+    			// a preferred term, or remove the concept if no synonym is available
+	    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+	    			this.removeConcept(datasetName, concept.getId());
+	    		else {
+	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+	    			this.updateConcept(datasetName, concept);
+	    		}
+    		} else if (concept.getSynonymsStrings().contains(term)) {
+    			// If term is not a preferred term, just remove it from the list of synonyms
+    			Set<Term> synonyms = concept.getSynonyms();
+    			Term toBeRemoved = null;
+    			for(Term toRemove: synonyms){
+    				if (toRemove.getString().equals(term)) {
+    					toBeRemoved = toRemove;
+    					break;
+    				}
+    			}
+    			synonyms.remove(toBeRemoved);
+    			concept.setSynonyms(synonyms);
+    			this.updateConcept(datasetName, concept);
+    		}
+    	}   
 	}
 }
