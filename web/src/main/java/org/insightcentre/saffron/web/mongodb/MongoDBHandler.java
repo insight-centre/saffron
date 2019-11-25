@@ -975,8 +975,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     //FIXME Due to the way how relations between terms and concepts is instantiated, the delete
     // operation is inefficient, requirement going through the whole database of concepts
     public void removeTermFromConcepts(String runId, String term) {
-    	List<Concept> conceptListDb = getAllConcepts(runId);
-    	for(Concept concept: conceptListDb) {
+    	for(Concept concept: getAllConcepts(runId)) {
     		
     		if (concept.getPreferredTerm().equals(term)) {
     			// If term is a preferred term, then choose a random synonym to become
@@ -985,6 +984,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 	    			this.removeConcept(runId, concept.getId());
 	    		else {
 	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+	    			this.updateConcept(runId, concept);
 	    		}
     		} else if (concept.getSynonymsStrings().contains(term)) {
     			// If term is not a preferred term, just remove it from the list of synonyms
@@ -998,6 +998,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     			}
     			synonyms.remove(toBeRemoved);
     			concept.setSynonyms(synonyms);
+    			this.updateConcept(runId, concept);
     		}
     	}    	
     }
