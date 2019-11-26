@@ -51,12 +51,19 @@ $DIR/extract-terms -c $CONFIG \
     -o $OUTPUT/doc-terms.json
 
 echo "########################################"
-echo "## Step 3: Author Consolidation       ##"
+echo "## Step 3: Concept Consolidation       ##"
+echo "########################################"
+$DIR/consolidate-concepts -c $CONFIG \
+	-t $OUTPUT/terms-extracted.json \
+	-o $OUTPUT/concepts.json 
+
+echo "########################################"
+echo "## Step 4: Author Consolidation       ##"
 echo "########################################"
 $DIR/consolidate-authors -t $CORPUS 
 
 echo "########################################"
-echo "## Step 4: DBpedia Lookup             ##"
+echo "## Step 5: DBpedia Lookup             ##"
 echo "########################################"
 if [ -z $DBP_CONFIG ]
 then
@@ -68,22 +75,22 @@ $DIR/dbpedia-lookup -c $DBP_CONFIG -t $OUTPUT/terms-extracted.json \
 fi
 
 echo "########################################"
-echo "## Step 5: Connect Authors            ##"
+echo "## Step 6: Connect Authors            ##"
 echo "########################################"
 $DIR/connect-authors -t $CORPUS -p $OUTPUT/terms.json -d $OUTPUT/doc-terms.json -o $OUTPUT/author-terms.json
 
 echo "########################################"
-echo "## Step 6: Term Similarity           ##"
+echo "## Step 7: Term Similarity           ##"
 echo "########################################"
 $DIR/term-sim -d $OUTPUT/doc-terms.json -o $OUTPUT/term-sim.json
 
 echo "########################################"
-echo "## Step 7: Author Similarity          ##"
+echo "## Step 8: Author Similarity          ##"
 echo "########################################"
 $DIR/author-sim -d $OUTPUT/author-terms.json -o $OUTPUT/author-sim.json
 
 echo "########################################"
-echo "## Step 8: Taxonomy Extraction       ##"
+echo "## Step 9: Taxonomy Extraction       ##"
 echo "########################################"
 $DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
 
