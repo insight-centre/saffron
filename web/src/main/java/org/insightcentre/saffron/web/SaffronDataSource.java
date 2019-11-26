@@ -74,6 +74,22 @@ public interface SaffronDataSource extends Closeable {
     boolean addTermsSimilarity(String id, Date date, List<TermTerm> termSimilarity);
 
     /*
+     * Concept manipulation
+     */
+    
+    public List<Concept> getAllConcepts(String runId);
+    
+    public Concept getConcept(String runId, String conceptId);
+    
+    public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString);
+
+    public void addConcept(String runId, Concept conceptToBeAdded);
+    
+    public void updateConcept(String runId, Concept conceptToBeUpdated);
+    
+    public void removeConcept(String runId, String conceptId);
+    
+    /*
      * (non-Javadoc)
      *
      * @see java.io.Closeable#close()
