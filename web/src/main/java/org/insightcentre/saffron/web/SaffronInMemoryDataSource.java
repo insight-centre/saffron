@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import org.json.JSONObject;
 
 /**
  * All the data generated during the run of Saffron that is exposed by the Web
@@ -643,6 +644,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             return "";
         }
         return saffron.id;
+    }
+
+    @Override
+    public void updateRun(String runId, String originalRun, JSONObject json, String status) {
+        throw new NotImplementedException();
     }
 
     @Override

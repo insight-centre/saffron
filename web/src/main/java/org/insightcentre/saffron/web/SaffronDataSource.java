@@ -86,6 +86,8 @@ public interface SaffronDataSource extends Closeable {
 
     String getRun(String runId);
 
+    void updateRun(String runId, String originalRun, JSONObject json, String status);
+
     Taxonomy getTaxonomy(String runId);
 
     List<DocumentTerm> getDocTerms(String runId);

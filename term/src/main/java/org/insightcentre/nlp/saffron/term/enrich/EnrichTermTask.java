@@ -44,7 +44,6 @@ public class EnrichTermTask implements Runnable {
         List<WordTrie> tries = new ArrayList<>();
         try {
             String contents = doc.contents().toLowerCase();
-            System.err.println(doc.id);
             for (String sentence : contents.split("\n")) {
                 String[] tokens;
                 try {
