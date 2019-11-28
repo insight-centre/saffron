@@ -15,4 +15,4 @@ export MONGO_HOST=localhost
 export MONGO_PORT=27017
 export MONGO_DB_NAME=saffron_test
 export STORE_LOCAL_COPY=false
-mvn -q exec:java -f pom.xml -Dexec.args="$*"
+mvnDebug -q exec:java -f pom.xml -Dexec.args="$*"

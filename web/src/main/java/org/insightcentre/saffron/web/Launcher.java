@@ -5,23 +5,16 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 
-import io.swagger.jaxrs.config.DefaultJaxrsConfig;
-import io.swagger.jersey.config.JerseyJaxrsConfig;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.server.session.SessionHandler;
-import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.glassfish.jersey.server.ResourceConfig;
-import org.glassfish.jersey.servlet.ServletContainer;
 import org.insightcentre.saffron.web.api.SaffronAPI;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
-import org.insightcentre.saffron.web.swagger.SwaggerInitializer;
 
 import javax.ws.rs.ApplicationPath;
 
@@ -131,20 +124,5 @@ public class Launcher {
     }
 
 
-    private static ServletContextHandler setupSwaggerContextHandler() {
-        // Configure Swagger-core
-        final ServletHolder swaggerServletHolder = new ServletHolder(new JerseyJaxrsConfig());
-        swaggerServletHolder.setName("JerseyJaxrsConfig");
-        swaggerServletHolder.setInitParameter("api.version", "1.0.0");
-        swaggerServletHolder.setInitParameter("swagger.api.basepath", "http://localhost:8080/api");
-        swaggerServletHolder.setInitOrder(2);
 
-        final ServletContextHandler swaggerContextHandler = new ServletContextHandler();
-        swaggerContextHandler.setSessionHandler(new SessionHandler());
-        // Bind Swagger-core to the url HOST/api-docs
-        swaggerContextHandler.setContextPath("/api-docs");
-        swaggerContextHandler.addServlet(swaggerServletHolder, "/api/v1*");
-
-        return swaggerContextHandler;
-    }
 }
