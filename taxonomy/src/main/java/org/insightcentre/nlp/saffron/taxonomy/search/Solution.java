@@ -80,7 +80,7 @@ public class Solution {
             }
             // top is not yet in taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), accepted ? Status.accepted : Status.none);
+            Taxonomy t2 = new Taxonomy(top, topScore, Double.NaN, new ArrayList<>(Arrays.asList(newHeads.get(bottom).withLinkScore(linkScore))), accepted ? Status.accepted : Status.none);
             newHeads.remove(bottom);
             newHeads.put(top, t2);
             return new Solution(newHeads, terms, size + 1);
@@ -97,15 +97,15 @@ public class Solution {
                     Map<String, Taxonomy> newHeads = new HashMap<>(heads);
                     newHeads.put(e.getKey(),
                             insertIntoTaxo(newHeads.get(e.getKey()), top,
-                                    new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none)));
+                                    new Taxonomy(bottom, bottomScore, linkScore, new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none)));
                     return new Solution(newHeads, terms, size + 1);
                 }
             }
             // top and bottom are not in the taxonomy
             Map<String, Taxonomy> newHeads = new HashMap<>(heads);
-            Taxonomy t = new Taxonomy(top, topScore, Double.NaN, "", "", new ArrayList<Taxonomy>() {
+            Taxonomy t = new Taxonomy(top, topScore, Double.NaN, new ArrayList<Taxonomy>() {
                 {
-                    add(new Taxonomy(bottom, bottomScore, linkScore, "", "", new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none));
+                    add(new Taxonomy(bottom, bottomScore, linkScore,  new ArrayList<Taxonomy>(), accepted ? Status.accepted : Status.none));
                 }
             }, Status.none);
             newHeads.put(top, t);
@@ -149,7 +149,7 @@ public class Solution {
                 newChildren.add(insertIntoTaxo(t, top, bottom));
             }
         }
-        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, "", "", newChildren, taxo.status);
+        return new Taxonomy(taxo.root, taxo.score, taxo.linkScore, newChildren, taxo.status);
     }
 
     /**

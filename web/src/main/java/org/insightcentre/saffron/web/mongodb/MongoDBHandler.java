@@ -1063,7 +1063,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public Taxonomy getTaxonomy(String runId)  {
-        Taxonomy graph = new Taxonomy("", 0, 0, "", "", new ArrayList<>(), Status.none);
+        Taxonomy graph = new Taxonomy("", 0, 0, new ArrayList<>(), Status.none);
         FindIterable<Document> docs = MongoUtils.getTaxonomyFromMongo(runId, this);
         graph = TaxonomyUtils.getTaxonomyFromDocs(docs, graph);
         return graph;

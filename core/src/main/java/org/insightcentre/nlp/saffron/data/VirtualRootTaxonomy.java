@@ -32,13 +32,11 @@ public class VirtualRootTaxonomy extends Taxonomy{
     public VirtualRootTaxonomy(@JsonProperty("root") String root,
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
-                    @JsonProperty("originalParent") String originalParent,
-                    @JsonAlias("originalTopic") @JsonProperty("originalTerm") String originalTerm,
                     @JsonProperty("children") List<Taxonomy> children,
                     @JsonProperty("status") Status status) {
 		
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		this.addChild(new Taxonomy(root, score, linkScore, originalParent, originalTerm, children, status));	
+		this.addChild(new Taxonomy(root, score, linkScore, children, status));
 	}
 }

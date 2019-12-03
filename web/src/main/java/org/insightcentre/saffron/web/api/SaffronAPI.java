@@ -196,14 +196,9 @@ public class SaffronAPI {
     @Path("/{param}/terms/{term_id}/children")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermChildren(@PathParam("param") String runId, @PathParam("term_id") String termId) {
-
-
         try {
 
-            Taxonomy originalTaxo = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
-
-            originalTaxo = saffronService.getTaxonomy(runId);
-
+            Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy descendent = originalTaxo.descendent(termId);
             String json = new Gson().toJson(descendent);
             return Response.ok(json).build();
@@ -264,7 +259,7 @@ public class SaffronAPI {
             @PathParam("status") String status) {
 
         
-        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
+        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), Status.none);
         Taxonomy originalTaxo = saffronService.getTaxonomy(name);
 
         try {

@@ -95,17 +95,17 @@ public class GreedyTaxoExtract {
             Taxonomy pTaxo = taxos.get(parent);
             Taxonomy cTaxo = taxos.get(child);
             if(pTaxo == null && cTaxo == null) {
-                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN,  "", "", new ArrayList<Taxonomy>(), Status.none);
-                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN,  new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo == null) {
-                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none);
+                pTaxo = new Taxonomy(parent, termMap.get(parent).getScore(), Double.NaN, new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(parent, pTaxo);
             } else if(cTaxo == null && pTaxo.children.size() < maxChildren) {
-                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, "", "", new ArrayList<Taxonomy>(), Status.none);
+                cTaxo = new Taxonomy(child, termMap.get(child).getScore(), hpScore, new ArrayList<Taxonomy>(), Status.none);
                 pTaxo.children.add(cTaxo);
                 taxos.put(child, cTaxo);
             } else if(pTaxo.children.size() < maxChildren) {
@@ -141,7 +141,7 @@ public class GreedyTaxoExtract {
 
     private Taxonomy addOrphans(Taxonomy t, List<String> orphans, Map<String, Term> termMap) {
         for(String orphan : orphans) {
-            t.children.add(new Taxonomy(orphan, termMap.get(orphan).getScore(), Double.NaN, "", "", new ArrayList<Taxonomy>(), Status.none));
+            t.children.add(new Taxonomy(orphan, termMap.get(orphan).getScore(), Double.NaN, new ArrayList<Taxonomy>(), Status.none));
         }
         return t;
     }
