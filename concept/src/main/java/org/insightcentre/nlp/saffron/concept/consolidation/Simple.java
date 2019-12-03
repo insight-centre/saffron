@@ -19,7 +19,6 @@ public class Simple implements ConceptConsolidation{
 
 	@Override
 	public List<Concept> consolidate(List<Term> terms) {
-		//throw new NotImplementedException("Simple.consolidate method not implemented");
 		Set<Concept> concepts = new HashSet<Concept>();
 		for(Term term: terms) {
 			concepts.add(new Concept.Builder(term.getString(), term.getString()).build());
