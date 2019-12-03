@@ -6,9 +6,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
@@ -19,8 +16,6 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -40,8 +35,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.mongodb.client.FindIterable;
 
 @Path("/api/v1/run")
@@ -51,6 +44,7 @@ public class SaffronAPI {
     protected final SaffronService saffronService;
     protected final MongoDBHandler saffron;
     protected final Launcher launcher;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public SaffronAPI() {
         this.launcher = new Launcher();
@@ -83,6 +77,7 @@ public class SaffronAPI {
     public Response getAllRuns() {
         List<BaseResponse> runsResponse = new ArrayList<>();
         List<SaffronRun> runs;
+        String json;
 
         try {
             runs = saffronService.getAllRuns();
@@ -93,12 +88,11 @@ public class SaffronAPI {
                 entity.setRunDate(doc.runDate);
                 runsResponse.add(entity);
             }
+            json = objectMapper.writeValueAsString(runsResponse);
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
-
-        String json = new Gson().toJson(runsResponse);
         return Response.ok(json).build();
     }
 
@@ -132,7 +126,7 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRunTerms(@PathParam("param") String runId) {
         List<TermResponse> termsResponse = new ArrayList<>();
-
+        String json;
         Iterable<Term> terms;
         
         try {
@@ -148,14 +142,13 @@ public class SaffronAPI {
                 entity.setStatus(doc.getStatus().toString());
                 termsResponse.add(entity);
             }
-
-            //saffron.close();
+            json = objectMapper.writeValueAsString(termsResponse);
         } catch (Exception x) {
             x.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
 
-        String json = new Gson().toJson(termsResponse);
+
         return Response.ok(json).build();
     }
 
@@ -165,7 +158,7 @@ public class SaffronAPI {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getSearch(@PathParam("param") String runId, @PathParam("term") String term) {
         List<SearchResponse> searchResponses = new ArrayList<>();
-
+        String json = null;
         FindIterable<Document> terms;
         
         try {
@@ -180,14 +173,12 @@ public class SaffronAPI {
                 searchResponses.add(entity);
 
             }
-
-            //saffron.close();
+            json = objectMapper.writeValueAsString(searchResponses);
         } catch (Exception x) {
             x.printStackTrace();
             System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
         }
 
-        String json = new Gson().toJson(searchResponses);
         return Response.ok(json).build();
     }
 
@@ -200,7 +191,7 @@ public class SaffronAPI {
 
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy descendent = originalTaxo.descendent(termId);
-            String json = new Gson().toJson(descendent);
+            json = objectMapper.writeValueAsString(descendent);
             return Response.ok(json).build();
 
         } catch (Exception e) {
@@ -216,15 +207,12 @@ public class SaffronAPI {
     @Path("/{param}/terms/{term_id}/parent")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermParent(@PathParam("param") String runId, @PathParam("term_id") String termId) {
-
-
+        String json;
         try {
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy antecendent = originalTaxo.antecendent(termId, "", originalTaxo, null);
-            Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
-            String json = gson.toJson(antecendent);
+            json = objectMapper.writeValueAsString(antecendent);
             return Response.ok(json).build();
-
         } catch (Exception e) {
             e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
@@ -468,12 +456,12 @@ public class SaffronAPI {
         FindIterable<Document> runs;
         List<AuthorTermsResponse> termsResponse = new ArrayList<>();
         AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
+        String json;
         try {
             runs = saffron.getAuthorTerms(name);
             APIUtils.populateAuthorTermsResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -487,7 +475,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/authorterms/{term_id}")
     public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
-
+        String json;
         FindIterable<Document> runs;
         List<AuthorTermsResponse> termsResponse = new ArrayList<>();
         AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
@@ -495,8 +483,7 @@ public class SaffronAPI {
             runs = saffron.getAuthorTermsForTerm(name, termId);
             APIUtils.populateAuthorTermsResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -510,7 +497,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/authorsimilarity/")
     public Response getAuthorSimilarity(@PathParam("param") String name) {
-
+        String json;
         FindIterable<Document> runs;
         List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
@@ -518,8 +505,7 @@ public class SaffronAPI {
             runs = saffron.getAuthorSimilarity(name);
             APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -534,7 +520,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/authorsimilarity/{term1}/{term2}")
     public Response getAuthorSimilarityForTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
-
+        String json;
         FindIterable<Document> runs;
         List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
         AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
@@ -542,8 +528,7 @@ public class SaffronAPI {
             runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
             APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -558,7 +543,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/termcorrespondence/")
     public Response getTermCorrespondence(@PathParam("param") String name) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
         TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
@@ -566,8 +551,7 @@ public class SaffronAPI {
             runs = saffron.getDocumentTermCorrespondence(name);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -582,7 +566,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/termcorrespondence/{term_id}")
     public Response getTermCorrespondenceForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
         TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
@@ -590,8 +574,7 @@ public class SaffronAPI {
             runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -606,7 +589,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/docs/{document_id}")
     public Response getTermCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
         TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
@@ -615,8 +598,7 @@ public class SaffronAPI {
             runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -634,7 +616,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/termextraction/")
     public Response getTermExtraction(@PathParam("param") String name) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermExtractionResponse> termsResponse = new ArrayList<>();
         TermsExtractionResponse returnEntity = new TermsExtractionResponse();
@@ -642,8 +624,7 @@ public class SaffronAPI {
             runs = saffron.getTermExtraction(name);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -658,7 +639,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/termextraction/{term_id}")
     public Response getTermExtractionForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermExtractionResponse> termsResponse = new ArrayList<>();
         TermsExtractionResponse returnEntity = new TermsExtractionResponse();
@@ -666,8 +647,7 @@ public class SaffronAPI {
             runs = saffron.getTermExtractionForTerm(name, termId);
             APIUtils.populateTermExtractionResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -683,7 +663,7 @@ public class SaffronAPI {
     @Path("/{param}/termsimilarity/")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermSimilarity(@PathParam("param") String name) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermSimilarityResponse> termsResponse = new ArrayList<>();
         TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
@@ -703,9 +683,7 @@ public class SaffronAPI {
                 termsResponse.add(entity);
             }
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -721,7 +699,7 @@ public class SaffronAPI {
     @Path("/{param}/termsimilarity/{term1}/{term2}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermSimilarityBetweenTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
-
+        String json;
         FindIterable<Document> runs;
         List<TermSimilarityResponse> termsResponse = new ArrayList<>();
         TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
@@ -730,9 +708,7 @@ public class SaffronAPI {
 
             APIUtils.populateTermSimilarityResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -748,17 +724,15 @@ public class SaffronAPI {
     @Path("/{param}/termsimilarity/{term}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term) {
+        String json;
         FindIterable<Document> runs;
         List<TermSimilarityResponse> termsResponse = new ArrayList<>();
         TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
         try {
             runs = saffron.getTermsSimilarityForTerm(name, term);
-
             APIUtils.populateTermSimilarityResp(runs, termsResponse);
             returnEntity.setTerms(termsResponse);
-            //saffron.close();
-
-            String json = new Gson().toJson(returnEntity);
+            json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -818,7 +792,7 @@ public class SaffronAPI {
     @GET
     @Path("/{param}/docs")
     public Response getOriginalDocuments(@PathParam("param") String name) {
-
+        String json;
         HashMap<String, String> runs;
         String file = "";
         try {
@@ -829,8 +803,7 @@ public class SaffronAPI {
                 item.put(k, v);
                 returnList.add(item);
             });
-            Gson gson = new Gson();
-            String json = gson.toJson(returnList);
+            json = objectMapper.writeValueAsString(returnList);
             return Response.ok(json).build();
 
         } catch (Exception x) {
@@ -855,8 +828,7 @@ public class SaffronAPI {
             for (Document doc : runs) {
                 List documents = (ArrayList)doc.get("documents");
                 for (Object text : documents) {
-                    String json = new Gson().toJson(text);
-
+                    String json = objectMapper.writeValueAsString(text);
                     JSONObject jsonObj = new JSONObject(json);
                     if (jsonObj.get("id").equals(documentId)) {
                         file = jsonObj.get("contents").toString();

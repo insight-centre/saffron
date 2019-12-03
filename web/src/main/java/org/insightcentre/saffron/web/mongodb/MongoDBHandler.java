@@ -3,9 +3,6 @@ package org.insightcentre.saffron.web.mongodb;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.InstanceCreator;
 import com.mongodb.*;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -755,17 +752,16 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public boolean addRun(String id, Date date, Configuration config) {
         final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(id);
-        this.data.put(id, saffron);
-        Gson gson = new Gson();
-        String json = gson.toJson(config);
-        Document document = new Document();
-        document.put("id", id);
-        document.put("run_date", date);
-        document.put("config", json);
-        try {
-            this.runCollection.insertOne(document);
+        final ObjectMapper mapper = new ObjectMapper();
 
-            //this.close();
+        try {
+            String json =  mapper.writeValueAsString(config);
+            this.data.put(id, saffron);
+            Document document = new Document();
+            document.put("id", id);
+            document.put("run_date", date);
+            document.put("config", json);
+            this.runCollection.insertOne(document);
         } catch (Exception e) {
             e.printStackTrace();
         }
