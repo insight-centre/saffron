@@ -82,7 +82,9 @@ public interface SaffronDataSource extends Closeable {
     public Concept getConcept(String runId, String conceptId);
     
     public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString);
-
+    
+    public void addConcepts(String runId, List<Concept> concepts);
+    
     public void addConcept(String runId, Concept conceptToBeAdded);
     
     public void updateConcept(String runId, Concept conceptToBeUpdated);

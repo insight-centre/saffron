@@ -1078,6 +1078,28 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	return concepts;
     }
+    
+    /**
+     * Add a set of concepts in the database
+     * 
+     * @author Bianca Pereira
+     * 
+     * @param runId - the identifier of the run
+     * @param concepts - a {@link List} of {@link Concept} to be saved in the database.
+     *     Each concept must contain a unique id, a valid preferred term and synonyms.
+     * 
+     * @throws {@link RuntimeException} if the a {@link Concept} with same id
+     *     already exists in the database
+     * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
+     *     for a given concept is not already in the database.
+     */
+    public void addConcepts(String runId, List<Concept> concepts) {
+    	if (concepts != null) {
+	    	for(Concept concept: concepts) {
+	    		this.addConcept(runId, concept);
+	    	}
+    	}
+    }
 
     /**
      * Adds a new concept in the database.

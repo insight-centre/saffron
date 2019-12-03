@@ -1102,6 +1102,15 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
 	@Override
+	public void addConcepts(String runId, List<Concept> concepts) {
+		if (concepts != null) {
+			for(Concept concept: concepts) {
+				this.addConcept(runId, concept);
+			}
+		}
+	}
+	
+	@Override
 	public void addConcept(String runId, Concept conceptToBeAdded) {
 		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
