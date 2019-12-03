@@ -1113,7 +1113,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	for (Term synonym: conceptToBeAdded.getSynonyms()) {
     		if (this.getTerm(runId, synonym.getString()) == null)
-        		throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
+        		throw new TermNotFoundException(synonym);
     	}
     	
     	Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeAdded);
@@ -1154,7 +1154,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	for (Term synonym: conceptToBeUpdated.getSynonyms()) {
     		if (this.getTerm(runId, synonym.getString()) == null)
-        		throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
+        		throw new TermNotFoundException(synonym);
     	}
     	
     	Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeUpdated);
