@@ -15,6 +15,8 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
+import org.insightcentre.saffron.web.exception.TermNotFoundException;
 import org.json.JSONObject;
 
 /**
@@ -83,11 +85,11 @@ public interface SaffronDataSource extends Closeable {
     
     public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString);
 
-    public void addConcept(String runId, Concept conceptToBeAdded);
+    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException;
     
-    public void updateConcept(String runId, Concept conceptToBeUpdated);
+    public void updateConcept(String runId, Concept conceptToBeUpdated) throws ConceptNotFoundException, TermNotFoundException;
     
-    public void removeConcept(String runId, String conceptId);
+    public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException;
     
     /*
      * (non-Javadoc)

@@ -47,10 +47,10 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.nlp.saffron.exceptions.ConceptNotFoundException;
-import org.insightcentre.nlp.saffron.exceptions.TermNotFoundException;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
+import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
+import org.insightcentre.saffron.web.exception.TermNotFoundException;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -977,29 +977,34 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public void removeTermFromConcepts(String runId, String term) {
     	for(Concept concept: getAllConcepts(runId)) {
     		
-    		if (concept.getPreferredTerm().equals(term)) {
-    			// If term is a preferred term, then choose a random synonym to become
-    			// a preferred term, or remove the concept if no synonym is available
-	    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
-	    			this.removeConcept(runId, concept.getId());
-	    		else {
-	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
-	    			this.updateConcept(runId, concept);
+    		try {
+	    		if (concept.getPreferredTerm().equals(term)) {
+	    			// If term is a preferred term, then choose a random synonym to become
+	    			// a preferred term, or remove the concept if no synonym is available
+		    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+		    			this.removeConcept(runId, concept.getId());
+		    		else {
+		    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+						this.updateConcept(runId, concept);
+		    		}
+	    		} else if (concept.getSynonymsStrings().contains(term)) {
+	    			// If term is not a preferred term, just remove it from the list of synonyms
+	    			Set<Term> synonyms = concept.getSynonyms();
+	    			Term toBeRemoved = null;
+	    			for(Term toRemove: synonyms){
+	    				if (toRemove.getString().equals(term)) {
+	    					toBeRemoved = toRemove;
+	    					break;
+	    				}
+	    			}
+	    			synonyms.remove(toBeRemoved);
+	    			concept.setSynonyms(synonyms);
+					this.updateConcept(runId, concept);
 	    		}
-    		} else if (concept.getSynonymsStrings().contains(term)) {
-    			// If term is not a preferred term, just remove it from the list of synonyms
-    			Set<Term> synonyms = concept.getSynonyms();
-    			Term toBeRemoved = null;
-    			for(Term toRemove: synonyms){
-    				if (toRemove.getString().equals(term)) {
-    					toBeRemoved = toRemove;
-    					break;
-    				}
-    			}
-    			synonyms.remove(toBeRemoved);
-    			concept.setSynonyms(synonyms);
-    			this.updateConcept(runId, concept);
-    		}
+    		} catch (ConceptNotFoundException | TermNotFoundException e) {
+				//Include logging here
+				throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
+			}
     	}    	
     }
     
@@ -1087,13 +1092,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
      * @param runId - the identifier of the run
      * @param conceptToBeAdded - the concept to be saved in the database.
      *     It must contain a unique id, a valid preferred term and synonyms.
+     * @throws TermNotFoundException when one of the terms was not found in the database
      * 
      * @throws {@link RuntimeException} if the a {@link Concept} with same id
      *     already exists in the database
      * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
      *     is not already in the database.
      */
-    public void addConcept(String runId, Concept conceptToBeAdded){ 
+    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException{ 
     	/*
     	 * 1 - Verify if the preferredTerm exists. If not, throw object not found
     	 * 2 - Verify if each synonym exists. If not, throw object not found
@@ -1122,13 +1128,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
      * @param runId - the identifier of the run
      * @param conceptToBeUpdated - the concept to be updated in the database.
      *     It must contain a unique id, a valid preferred term and synonyms.
+     * @throws ConceptNotFoundException - if {@link Concept} with same id does not exist in the database
+     * @throws TermNotFoundException - if {@link Term} given as preferred string
+     *  does not exist in the database
      * 
      * @throws {@link ConceptNotFoundException} if there is no {@link Concept} with same id
      *     in the database.
      * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
      *     is not already in the database.
      */
-    public void updateConcept(String runId, Concept conceptToBeUpdated){
+    public void updateConcept(String runId, Concept conceptToBeUpdated) 
+    		throws ConceptNotFoundException, TermNotFoundException{
     	/*
     	 * 1 - Verify if an object with that id already exists. If not, throw an exception.
     	 * 2 - Verify if the preferredTerm exists. If not, throw object not found
@@ -1176,11 +1186,12 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
      * 
      * @param runId - the identifier of the run
      * @param conceptToBeUpdated - the concept to be removed from the database.
+     * @throws ConceptNotFoundException when a {@link Concept} with this id does not exist
      * 
      * @throws {@link ConceptNotFoundException} if there is no {@link Concept} with same id
      *     in the database.
      */
-    public void removeConcept(String runId, String conceptId){
+    public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException{
     	/*
     	 * 1 - Verify if an object with that id already exists. If not, throw an exception.
     	 * 2 - Remove the object
