@@ -37,10 +37,6 @@ public class Taxonomy {
 	
     /** The term string of this node in the taxonomy */
     public String root;
-    /** The original parent node of this node in the taxonomy */
-    public String originalParent;
-    /** The original Term string of this node in the taxonomy */
-    public String originalTerm;
     /** The score associated with this term (its importance) */
     public final double score;
     /** The score relating this node to its parent (NaN if there is no parent) */

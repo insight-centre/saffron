@@ -95,9 +95,6 @@ public class BlackWhiteList {
             }
             buildTaxoBWList(child, taxoAcceptanceList, taxoDenialList);
         }
-        if (taxonomy.originalParent != null && !taxonomy.originalParent.isEmpty()) {
-            taxoDenialList.add(new TaxoLink(taxonomy.originalParent, taxonomy.root));
-        }
     }
 
 }
