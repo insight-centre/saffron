@@ -1,6 +1,7 @@
 const apiUrl = '/api/v1/run/';
 const apiUrlWithSaffron = apiUrl + saffronDatasetName + '/';
 
+
 angular.module('app', ['ngMaterial', 'ui.bootstrap'])
     // this service is used to collect all public values
     // to be able to pass them among controllers
@@ -99,30 +100,55 @@ angular.module('app').component('header', {
 
 // getting the top terms to fill the right sidebar on homepage of a run
 angular.module('app').component('topterms', {
+    
     templateUrl: '/top-terms.html',
     controller: function ($http) {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
+        maxScore = 0
+
+
+
         this.loadterms = function () {
+
+
+
+
+
             $http.get(apiUrlWithSaffron + "terms").then(
+
                 function (response) {
+
                     response = response.data;
                     console.log(response)
                     response.sort((a, b) => (a.score < b.score) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+30);
 
                     // normalize saffron  score 
-                    maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
-                    minScore = Math.min.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
+                maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
                     
+                   maxScore= value(maxScore)
+
+                    console.log("maxxxx", maxScore)
+                    minScore = 0 
                     function normalizeScore(min, max) {
                         var delta = max - min;
                         return function(val){
                             return ((val - min) / delta).toFixed(2);
                         };
-
                      }
+
+                var value = (function() {
+                  var previousValue = 0
+                  return function(id) {
+                    if (previousValue !== 0 && previousValue > id)
+                      console.log("You sent me something smaller than last time!");
+                    previousValue = id;
+                  };
+                })(); 
+
+
 
                     scoreList = []
                     response.forEach((responseObj) => scoreList.push(responseObj.score.toPrecision(3)));
@@ -130,6 +156,9 @@ angular.module('app').component('topterms', {
                     response.forEach((responseObj, indx) =>{
                         responseObj.score = normalizedScore[indx]
                     });
+
+
+                    console.log(response.score)
 
 
 
@@ -148,6 +177,8 @@ angular.module('app').component('topterms', {
                     }
 
                     ctrl.n = ctrl.n2;
+
+                return maxScore
                 },
                 function (response) {
                     console.log(response);
@@ -157,10 +188,16 @@ angular.module('app').component('topterms', {
 
 
             );
+
+            return maxScore
         };
+
+
+
         this.termForward = function () {
             ctrl.n2 += 30;
             this.loadterms();
+
         };
         this.termBack = function () {
             ctrl.n2 -= 30;
