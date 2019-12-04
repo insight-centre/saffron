@@ -62,6 +62,28 @@ function maxRecurse(root) {
     return m;
 }
 
+function minRecurse(root) {
+    var m = root.score;
+    if(root.children) {
+        root.children.forEach(function(child) {
+            m = Math.min(m, minRecurse(child));
+        });
+    }
+    return m;
+}
+
+function countAllChildren(root) {
+    var indirectChildren = 0;
+    if(root.children) {
+        var children = root.children.length;
+        for (var i = 0; i < children; i++) {
+            indirectChildren += countAllChildren(root.children[i]);
+            indirectChildren++;
+        }
+    }
+    return indirectChildren;
+}
+
 var maxScore = 1;
 var rootLabel = "";
 
@@ -70,8 +92,16 @@ function update() {
       links = d3.layout.tree().links(nodes);
 
   var ave = sumScore(root) / count(root);
+  var minScore = minRecurse(root);
   maxScore = maxRecurse(root);
   rootLabel = root.root;
+
+  var maxChildren = countAllChildren(root);
+
+  //colorbrewer single hue orange (using first eight colors)
+  var colorScale = d3.scale.quantize().domain([0,maxChildren]).range(["#fee6ce","#fdd0a2","#fdae6b","#fd8d3c","#f16913","#d94801","#a63603","#7f2704"]);
+
+  var radiusScale = d3.scale.linear().domain([minScore, maxScore]).range([5, 25]);
 
   // Restart the force layout.
   force
@@ -134,16 +164,19 @@ function update() {
       .attr("y", function(d) { return d.orient === "bottom" ? 6 : d.orient === "top" ? -6 : null; })
       .text(function(d, i) { return i * 1000; })
       .attr("dy", ".35em")
+      .attr("dx", function(d){return radiusScale(d.score) / 2;})
       .text(function(d) { return "\u00a0\u00a0\u00a0" + d.root; });
 
   nodeEnter.append("circle")
     .on("mouseover", fade(.2))
     .on("mouseout", fade2(1))
-    .attr("r", function(d) { return Math.max(Math.sqrt(d.score / ave * 10 || 4.5),5); })
+      .attr("r", function(d){return radiusScale(d.score);})
     .text(function(d) { return d.name; })
 
-  node.select("circle")
-       .style("fill", color);
+    node.select("circle")
+        .style("fill", function(d){
+            return colorScale(countAllChildren(d));
+        });
 }
 
 function isConnected(a, b) {
@@ -240,21 +273,6 @@ function componentToHex(c) {
 
 function rgbToHex(r, g, b) {
     return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
-}
-
-function color(d) {
-    var amount = Math.round(200 * (d.score / maxScore));
-    if(d.children) {
-        if(d.children.length > 1) {
-            var green = 200;
-        } else {
-            var green = 150;
-        }
-    } else {
-        var green = 10;
-    }
-    var c = rgbToHex(amount+55, Math.round(green * (300 - amount) / 300), 256-amount);
-    return c;
 }
 
 function nodeClass(d) {
