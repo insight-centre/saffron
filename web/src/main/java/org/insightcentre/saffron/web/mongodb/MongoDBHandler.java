@@ -47,6 +47,8 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
+import org.insightcentre.saffron.web.Executor;
+import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
@@ -788,17 +790,16 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public boolean addRun(String id, Date date, Configuration config) {
         final MongoDBHandler.SaffronDataImpl saffron = new MongoDBHandler.SaffronDataImpl(id);
-        this.data.put(id, saffron);
-        Gson gson = new Gson();
-        String json = gson.toJson(config);
-        Document document = new Document();
-        document.put("id", id);
-        document.put("run_date", date);
-        document.put("config", json);
-        try {
-            this.runCollection.insertOne(document);
+        final ObjectMapper mapper = new ObjectMapper();
 
-            //this.close();
+        try {
+            String json =  mapper.writeValueAsString(config);
+            this.data.put(id, saffron);
+            Document document = new Document();
+            document.put("id", id);
+            document.put("run_date", date);
+            document.put("config", json);
+            this.runCollection.insertOne(document);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1742,7 +1743,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
 
 
-
     public boolean updateTermName(String id, String term, String newTerm, String status) {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
@@ -1989,6 +1989,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         }
         return map;
     }
+
 
     public GridFS getGridFS() {
         DB db = mongoClient.getDB(this.dbName);
