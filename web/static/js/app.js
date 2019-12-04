@@ -146,6 +146,7 @@ angular.module('app').component('term', {
         var ctrl = this;
 
         // this method is used to fill the select for parent name
+
         $http.get(apiUrlWithSaffron + 'terms').then(
             function (response) {
                 ctrl.terms =  [];
@@ -272,7 +273,7 @@ angular.module('app').component('relatedterms', {
 
                 var url = apiUrlWithSaffron + 'termsimilarity/' + sharedProperties.getterm();
                 $http.get(url).then(function (response) {
-                    response = response.data.termsList;
+                    response = response.data.terms;
                     response.sort((a, b) => (a.similarity < b.similarity) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+20);
                     ctrl.terms = [];
@@ -296,7 +297,7 @@ angular.module('app').component('relatedterms', {
 
                 var url = apiUrlWithSaffron + 'docs/' + ctrl.doc;
                 $http.get(url).then(function (response) {
-                    response = response.data.termsList;
+                    response = response.data.terms;
                     response.sort((a, b) => (a.occurences < b.occurences) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+20);
                     ctrl.terms = [];
@@ -392,15 +393,17 @@ angular.module('app').component('relatedterms', {
 // the breadcrumbs controller
 angular.module('app').controller('Breadcrumbs', function ($scope, $http, $location, sharedProperties) {
     $scope.parents = [];
-
     function getParents(termName) {
-        var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
-        $http.get(url).then(function (response) {
-            if(response.data.root){
-                $scope.parents.unshift(response.data.root);
-                getParents(response.data.root);
-            }
-        });
+        if (termName !== 'HEAD_TERM') {
+            var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
+            $http.get(url).then(function (response) {
+                if(response.data.root){
+                    $scope.parents.unshift(response.data.root);
+                    getParents(response.data.root);
+                }
+            });
+        }
+
     }
     getParents(sharedProperties.getterm());
 });

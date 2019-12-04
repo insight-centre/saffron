@@ -27,6 +27,8 @@ import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
+import org.insightcentre.saffron.web.exception.TermNotFoundException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -1111,7 +1113,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 	
 	@Override
-	public void addConcept(String runId, Concept conceptToBeAdded) {
+	public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException {
 		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1119,11 +1121,21 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         if (conceptToBeAdded.getId() == null || conceptToBeAdded.getId().equals(""))
         	throw new InvalidValueException("The concept id cannot be null or empty");
         
+        if (saffron.getConcept(conceptToBeAdded.getId()) != null) 
+        	throw new RuntimeException("A concept with same id already exists in the database. id: " + conceptToBeAdded.getId());
+        if (saffron.getTerm(conceptToBeAdded.getPreferredTermString()) == null)
+        	throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
+        for (Term synonym: conceptToBeAdded.getSynonyms()) {
+    		if (saffron.getTerm(synonym.getString()) == null)
+        		throw new TermNotFoundException(synonym);
+    	}
+        
         saffron.addConcept(conceptToBeAdded);
 	}
 
 	@Override
-	public void updateConcept(String runId, Concept conceptToBeUpdated) {
+	public void updateConcept(String runId, Concept conceptToBeUpdated) 
+			throws ConceptNotFoundException, TermNotFoundException {
 		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1133,18 +1145,27 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         
         Concept c = saffron.getConcept(conceptToBeUpdated.getId());
         if (c == null)
-        	throw new NoSuchElementException("Concept with id '" + conceptToBeUpdated.getId() + "' run does not exist");
+    		throw new ConceptNotFoundException(conceptToBeUpdated);    	
+    	if (saffron.getTerm(conceptToBeUpdated.getPreferredTermString()) == null)
+    		throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
+    	for (Term synonym: conceptToBeUpdated.getSynonyms()) {
+    		if (saffron.getTerm(synonym.getString()) == null)
+        		throw new TermNotFoundException(synonym);
+    	}
         
         this.removeConcept(runId, c.getId());
         this.addConcept(runId, conceptToBeUpdated);
 	}
 
 	@Override
-	public void removeConcept(String runId, String conceptId) {
+	public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException {
 		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
         	throw new NoSuchElementException("Saffron run does not exist");
         }
+        if (saffron.getConcept(conceptId) == null)
+    		throw new ConceptNotFoundException(new Concept.Builder(conceptId, "").build());
+        
         List<Concept> concepts = saffron.getConcepts().stream().filter((Concept c) -> !c.getId().equals(conceptId)).collect(Collectors.toList());
         saffron.setConcepts(concepts);
 	}
@@ -1157,30 +1178,34 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
         
         for(Concept concept: getAllConcepts(runId)) {
-    		
-    		if (concept.getPreferredTerm().equals(term)) {
-    			// If term is a preferred term, then choose a random synonym to become
-    			// a preferred term, or remove the concept if no synonym is available
-	    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
-	    			this.removeConcept(runId, concept.getId());
-	    		else {
-	    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+    		try {
+	    		if (concept.getPreferredTerm().equals(term)) {
+	    			// If term is a preferred term, then choose a random synonym to become
+	    			// a preferred term, or remove the concept if no synonym is available
+		    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+		    			this.removeConcept(runId, concept.getId());
+		    		else {
+		    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+		    			this.updateConcept(runId, concept);
+		    		}
+	    		} else if (concept.getSynonymsStrings().contains(term)) {
+	    			// If term is not a preferred term, just remove it from the list of synonyms
+	    			Set<Term> synonyms = concept.getSynonyms();
+	    			Term toBeRemoved = null;
+	    			for(Term toRemove: synonyms){
+	    				if (toRemove.getString().equals(term)) {
+	    					toBeRemoved = toRemove;
+	    					break;
+	    				}
+	    			}
+	    			synonyms.remove(toBeRemoved);
+	    			concept.setSynonyms(synonyms);
 	    			this.updateConcept(runId, concept);
 	    		}
-    		} else if (concept.getSynonymsStrings().contains(term)) {
-    			// If term is not a preferred term, just remove it from the list of synonyms
-    			Set<Term> synonyms = concept.getSynonyms();
-    			Term toBeRemoved = null;
-    			for(Term toRemove: synonyms){
-    				if (toRemove.getString().equals(term)) {
-    					toBeRemoved = toRemove;
-    					break;
-    				}
-    			}
-    			synonyms.remove(toBeRemoved);
-    			concept.setSynonyms(synonyms);
-    			this.updateConcept(runId, concept);
-    		}
+    		} catch (ConceptNotFoundException | TermNotFoundException e) {
+				//Include logging here
+				throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
+			}
     	}   
 	}
 }

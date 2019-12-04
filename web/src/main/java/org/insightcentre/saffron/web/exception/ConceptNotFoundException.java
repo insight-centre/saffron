@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.exceptions;
+package org.insightcentre.saffron.web.exception;
 
 import org.insightcentre.nlp.saffron.data.Concept;
 
@@ -8,7 +8,7 @@ import org.insightcentre.nlp.saffron.data.Concept;
  * @author Bianca Pereira
  *
  */
-public class ConceptNotFoundException extends RuntimeException {
+public class ConceptNotFoundException extends Exception {
 
 	private static final long serialVersionUID = -4991810975335508654L;
 	private Concept concept;

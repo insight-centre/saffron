@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.exceptions;
+package org.insightcentre.saffron.web.exception;
 
 import org.insightcentre.nlp.saffron.data.Term;
 
@@ -8,7 +8,7 @@ import org.insightcentre.nlp.saffron.data.Term;
  * @author Bianca Pereira
  *
  */
-public class TermNotFoundException extends RuntimeException {
+public class TermNotFoundException extends Exception {
 
 	private static final long serialVersionUID = -4991810975335508654L;
 	private Term term;
