@@ -1102,7 +1102,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public void addConcepts(String runId, List<Concept> concepts) {
     	if (concepts != null) {
 	    	for(Concept concept: concepts) {
-	    		this.addConcept(runId, concept);
+	    		try {
+					this.addConcept(runId, concept);
+				} catch (TermNotFoundException e) {
+					//TODO Include logging!!!!!!
+					// The term X could not be found in the database, Skipping concept Y
+					continue;
+				}
 	    	}
     	}
     }
