@@ -8,7 +8,7 @@ distinct analysis of text. These modules are as follows
 
 1. *Corpus Indexing*: Analyses raw text documents in various formats and indexes
 them for later components
-2. *Term Extraction*: Extracts keyphrase that are the terms of each single
+2. *Term Extraction*: Extracts keyphrases that are the terms of each single
 document in a collection
 3. *Author Consolidation*: Detects and removes name variations from the list 
 of authors of each document
@@ -122,10 +122,10 @@ If using the Web interface, the files will be stored in /web/data/
 * `author-sim.json`: The author-author similarity graph
 * `term-sim.json`: The term-term similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
-* `config.json`: the configuration file for the run
+* `config.json`: The configuration file for the run
  
 
-To create a .dot file for the generated taxonomy, you can use the command line:
+To create a .dot file for the generated taxonomy, you can use the following command:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
@@ -144,6 +144,4 @@ The Wiki describes the web interface of the review mode https://gitlab.insight-c
 API Documentation
 =================
 
-For full API documentation, see here:
-
-https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
+For full API documentation, see [Saffron API Documentation](https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md)
