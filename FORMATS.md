@@ -45,7 +45,7 @@ A single author of a document in a corpus.
 
 ### Terms ([terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/terms.json))
 
-Each element in these two files represents a single term extracted from the corpus. The files contain the following annotations
+Each element in this file represents a single term extracted from the corpus. The file contains the following annotations
 
 * `term_string`: The string that names the term (must be unique)
 * `occurrences`: The total number of occurrences of a term in the corpus
