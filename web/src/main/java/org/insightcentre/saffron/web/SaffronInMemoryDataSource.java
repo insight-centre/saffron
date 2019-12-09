@@ -1104,6 +1104,21 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
 	@Override
+	public void addConcepts(String runId, List<Concept> concepts) {
+		if (concepts != null) {
+			for(Concept concept: concepts) {
+				try {
+					this.addConcept(runId, concept);
+				} catch (TermNotFoundException e) {
+					//TODO Include logging!!!!!!
+					// The term X could not be found in the database, Skipping concept Y
+					continue;
+				}
+			}
+		}
+	}
+	
+	@Override
 	public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException {
 		SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {

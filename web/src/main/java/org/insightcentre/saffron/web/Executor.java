@@ -6,6 +6,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,7 +14,14 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -28,9 +36,18 @@ import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTerm;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
-import org.insightcentre.nlp.saffron.config.*;
+import org.insightcentre.nlp.saffron.concept.consolidation.AlgorithmFactory;
+import org.insightcentre.nlp.saffron.concept.consolidation.ConceptConsolidation;
+import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
+import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
+import org.insightcentre.nlp.saffron.config.ConceptConsolidationConfiguration;
+import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Concept;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
@@ -57,9 +74,7 @@ import org.json.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
-import java.io.FileNotFoundException;
 
 /**
  *
@@ -200,11 +215,14 @@ public class Executor extends AbstractHandler {
                 = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        ConceptConsolidationConfiguration conceptConsolidationConfiguration
+        		= new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.termSim = termSimilarityConfiguration;
+        newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -489,6 +507,8 @@ public class Executor extends AbstractHandler {
         _status.setStatusMessage("Extracting Terms");
         TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
         //res.normalize();
+        List<Term> terms = new ArrayList<>(res.terms);
+        data.setTerms(saffronDatasetName, terms);
 
         _status.setStatusMessage("Writing extracted terms");
         //if (storeCopy.equals("true"))
@@ -500,6 +520,12 @@ public class Executor extends AbstractHandler {
 
         data.setDocTerms(saffronDatasetName, res.docTerms);
 
+        _status.stage++;
+        _status.setStatusMessage("Consolidating concepts");
+        ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
+        List<Concept> concepts = conceptConsolidation.consolidate(terms);
+        data.addConcepts(saffronDatasetName, concepts);
+        
         _status.stage++;
         _status.setStatusMessage("Extracting authors from corpus");
         Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
@@ -514,8 +540,6 @@ public class Executor extends AbstractHandler {
         _status.stage++;
         _status.setStatusMessage("Building concepts (skipped)");
         // TODO: Even the LinkToDBpedia executable literally does nothing!
-        List<Term> terms = new ArrayList<>(res.terms);
-        data.setTerms(saffronDatasetName, terms);
 
         _status.setStatusMessage("Saving linked terms");
         if (storeCopy.equals("true"))
