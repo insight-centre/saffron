@@ -69,7 +69,6 @@ public class TermExtractionTask implements Runnable {
                     ? new HashMap<String, DocumentTerm>()
                     : null;
             String contents = doc.contents();
-            System.err.println(doc.id);
             CasingStats localCasing = new CasingStats();
             for (String sentence : contents.split("\n")) {
                 String[] tokens;

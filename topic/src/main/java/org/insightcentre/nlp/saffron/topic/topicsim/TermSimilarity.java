@@ -43,7 +43,6 @@ public class TermSimilarity {
     public List<TermTerm> termSimilarity(List<DocumentTerm> documentTerms, SaffronListener log) {
         List<TermTerm> termTerms = new ArrayList<>();
         Map<String, Object2IntMap<String>> vectors = new HashMap<>();
-        log.log(String.format("%s doc-terms\n", documentTerms.size()));
         for (DocumentTerm dt : documentTerms) {
             if (!vectors.containsKey(dt.getTermString())) {
                 vectors.put(dt.getTermString(), new Object2IntOpenHashMap<String>());

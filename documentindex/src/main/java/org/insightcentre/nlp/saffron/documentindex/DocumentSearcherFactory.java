@@ -60,7 +60,6 @@ public class DocumentSearcherFactory {
         DocumentSearcher searcher = null;
         if (isInitialRun) {
 	        try (DocumentIndexer indexer = luceneIndexer(dir, LOWERCASE_ONLY)) {
-	            log.log("Indexing");
 	            for (Document doc : corpus.getDocuments()) {
 	                //Document doc2 = TIKA_ANALYZER.analyze(doc);
 	                indexer.indexDoc(doc, doc.contents());
@@ -70,7 +69,6 @@ public class DocumentSearcherFactory {
 	        }
         } else{
         	searcher = luceneSearcher(dir, LOWERCASE_ONLY);
-        	log.log("Updating index");
         	for (Document doc : corpus.getDocuments()) {
         		searcher.updateDocument(doc.id, doc);
         	}

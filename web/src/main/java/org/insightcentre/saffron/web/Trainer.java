@@ -15,6 +15,8 @@ import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.google.common.flogger.FluentLogger;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
 import org.eclipse.jetty.server.Request;
@@ -40,10 +42,12 @@ import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms;
  * 
  * @author John McCrae
  */
+// TODO: Is this used anywhere?
 public class Trainer extends AbstractHandler {
 
     private Configuration defaultConfig;
     private final File directory;
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
     private final Status status;
 
     public Trainer(File directory) {
@@ -219,6 +223,11 @@ public class Trainer extends AbstractHandler {
         }
 
         @Override
+        public void setStageStart(String statusMessage, String taxonomyId) {
+            //TODO: Is this used anywhere?
+        }
+
+        @Override
         public void log(String message) {
             System.err.println(message);
         }
@@ -231,6 +240,16 @@ public class Trainer extends AbstractHandler {
         @Override
         public void endTick() {
             System.err.println();
+        }
+
+        @Override
+        public void setStageComplete(String statusMessage, String taxonomyId) {
+            //TODO: Is this used anywhere?
+        }
+
+        @Override
+        public void warning(String message, Throwable cause) {
+            //TODO: Is this used anywhere?
         }
 
     }

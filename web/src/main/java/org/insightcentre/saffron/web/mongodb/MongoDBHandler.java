@@ -22,6 +22,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -850,10 +851,67 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return jsonObj.toString();
     }
 
+    @Override
+    public void updateRun(String runId, String statusMessage, JSONObject jsonObj, String status) {
+        JSONArray currentStatus;
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            currentStatus = (JSONArray) jsonObj.get("execution_status");
+        } catch (Exception e) {
+           currentStatus = new JSONArray();
+        }
+
+        try {
+            Bson conditionSingle = Filters.and(Filters.eq("id", runId));
+            FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
+            findOptions.upsert(true);
+            findOptions.returnDocument(ReturnDocument.AFTER);
+            if (currentStatus.length() > 0) {
+                Document toPut = new Document();
+                List<Map> records = mapper.readValue(currentStatus.toString(), List.class);
+                List<Map> newRecords = new ArrayList<>();
+                if (status.equals("completed")) {
+                    for (Map record : records) {
+                        if(record.get("stage").toString().equals(statusMessage) && status.equals("completed")) {
+                            record.put("end_time", new Date().toString());
+                            record.put("status", status);
+                            newRecords.add(record);
+                        } else {
+                            newRecords.add(record);
+                        }
+                    }
+                } else {
+                    Map<String, Object> newRecord = new LinkedHashMap<>();
+                    newRecord.put("start_time", new Date().toString());
+                    newRecord.put("end_time", "");
+                    newRecord.put("stage", statusMessage);
+                    newRecord.put("status", status);
+                    newRecords.add(newRecord);
+                    newRecords.addAll(records);
+                }
+                toPut.put("execution_status", newRecords);
+                runCollection.findOneAndUpdate(conditionSingle, new Document("$set", toPut), findOptions);
+            } else {
+                List<Map> entries = new ArrayList<>();
+                Map<String, Object> records = new LinkedHashMap<>();
+                Document toPut = new Document();
+                records.put("start_time", new Date().toString());
+                records.put("end_time", "");
+                records.put("stage", statusMessage);
+                records.put("status", status);
+                entries.add(records);
+                toPut.put("execution_status", entries);
+                runCollection.findOneAndUpdate(conditionSingle, new Document("$set", toPut), findOptions);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     public static FindIterable getRunFromMongo(String runId, MongoCollection runCollection) {
         return runCollection.find(and(eq("id", runId)));
     }
-
 
     public FindIterable<Document> getTermExtraction(String runId) {
         return termsExtractionCollection.find(and(eq("run", runId)));

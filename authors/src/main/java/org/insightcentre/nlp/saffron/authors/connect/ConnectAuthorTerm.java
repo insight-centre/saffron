@@ -140,7 +140,6 @@ public class ConnectAuthorTerm {
         for(DocumentTerm dt : documentTerms) {
             Document doc = docById.get(dt.getDocumentId());
             if(doc == null) {
-                log.log("Document missing: " + dt.getDocumentId());
                 continue;
             }
             for(Author a : doc.authors) {
@@ -173,7 +172,6 @@ public class ConnectAuthorTerm {
             for(String termString : e.getValue()) {
                 Term t = terms.get(termString);
                 if(t == null) {
-                    log.log("Term missing: " + termString);
                     continue;
                 }
                 AT at = new AT(a.id, termString);
