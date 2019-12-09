@@ -6,6 +6,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,7 +14,14 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -29,9 +37,18 @@ import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTerm;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
-import org.insightcentre.nlp.saffron.config.*;
+import org.insightcentre.nlp.saffron.concept.consolidation.AlgorithmFactory;
+import org.insightcentre.nlp.saffron.concept.consolidation.ConceptConsolidation;
+import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
+import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
+import org.insightcentre.nlp.saffron.config.ConceptConsolidationConfiguration;
+import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Concept;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
@@ -59,7 +76,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
 import com.mongodb.client.FindIterable;
-import java.io.FileNotFoundException;
 
 /**
  *
@@ -75,7 +91,6 @@ public class Executor extends AbstractHandler {
     private final File logFile;
     static String storeCopy = System.getenv("STORE_LOCAL_COPY");
     private static final FluentLogger logger = FluentLogger.forEnclosingClass();
-    //private Configuration config;
 
     public Executor(SaffronDataSource data, File directory, File logFile) {
         this.data = data;
@@ -109,6 +124,10 @@ public class Executor extends AbstractHandler {
 
     public boolean isExecuting(String name) {
         return statuses.containsKey(name) && statuses.get(name).stage > 0 && !statuses.get(name).completed;
+    }
+
+    public File getParentDirectory() {
+        return this.parentDirectory;
     }
 
     @Override
@@ -199,11 +218,14 @@ public class Executor extends AbstractHandler {
                 = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        ConceptConsolidationConfiguration conceptConsolidationConfiguration
+        		= new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.termSim = termSimilarityConfiguration;
+        newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -489,11 +511,27 @@ public class Executor extends AbstractHandler {
         _status.setStageStart("Extracting Terms", saffronDatasetName);
         TermExtraction extractor = new TermExtraction(config.termExtraction);
         TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
-       if (storeCopy.equals("true"))
+        List<Term> terms = new ArrayList<>(res.terms);
+        data.setTerms(saffronDatasetName, terms);
+
+        //_status.setStageStart("Writing extracted terms", saffronDatasetName);
+        //if (storeCopy.equals("true"))
+        //    ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.topics);
+
+        _status.setStageStart("Writing Document-Term Correspondence", saffronDatasetName);
+        if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTerms);
         data.setDocTerms(saffronDatasetName, res.docTerms);
+        _status.setStageComplete("Writing Document-Term Correspondence", saffronDatasetName);
         _status.setStageComplete("Extracting Terms", saffronDatasetName);
 
+        _status.stage++;
+        _status.setStageStart"Consolidating concepts", saffronDatasetName);
+        ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
+        List<Concept> concepts = conceptConsolidation.consolidate(terms);
+        data.addConcepts(saffronDatasetName, concepts);
+        _status.setStageComplete"Consolidating concepts", saffronDatasetName);
+        
         _status.stage++;
 
         _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
@@ -506,8 +544,6 @@ public class Executor extends AbstractHandler {
         _status.stage++;
 
         _status.setStageStart("Saving linked terms", saffronDatasetName);
-        List<Term> terms = new ArrayList<>(res.terms);
-        data.setTerms(saffronDatasetName, terms);
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms.json"), terms);
         _status.setStageComplete("Saving linked terms", saffronDatasetName);

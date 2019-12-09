@@ -15,6 +15,8 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
+import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
+import org.insightcentre.saffron.web.exception.TermNotFoundException;
 import org.json.JSONObject;
 
 /**
@@ -73,6 +75,24 @@ public interface SaffronDataSource extends Closeable {
 
     boolean addTermsSimilarity(String id, Date date, List<TermTerm> termSimilarity);
 
+    /*
+     * Concept manipulation
+     */
+    
+    public List<Concept> getAllConcepts(String runId);
+    
+    public Concept getConcept(String runId, String conceptId);
+    
+    public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString);
+    
+    public void addConcepts(String runId, List<Concept> concepts);
+    
+    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException;
+    
+    public void updateConcept(String runId, Concept conceptToBeUpdated) throws ConceptNotFoundException, TermNotFoundException;
+    
+    public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException;
+    
     /*
      * (non-Javadoc)
      *
