@@ -526,11 +526,11 @@ public class Executor extends AbstractHandler {
         _status.setStageComplete("Extracting Terms", saffronDatasetName);
 
         _status.stage++;
-        _status.setStageStart"Consolidating concepts", saffronDatasetName);
+        _status.setStageStart("Consolidating concepts", saffronDatasetName);
         ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
         List<Concept> concepts = conceptConsolidation.consolidate(terms);
         data.addConcepts(saffronDatasetName, concepts);
-        _status.setStageComplete"Consolidating concepts", saffronDatasetName);
+        _status.setStageComplete("Consolidating concepts", saffronDatasetName);
         
         _status.stage++;
 
