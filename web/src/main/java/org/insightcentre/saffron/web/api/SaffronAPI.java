@@ -187,6 +187,7 @@ public class SaffronAPI {
     @Path("/{param}/terms/{term_id}/children")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getTermChildren(@PathParam("param") String runId, @PathParam("term_id") String termId) {
+    	String json;
         try {
 
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
