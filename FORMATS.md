@@ -67,16 +67,16 @@ Configuration for the options of the term extraction phase. All properties are i
     
         Choose between:  `comboBasic`, `weirdness`, `totalTfIdf`, `cValue`, `residualIdf`, `avgTermFreq`, `basic`, `novelTopicModel`, `postRankDC`, `relevance`
                     
-    * `corpus` : Path to the model that contains XYZ (by default set to ${saffron.home}/models/wiki-terms.json.gz)  **to be checked**
+    * `corpus` : #deprecated (by default set to ${saffron.home}/models/wiki-terms.json.gz) 
     
     * `baseFeature` : If `method` is set to "single", give here the unique scoring function to use.
     If `method` is set to "voting", choose the scoring function that will get more weight in the calculation of the final score. (Choose between the options given above in `features`)
     
-    * `numThreads` : 0  **to be checked**
+    * `numThreads` : #deprecated (by default to 0)  
     
     * `posModel` : The path to the part-of-speech tagger's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. Default to "${saffron.home}/models/en-pos-maxent.bin")
     
-    * `tokenizerModel` : The path to the tokenizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. Default to "null" (the configuration will automatically uses the one English tokenizer that is provided by OpenNLP)
+    * `tokenizerModel` : The path to the tokenizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. Default to "null" (the configuration will automatically use the [OpenNLP SimpleTokenizer](https://www.tutorialspoint.com/opennlp/opennlp_tokenization.htm))
     
     * `lemmatizerModel` : The path to the lemmatizer's model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported.  Default to"${saffron.home}/models/en-lemmatizer.dict.txt"
     
