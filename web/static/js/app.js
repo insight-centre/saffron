@@ -44,6 +44,8 @@ function acceptRejectterms($http, terms, mainterm, status){
     );
 }
 
+
+
 // general function to accept or reject child/related terms
 function deleteOneRun($http, id){
 
@@ -109,46 +111,23 @@ angular.module('app').component('topterms', {
         maxScore = 0
 
 
-
         this.loadterms = function () {
-
-
-
-
 
             $http.get(apiUrlWithSaffron + "terms").then(
 
                 function (response) {
 
                     response = response.data;
-                    console.log(response)
-                    response.sort((a, b) => (a.score < b.score) ? 1 : -1);
-                    response = response.slice(ctrl.n2, ctrl.n2+30);
-
                     // normalize saffron  score 
-                maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
-                    
-                   maxScore= value(maxScore)
-
-                    console.log("maxxxx", maxScore)
+                    maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
                     minScore = 0 
+                    
                     function normalizeScore(min, max) {
                         var delta = max - min;
                         return function(val){
                             return ((val - min) / delta).toFixed(2);
                         };
                      }
-
-                var value = (function() {
-                  var previousValue = 0
-                  return function(id) {
-                    if (previousValue !== 0 && previousValue > id)
-                      console.log("You sent me something smaller than last time!");
-                    previousValue = id;
-                  };
-                })(); 
-
-
 
                     scoreList = []
                     response.forEach((responseObj) => scoreList.push(responseObj.score.toPrecision(3)));
@@ -158,9 +137,9 @@ angular.module('app').component('topterms', {
                     });
 
 
-                    console.log(response.score)
 
-
+                    response.sort((a, b) => (a.score < b.score) ? 1 : -1);
+                    response = response.slice(ctrl.n2, ctrl.n2+30);
 
                     ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
@@ -178,8 +157,9 @@ angular.module('app').component('topterms', {
 
                     ctrl.n = ctrl.n2;
 
-                return maxScore
                 },
+
+
                 function (response) {
                     console.log(response);
                     console.log("Failed to get top terms");
@@ -189,7 +169,6 @@ angular.module('app').component('topterms', {
 
             );
 
-            return maxScore
         };
 
 
@@ -511,13 +490,14 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     function getRuns() {
         var url = apiUrl;
         $http.get(url).then(function (response) {
-            console.log(response)
-            console.log(response.data)
+
 
             for (t = 0; t < response.data.length; t++) {
-                console.log(response.data[t])
+                // console.log(response.data[t])
                 $scope.parents.push(response.data[t])
+
             }
+
         });
     }
     getRuns();
