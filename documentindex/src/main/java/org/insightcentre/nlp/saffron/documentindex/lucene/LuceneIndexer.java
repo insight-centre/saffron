@@ -34,7 +34,7 @@ public class LuceneIndexer implements DocumentIndexer, Closeable {
             if (doc.id == null) {
                 throw new IllegalArgumentException("Error reading " + doc.file);
             }
-            indexWriter.addDocument(LuceneDocument.makeDocument(doc.id, text, doc.url, doc.authors, doc.name, doc.file == null ? null : doc.file.toFile(), doc.mimeType, doc.metadata));
+            indexWriter.addDocument(LuceneDocument.makeDocument(doc.id, text, doc.url, doc.authors, doc.name, doc.file == null ? null : doc.file.toFile(), doc.mimeType, doc.metadata, doc.getDateAsString()));
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage(), e);
         }

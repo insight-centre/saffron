@@ -256,7 +256,8 @@ public class Executor extends AbstractHandler {
                         obj.getString("mime_type"),
                         authors,
                         result,
-                        obj.get("metadata").toString());
+                        obj.get("metadata").toString(),
+                        obj.has("date") ? org.insightcentre.nlp.saffron.data.Document.parseDate(obj.get("date").toString()) : null);
                 other.addDocument(docCorp);
             }
         }
@@ -439,7 +440,7 @@ public class Executor extends AbstractHandler {
                                 org.insightcentre.nlp.saffron.data.Document newDoc
                                         = new org.insightcentre.nlp.saffron.data.Document(doc.file,
                                             doc.id, doc.url, doc.name, doc.mimeType,
-                                        doc.authors, doc.metadata, writer.toString());
+                                        doc.authors, doc.metadata, writer.toString(), doc.date);
                                 newDocs.add(newDoc);
                             }
                         }

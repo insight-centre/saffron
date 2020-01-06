@@ -109,7 +109,7 @@ public class BenchmarkFromWikipedia {
                 try (PrintWriter out = new PrintWriter(f)) {
                     out.println(d.contents());
                 }
-                corpus.add(new Document(SaffronPath.fromFile(f), d.id, d.url, d.name, d.mimeType, d.authors, d.metadata, null));
+                corpus.add(new Document(SaffronPath.fromFile(f), d.id, d.url, d.name, d.mimeType, d.authors, d.metadata, null, d.date));
             }
             mapper.writeValue(new File(outputFile, "corpus.json"),
                     new SimpleCorpus(corpus));
@@ -220,7 +220,7 @@ public class BenchmarkFromWikipedia {
                         try {
                             if (docTitles.contains(title.toLowerCase())) {
                                 String contents = cleaner.clean(sb.toString());
-                                return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                                return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
                             } 
                         } catch (Exception x) {
                             x.printStackTrace();

@@ -125,7 +125,7 @@ public class ProcessWikipedia {
                         //out.close();
                         //out = null;
                         inArticle = false;
-                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
                     } else {
                         sb.append(line).append("\n");
                     }
