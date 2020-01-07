@@ -33,9 +33,8 @@ This file contains the description of the corpus, including all the metadata. It
             * `name_variants`: An array of strings given other known variants of the name (optional)
             
     * `metadata`: An object containing any other properties
-        Each property is in the form: 
         
-            "property name":"property value", separated by commas
+        Each property is in the form -* "property name":"property value"* - separated by commas
 
 
 ### Config (e.g. [config.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/config.json))
