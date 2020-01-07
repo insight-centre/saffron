@@ -6,7 +6,7 @@ and we will describe the properties each files has, with a link to an example (a
 
 ## Input formats
 
-### Corpus  (e.g. [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json))
+### Corpus  (e.g. [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json) and [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus2.json))
 ------
 
 This file contains the description of the corpus, including all the metadata. It is a collection of documents, each element being a different dicument with its own metadata and link to the file containing the text. A corpus has the following properties:
@@ -15,12 +15,12 @@ This file contains the description of the corpus, including all the metadata. It
 
     Each element of the list should have *at least* one of the following four:
 
-    * `file`: A string referring to the original version of this document on disk (absolute or relative path)
+    * `file`: A string referring to the original version of this document on disk (absolute or relative path) (see [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus2.json))
     * `id`: A unique string to identify the document
     * `url`: The URL of the file
-    * `contents`: The text contents of the file
+    * `contents`: The text contents of the file (see [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json))
     
-    In addition the following may be provided:
+    In addition the following *may* be provided:
     * `name`: The human readable name of the document
     * `mime_type`: The MIME type of the document
     * `authors`: An array of authors of this document
@@ -43,7 +43,7 @@ This file contains the description of the corpus, including all the metadata. It
 This input file for the command line interface (generated automatically if using the user interface) describes all options from the different steps of Saffron.
 See the [wiki](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach) for the details on what each property is for and the scientific explaination of the method.
 
-It contains each of the Saffron steps:
+It contains configurations for each of the Saffron steps:
 
 ##### 1.   Term Extraction
 Configuration for the options of the term extraction phase. All properties are included under the object:
@@ -108,7 +108,7 @@ The phase of connecting authors with similar areas of expertise together (if aut
 
 * `authorSim`:  An element which contains the following properties to set up:
 
-    * `threshold` : The minimum threshold of similarity to accept. Default to 0.1
+    * `threshold` : The minimum threshold of similarity score to accept (calculated by the class [AuthorSimilarity](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/authors/src/main/java/org/insightcentre/nlp/saffron/authors/sim/AuthorSimilarity.java)). Default to 0.1
     * `topN` : The maximum number of similar authors (per author) to extract. Default to 50
 
 
@@ -117,30 +117,49 @@ The phase of connecting similar terms
 
 * `termSim`:  An element which contains the following properties to set up:
     * `threshold` : The minimum threshold for accepting similarity between two terms. Default to 0.1
-    * `topN` : The maximum number of terms to accept. Default to 50
+    * `topN` : Top N pairs of similar terms to accept. Default to 50
 
 
 ##### 5.   Taxonomy Extraction
-The phase of supervised taxonomy extraction
+
 
 * `taxonomy`:  An element which contains the following properties to set up:  
-    * `negSampling` : The number of negative samples to generate when training. Default to 5.0  **not available in the interface?**  
-    * `features` : The features to use. Default to null.    **not available in the interface?**  
-        Choose between :  
-        * inclusion : uses the inclusion feature
-        * overlap : uses the overlap feature
-        * lcs : uses the longest common subsequence feature
-        * svdSimAve : uses the SVD Average Vector Similarity feature
-        * svdSimMinMax : uses the SVD Minimum-Maximum Vector Similarity feature
-        * topicDiff : uses the Topic Difference feature
-        * relFreq : uses the relative frequency feature
-        * wnDirect : uses direct wordnet
-        * wnIndirect : uses indirect wordnet
-    * `modelFile` : The model to be trained. Default to "${saffron.home}/models/default.json"
-    * `maxChildren` : A limit on the number of children to be added under one node (does not work in MST mode). Default to 2147483647   **not available in the interface?**
-    * `simThreshold` : Minimum threshold to accept for similarity. Default to 0.0   **not available in the interface?**
 
-    ###### 5.1.   Taxonomy Search
+    ###### 5.1   Taxonomy extraction with Pairwise Scoring model training
+    The phase of supervised taxonomy extraction - ***Command Line Interface Only***
+    * `negSampling` : The number of negative samples to generate when training. Default to 5.0.  - ***Command Line Interface Only*** *only used for training the Pairwise Scoring model*  
+    * `features` : The features to use, each of them can be set to "false" or "true" (see example below). Default to null - ***Command Line Interface Only***
+           
+        example:
+        ```
+        "features": {
+          "gloveFile": "/home/.../ GloVe-1.2.zip",
+          "hypernyms": "/.../.../XYZ.txt",
+          "featureSelection": {
+             "inclusion": true,
+             "overlap": true,
+             ... }
+        ```
+
+        *  `gloveFile`: The file containing the GloVe vectors or null if not used
+        *  `hypernyms`: The file containin the Hypernyms
+
+        * `featureSelection` :  The feature selection (or null for all features). Each of them can be set to "false" or "true" (see example below). Default to null. *command line interface only*
+            Choose between :  
+            * inclusion : uses the inclusion feature
+            * overlap : uses the overlap feature
+            * lcs : uses the longest common subsequence feature
+            * svdSimAve : uses the SVD Average Vector Similarity feature
+            * svdSimMinMax : uses the SVD Minimum-Maximum Vector Similarity feature
+            * topicDiff : uses the Topic Difference feature
+            * relFreq : uses the relative frequency feature
+            * wnDirect : uses direct wordnet
+            * wnIndirect : uses indirect wordnet
+    * `modelFile` : The path of the model to be trained. Default to "${saffron.home}/models/default.json"
+    * `maxChildren` : #deprecated
+    * `simThreshold` : #deprecated
+
+    ###### 5.2.   Taxonomy Search
     The phase of search in the taxonomy algorithm
     * `search`:  An element which contains the following properties to set up:
         * `algorithm` : The algorithm to use for finding a taxonomy. Choose between `greedy`, `beam`, `mst`. Default to greedy
@@ -155,7 +174,7 @@ The phase of supervised taxonomy extraction
 ## Ouput formats
 
 
-### Terms ([terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/terms.json))
+### Terms ([terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/terms.json))
 
 Each element in this file represents a single term extracted from the corpus. The file contains the following annotations
 
@@ -169,24 +188,25 @@ term string
    * `string`: The form of this variant
 
 
-
-### Doc-Terms ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/doc-terms.json))
+### Doc-Terms ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/doc-terms.json))
 
 * `document_id`: A unique string to identify the document, made up of the document filename (preceded by _zip_filename if the dataset is submitted as a .zip file)  
 * `term_string`: The string that names the term (must be unique)
 * `occurrences`: The number of occurrences of the term in the single document
 
 
-### Term-Sim ([term-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/term-sim.json))
+### Term-Sim ([term-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/term-sim.json))
 
 This file gathers and compares all pair of terms extracted in the previous stage. Each element describes one edge, ie. a relation between two terms, and their similarity score (see the [pairwise scoring](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach#211-pairwise-scoring) step for more explanation on how this is calculated).
 
 * `term1_id`: The first term's term string
 * `term2_id`: The second term's term string
 * `similarity`: The similarity of the two terms 
-* `status`: Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **none**
+* `status`: #deprecated
 
-## Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/taxonomy.json))
+<!--Whether the relation was validated or not during the Review mode (see the [Review mode](https://gitlab.insight-centre.org/saffron/saffron/wikis/Review-mode) documentation). Default to **none** -->
+
+## Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/taxonomy.json))
 
 This file represents the whole taxonomy. Each element describes a term and how it is related to other terms in the taxonomy. 
 The file contains the following:
@@ -195,13 +215,13 @@ The file contains the following:
 * `score`: The weighting given to the root term
 * `linkScore`: The likelihood of the link from this term to its root being correct
 * `children`: A list of children of this node (these are also Taxonomy objects)
-* `status`:
-* `parent`:
+* `status`: #deprecated
+* `parent`: #deprecated
 
 
 
-If authors are present in the original corpus as metadat:
-### Author-Terms
+If authors are present in the original corpus as metadata:
+### Author-Terms ([authors-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/author-terms.json)
 
 An edge linking an author to a term
 
@@ -213,13 +233,13 @@ An edge linking an author to a term
 * `tfirf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
 extraction of topical hierarchies for Expertise Mining" (Georgeta Bordea (2013)) 
 for evaluations of different methods)
-* `score`: The score of the this linking
+* `score`: The score of this linking
 * `researcher_score`: The score for author's ranking for this particular term
 
-### Author-Sim
+### Author-Sim ([author-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/author-sim.json))
 -------------
 
-An edge in the author-author graph
+An edge linking authors together
 
 * `author1_id`: The ID of the first author
 * `author2_id`: The ID of the second author
