@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.BufferedReader;
@@ -8,8 +9,11 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +36,7 @@ public class Document {
     public List<Author> authors;
     private Loader contents;
     public Map<String, String> metadata;
+    public Date date;
 
     @JsonCreator
     public Document(@JsonProperty(value = "file") SaffronPath file,
@@ -41,7 +46,8 @@ public class Document {
             @JsonProperty("mime_type") String mimeType,
             @JsonProperty("authors") List<Author> authors,
             @JsonProperty("metadata") Map<String, String> metadata,
-            @JsonProperty("contents") String contents) {
+            @JsonProperty("contents") String contents,
+            @JsonProperty("date") Date date) {
         if (file == null && contents == null && url == null) {
             System.err.println("id=" + id);
         }
@@ -52,6 +58,7 @@ public class Document {
         this.mimeType = mimeType == null && contents != null ? "text/plain" : mimeType;
         this.authors = authors == null ? new ArrayList<Author>() : authors;
         this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
+        this.date = date;
         if(contents != null) {
             this.contents = new InMemory(contents);
         } else if(file != null) {
@@ -272,9 +279,9 @@ public class Document {
             for (String c : context) {
                 sb.append(c);
             }
-            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, sb.toString());
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, sb.toString(), this.date);
         } else {
-            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, "");
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, "", this.date);
         }
     }
 
@@ -293,5 +300,24 @@ public class Document {
         }
     }
     
+    private static final SimpleDateFormat isoDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    /**
+     * Parse a date
+     * @param date The date as an ISO String
+     * @return The date object
+     */
+    public static Date parseDate(String date) {
+        if(date == null || date.equals("")) return null;
+        try {
+            return isoDate.parse(date);
+        } catch(ParseException x) {
+            throw new RuntimeException(x);
+        }
+    }
+    
+    @JsonIgnore
+    public String getDateAsString() {
+        return isoDate.format(date);
+    }
     
 }

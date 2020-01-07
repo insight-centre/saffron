@@ -403,7 +403,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
                     path.setPath(obj.getString("id"));
                     org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
                             path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
-                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents,
+                            obj.has("date") ? org.insightcentre.nlp.saffron.data.Document.parseDate(obj.getString("date")) : null);
 
                     docData.add(doc);
                 }
@@ -1614,7 +1615,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             path.setPath(docId);
             org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
                     path, docId, null, docId, "text",
-                    Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                    Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
             return doc;
         } catch (Exception e) {
             throw new NoSuchElementException("Contents of Corpus cannot be retrieved");
