@@ -16,7 +16,7 @@ This file contains the description of the corpus, including all the metadata. It
     
     In addition the following attributes may be provided:
 
-    * `name`: The human readable name of the document
+* `name`: The human readable name of the document
     * `mime_type`: The MIME type of the document
     * `authors`: An array of authors of this document
             
