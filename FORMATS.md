@@ -6,7 +6,7 @@ All formats are in JSON and we will describe the properties each file has, with 
 
 ## Input formats
 ---
-### Corpus  (e.g. [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json) and [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus2.json))
+### Corpus  (e.g. [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/input_corpus.json) and [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/input_corpus2.json))
 
 This file contains the description of the corpus, including all the metadata. It is a collection of documents, each entry being a different document with its own metadata and link to the file containing the text. A corpus has the following properties:
 
