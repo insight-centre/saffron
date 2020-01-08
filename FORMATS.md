@@ -40,7 +40,7 @@ See the [wiki](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-a
 Configuration for the options of the term extraction phase. All properties are included under the object:
 
 * `termExtraction`: This element contains the following properties to set up:
-    *`threshold`: Sets a minimum Saffron score for the terms retrieved.
+    * `threshold`: Sets a minimum Saffron score for the terms retrieved.
     * `maxTerms`: Sets the maximum number of terms to extract. The default is 100.
     * `ngramMin`: Sets the shortest length of term to consider (in terms of the number of words). The default is 1.
     * `ngramMax`: Sets the longest length of term to consider (in terms of number of words). The default is 4.
