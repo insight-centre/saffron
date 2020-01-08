@@ -1,6 +1,7 @@
 const apiUrl = '/api/v1/run/';
 const apiUrlWithSaffron = apiUrl + saffronDatasetName + '/';
 
+
 angular.module('app', ['ngMaterial', 'ui.bootstrap'])
     // this service is used to collect all public values
     // to be able to pass them among controllers
@@ -42,6 +43,8 @@ function acceptRejectterms($http, terms, mainterm, status){
         }
     );
 }
+
+
 
 // general function to accept or reject child/related terms
 function deleteOneRun($http, id){
@@ -99,37 +102,81 @@ angular.module('app').component('header', {
 
 // getting the top terms to fill the right sidebar on homepage of a run
 angular.module('app').component('topterms', {
+    
     templateUrl: '/top-terms.html',
     controller: function ($http) {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
+        maxScore = 0
+
+
         this.loadterms = function () {
+
             $http.get(apiUrlWithSaffron + "terms").then(
+
                 function (response) {
+
                     response = response.data;
+                    // normalize saffron  score 
+                    maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
+                    minScore = 0 
+                    
+                    function normalizeScore(min, max) {
+                        var delta = max - min;
+                        return function(val){
+                            return ((val - min) / delta).toFixed(2);
+                        };
+                     }
+
+                    scoreList = []
+                    response.forEach((responseObj) => scoreList.push(responseObj.score.toPrecision(3)));
+                    normalizedScore = scoreList.map(normalizeScore(minScore,maxScore));
+                    response.forEach((responseObj, indx) =>{
+                        responseObj.score = normalizedScore[indx]
+                    });
+
+
+
                     response.sort((a, b) => (a.score < b.score) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+30);
+
                     ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
                         if(response[t].status !== "rejected") {
+
                             ctrl.terms.push({
                                 "term_string": response[t].termString,
+                                "score": response[t].score, //toFixed(2)
+
                                 "pos": (t + 1 + ctrl.n2)
+
                             });                            
                         }
                     }
+
                     ctrl.n = ctrl.n2;
+
                 },
+
+
                 function (response) {
                     console.log(response);
                     console.log("Failed to get top terms");
                 }
+
+
+
             );
+
         };
+
+
+
         this.termForward = function () {
             ctrl.n2 += 30;
             this.loadterms();
+
         };
         this.termBack = function () {
             ctrl.n2 -= 30;
@@ -446,13 +493,14 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     function getRuns() {
         var url = apiUrl;
         $http.get(url).then(function (response) {
-            console.log(response)
-            console.log(response.data)
+
 
             for (t = 0; t < response.data.length; t++) {
-                console.log(response.data[t])
+                // console.log(response.data[t])
                 $scope.parents.push(response.data[t])
+
             }
+
         });
     }
     getRuns();
