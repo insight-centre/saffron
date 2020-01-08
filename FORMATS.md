@@ -91,8 +91,8 @@ The phase of connecting similar terms.
 The phase of supervised taxonomy extraction - ***Command Line Interface Only***
 
 * `taxonomy`:  Taxonomy extraction with Pairwise Scoring model training. It contains the following properties to set up:
-    * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples - ***Command Line Interface Only*** *only used for training the Pairwise Scoring model* 
-    * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false - ***Command Line Interface Only***
+    * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model* 
+    * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
     
         Example:
     
