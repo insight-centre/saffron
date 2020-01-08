@@ -93,7 +93,7 @@ The phase of connecting similar terms.
     * `topN`: The maximum number of terms to accept. The default is set to 50 terms.
 
 
-#### 5.   Taxnomy Extraction
+#### 5.   Taxonomy Extraction
 * `taxonomy`:  An element which contains the following properties to set up:  
 
 ##### 5.1   Taxonomy extraction with Pairwise Scoring model training
@@ -209,7 +209,7 @@ An edge linking an author to a term
 * `matches`: The number of times this term is used in documents by this author
 * `occurrences`: The number of occurrences of the term by this author
 * `paper_count`: The number of documents from the author containing this term
-* `tfirf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
+* `tfidf`: The Term Frequency-Inverse Research Frequency (See "Domain adaptive 
 extraction of topical hierarchies for Expertise Mining" (Georgeta Bordea (2013)) 
 for evaluations of different methods)
 * `score`: The score of this linking
