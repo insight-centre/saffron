@@ -110,6 +110,7 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
         * `gloveFile`: The file containing the GloVe vectors or null if not used.
         *  `hypernyms`: The file containin the Hypernyms.
 
+
     * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true". The default is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) **Command Line Interface Only** 
     Choose between:
         * inclusion: uses the inclusion feature: a string is said to include another string if it starts or ends with that string respecting word boundaries.
