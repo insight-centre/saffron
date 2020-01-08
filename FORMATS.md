@@ -53,7 +53,7 @@ Configuration for the options of the term extraction phase. All properties are i
                     
     * `corpus`:  #deprecated (by default set to ${saffron.home}/models/wiki-terms.json.gz).
     * `baseFeature`: If `method` is set to "single", a unique scoring function shall be selected as a base. If `method` is set to "voting", choose the scoring function that will get more weight in the calculation of the final score. (Choose between the options given above in `features`).
-    * `numThreads` : #deprecated (by default to 0)
+    * `numThreads` : #deprecated (The default was 0).
     * `posModel`: The path to the part-of-speech tagger model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. The default model is set to ("${saffron.home}/models/en-pos-maxent.bin").
     * `tokenizerModel`: The path to the tokenizer model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported. The default is set to "null" (the configuration will automatically use the one English tokenizer that is provided by OpenNLP).
     * `lemmatizerModel`: The path to the lemmatizer model. Only models from [OpenNLP](http://opennlp.sourceforge.net/models-1.5/) are currenlty supported.  The default is set to ("${saffron.home}/models/en-lemmatizer.dict.txt").
@@ -69,7 +69,6 @@ Configuration for the options of the term extraction phase. All properties are i
 
 #### 2.   Author - Term Linking
 The phase of linking between authors and terms (Only if authors are present in the metadata, ignored otherwise).
-
 * `authorTerm`: An element which contains the following property to set up:
     * `topN`: The maximum number of total author-term pairs to extract. The default is 1000.
 
@@ -83,7 +82,6 @@ The phase of connecting authors with similar areas of expertise together (Only i
 
 #### 4.   Term Similarity
 The phase of connecting similar terms.
-
 * `termSim`: An element contains the following properties to set up:
     * `threshold`: The minimum threshold for accepting similarity between two terms. The default threshold is 0.1.
     * `topN`: The maximum number of terms to accept. The default is set to 50 terms.
@@ -147,7 +145,6 @@ The phase of search in the taxonomy algorithm.
 ### Terms ([terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/terms.json))
 
 Each element in this file represents a single term extracted from the corpus. The file contains the following annotations:
-
 * `term_string`: The string that names the term (must be unique)
 * `occurrences`: The total number of occurrences of a term in the corpus
 * `matches`: The number of documents in the corpus containing this term
@@ -161,7 +158,6 @@ term string
 ### Doc-Terms ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/doc-terms.json)) 
 
 A file shows the relationship between a document and a term.
-
 * `document_id`: A unique string to identify the document, made up of the document filename (preceded by _zip_filename if the dataset is submitted as a .zip file)  
 * `term_string`: The string that names the term (must be unique)
 * `occurrences`: The number of occurrences of the term in the single document
@@ -172,7 +168,6 @@ A file shows the relationship between a document and a term.
 ### Term-Sim ([term-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/term-sim.json))
 
 This file gathers and compares all pair of terms extracted in the previous stage. Each element describes one edge, ie. a relation between two terms, and their similarity score (see the [pairwise scoring](https://gitlab.insight-centre.org/saffron/saffron/wikis/saffron-approach#211-pairwise-scoring) step for more explanation on how this is calculated).
-
 * `term1_id`: The first term's term string
 * `term2_id`: The second term's term string
 * `similarity`: The similarity of the two terms 
@@ -198,7 +193,6 @@ This file represents the whole taxonomy. Each element describes a term and how i
 
 ### Author-Terms ([authors-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/author-terms.json))
 An edge linking an author to a term
-
 * `author_id`: The ID of the author
 * `term_id`: The term string of the term
 * `matches`: The number of times this term is used in documents by this author
@@ -215,7 +209,6 @@ for evaluations of different methods)
 ### Author-Sim ([author-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/author-sim.json))
 
 An edge linking authors together
-
 * `author1_id`: The ID of the first author
 * `author2_id`: The ID of the second author
 * `similarity`: The similarity score between these authors
