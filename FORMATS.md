@@ -45,7 +45,7 @@ Configuration for the options of the term extraction phase. All properties are i
     * `ngramMin`: Sets the shortest length of term to consider (in terms of the number of words). The default is 1.
     * `ngramMax`: Sets the longest length of term to consider (in terms of number of words). The default is 4.
     * `minTermFreq`: Sets the number of times a term must appear in the dataset to be retrieved. The default is 2.
-    * `maxDocs`: The maximum number of documents to consider for the analysis. The default is 2147483647
+    * `maxDocs`: The maximum number of documents to consider for the analysis. The default is 2147483647.
     * `method`: Choose between two ranking procedures: "voting" (An algorithm that integrates multiple score functions) and "single" (only one score function).
     * `features` : List of scoring functions if the "voting" method above was selected, or will be ignored if the "single" method was chosen. The default set of features is ([ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ]).
 
