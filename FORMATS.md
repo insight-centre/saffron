@@ -16,7 +16,7 @@ This file contains the description of the corpus, including all the metadata. It
     
     In addition the following attributes may be provided:
 
-* x
+    * x
         * x
     
         * `name`: The human readable name of the document
