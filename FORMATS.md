@@ -15,8 +15,6 @@ This file contains the description of the corpus, including all the metadata. It
     * `contents`:  The text contents of the file (see [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json))
 
     In addition the following attributes may be provided:
-
-    
     * `name`: The human readable name of the document
     * `mime_type`: The MIME type of the document
     * `authors`: An array of authors of this document
