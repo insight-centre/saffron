@@ -115,7 +115,7 @@ The phase of connecting similar terms.
             * `svdSimAve`: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
             * `svdSimMinMax`: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
             * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B|
-            * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom)) $`a^2+b^2=c^2`$
+            * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom)) $`\log(freq(top)/freq(bottom))`$
             * `wnDirect`: uses direct wordnet
             * `wnIndirect`: uses indirect wordnet
     * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
