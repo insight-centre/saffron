@@ -15,6 +15,8 @@ import java.util.Set;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.google.common.flogger.FluentLogger;
 import libsvm.svm_parameter;
 import libsvm.svm_problem;
 import org.eclipse.jetty.server.Request;
@@ -25,7 +27,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
@@ -33,17 +35,19 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train.StringPair;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
-import org.insightcentre.nlp.saffron.term.enrich.EnrichTopics;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms;
 
 /**
  * The code to train a Saffron Instance
  * 
  * @author John McCrae
  */
+// TODO: Is this used anywhere?
 public class Trainer extends AbstractHandler {
 
     private Configuration defaultConfig;
     private final File directory;
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
     private final Status status;
 
     public Trainer(File directory) {
@@ -110,14 +114,14 @@ public class Trainer extends AbstractHandler {
             DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status, true);
 
             status.stage++;
-            status.setStatusMessage("Enriching topics from corpus");
-            Set<String> topics = new HashSet<>();
-            flatten(taxonomy, topics);
-            EnrichTopics.Result result = EnrichTopics.enrich(topics, searcher, config.termExtraction);
+            status.setStatusMessage("Enriching terms from corpus");
+            Set<String> terms = new HashSet<>();
+            flatten(taxonomy, terms);
+            EnrichTerms.Result result = EnrichTerms.enrich(terms, searcher, config.termExtraction);
 
             status.stage++;
-            status.setStatusMessage("Building topic map");
-            Map<String, Topic> topicMap = loadMap(result.topics, mapper, status);
+            status.setStatusMessage("Building term map");
+            Map<String, Term> termMap = loadMap(result.terms, mapper, status);
 
             status.stage++;
             final Map<String, double[]> glove;
@@ -141,8 +145,8 @@ public class Trainer extends AbstractHandler {
 
             status.stage++;
             status.setStatusMessage("Initializing Features");
-            Features features = new Features(null, null, Train.indexDocTopics(result.docTopics),
-                    glove, topicMap, hypernyms, model.features.featureSelection);
+            Features features = new Features(null, null, Train.indexDocTerms(result.docTerms),
+                    glove, termMap, hypernyms, model.features.featureSelection);
 
             status.stage++;
             if (glove != null) {
@@ -171,10 +175,10 @@ public class Trainer extends AbstractHandler {
 
     }
 
-    private void flatten(Taxonomy taxonomy, Set<String> topics) {
-        topics.add(taxonomy.root);
+    private void flatten(Taxonomy taxonomy, Set<String> terms) {
+        terms.add(taxonomy.root);
         for (Taxonomy child : taxonomy.children) {
-            flatten(child, topics);
+            flatten(child, terms);
         }
     }
 
@@ -219,6 +223,11 @@ public class Trainer extends AbstractHandler {
         }
 
         @Override
+        public void setStageStart(String statusMessage, String taxonomyId) {
+            //TODO: Is this used anywhere?
+        }
+
+        @Override
         public void log(String message) {
             System.err.println(message);
         }
@@ -231,6 +240,16 @@ public class Trainer extends AbstractHandler {
         @Override
         public void endTick() {
             System.err.println();
+        }
+
+        @Override
+        public void setStageComplete(String statusMessage, String taxonomyId) {
+            //TODO: Is this used anywhere?
+        }
+
+        @Override
+        public void warning(String message, Throwable cause) {
+            //TODO: Is this used anywhere?
         }
 
     }

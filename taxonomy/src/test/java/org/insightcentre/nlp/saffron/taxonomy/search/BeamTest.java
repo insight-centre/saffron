@@ -1,22 +1,14 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
+import static org.junit.Assert.assertEquals;
+
 import java.util.Iterator;
-import java.util.Set;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.SumScore;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
+
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *

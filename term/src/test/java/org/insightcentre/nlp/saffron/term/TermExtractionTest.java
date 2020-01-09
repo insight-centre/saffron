@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.term.TermExtraction.Result;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -52,7 +52,7 @@ public class TermExtractionTest {
     static int docs = 0;
 
     private Document mkDoc(String contents) {
-        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
     }
 
     /**
@@ -147,10 +147,10 @@ public class TermExtractionTest {
     }
 
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics() throws Exception {
+    public void testExtractTerms() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -226,14 +226,14 @@ public class TermExtractionTest {
             }
 
         }, tokenizer);
-        Result res = instance.extractTopics(searcher);
+        Result res = instance.extractTerms(searcher);
     }
     
         /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics2() throws Exception {
+    public void testExtractTerms2() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -327,16 +327,16 @@ public class TermExtractionTest {
                 config.baseFeature,  
                 config.blacklist,  
                 true);
-        Result res = instance.extractTopics(searcher);
-        assert(res.topics.size() > 1);
+        Result res = instance.extractTerms(searcher);
+        assert(res.terms.size() > 1);
     }
     
     
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopicsWithBlackWhite() throws Exception {
+    public void testExtractTermsWithBlackWhite() throws Exception {
         System.out.println("extractStatsBlackWhite");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -418,12 +418,12 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 1, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+            config.oneTermPerDoc);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time")));
     }
     
     @Test
@@ -510,13 +510,13 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+            config.oneTermPerDoc);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("great time")));
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time") && t.status == Status.accepted));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("great time")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time") && t.getStatus() == Status.accepted));
     }
     
     @Test
@@ -599,11 +599,11 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
-        Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
+            config.oneTermPerDoc);
+        Result res = instance.extractTerms(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("plan")));
-        assert(!res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("401k plan")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("plan")));
+        assert(!res.terms.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
 
     }
 }

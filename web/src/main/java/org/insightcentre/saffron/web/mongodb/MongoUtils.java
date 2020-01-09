@@ -22,21 +22,21 @@ public class MongoUtils {
 
     public static void deleteRunFromMongo(String name, MongoDBHandler handler) {
         handler.runCollection.findOneAndDelete(and(eq("id", name)));
-        handler.topicsCollection.deleteMany(and(eq("run", name)));
-        handler.topicsCorrespondenceCollection.deleteMany(and(eq("run", name)));
-        handler.topicsExtractionCollection.deleteMany(and(eq("run", name)));
-        handler.authorTopicsCollection.deleteMany(and(eq("run", name)));
-        handler.topicsSimilarityCollection.deleteMany(and(eq("run", name)));
+        handler.termsCollection.deleteMany(and(eq("run", name)));
+        handler.termsCorrespondenceCollection.deleteMany(and(eq("run", name)));
+        handler.termsExtractionCollection.deleteMany(and(eq("run", name)));
+        handler.authorTermsCollection.deleteMany(and(eq("run", name)));
+        handler.termsSimilarityCollection.deleteMany(and(eq("run", name)));
         handler.authorSimilarityCollection.deleteMany(and(eq("run", name)));
         handler.taxonomyCollection.findOneAndDelete(and(eq("id", name)));
     }
 
-    public static FindIterable getTopicsFromMongo(String runId, MongoDBHandler handler) {
-        return handler.topicsCollection.find(eq("run", runId));
+    public static FindIterable getTermsFromMongo(String runId, MongoDBHandler handler) {
+        return handler.termsCollection.find(eq("run", runId));
     }
 
-    public static void updateTopicAndTaxonomy(String name, Taxonomy finalTaxon, String topicString, String status, MongoDBHandler handler) {
-        handler.updateTopic(name, topicString, status);
+    public static void updateTermAndTaxonomy(String name, Taxonomy finalTaxon, String termString, String status, MongoDBHandler handler) {
+        handler.updateTerm(name, termString, status);
         handler.updateTaxonomy(name, finalTaxon);
     }
 

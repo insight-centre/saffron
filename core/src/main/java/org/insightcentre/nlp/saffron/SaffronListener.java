@@ -21,12 +21,27 @@ public interface SaffronListener {
      * Indicate the completion of a task
      */
     public void endTick();
-    
+
+    /**
+     * Indicate the completion of a stage
+     * @param statusMessage The message associated with the stage
+     * @param taxonomyId A taxonomy ID
+     */
+    void setStageComplete(String statusMessage, String taxonomyId);
+
+    /**
+     * Indicate that a process has a warning
+     * @param message The warning message
+     * @param cause A (maybe null) cause
+     */
+    void warning(String message, Throwable cause);
+
     /**
      * Indicate that a process failed
      * @param message The failure message
      * @param cause A (maybe null) cause
      */
     public void fail(String message, Throwable cause);
-    
+
+    void setStageStart(String statusMessage, String taxonomyId);
 }

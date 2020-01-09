@@ -9,7 +9,7 @@ import java.util.Random;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.junit.After;
@@ -61,8 +61,8 @@ public class BeamSearchTest {
 
     }
 
-    private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
+    private void addTerm(HashMap<String, Term> terms, String t, double score) {
+        terms.put(t, new Term(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
 
     /**
@@ -70,19 +70,19 @@ public class BeamSearchTest {
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
-        HashMap<String, Topic> topics = new HashMap<>();
-        addTopic(topics, "", 0.0);
-        addTopic(topics, "a", 0.0);
-        addTopic(topics, "b", 0.0);
-        addTopic(topics, "c", 0.0);
-        addTopic(topics, "ab", 0.0);
-        addTopic(topics, "ac", 0.0);
-        addTopic(topics, "abc", 0.0);
-        addTopic(topics, "ba", 0.0);
-        addTopic(topics, "bd", 0.0);
+        HashMap<String, Term> terms = new HashMap<>();
+        addTerm(terms, "", 0.0);
+        addTerm(terms, "a", 0.0);
+        addTerm(terms, "b", 0.0);
+        addTerm(terms, "c", 0.0);
+        addTerm(terms, "ab", 0.0);
+        addTerm(terms, "ac", 0.0);
+        addTerm(terms, "abc", 0.0);
+        addTerm(terms, "ba", 0.0);
+        addTerm(terms, "bd", 0.0);
 
         BeamSearch instance = new BeamSearch(new SumScore(new TestSupervisedTaxo()), 2);
-        Taxonomy result = instance.extractTaxonomy(topics);
+        Taxonomy result = instance.extractTaxonomy(terms);
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
     }
@@ -93,16 +93,16 @@ public class BeamSearchTest {
     @Test
     public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
         System.out.println("extractTaxonomyWithBlackWhiteList");
-        HashMap<String, Topic> topics = new HashMap<>();
-        addTopic(topics, "", 0.0);
-        addTopic(topics, "a", 0.0);
-        addTopic(topics, "b", 0.0);
-        addTopic(topics, "c", 0.0);
-        addTopic(topics, "ab", 0.0);
-        addTopic(topics, "ac", 0.0);
-        addTopic(topics, "abc", 0.0);
-        addTopic(topics, "ba", 0.0);
-        addTopic(topics, "bd", 0.0);
+        HashMap<String, Term> terms = new HashMap<>();
+        addTerm(terms, "", 0.0);
+        addTerm(terms, "a", 0.0);
+        addTerm(terms, "b", 0.0);
+        addTerm(terms, "c", 0.0);
+        addTerm(terms, "ab", 0.0);
+        addTerm(terms, "ac", 0.0);
+        addTerm(terms, "abc", 0.0);
+        addTerm(terms, "ba", 0.0);
+        addTerm(terms, "bd", 0.0);
 
         Set<TaxoLink> whiteList = new HashSet<>();
         Set<TaxoLink> blackList = new HashSet<>();
@@ -110,7 +110,7 @@ public class BeamSearchTest {
         blackList.add(new TaxoLink("", "c"));
 
         BeamSearch instance = new BeamSearch(new SumScore(new TestSupervisedTaxo()), 10);
-        Taxonomy result = instance.extractTaxonomyWithBlackWhiteList(topics, whiteList, blackList);
+        Taxonomy result = instance.extractTaxonomyWithBlackWhiteList(terms, whiteList, blackList);
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
         assert (result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));
@@ -130,9 +130,9 @@ public class BeamSearchTest {
                     scores[i][j] = r.nextDouble();
                 }
             }
-            HashMap<String, Topic> topics = new HashMap<>();
+            HashMap<String, Term> terms = new HashMap<>();
             for (int i = 0; i < n; i++) {
-                addTopic(topics, "" + i, 0.0);
+                addTerm(terms, "" + i, 0.0);
             }
 
             BeamSearch instance = new BeamSearch(new SumScore(new SupervisedTaxo((Features)null, null, null) {
@@ -143,7 +143,7 @@ public class BeamSearchTest {
                     return scores[i][j];
                 }
             }), 10);
-            Taxonomy result = instance.extractTaxonomy(topics);
+            Taxonomy result = instance.extractTaxonomy(terms);
             assert(result.verifyTree());
             assert(result.scoresValid());
             System.err.println("Passed trial " + trial);

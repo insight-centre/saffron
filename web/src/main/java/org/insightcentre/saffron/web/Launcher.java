@@ -5,21 +5,16 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 
-import io.swagger.jaxrs.config.DefaultJaxrsConfig;
-import io.swagger.jersey.config.JerseyJaxrsConfig;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.server.session.SessionHandler;
-import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-import org.glassfish.jersey.servlet.ServletContainer;
 import org.insightcentre.saffron.web.api.SaffronAPI;
-import org.insightcentre.saffron.web.swagger.SwaggerInitializer;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 import javax.ws.rs.ApplicationPath;
 
@@ -32,6 +27,9 @@ public class Launcher {
 
     public static Executor executor;
     public static Home home;
+
+    public static final MongoDBHandler saffron = new MongoDBHandler();
+
 
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
@@ -72,7 +70,6 @@ public class Launcher {
 
             Server server = new Server(port);
             ResourceHandler resourceHandler = new ResourceHandler();
-
             // This is the path on the server
             // This is the local directory that is used to 
             resourceHandler.setResourceBase("static");
@@ -80,30 +77,20 @@ public class Launcher {
                 System.err.println("No static folder, please run the command in the right folder.");
                 System.exit(-1);
             }
-            //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
-            Browser browser = new Browser(directory);
-            executor = new Executor(browser.saffron, directory, (File)os.valueOf("l"));
+            Browser browser = new Browser(directory, saffron);
+            executor = new Executor(saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
-            home = new Home(browser.saffron, directory);
+            home = new Home(saffron, directory);
 
             ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
             context.setContextPath("/");
-
-
             ServletHolder jerseyServlet = context.addServlet(
                     org.glassfish.jersey.servlet.ServletContainer.class, "/*");
             jerseyServlet.setInitOrder(0);
             jerseyServlet.setInitParameter(
                     "jersey.config.server.provider.classnames",
-                    SaffronAPI.class.getCanonicalName() + ";com.wordnik.swagger.jersey.listing.ApiListingResourceJSON;" +
-                            "com.wordnik.swagger.jersey.listing.JerseyApiDeclarationProvider;" +
-                            "com.wordnik.swagger.jersey.listing.JerseyResourceListingProvider");
-            jerseyServlet.setInitParameter(
-                    "jersey.config.server.provider.packages",
-                    "com.wordnik.swagger.jaxrs.json;org.insightcentre.saffron.web.api");
-
-
+                    SaffronAPI.class.getCanonicalName());
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
 
@@ -136,20 +123,6 @@ public class Launcher {
         }
     }
 
-    private static ServletContextHandler setupSwaggerContextHandler() {
-        // Configure Swagger-core
-        final ServletHolder swaggerServletHolder = new ServletHolder(new JerseyJaxrsConfig());
-        swaggerServletHolder.setName("JerseyJaxrsConfig");
-        swaggerServletHolder.setInitParameter("api.version", "1.0.0");
-        swaggerServletHolder.setInitParameter("swagger.api.basepath", "http://localhost:8080/api");
-        swaggerServletHolder.setInitOrder(2);
 
-        final ServletContextHandler swaggerContextHandler = new ServletContextHandler();
-        swaggerContextHandler.setSessionHandler(new SessionHandler());
-        // Bind Swagger-core to the url HOST/api-docs
-        swaggerContextHandler.setContextPath("/api-docs");
-        swaggerContextHandler.addServlet(swaggerServletHolder, "/api/v1*");
 
-        return swaggerContextHandler;
-    }
 }

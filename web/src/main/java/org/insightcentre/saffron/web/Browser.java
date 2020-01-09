@@ -36,10 +36,10 @@ import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
-import org.insightcentre.nlp.saffron.data.connections.TopicTopic;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
 import org.insightcentre.saffron.web.api.BaseResponse;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
@@ -53,17 +53,11 @@ import org.json.JSONObject;
  */
 public class Browser extends AbstractHandler {
 
-	//FIXME: The MongoDB configurations should not be encapsulated within the MongoDBHandler
-	// and provided by a centralised Config class
-    static String mongoUrl = System.getenv("MONGO_URL");
-    static String mongoPort = System.getenv("MONGO_PORT");
-    static String mongoDbName = System.getenv("MONGO_DB_NAME");
+    protected final MongoDBHandler saffronHandler;
 
-    protected final MongoDBHandler saffron = new MongoDBHandler(
-            mongoUrl, new Integer(mongoPort), mongoDbName, "saffron_runs");
+    public Browser(File dir, MongoDBHandler saffron) throws IOException {
 
-    public Browser(File dir) throws IOException {
-
+        this.saffronHandler = saffron;
         if(saffron.type.equals("mongodb")) {
         	//FIXME It should ask the database to initialise itself
             if (dir.exists()) {
@@ -101,7 +95,7 @@ public class Browser extends AbstractHandler {
             throws IOException, ServletException {
         if (target != null && target.startsWith("/") && target.lastIndexOf("/") != 0) {
             String name = target.substring(1, target.indexOf("/", 1));
-            if (saffron.containsKey(name)) {
+            if (saffronHandler.containsKey(name)) {
                 handle2(target.substring(target.indexOf("/", 1)),
                         baseRequest, request, response, name);
             }
@@ -116,28 +110,27 @@ public class Browser extends AbstractHandler {
             throws IOException, ServletException {
         try {
             // Exposing an existing directory
-            if (saffron != null && saffron.isLoaded(saffronDatasetName)) {
+            if (saffronHandler != null && saffronHandler.isLoaded(saffronDatasetName)) {
                 final ObjectMapper mapper = new ObjectMapper();
-                System.err.println(target);
                 if (target.equals("/taxonomy")) {
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    mapper.writeValue(response.getWriter(), saffron.getTaxonomy(saffronDatasetName));
+                    mapper.writeValue(response.getWriter(), saffronHandler.getTaxonomy(saffronDatasetName));
                 } else if (target.equals("/taxonomy_with_size")) {
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    Taxonomy taxonomy = saffron.getTaxonomy(saffronDatasetName);
-                    TaxonomyWithSize tws = AddSizesToTaxonomy.addSizes(taxonomy, saffron.getDocTopics(saffronDatasetName));
+                    Taxonomy taxonomy = saffronHandler.getTaxonomy(saffronDatasetName);
+                    TaxonomyWithSize tws = AddSizesToTaxonomy.addSizes(taxonomy, saffronHandler.getDocTerms(saffronDatasetName));
                     mapper.writeValue(response.getWriter(), tws);
                 } else if ("/parents".equals(target)) {
-                    final String topic = request.getParameter("topic");
-                    if (topic != null) {
+                    final String term = request.getParameter("term");
+                    if (term != null) {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), saffron.getTaxoParents(saffronDatasetName, topic));
+                        mapper.writeValue(response.getWriter(), saffronHandler.getTaxoParents(saffronDatasetName, term));
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -145,12 +138,12 @@ public class Browser extends AbstractHandler {
                         mapper.writeValue(response.getWriter(), Collections.EMPTY_LIST);
                     }
                 } else if ("/children".equals(target)) {
-                    final String topic = request.getParameter("topic");
-                    if (topic != null) {
+                    final String term = request.getParameter("term");
+                    if (term != null) {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), saffron.getTaxoChildrenScored(saffronDatasetName, topic));
+                        mapper.writeValue(response.getWriter(), saffronHandler.getTaxoChildrenScored(saffronDatasetName, term));
                     } else {
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -162,9 +155,9 @@ public class Browser extends AbstractHandler {
                     final String author2 = request.getParameter("author2");
                     final List<Author> aas;
                     if (author1 != null) {
-                        aas = saffron.authorAuthorToAuthor2(saffronDatasetName, saffron.getAuthorSimByAuthor1(saffronDatasetName, author1));
+                        aas = saffronHandler.authorAuthorToAuthor2(saffronDatasetName, saffronHandler.getAuthorSimByAuthor1(saffronDatasetName, author1));
                     } else if (author2 != null) {
-                        aas = saffron.authorAuthorToAuthor1(saffronDatasetName, saffron.getAuthorSimByAuthor2(saffronDatasetName, author2));
+                        aas = saffronHandler.authorAuthorToAuthor1(saffronDatasetName, saffronHandler.getAuthorSimByAuthor2(saffronDatasetName, author2));
                     } else {
                         aas = null;
                     }
@@ -179,21 +172,21 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), Collections.EMPTY_LIST);
                     }
-                } else if (target.equals("/topic-sim")) {
-                    final String topic1 = request.getParameter("topic1");
-                    final String topic2 = request.getParameter("topic2");
+                } else if (target.equals("/term-sim")) {
+                    final String term1 = request.getParameter("term1");
+                    final String term2 = request.getParameter("term2");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
-                    final List<TopicTopic> tts;
-                    if (topic1 != null) {
-                        tts = saffron.getTopicByTopic1(saffronDatasetName, topic1, saffron.getTaxoChildren(saffronDatasetName, topic1));
-                    } else if (topic2 != null) {
-                        tts = saffron.getTopicByTopic2(saffronDatasetName, topic2);
+                    final List<TermTerm> tts;
+                    if (term1 != null) {
+                        tts = saffronHandler.getTermByTerm1(saffronDatasetName, term1, saffronHandler.getTaxoChildren(saffronDatasetName, term1));
+                    } else if (term2 != null) {
+                        tts = saffronHandler.getTermByTerm2(saffronDatasetName, term2);
                     } else {
                         tts = null;
                     }
                     if (tts != null) {
-                        List<TopicTopic> tts2 = getTopN(tts, n, offset);
+                        List<TermTerm> tts2 = getTopN(tts, n, offset);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -204,19 +197,19 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), Collections.EMPTY_LIST);
                     }
-                } else if (target.equals("/author-topics")) {
+                } else if (target.equals("/author-terms")) {
                     final String author = request.getParameter("author");
-                    final String topic = request.getParameter("topic");
+                    final String term = request.getParameter("term");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (author != null) {
-                        final List<AuthorTopic> ats = saffron.getTopicByAuthor(saffronDatasetName, author);
+                        final List<AuthorTerm> ats = saffronHandler.getTermByAuthor(saffronDatasetName, author);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), getTopNAuthorTopics(ats, n, offset));
-                    } else if (topic != null) {
-                        final List<Author> as = saffron.authorTopicsToAuthors(saffronDatasetName, getTopNAuthorTopics(saffron.getAuthorByTopic(saffronDatasetName, topic), n, offset));
+                        mapper.writeValue(response.getWriter(), getTopNAuthorTerms(ats, n, offset));
+                    } else if (term != null) {
+                        final List<Author> as = saffronHandler.authorTermsToAuthors(saffronDatasetName, getTopNAuthorTerms(saffronHandler.getAuthorByTerm(saffronDatasetName, term), n, offset));
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -227,25 +220,25 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), Collections.EMPTY_LIST);
                     }
-                } else if (target.equals("/doc-topics")) {
+                } else if (target.equals("/doc-terms")) {
                     final String doc = request.getParameter("doc");
-                    final String topic = request.getParameter("topic");
+                    final String term = request.getParameter("term");
                     final int n = request.getParameter("n") == null ? 20 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (doc != null) {
-                        final List<DocumentTopic> dts = saffron.getTopicByDoc(saffronDatasetName, doc);
+                        final List<DocumentTerm> dts = saffronHandler.getTermByDoc(saffronDatasetName, doc);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        mapper.writeValue(response.getWriter(), getTopNDocTopics(dts, n, offset));
+                        mapper.writeValue(response.getWriter(), getTopNDocTerms(dts, n, offset));
 
-                    } else if (topic != null) {
-                        final List<Document> _docs = saffron.getDocByTopic(saffronDatasetName, topic);
+                    } else if (term != null) {
+                        final List<Document> _docs = saffronHandler.getDocByTerm(saffronDatasetName, term);
                         final List<Document> docs = new ArrayList<>();
                         int i = 0;
                         for (Document d : _docs) {
                             if (i >= offset && i < offset + n) {
-                                docs.add(d.reduceContext(topic, 20));
+                                docs.add(d.reduceContext(term, 20));
                             }
                             i++;
                         }
@@ -260,11 +253,11 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), Collections.EMPTY_LIST);
                     }
-                } else if (target.equals("/topics")) {
+                } else if (target.equals("/terms")) {
                     final String id = request.getParameter("id");
-                    final Topic t;
+                    final Term t;
                     if (id != null) {
-                        t = saffron.getTopic(saffronDatasetName, id);
+                        t = saffronHandler.getTerm(saffronDatasetName, id);
                     } else {
                         t = null;
                     }
@@ -284,7 +277,7 @@ public class Browser extends AbstractHandler {
                     final int n = request.getParameter("n") == null ? 1000 : Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 0 : Integer.parseInt(request.getParameter("offset"));
                     if (authorId != null) {
-                        List<Document> docs = saffron.getDocsByAuthor(saffronDatasetName, authorId);
+                        List<Document> docs = saffronHandler.getDocsByAuthor(saffronDatasetName, authorId);
                         response.setContentType("application/json;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
@@ -301,32 +294,32 @@ public class Browser extends AbstractHandler {
                         baseRequest.setHandled(true);
                         mapper.writeValue(response.getWriter(), null);
                     }
-                } else if (target.equals("/top-topics")) {
+                } else if (target.equals("/top-terms")) {
                     final int n = Integer.parseInt(request.getParameter("n"));
                     final int offset = request.getParameter("offset") == null ? 20
                             : Integer.parseInt(request.getParameter("offset"));
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    mapper.writeValue(response.getWriter(), saffron.getTopTopics(saffronDatasetName, n, offset + n));
-                } else if (target.startsWith("/topic/")) {
-                    final String topicString = decode(target.substring(7));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicString);
+                    mapper.writeValue(response.getWriter(), saffronHandler.getTopTerms(saffronDatasetName, n, offset + n));
+                } else if (target.startsWith("/term/")) {
+                    final String termString = decode(target.substring(7));
+                    final Term term = saffronHandler.getTerm(saffronDatasetName, termString);
 
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/topic.html")));
-                    if (topic != null) {
-                        data = data.replaceAll("\\{\\{topic\\}\\}", mapper.writeValueAsString(topic));
+                        String data = new String(Files.readAllBytes(Paths.get("static/term.html")));
+                    if (term != null) {
+                        data = data.replaceAll("\\{\\{term\\}\\}", mapper.writeValueAsString(term));
                     } else {
-                        data = data.replaceAll("\\{\\{topic\\}\\}", "{}");
+                        data = data.replaceAll("\\{\\{term\\}\\}", "{}");
                     }
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 }else if (target.startsWith("/author/")) {
                     final String authorString = decode(target.substring(8));
-                    final Author author = saffron.getAuthor(saffronDatasetName, authorString);
+                    final Author author = saffronHandler.getAuthor(saffronDatasetName, authorString);
                     if (author != null) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -338,7 +331,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.startsWith("/doc/")) {
                     final String docId = decode(target.substring(5));
-                    final Document doc = saffron.getDoc(saffronDatasetName, docId);
+                    final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
                     if (doc != null) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
@@ -350,8 +343,7 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.startsWith("/doc_content/")) {
                     final String docId = decode(target.substring(13));
-                    final Document doc = saffron.getDoc(saffronDatasetName, docId);
-                    System.err.println(doc);
+                    final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
                     if (doc != null && doc.file != null) {
                         File f = doc.file.toFile();
                         response.setContentType(Files.probeContentType(f.toPath()));
@@ -428,7 +420,7 @@ public class Browser extends AbstractHandler {
                     String queryTerm = request.getParameter("query");
                     if (queryTerm != null) {
                         try {
-                            Iterable<Document> docIterable = saffron.getSearcher(saffronDatasetName).search(queryTerm);
+                            Iterable<Document> docIterable = saffronHandler.getSearcher(saffronDatasetName).search(queryTerm);
                             ArrayList<Document> docs = new ArrayList<>();
                             for (Document doc : docIterable) {
                                 docs.add(doc.reduceContext(queryTerm, 20));
@@ -444,62 +436,62 @@ public class Browser extends AbstractHandler {
                     }
                 } else if (target.startsWith("/ttl/doc/")) {
                     final String docId = decode(target.substring(9));
-                    final Document doc = saffron.getDoc(saffronDatasetName, docId);
+                    final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
                     if (doc != null) {
                         response.setContentType("text/turtle");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.documentToRDF(doc, saffron, saffronDatasetName);
+                        Model model = RDFConversion.documentToRDF(doc, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "TURTLE");
                     }
                 } else if (target.startsWith("/ttl/author/")) {
                     final String authorId = decode(target.substring(12));
-                    final Author author = saffron.getAuthor(saffronDatasetName, authorId);
+                    final Author author = saffronHandler.getAuthor(saffronDatasetName, authorId);
                     if (author != null) {
                         response.setContentType("text/turtle");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.authorToRdf(author, saffron, saffronDatasetName);
+                        Model model = RDFConversion.authorToRdf(author, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "TURTLE");
                     }
-                } else if (target.startsWith("/ttl/topic/")) {
-                    final String topicId = decode(target.substring(11));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicId);
-                    if (topic != null) {
+                } else if (target.startsWith("/ttl/term/")) {
+                    final String termId = decode(target.substring(11));
+                    final Term term = saffronHandler.getTerm(saffronDatasetName, termId);
+                    if (term != null) {
                         response.setContentType("text/turtle");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.topicToRDF(topic, saffron, saffronDatasetName);
+                        Model model = RDFConversion.termToRDF(term, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "TURTLE");
                     }
                 } else if (target.startsWith("/rdf/doc/")) {
                     final String docId = decode(target.substring(9));
-                    final Document doc = saffron.getDoc(saffronDatasetName, docId);
+                    final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
                     if (doc != null) {
                         response.setContentType("application/rdf+xml");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.documentToRDF(doc, saffron, saffronDatasetName);
+                        Model model = RDFConversion.documentToRDF(doc, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
                 } else if (target.startsWith("/rdf/author/")) {
                     final String authorId = decode(target.substring(12));
-                    final Author author = saffron.getAuthor(saffronDatasetName, authorId);
+                    final Author author = saffronHandler.getAuthor(saffronDatasetName, authorId);
                     if (author != null) {
                         response.setContentType("application/rdf+xml");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.authorToRdf(author, saffron, saffronDatasetName);
+                        Model model = RDFConversion.authorToRdf(author, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
-                } else if (target.startsWith("/rdf/topic/")) {
-                    final String topicId = decode(target.substring(11));
-                    final Topic topic = saffron.getTopic(saffronDatasetName, topicId);
-                    if (topic != null) {
+                } else if (target.startsWith("/rdf/term/")) {
+                    final String termId = decode(target.substring(11));
+                    final Term term = saffronHandler.getTerm(saffronDatasetName, termId);
+                    if (term != null) {
                         response.setContentType("application/rdf+xml");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        Model model = RDFConversion.topicToRDF(topic, saffron, saffronDatasetName);
+                        Model model = RDFConversion.termToRDF(term, saffronHandler, saffronDatasetName);
                         model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                     }
                 } else if (target.equals("/download/rdf")) {
@@ -507,14 +499,14 @@ public class Browser extends AbstractHandler {
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     String base = getBase(request, "/download/rdf");
-                    Model model = RDFConversion.allToRdf(base, saffron, saffronDatasetName);
+                    Model model = RDFConversion.allToRdf(base, saffronHandler, saffronDatasetName);
                     model.write(response.getWriter(), "RDF/XML", request.getRequestURI());
                 } else if (target.equals("/download/ttl")) {
                     response.setContentType("text/turtle");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
                     String base = getBase(request, "/download/ttl");
-                    Model model = RDFConversion.allToRdf(base, saffron, saffronDatasetName);
+                    Model model = RDFConversion.allToRdf(base, saffronHandler, saffronDatasetName);
                     model.write(response.getWriter(), "TURTLE");
                 }
 
@@ -540,17 +532,17 @@ public class Browser extends AbstractHandler {
         }
     }
     
-    private List<TopicTopic> getTopN(final List<TopicTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<TopicTopic>() {
+    private List<TermTerm> getTopN(final List<TermTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<TermTerm>() {
             @Override
-            public int compare(TopicTopic o1, TopicTopic o2) {
-                if (o1.similarity > o2.similarity) {
+            public int compare(TermTerm o1, TermTerm o2) {
+                if (o1.getSimilarity() > o2.getSimilarity()) {
                     return -1;
-                } else if (o1.similarity < o2.similarity) {
+                } else if (o1.getSimilarity() < o2.getSimilarity()) {
                     return +1;
                 } else {
-                    int i = o1.topic1.compareTo(o2.topic1);
-                    int j = o1.topic2.compareTo(o2.topic2);
+                    int i = o1.getTerm1().compareTo(o2.getTerm1());
+                    int j = o1.getTerm2().compareTo(o2.getTerm2());
                     return i != 0 ? i : j;
                 }
             }
@@ -564,17 +556,17 @@ public class Browser extends AbstractHandler {
         }
     }
 
-    private List<DocumentTopic> getTopNDocTopics(final List<DocumentTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<DocumentTopic>() {
+    private List<DocumentTerm> getTopNDocTerms(final List<DocumentTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<DocumentTerm>() {
             @Override
-            public int compare(DocumentTopic o1, DocumentTopic o2) {
-                if (o1.occurrences > o2.occurrences) {
+            public int compare(DocumentTerm o1, DocumentTerm o2) {
+                if (o1.getOccurrences() > o2.getOccurrences()) {
                     return -1;
-                } else if (o1.occurrences < o2.occurrences) {
+                } else if (o1.getOccurrences() < o2.getOccurrences()) {
                     return +1;
                 } else {
-                    int i = o1.document_id.compareTo(o2.document_id);
-                    int j = o1.topic_string.compareTo(o2.topic_string);
+                    int i = o1.getDocumentId().compareTo(o2.getDocumentId());
+                    int j = o1.getTermString().compareTo(o2.getTermString());
                     return i != 0 ? i : j;
                 }
             }
@@ -588,19 +580,19 @@ public class Browser extends AbstractHandler {
         }
     }
 
-    private List<AuthorTopic> getTopNAuthorTopics(final List<AuthorTopic> tts, final int n, final int offset) {
-        tts.sort(new Comparator<AuthorTopic>() {
+    private List<AuthorTerm> getTopNAuthorTerms(final List<AuthorTerm> tts, final int n, final int offset) {
+        tts.sort(new Comparator<AuthorTerm>() {
             @Override
-            public int compare(AuthorTopic o1, AuthorTopic o2) {
-                if (o1.score > o2.score) {
+            public int compare(AuthorTerm o1, AuthorTerm o2) {
+                if (o1.getScore() > o2.getScore()) {
                     return -1;
-                } else if (o1.score < o2.score) {
+                } else if (o1.getScore() < o2.getScore()) {
                     return +1;
                 } else {
-                    int k = Integer.compare(o1.occurrences, o2.occurrences);
+                    int k = Integer.compare(o1.getOccurrences(), o2.getOccurrences());
                     if(k != 0) return -k;
-                    int i = o1.author_id.compareTo(o2.author_id);
-                    int j = o1.topic_id.compareTo(o2.topic_id);
+                    int i = o1.getAuthorId().compareTo(o2.getAuthorId());
+                    int j = o1.getTermId().compareTo(o2.getTermId());
                     return i != 0 ? i : j;
                 }
             }

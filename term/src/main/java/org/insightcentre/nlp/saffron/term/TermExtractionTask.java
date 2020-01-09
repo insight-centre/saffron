@@ -9,7 +9,7 @@ import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  *
@@ -30,7 +30,7 @@ public class TermExtractionTask implements Runnable {
     private final Set<String> endTokens;
     private final FrequencyStats summary;
     private final boolean headTokenFinal;
-    private final ConcurrentLinkedQueue<DocumentTopic> docTopics;
+    private final ConcurrentLinkedQueue<DocumentTerm> docTerms;
     private final CasingStats casing;
     private final Set<String> blacklist;
 
@@ -42,7 +42,7 @@ public class TermExtractionTask implements Runnable {
             Set<String> endTokens,
             boolean headTokenFinal,
             FrequencyStats summary,
-            ConcurrentLinkedQueue<DocumentTopic> docTopics,
+            ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing,
             Set<String> blacklist) {
         this.doc = doc;
@@ -57,7 +57,7 @@ public class TermExtractionTask implements Runnable {
         this.endTokens = endTokens;
         this.summary = summary;
         this.headTokenFinal = headTokenFinal;
-        this.docTopics = docTopics;
+        this.docTerms = docTerms;
         this.casing = casing;
         this.blacklist = blacklist;
     }
@@ -65,11 +65,10 @@ public class TermExtractionTask implements Runnable {
     @Override
     public void run() {
         try {
-            final HashMap<String, DocumentTopic> docTopicMap = docTopics != null
-                    ? new HashMap<String, DocumentTopic>()
+            final HashMap<String, DocumentTerm> docTermMap = docTerms != null
+                    ? new HashMap<String, DocumentTerm>()
                     : null;
             String contents = doc.contents();
-            System.err.println(doc.id);
             CasingStats localCasing = new CasingStats();
             for (String sentence : contents.split("\n")) {
                 String[] tokens;
@@ -95,17 +94,17 @@ public class TermExtractionTask implements Runnable {
                             }
                             if (headTokenFinal) {
                                 if (endTokens.contains(tags[j]) && nonStop) {
-                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
+                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
                                 }
                                 if (!preceedingTokens.contains(tags[j]) && (i == j || !middleTokens.contains(tags[j]))) {
                                     break;
                                 }
                             } else {
                                 if (j == i && endTokens.contains(tags[j]) && nonStop) {
-                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
+                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
                                 }
                                 if (preceedingTokens.contains(tags[j]) && j != i) {
-                                    emitTerm(j, i, tokens, tags, docTopicMap, localCasing, headTokenFinal);
+                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
                                 }
                                 if (j == i && !endTokens.contains(tags[j])
                                         || j > i && !middleTokens.contains(tags[j]) && !preceedingTokens.contains(tags[j])) {
@@ -128,8 +127,8 @@ public class TermExtractionTask implements Runnable {
                     casing.add(localCasing);
                 }
             }
-            if (docTopicMap != null) {
-                docTopics.addAll(docTopicMap.values());
+            if (docTermMap != null) {
+                docTerms.addAll(docTermMap.values());
             }
         } catch (Exception x) {
             x.printStackTrace();
@@ -137,7 +136,7 @@ public class TermExtractionTask implements Runnable {
     }
 
     private void emitTerm(int j, int i, String[] tokens, String[] tags,
-            final HashMap<String, DocumentTopic> docTopicMap, CasingStats localCasing,
+            final HashMap<String, DocumentTerm> docTermMap, CasingStats localCasing,
             boolean headTokenFinal) {
         if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
             String[] ltoks = Arrays.copyOf(tokens, tokens.length);
@@ -155,10 +154,10 @@ public class TermExtractionTask implements Runnable {
                     tokens2[0] = lemmas[i];
                 }
             }
-            processTerm(tokens2, 0, j - i, docTopicMap,
+            processTerm(tokens2, 0, j - i, docTermMap,
                     localCasing);
         } else {
-            processTerm(tokens, i, j, docTopicMap,
+            processTerm(tokens, i, j, docTermMap,
                     localCasing);
         }
     }
@@ -183,7 +182,7 @@ public class TermExtractionTask implements Runnable {
     }
 
     private void processTerm(String[] tokens, int i, int j,
-            HashMap<String, DocumentTopic> dts,
+            HashMap<String, DocumentTerm> dts,
             CasingStats localCasing) {
         if (j - i >= this.ngramMin - 1) {
             boolean allValid = true;
@@ -196,7 +195,7 @@ public class TermExtractionTask implements Runnable {
                 stats.docFrequency.put(termStr, 1);
                 stats.termFrequency.put(termStr, 1 + stats.termFrequency.getInt(termStr));
                 if (dts != null) {
-                    dts.put(termStr, new DocumentTopic(doc.id, termStr,
+                    dts.put(termStr, new DocumentTerm(doc.id, termStr,
                             stats.termFrequency.getInt(termStr), null, null, null));
                 }
                 if (j - i == 0) {

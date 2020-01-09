@@ -19,7 +19,10 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -158,7 +161,16 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null)
+                Date lastModified = null;
+                if(htmlParseData.getMetaTags().containsKey("Last-Modified")) {
+                    SimpleDateFormat format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");                    
+                    try {
+                        lastModified = format.parse(htmlParseData.getMetaTags().get("Last-Modified"));
+                    } catch (ParseException ex) {
+                        System.err.println("Failed to parse date: " +htmlParseData.getMetaTags().get("Last-Modified"));                        
+                    }
+                }
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null, lastModified)
                         .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
@@ -173,7 +185,7 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write binary for " + url + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null)
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null)
                     .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
