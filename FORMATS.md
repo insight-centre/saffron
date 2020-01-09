@@ -90,11 +90,10 @@ The phase of connecting similar terms.
 The phase of supervised taxonomy extraction - ***Command Line Interface Only***
 
 * `taxonomy`:  Taxonomy extraction with Pairwise Scoring model training. It contains the following properties to set up:
-    * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model* 
-    * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
-    
-        Example:
-    
+  * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model*
+  * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
+          Example:
+
          
             ```
             "features": {
@@ -105,21 +104,18 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
                     "overlap": true,
                     ... }
                 }```
-            
-        * `gloveFile`: The file containing the GloVe vectors or null if not used.
-        *  `hypernyms`: The file containin the Hypernyms.
-        * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true". The default is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) **Command Line Interface Only** 
-    Choose between:
-            * inclusion: uses the inclusion feature: a string is said to include another string if it starts or ends with that string respecting word boundaries.
-            * overlap: uses the overlap feature, ie. the number of words that are in both strings divided by the length of the top string in the pair.
-            * lcs: uses the longest common subsequence feature, is. the longest common subsequence of words divided by the length of top string in the pair.
-            * svdSimAve: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
-            * svdSimMinMax: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
-            * topicDiff: uses the Topic Difference feature: document topic complement difference which is defined as $|A n B| / |A| - |A n B| / |B|$
-            * relFreq: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom))
-            * wnDirect: uses direct wordnet
-            * wnIndirect: uses indirect wordnet
-
+    * `gloveFile`: The file containing the GloVe vectors or null if not used.
+    * `hypernyms`: The file containin the Hypernyms.
+    * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true". The default is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) **Command Line Interface Only**. Choose between the following features:
+        * `inclusion`: uses the inclusion feature: a string is said to include another string if it starts or ends with that string respecting word boundaries.
+        * `overlap`: uses the overlap feature, ie. the number of words that are in both strings divided by the length of the top string in the pair.
+        * `lcs`: uses the longest common subsequence feature, is. the longest common subsequence of words divided by the length of top string in the pair.
+        * `svdSimAve`: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
+        * `svdSimMinMax`: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
+        * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B|
+        * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom))
+        * `wnDirect`: uses direct wordnet
+        * `wnIndirect`: uses indirect wordnet
     * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
     * `maxChildren`: #deprecated
     * `simThreshold`: #deprecated
