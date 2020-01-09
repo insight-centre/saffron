@@ -93,15 +93,15 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
   * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model*
   * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
     
-    ```
-        "features": {
-            "gloveFile": "/home/.../ GloVe-1.2.zip",
-            "hypernyms": "/.../.../XYZ.txt",
-            "featureSelection": {
-                "inclusion": true,
-                "overlap": true,
-                ... }
-            }```
+            ```
+            "features": {
+                "gloveFile": "/home/.../ GloVe-1.2.zip",
+                "hypernyms": "/.../.../XYZ.txt",
+                "featureSelection": {
+                    "inclusion": true,
+                    "overlap": true,
+                    ... }
+                }```
      * `gloveFile`: The file containing the GloVe vectors or null if not used.
     * `hypernyms`: The file containin the Hypernyms.
     * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true". The default is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) **Command Line Interface Only**. Choose between the following features:
