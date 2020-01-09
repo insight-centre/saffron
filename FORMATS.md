@@ -116,9 +116,9 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
         * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom))
         * `wnDirect`: uses direct wordnet
         * `wnIndirect`: uses indirect wordnet
-    * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
-    * `maxChildren`: #deprecated
-    * `simThreshold`: #deprecated
+* `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
+* `maxChildren`: #deprecated
+* `simThreshold`: #deprecated
 
 
 ##### 5.1.   Taxonomy Search
