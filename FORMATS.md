@@ -9,10 +9,10 @@ All formats are in JSON and we will describe the properties each file has, with 
 This file contains the description of the corpus, including all the metadata. It is a collection of documents, each entry being a different document with its own metadata and link to the file containing the text. A corpus has the following properties:
 
 * `documents`: A list of documents in the corpus. Each document of the list should have *at least* one of the following four:
-    * `file`: A string referring to the original version of this document on disk (absolute or relative path) (see [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus2.json)).
+    * `file`: A string referring to the original version of this document on disk (absolute or relative path) (see [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/input_corpus.json)).
     * `id`: A unique string to identify the document
     * `url`: The URL of the file
-    * `contents`:  The text contents of the file (see [input_corpus.json](https://gitlab.insight-centre.org/saffron/saffron/blob/issue215/examples/input_corpus.json))
+    * `contents`:  The text contents of the file (see [input_corpus2.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/input_corpus2.json))
 
     In addition the following attributes may be provided:
     * `name`: The human readable name of the document
@@ -87,13 +87,17 @@ The phase of connecting similar terms.
 
 
 #### 5.   Taxonomy Extraction
-The phase of supervised taxonomy extraction - ***Command Line Interface Only***
+
 
 * `taxonomy`:  Taxonomy extraction with Pairwise Scoring model training. It contains the following properties to set up:
-  * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model*
-  * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
+
+    ##### 5.1   Taxonomy extraction with Pairwise Scoring model training 
+    The phase of supervised taxonomy extraction - ***Command Line Interface Only***
+
+    * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model*
+    * `features` : The features to use, each of them can be set to "false" or "true", with default to "false" (see example below). The default for the overall "features" property is set to null.
     
-            ```
+            
             "features": {
                 "gloveFile": "/home/.../ GloVe-1.2.zip",
                 "hypernyms": "/.../.../XYZ.txt",
@@ -101,34 +105,34 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
                     "inclusion": true,
                     "overlap": true,
                     ... }
-                }```
-     * `gloveFile`: The file containing the GloVe vectors or null if not used.
-    * `hypernyms`: The file containin the Hypernyms.
-    * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true". The default is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) **Command Line Interface Only**. Choose between the following features:
-        * `inclusion`: uses the inclusion feature: a string is said to include another string if it starts or ends with that string respecting word boundaries.
-        * `overlap`: uses the overlap feature, ie. the number of words that are in both strings divided by the length of the top string in the pair.
-        * `lcs`: uses the longest common subsequence feature, is. the longest common subsequence of words divided by the length of top string in the pair.
-        * `svdSimAve`: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
-        * `svdSimMinMax`: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
-        * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B|
-        * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom))
-        * `wnDirect`: uses direct wordnet
-        * `wnIndirect`: uses indirect wordnet
-  * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
-  * `maxChildren`: #deprecated
-  * `simThreshold`: #deprecated
+                }
+        * `gloveFile`: The file containing the GloVe vectors or null if not used.
+        * `hypernyms`: The file containin the hypernyms.
+        * `featureSelection`:  The feature selection (or null for all features). Each of them can be set to "false" or "true", with default to "false". The default for the overall "featureSelection" property is set to null. For more information on the implementation of these features see [Features.java](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/taxonomy/src/main/java/org/insightcentre/nlp/saffron/taxonomy/supervised/Features.java) ***Command Line Interface Only***. Choose between the following features:
+            * `inclusion`: uses the inclusion feature: a string is said to include another string if it starts or ends with that string respecting word boundaries.
+            * `overlap`: uses the overlap feature, ie. the number of words that are in both strings divided by the length of the top string in the pair.
+            * `lcs`: uses the longest common subsequence feature, is. the longest common subsequence of words divided by the length of top string in the pair.
+            * `svdSimAve`: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
+            * `svdSimMinMax`: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
+            * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B|
+            * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom))
+            * `wnDirect`: uses direct wordnet
+            * `wnIndirect`: uses indirect wordnet
+    * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
+    * `maxChildren`: #deprecated
+    * `simThreshold`: #deprecated
 
 
-
-##### 5.1.   Taxonomy Search
-The phase of search in the taxonomy algorithm.
-* `search`:  An element which contains the following properties to set up:
-    * `algorithm`: The algorithm to use for finding a taxonomy. Choose between `greedy`, `beam`, `mst` for Minimum Spanning Tree. The default algorithm is set to `greedy`.
-    * `beamSize`:  The size of the beam to use in the beam search (only if Beam search is chosen, ignored otherwise). The defualt beam size is 20.
-    * `score`: The scoring function to optimize. Choose between `simple`, `transitive`, `bhattacharryaPoisson`. The default scoring function is `simple`.
-    * `baseScore`: The base metric for Bhattacharrya-Poisson (BP) (only if BP search is chosen, ignored otherwise). The default is set to `simple`
-    * `aveChildren`: The average number of children (only if BP search is chosen, ignored otherwise). The default average is set to 3.0 children. 
-    * `alpha`: The weighting to give to the BP (against the base algorithm) - (only if BP search is chosen, ignored otherwise). The default value is 0.01.
+   ##### 5.2.   Taxonomy Search
+    The phase of search in the taxonomy algorithm that connects the terms together in order to build the taxonomy.
+    
+    * `search`:  An element which contains the following properties to set up:
+        * `algorithm`: The algorithm to use for finding a taxonomy. Choose between `greedy`, `beam`, `mst` for Minimum Spanning Tree. The default algorithm is set to `greedy`.
+        * `beamSize`:  The size of the beam to use in the beam search (only if Beam search is chosen, ignored otherwise). The default beam size is 20.
+        * `score`: The scoring function to optimize. Choose between `simple`, `transitive`, `bhattacharryaPoisson`. The default scoring function is `simple`.
+        * `baseScore`: The base metric for Bhattacharrya-Poisson (BP) (only if BP search is chosen, ignored otherwise). The default is set to `simple`
+        * `aveChildren`: The average number of children (only if BP search is chosen, ignored otherwise). The default average is set to 3.0 children.
+        * `alpha`: The weighting to give to the BP (against the base algorithm) - (only if BP search is chosen, ignored otherwise). The default value is 0.01.
 
 
 ## Ouput formats
@@ -148,7 +152,7 @@ term string
 
 ### Doc-Terms ([doc-terms.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/doc-terms.json)) 
 
-A file shows the relationship between a document and a term.
+A file shows all relationships between documents and terms.
 * `document_id`: A unique string to identify the document, made up of the document filename (preceded by _zip_filename if the dataset is submitted as a .zip file)  
 * `term_string`: The string that names the term (must be unique)
 * `occurrences`: The number of occurrences of the term in the single document
@@ -171,6 +175,7 @@ This file gathers and compares all pair of terms extracted in the previous stage
 ### Taxonomy ([taxonomy.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/taxonomy.json))
 
 This file represents the whole taxonomy. Each element describes a term and how it is related to other terms in the taxonomy. The file contains the following attributes:
+* `root`: The term string of this term or "HEAD_TERM" for the root of the taxonomy
 * `score`: The weighting given to the root term
 * `linkScore`: The likelihood of the link from this term to its root being correct
 * `children`: A list of children of this node (these are also Taxonomy objects)
