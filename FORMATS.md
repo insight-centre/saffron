@@ -114,8 +114,8 @@ The phase of connecting similar terms.
             * `lcs`: uses the longest common subsequence feature, is. the longest common subsequence of words divided by the length of top string in the pair.
             * `svdSimAve`: uses the SVD Average Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over average vectors.
             * `svdSimMinMax`: uses the SVD Minimum-Maximum Vector Similarity feature. Get the similarity of these vectors by using an inverse learned relation over min-max vectors.
-            * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B|
-            * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as log(freq(top)/freq(bottom)) $`\log(freq(top)/freq(bottom))`$
+            * `topicDiff`: uses the Topic Difference feature: document topic complement difference which is defined as |A n B| / |A| - |A n B| / |B| $`\mid A \cap   B \mid / \mid A \mid`$
+            * `relFreq`: uses the relative frequency feature, ie. the relative frequency of the terms given as  $`\log(freq(top)/freq(bottom))`$
             * `wnDirect`: uses direct wordnet
             * `wnIndirect`: uses indirect wordnet
     * `modelFile`: The model to be trained. The default model is set to "${saffron.home}/models/default.json"
