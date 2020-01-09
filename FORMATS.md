@@ -92,7 +92,8 @@ The phase of supervised taxonomy extraction - ***Command Line Interface Only***
 * `taxonomy`:  Taxonomy extraction with Pairwise Scoring model training. It contains the following properties to set up:
   * `negSampling`: The number of negative samples to generate when training. The default number is set to 5.0 negative samples -  *only used for training the Pairwise Scoring model*
   * `features` : The features to use, each of them can be set to "false" or "true" (see example below). The default is set to false.
-        ```
+    
+    ```
         "features": {
             "gloveFile": "/home/.../ GloVe-1.2.zip",
             "hypernyms": "/.../.../XYZ.txt",
