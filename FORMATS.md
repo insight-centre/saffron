@@ -206,7 +206,6 @@ for evaluations of different methods)
 
 
 ### Author-Sim ([author-sim.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/output_files/author-sim.json))
-
 An edge linking authors together
 * `author1_id`: The ID of the first author
 * `author2_id`: The ID of the second author
