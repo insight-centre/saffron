@@ -49,9 +49,7 @@ Configuration for the options of the term extraction phase. All properties are i
     * `minTermFreq`: Sets the number of times a term must appear in the dataset to be retrieved. The default is 2.
     * `maxDocs`: The maximum number of documents to consider for the analysis. The default is 2147483647.
     * `method`: Choose between two ranking procedures: "voting" (An algorithm that integrates multiple score functions) and "single" (only one score function).
-    * `features` : List of scoring functions if the "voting" method above was selected, or will be ignored if the "single" method was chosen. The default set of features is ([ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ]).
-
-        The features include:  `comboBasic`, `weirdness`, `totalTfIdf`, `cValue`, `residualIdf`, `avgTermFreq`, `basic`, `novelTopicModel`, `postRankDC`, `relevance`
+    * `features` : List of scoring functions if the "voting" method above was selected, or will be ignored if the "single" method was chosen. The default set of features is ([ "comboBasic", "weirdness", "totalTfIdf", "cValue", "residualIdf" ]).The features include:  `comboBasic`, `weirdness`, `totalTfIdf`, `cValue`, `residualIdf`, `avgTermFreq`, `basic`, `novelTopicModel`, `postRankDC`, `relevance`
                     
     * `corpus`:  #deprecated (by default set to ${saffron.home}/models/wiki-terms.json.gz).
     * `baseFeature`: If `method` is set to "single", a unique scoring function shall be selected as a base. If `method` is set to "voting", choose the scoring function that will get more weight in the calculation of the final score. (Choose between the options given above in `features`).
