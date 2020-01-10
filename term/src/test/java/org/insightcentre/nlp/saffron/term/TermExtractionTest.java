@@ -136,7 +136,7 @@ public class TermExtractionTest {
 
         }, tokenizer);
         FrequencyStats expResult = new FrequencyStats();
-        FrequencyStats result = instance.extractStats(searcher, null, null, Collections.EMPTY_SET);
+        FrequencyStats result = instance.extractStats(searcher, null, null, Collections.EMPTY_SET).frequencyStats;
         expResult.docFrequency.put("test", 4);
         expResult.docFrequency.put("good test", 2);
         expResult.termFrequency.put("test", 5);

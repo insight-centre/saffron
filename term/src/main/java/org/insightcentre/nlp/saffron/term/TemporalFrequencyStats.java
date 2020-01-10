@@ -76,6 +76,10 @@ public class TemporalFrequencyStats {
      * @return The prediction (a double between 0 and 1)
      */
     public double predict(String word, int intervalsAfterEnd, int degree) {
+        if(freqs.isEmpty()) 
+            throw new RuntimeException("Cannot predict future term frequency (likely no dates provided in corpus)");
+        if(degree <= 0)
+            throw new IllegalArgumentException("Degree must be greater than one");
         RealMatrix x = new Array2DRowRealMatrix(freqs.size(), degree + 1);
         RealVector y = new ArrayRealVector(freqs.size());
         for(int i = 0; i < freqs.size(); i++) {

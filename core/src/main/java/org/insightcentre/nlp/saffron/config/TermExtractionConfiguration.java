@@ -87,7 +87,10 @@ public class TermExtractionConfiguration {
     
     /** The features for term extraction */
     public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ novelTopicModel, /*linkProbability, keyConceptRelatedness*/
+        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, 
+        postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ 
+        novelTopicModel, /*linkProbability, keyConceptRelatedness*/
+        futureBasic, futureComboBasic
     };
     
     /** The default English list of stopwords */
