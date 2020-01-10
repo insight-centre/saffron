@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,6 +71,7 @@ public class TermExtraction {
     private final Feature keyFeature;
     private final Set<String> configBlacklist;
     private final boolean oneTermPerDoc;
+    private final Duration interval;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
         this.nThreads = nThreads;
@@ -93,6 +95,7 @@ public class TermExtraction {
         this.keyFeature = Feature.comboBasic;
         this.configBlacklist = Collections.EMPTY_SET;
         this.oneTermPerDoc = false;
+        this.interval = null;
     }
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger,
@@ -102,7 +105,7 @@ public class TermExtraction {
             int ngramMin, int ngramMax, boolean headTokenFinal,
             TermExtractionConfiguration.WeightingMethod method, List<Feature> features,
             File refFile, int maxTerms, Feature keyFeature, Set<String> blacklist,
-            boolean oneTermPerDoc) {
+            boolean oneTermPerDoc, int intervalDays) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -123,6 +126,7 @@ public class TermExtraction {
         this.keyFeature = keyFeature;
         this.configBlacklist = blacklist;
         this.oneTermPerDoc = oneTermPerDoc;
+        this.interval = intervalDays > 0 ? Duration.ofDays(intervalDays) : null;
     }
 
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
@@ -187,6 +191,7 @@ public class TermExtraction {
             loadBlacklistFromFile (this.configBlacklist, config.blacklistFile);
         }
         this.oneTermPerDoc = config.oneTermPerDoc;
+        this.interval = config.intervalDays > 0 ? Duration.ofDays(config.intervalDays) : null;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
@@ -207,13 +212,19 @@ public class TermExtraction {
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());
         final FrequencyStats summary = new FrequencyStats();
+        final TemporalFrequencyStats temporalFrequencyStats;
+        if(interval != null) {
+            temporalFrequencyStats = new TemporalFrequencyStats(interval);
+        } else {
+            temporalFrequencyStats = null;
+        }
 
         int docCount = 0;
         for (Document doc : searcher.getDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTerms, casing, lowercaseAll(blackList)));
+                    summary, docTerms, casing, lowercaseAll(blackList), temporalFrequencyStats));
             if (docCount++ > maxDocs) {
                 break;
             }

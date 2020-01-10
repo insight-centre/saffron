@@ -326,7 +326,8 @@ public class TermExtractionTest {
                 1,  
                 config.baseFeature,  
                 config.blacklist,  
-                true);
+                true,
+                config.intervalDays);
         Result res = instance.extractTerms(searcher);
         assert(res.terms.size() > 1);
     }
@@ -418,7 +419,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 1, config.baseFeature, config.blacklist, 
-            config.oneTermPerDoc);
+            config.oneTermPerDoc, config.intervalDays);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -510,7 +511,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTermPerDoc);
+            config.oneTermPerDoc, config.intervalDays);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -599,7 +600,7 @@ public class TermExtractionTest {
             config.ngramMin, config.ngramMax, config.headTokenFinal, 
             config.method, config.features, 
             null, 2, config.baseFeature, config.blacklist, 
-            config.oneTermPerDoc);
+            config.oneTermPerDoc, config.intervalDays);
         Result res = instance.extractTerms(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
         
         assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("plan")));
