@@ -1,0 +1,316 @@
+Updating SPARQL results in real-time with client-side
+
+Fragment Patching
+
+Miel Vander Sande
+
+miel.vandersande@ugent.be
+
+Ruben Verborgh
+
+ruben.verborgh@ugent.be
+
+Erik Mannens
+
+erik.mannens@ugent.be
+
+Rik Van de Walle
+
+rik.vandewalle@ugent.be
+
+Ghent University  iMinds  Multimedia Lab
+
+Gaston Crommenlaan 8 bus 201
+B-9050 Ledeberg-Ghent, Belgium
+
+ABSTRACT
+A lot of Linked Data on the Web is dynamic. Despite the
+existing query solutions and implementations, crucial unresolved issues remain. This poster presents a novel approach
+to update sparql results client-side by exchanging fragment
+patches. We aim at a sustainable solution which balances
+the load and reduces bandwidth. Therefore, our approach
+benefits from reusing unchanged data and minimizing data
+transfer size. By only working with patches, the load on the
+server is minimal. Also, the bandwidth usage is low, since
+only relevant changes are transferred to the client.
+
+1.
+
+INTRODUCTION
+
+Data on the Web can be highly dynamic, for example, in
+the contexts of sensors or social media. In such scenarios,
+the role of semantics and Linked Data are gaining traction.
+They allow applications to make autonomous decisions and
+to navigate to different sources. In order to do so, these
+applications execute queries over these changing sources,
+for instance, using sparql. To support dynamic data in
+queries, several solutions like sparqlPuSH [7] exist. However,
+their implementations exhibit fallacies, which uncover many
+unsolved problems [4]. We therefore look into handling large
+sparql query results and the comparison of sparql query
+results.
+
+Recently, Triple Pattern Fragments (tpf) [9] were introduced as an alternative rdf query interface with low server
+cost. This interface is based on a single triple pattern and
+includes an estimated number of total matching triples as
+metadata. sparql queries can be solved client-side by combining several tpfs, using the metadata to guide the execu-
+tion. A higher query execution time and bandwidth usage
+are accepted in exchange for a reduced load on the server,
+thereby striking a more sustainable load balance between
+clients and servers.
+
+Permission to make digital or hard copies of all or part of this work for personal or
+classroom use is granted without fee provided that copies are not made or distributed
+for profit or commercial advantage and that copies bear this notice and the full citation
+on the first page. Copyrights for components of this work owned by others than the
+author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or
+republish, to post on servers or to redistribute to lists, requires prior specific permission
+and/or a fee. Request permissions from permissions@acm.org.
+
+SEMANTiCS 15, September 15 - 17, 2015, Vienna, Austria
+
+c 2015 Copyright held by the owner/author(s). Publication rights licensed to ACM.
+ISBN 978-1-4503-3462-4/15/09. . . $15.00
+DOI: http://dx.doi.org/10.1145/2814864.2814892
+
+In this poster, we propose a client-side approach to update
+query results when data changes. Once a query has been
+executed, the client requests patches for the used fragments
+in a next iteration. These patches are then combined to
+update the results. This approach is motivated by assuming
+that exchanging patches i) minimizes server load, ii) lowers
+the overall data volume for client and server, and iii) locally
+reuses most of the data already retrieved by the client. Fur-
+thermore, this approach is compatible with archived datasets
+through a Web resource versioning framework, e.g., Memento [8]. This also enables queries for historical analysis.
+Thereby, we aim to validate the research question:
+
+Does client-side patching of sparql result in a lower bandwidth usage, server load, and update time compared to the
+state-of-the-art, while supporting archived data?
+
+2. RELATED WORK
+
+Related work exists in the area of stream processing, mostly
+including extensions over the sparql language and protocol.
+c-sparql [1] proposes additional concepts to the sparql language in order to query streams of rdf data. A preliminary
+execution framework [2] offloads processing to other stream
+processing frameworks and, thus, suffers from transformation overhead. An improved alternative is cqels [5], which
+presents a novel native query execution strategy for Linked
+Data streams. This solution centralizes all processing on the
+server, which does not scale well over multiple clients. Finally,
+sparqlPuSH [7] is a notification system to inform clients when
+new data has arrived. Unfortunately, this does not specify
+how follow-up queries should be executed efficiently.
+
+3. PATCHING CLIENT-SIDE FRAGMENTS
+
+3.1 Initialization
+
+This algorithm is an extension to any client-side sparql
+query algorithm, defined as eval(B, fs, t) for tpf, which
+solves a single graph pattern B (for simplicity) at time t. A
+concrete example is the dynamic pipeline algorithm from [9].
+The start fragment fs serves as initial entry point to the
+data source. During execution, eval constructs two sets: the
+resultset Rt = {r1, . . . , ri} and the set of retrieved Linked
+Data Fragments F = {f1, . . . , fj}, which both reside in a
+local cache.
+
+
+As an example, we consider a query to retrieve all players
+of all Spanish soccer clubs. Since many players transfer from
+one club to another, we want to perform an update of the
+results regularly. We use the following graph pattern B:
+
+Granada CF} are added. The other triple patterns return
+empty patches, i.e. no changes have occurred. Based on
+those patches, certain results will be copied (from R) or
+added to Rt .
+
+?c a dbpedia-owl:SoccerClub;
+
+dbpedia-owl:league dbpedia:La_Liga.
+
+?p dbpedia-owl:team ?c.
+
+After execution at time t, Rt consists of:
+
+?p
+Villareal CF
+Atl etico Madrid O. Torres
+Atl etico Madrid Rub en P erez
+
+?c
+Can 
+
+3.2 Retrieving fragment patches
+
+Next, we describe the novel function update(B, eval, Rt, F, t),
+
+which updates the existing resultset Rt at a given at time t.
+This is attained by patching the set of prior collected fragments F , as demonstrated in Fig. 1. The output is the
+updated resultset Rt .
+
+We request a patch fp for each triple pattern tp  B at
+time t [Fig. 1.a]. The returned patch fp = hA, Di consists
+of a set of added bindings A and a set of deleted bindings
+D [Fig. 1.b]. In our example, the fragment patch fA for
+?p dbpedia-owl:team ?club is given below.
+
+- Can  dbpedia-owl:team Villareal_CF
+- Rub en_P erez dbpedia-owl:team Atl etico_Madrid
++ Can  dbpedia-owl:team Atl etico_Madrid
++ Rub en_P erez dbpedia-owl:team Granada_CF
+
+Two bindings {?p = Can , ?c = Villareal CF} and {?p =
+Rub en P erez, ?c = Atl etico Madrid} have been deleted, while
+{?p = Can , ?c = Atl etico Madrid} and {?p = Can , ?c =
+
+3.3 Patching deleted bindings
+
+Each of the deleted bindings d  D is matched against
+
+each result r  R using the following binary function.
+
+match(d, r) =(1,
+
+0,
+
+if v  r  d : r[v] = d[v]
+otherwise
+
+The binding d includes a value d[v] for each variable v  tp.
+If d[v] is equal to the value r[v] in r, the binding leading to
+this result has been deleted [Fig. 1.c]. Thus, it is invalid and
+should not be part of the updated resultset. We only copy
+r to Rt if it has no matches. In our example, both deleted
+bindings match the first and last result. Therefore, only one
+valid result is copied, and Rt becomes:
+
+?p
+Atl etico Madrid O. Torres
+
+?c
+
+3.4 Patching added bindings
+
+Each added binding a  A can potentially produce new
+results. Therefore, we bind a to B, resulting in the bound
+pattern B  [Fig. 1.d]. This pattern is then evaluated with
+eval(B , fs, t) at time t [Fig. 1.f]. The results are then directly
+added to Rt Since the number of additions is usually small,
+the amount of requested fragments is minimal, since only
+changed values are re-evaluated.
+
+However, in some cases this method is inadequate. When
+the cardinality |A| is higher than any fragment ftp of tp  B,
+i.e. there are more changed bindings than there are bindings
+for any triple pattern, the join order is suboptimal. The
+
+?c a dbo:SoccerClub .?c dbo:league dbp:La_Liga .?p dbo:team ?club .?c a dbo:SoccerClub ?c dbo:league dbp:La_Liga?p dbo:team ?club ?p = Adam_Thomas?c = dbp:Yorktt  GET Patch fAAdd A Del A t  GET Patch fBAdd B Del B t  GET Patch fCAdd C Del C Apply bindings to BIf binding match then delete from resultsetBA1, ... , BAnBB1, ... , BBnBC1, ... , BCnt  ?p = dbp:Cani?c = dbp:Villareal_CF?p = ...?c = ...?p = dbp:Cani?c = dbp:Atletico_MadridAdd to resultsetteval(...)BabcdfCardinality lowest?Apply patch to fragmentsebound patterns B  would produce many new fragments that
+are not present in F . Since the cache cannot be leveraged,
+this results in costly http requests.
+
+Therefore, we add the following optimization [Fig. 1.e]. If
+the patch fp does not have the lowest cardinality, we simply
+re-execute our query with eval(B, fs, t) [Fig. 1.f] with a slight
+adjustment. When the algorithm requests a fragment f  F
+which is affected by fp, we use the bindings in A instead of
+the bindings in f . Those results are then added to Rt . This
+is more efficient, since all unchanged fragments are directly
+available from cache and the amount of new fragments is
+minimized.
+
+In our example, the actions above produce two new results,
+
+completing the algorithm with Rt below.
+
+?c
+
+?p
+Atl etico Madrid Cani
+Atl etico Madrid O. Torres
+Granada CF
+
+Rub en P erez
+
+4. EVALUATION FRAMEWORK
+
+Implementation
+
+We extended the existing implementations of the tpf
+
+client1 and server2 to support our approach.
+
+The server was enhanced with the Memento protocol [8] to
+support data archives, the LDPatch serialization format [3],
+and a datasource for accessing changesets. The Memento
+protocol is a standardized http framework to negotiate
+in the datetime dimension, analogous to media type-based
+content negotiation. By adding an Accept-Datetime header
+to the request, a client can retrieve the state of a resource
+at or close to a given time. The LDPatch format is part of
+the wc ldp specification and is used to serialize requested
+fragment patches. As a datasource, we use the LDstatic [6]
+framework to precompute tpfs as a collection of static files
+from each changeset. In addition, we keep a key-value index
+(such as Redis) in memory to associate each set of fragments
+with its timestamp.
+
+In the client, we implemented the algorithm from Section 3 by reusing the existing iterator components. To request a fragment patch, the http layer now adds Accept:
+text/ldpatch and Accept-Datetime headers to each request.
+
+4.2 Objectives
+
+To assess our main research question, we present four
+
+hypotheses we aim to test.
+(H1) With the patch-based method, the load on the server
+is significantly lower compared to the state-of-the-art.
+(H2) The rate at which results are updated is comparable
+
+to the state-of-the-art.
+
+(H3) The amount of used bandwidth while querying is only
+
+slightly higher.
+
+(H4) Historical queries are feasible on archived server-side
+
+change-sets.
+
+4.3 Experimental setup
+
+In the following, we propose the following experiments.
+We foresee i) a synthetic scenario to test H1, H2 and H3
+by comparing with other techniques; and ii) an archiving
+
+scenario to test H4 by running historical queries against a
+community crafted knowledge base.
+
+The former reuses the queries given in [5] to compare
+against state-of-the-art techniques c-sparql, cqels and
+sparqlPuSH. These queries are executed against varieties of
+the dblp dataset.
+
+The latter uses a dbpedia live data dump3 with 2 months
+of consecutive changesets4 as dataset. We craft 510 sparql
+queries in context of a sport-statistics application, similar to
+the query given in Section 3.
+
+5. CONCLUSIONS
+
+In this poster paper, we presented a novel approach to
+update sparql results client-side by exchanging fragment
+patches. We notice that, by only relying on server-side
+patches, the load on the server is very low. Although computation of such patches can be cpu intensive, this can be
+performed independently. Furthermore, once computed, they
+are directly employable as archives and historical queries. In
+combination with the low bandwidth usage, this approach is
+a good base for more sustainable querying of dynamic Linked
+Data.
+
+In future work, we aim to extensively evaluate this ap-
+proach. Depending on the results, we define a new set of
+requirements for this use case.

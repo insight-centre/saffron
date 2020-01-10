@@ -1,0 +1,984 @@
+BOOTOX: Practical Mapping of RDBs to OWL 2
+
+Ernesto Jim enez-Ruiz1(B), Evgeny Kharlamov1, Dmitriy Zheleznyakov1,
+
+Ian Horrocks1, Christoph Pinkel2, Martin G. Skjveland3, Evgenij
+
+Thorstensen3, and Jose Mora4
+
+1 Department of Computer Science, University of Oxford, Oxford, UK
+
+ernesto.jimenez.ruiz@cs.ox.ac.uk
+
+2 Fluid Operations AG, Walldorf, Germany
+
+3 Department of Informatics, University of Oslo, Oslo, Norway
+
+4 Sapienza Universit`a di Roma, Rome, Italy
+
+Abstract. Ontologies have recently became a popular mechanism to
+expose relational database (RDBs) due to their ability to describe the
+domain of data in terms of classes and properties that are clear to domain
+experts. Ontological terms are related to the schema of the underlying
+databases with the help of mappings, i.e., declarative specifications associating SQL queries to ontological terms. Developing appropriate ontologies and mappings for given RDBs is a challenging and time consuming
+task. In this work we present BootOX, a system that aims at facilitating ontology and mapping development by their automatic extraction
+(i.e., bootstrapping) from RDBs, and our experience with the use of
+BootOX in industrial and research contexts. BootOX has a number of
+advantages: it allows to control the OWL 2 profile of the output ontolo-
+gies, bootstrap complex and provenance mappings, which are beyond the
+W3C direct mapping specification. Moreover, BootOX allows to import
+pre-existing ontologies via alignment.
+
+1 Introduction
+
+The Semantic Web community has actively investigated the problem of bridging
+the gap between relational databases and ontologies. One of the main targets
+behind this effort is to enable the access to the data stored in databases via
+Semantic Web technologies. An advantage of this approach is that ontologies
+provide a formal specification of the application domain that is close to the end-
+users view of the domain, while databases are oriented towards an efficient data
+storage and retrieval and thus represent the data using structures that often not
+intuitive to end-users.
+
+Manually building an ontology and connecting it to the data sources via mappings is, however, a costly process, especially for large and complex databases
+(a typical scenario in industry [20,22]). The cost of this manual process will
+typically be even more severe when dealing with multiple databases, e.g., in the
+context of accessing the Deep Web [16]. To aid this process, tools that can extract
+a preliminary ontology and mappings from database schemata play a critical role.
+c Springer International Publishing Switzerland 2015
+M. Arenas et al. (Eds.): ISWC 2015, Part II, LNCS 9367, pp. 113132, 2015.
+DOI: 10.1007/978-3-319-25010-6 7
+
+E. Jim enez-Ruiz et al.
+
+In the literature one can find a broad range of approaches to bootstrap an ontology and mappings from a relational database schema. The interested reader may
+have a look at the following surveys [34,41]. These approaches can be classified
+with respect to different aspects such as:(i) level of automation (i.e., manual,
+semi-automatic, automatic), (ii) type of mappings (i.e., complex or direct map-
+pings), (iii) language of the bootstrapped mappings and the ontology, (iv) reuse
+of external vocabularies (e.g., domain ontologies or thesauri), and (v) purpose
+(e.g., OBDA, constraint validation, database integration, ontology learning).
+
+In this paper we present BootOX1 (not) yet another ontology and mapping
+bootstrapper. Our main motivation to implement a new bootstrapper is to give
+more flexibility with respect to the classification aspects described above. Most
+of the existing approaches commit to concrete purposes or to a concrete ontology
+expressiveness. BootOX allows to define different profiles depending on the
+application scenario and the required Semantic Web technologies. For example,
+if the bootstrapped ontology is to be used in a so-called Ontology Based Data
+Access (OBDA) scenario where the ontology provides a virtual access layer to
+the data, OWL 2 QL will be chosen as the ontology language as it is required by
+the query rewriting engine.2 Nevertheless, if the data is materialised, one could
+opt for other OWL 2 profiles depending on the used query answering engine.
+BootOX also allows to import domain ontologies, which will be integrated to
+the bootstrapped one via alignment [18] or directly mapped to the database.
+BootOX follows the W3C direct mappings directives to connect the ontological vocabulary to the relational database; moreover, it offers a suit of advanced
+techniques for bootstrapping of mapping that are beyond the direct ones. Fur-
+thermore, it extends the bootstrapped mappings with provenance information.
+We have tested BootOX and compared it to several bootstrapping systems
+over a number of databases and use cases from industrial and research contexts,
+including the relational-to-ontology benchmark suite RODI [29].
+
+The paper is organised as follows. Section 2 introduces the concepts behind
+semantic access to databases. Section 3 presents the problem of bootstrapping.
+Section 4 describes the techniques implemented in BootOX. Section 5 presents
+the scenarios where we deployed BootOX and the conducted experiments to
+evaluate the quality of the bootstrapping. In Section 6 we provide a summary
+of relevant related work, and we conclude in Section 7.
+
+2 Exposing Relational Data Through Ontologies
+
+The main idea behind exposing relational data via an ontology is to provide
+the user with access to the data store via the use of a domain specific vocabulary of classes, i.e., unary predicates, and properties, i.e., binary predicates, that
+the user is familiar with. This vocabulary is related to the database schema via
+view definitions, called mappings; thus, technical details of the database schema
+
+1 http://www.cs.ox.ac.uk/isg/tools/BootOX/
+2 The language underlying OWL 2 QL has the first-order (FO) rewritability property
+
+[8].
+?
+
+?
+
+?
+Well(id, nameNN, type)
+Field(id, name, statusCK, intersects fieldFK)
+Operator(id, nameNN)
+Operator Field(operatorFK, fieldFK)
+Wellbore(id, nameUQ, contentCK, depthCK, wellFK, locationFK)
+ExplorationWellbore(wellboreFK, seismic location)
+DevelopmentWellbore(wellboreFK, production facility)
+
+Fig. 1. Relational Database Schema. Primary keys are underlined. FK stands for Foreign Key (the foreign key name indicates the target table), NN stands for Not Null,
+UQ stand for Unique and CK stands for Check
+
+are hidden from end-users. Using an example from the oil industry domain, we
+now intuitively introduce the main concepts that are needed to understand the
+approach and refer the reader to [31] for details.
+
+Relational Databases. In the relational data model, a database consists of a
+schema and instance, where the schema is a set of table names with corresponding attribute names and constraints, e.g., primary and foreign keys. The
+instance populates tables of the schema with tuples by assigning values to the
+tables attributes. Figure 1 shows our running example, a fragment of a relational
+database based on the oil industry domain. For example, a Wellbore is given a
+name that is unique, has a content (e.g., GAS, OIL, or DRY), has a depth (e.g.,
+12,500 feet), belongs to a Well, and is located in a Field.
+
+Ontologies. An ontology is usually referred to as a conceptual model of (some
+aspect of) the world. It introduces the vocabulary of classes and properties that
+describe various aspects of the modelled domain. It also provides an explicit
+specification of the intended meaning of the vocabulary by describing the relationships between different vocabulary terms. These relationships are specified
+with special first-order formulae, also called axioms, over the vocabulary. An
+ontology can be thought of simply as a set of such axiomsi.e., a logical the-
+ory. Besides axioms, an ontology can contain ontological facts, which can be
+specified as first-order atoms with constants, but not variables. These constants
+are usually interpreted as (representations of) objects from the domain. Viewing an ontology as a logical theory opens up the possibility of using automated
+reasoning for different tasks, including checking an ontologys internal consistency (checking whether the ontology does not entail false, i.e., if it is logically
+consistent), query answering, and other (non-)entailments. OWL 2 is a W3C
+standard ontology language and it is heavily used in the Semantic Web com-
+munity. OWL 2 has profiles:3 EL, QL, and RL, that have different favourable
+computational properties.
+
+3 OWL 2 profiles: http://www.w3.org/TR/owl2-profiles/
+
+E. Jim enez-Ruiz et al.
+
+Mappings. Mappings declaratively define how ontological terms are related to
+terms occurring in the relational schema and are essentially view definitions of
+the following form that declare how to populate classes with objectsin OWL 2
+objects are represented with Uniform Resource Identifiers (URIs)and to populate properties with object-object and object-value pairs:
+SQL(x),
+SQL(x, y),
+SQL(x, y),
+
+objectProperty(fo(x), fo(y))
+dataProperty(fo(x), fv(y))
+
+Class(fo(x))
+
+where SQL(x) and SQL(x, y) are SQL queries with respectively one and two output
+variables, and fo, fv are functions that cast values returned by the SQL queries
+into respectively objects, i.e, URIs, and values.4 Classes are populated with URIs
+fo(x) computed from the values x returned by SQL(x). Properties can relate two
+objects, e.g., by stating that a wellbore has a particular location, or assigning a
+value to an object, e.g., stating that a field has a particular name (a string); and
+they are respectively populated with pairs of objects fo(x), fo(y) or pairs of an
+object fo(x) and value fv(y) computed from the values x and y returned by the
+SQL query. For our running example, we may create the following mappings:
+
+Wellbore(fo(id))
+SELECT id FROM Wellbore,
+hasLocation(fo(id), fo(location))
+SELECT id, location FROM Wellbore,
+hasContent(fo(id), fv(content))
+SELECT id, content FROM Wellbore.
+Query Answering. Consider a data access instance (D,V,O,M), where D is an
+RDB, V is an ontological vocabulary, O is a set of ontological axioms over V, and
+M is a set of mappings between V and D. There are two approaches to answer
+a query Q over V: (i) materialisation: ontological facts are materialised (i.e.,
+classes and properties participating in mappings are populated with individuals
+by evaluating SQL queries participating in mappings) and this gives a set of
+ontological facts A and then Q is evaluated over O and A with standard queryanswering engines for ontologies, or (ii) virtual: Q should be first rewritten into
+an SQL query SQL using O and M and then SQL should be executed over D.
+
+In either case, the ontology and mappings are the backbone of query processing in this data access approach; thus, the problem of obtaining them has to be
+addressed in any implementation of such approach. The exact kind of ontology
+and mappings required for data access depends on the application scenario. For
+example, in a scenario where virtual query answering is required, the ontology
+should be in OWL 2 QL. In the case of materialisation the ontology should
+fall in the profile supported by the underlying systems, e.g., EOLO [42] can do
+query answering over OWL 2 EL ontologies, and thus the bootstrapping should
+output an EL ontology; a semantic faceted search system SemFacet [24,15]
+relies on RDFox [28] that can do query answering over OWL 2 RL ontologies
+and thus the bootstrapper facilitating SemFacet should produce RL ontologies;
+PAGOdA [47] does query answering over the whole OWL 2 and can work with
+any bootstrapper that produces OWL 2 ontologies.
+4 These functions ensure coherent generation of URIs that respects primary and for-
+
+eign keys.
+?
+
+?
+
+?
+3 Bootstrapping: Problem Definition
+
+In this section we define the tasks for bootstrapping ontologies and mappings,
+or assets, from RDBs and quality metrics for these tasks. The tasks are the
+following:
+(i) Semantic access instance generation: Given a relational database D, generate an instance (D,V,O,M). This task can be naturally divided into two
+sub-tasks.
+- Vocabulary and Ontology generation: Given D, create a vocabulary V and
+an ontology O over V.
+- Mapping generation: Given D, V, and O create a set of mappings M
+relating D with V.
+(ii) Importing: Given an instance (D,V,O1,M) and an ontology O2, return an
+instance (D,V,O,M), where O is the alignment of O1 and O2.
+
+Task (ii) is important in applications where ontologies (partially) describing the
+domain of interest have been already created and users want to incorporate them
+into their semantic data access system.
+
+The bootstrapping of the ontologies and the mappings enables a (prelimi-
+nary) deployment of semantic data access system. However, the bootstrapped
+assets should meet some minimal requirements so that they can be usable in
+practice. We have identified the following metrics to measure the quality of generated assets:
+
+(1) Ontology language: compliance with standard ontology languages with welldefined semantics like OWL 2 and its profiles to enable the use of a widerange of Semantic Web technologies. Note that the choice of the ontology
+language (e.g., one of OWL 2 profiles) also affects suitability of the different
+query answering engines.
+
+(2) Mapping language: compliance with standard directives like the W3C direct
+mapping specification5 and standard W3C mapping languages like R2RML.6
+(3) Query coverage: suitability of the ontology vocabulary to formulate the
+
+queries that the user is interested in.
+
+(4) Query results: accuracy of the query results obtained with the bootstrapped
+instance in the sense that the query answer should satisfy the users expec-
+tations.
+
+4 Bootstrapping Techniques in BOOTOX
+
+In this section we present our bootstrapping techniques implemented in
+BootOX. Section 4.1 focuses on the techniques to generate the ontological
+vocabulary and the axioms over this vocabulary, where we give special attention
+
+5 Direct mappings: http://www.w3.org/TR/rdb-direct-mapping/
+6 R2RML language: http://www.w3.org/TR/r2rml/
+
+E. Jim enez-Ruiz et al.
+
+to the concrete language of the generated ontology. In Section 4.2 we describe
+how the database terms are linked to the ontological vocabulary. Furthermore, we
+also present how mappings are enhanced with provenance information. Section
+4.3 gives an overview of the incorporated ontology alignment techniques to
+import pre-existing ontologies. Finally, Section 4.4 summarises the conformance
+with the requirements presented in Section 3.
+
+4.1 Vocabulary and Ontology Generation
+
+The general rule to create ontological vocabulary from a relational schema would
+translate (i) each (non-binary) table into an OWL class; (ii) each attribute not
+involved in a foreign key into an OWL datatype property; (iii) each foreign key
+into an OWL object property. Generation of axioms, however, is usually a more
+involved process. BootOX follows Table 1 to automatically create the vocabulary and a set of OWL 2 axioms from the listed database features.7 One could
+opt for adding all the axioms associated with a feature or only a selection of them
+depending on the intended purpose. In the remainder of the section we will discuss the main considerations regarding bootstrapping that should be taken into
+account.
+
+Closed-world vs Open-world Semantics. Modelling database features in OWL 2
+inevitably leads to different interpretations due to the Closed-world (CWA) and
+Open-world assumptions (OWA). In a relational database, every fact that occurs
+in the database is true, and all other facts are false (CWA). In an ontology, the
+truth value of some facts may be unknown, i.e., they are neither provably true
+nor provably false (OWA). Moreover, constraints have a very different meaning in
+databases and ontologies [27,34]. In a database, constraints define valid database
+states, and updates that would violate these constraints are simply rejected. In
+an ontology, constraints are treated as material implications, and may lead to
+the derivation of new facts that are not explicitly stated in the data. Such
+derivations may produce unintended consequences,8 as we discuss next.
+
+Table 1 presents a possible encoding of relational database features as OWL 2
+axioms. The encoding, in general, does not lead to only one option, but several possible OWL 2 axioms. For example, considering the running example of
+Figure 1, for the data attribute name in table Field we apply encoding pattern
+(3) in Table 1, which proposes to add five different axioms. The general rule
+translates the data attribute name as a data property declaration axiom. In
+addition one may opt to add global restrictions (e.g., name Domain: Field)9
+and/or local restrictions (e.g., Field SubClassOf: name some xsd:string). The
+use of global and/or local restrictions will lead to different interpretations and
+
+7 When not stated the contrary in Table 1, a class CT , an object property Pf , a data
+property Ra and a datatype dt represent the ontology encoding of a table T , a foreign
+key f k, a data attribute a, and an SQL type t, respectively.
+
+8 Note that the use of disjointness axioms may help in the detection of such errors.
+9 For writing OWL 2 axioms we use the Manchester OWL Syntax [17].
+?
+
+?
+
+?
+Table 1. Encoding of relational database features as OWL 2 axioms. OWL 2 axioms
+are expressed in the Manchester OWL Syntax [17]. * Enumeration with only one literal
+
+E. Jim enez-Ruiz et al.
+
+potentially to different logical consequences when combined with data facts.
+For example, the fact operator987 Facts: name Statoil in combination with
+the domain axiom for Field and name will lead to the undesired consequence
+operator987 Types: Field. In this case, if the property name is to be used in
+different contexts, using only local restrictions seems to be more appropriate.
+
+Profiling the Ontology. BootOX takes into account the concrete language (i.e.,
+one of OWL 2 profiles) that is generated from the relational database features,
+which will enable the use of different Semantic Web technologies (e.g., query
+answering engines). As mentioned above, database features can be encoded using
+different axioms which may lead to different OWL 2 profiles. For example, primary keys and unique constraints (patterns (7) and (8) in Table 1) can be
+modelled with the OWL 2 construct HasKey (e.g., Well HasKey:
+id), which
+is supported in OWL 2 RL and OWL 2 EL, but must be avoided if the target
+ontology language is OWL 2 QL. Alternatively (or in addition) one could use
+global and local cardinality restrictions (e.g., id Characteristics: Functional
+and Well SubClassOf:
+id exactly 1 xsd:int, respectively), which leads to similar issues since not all profiles support them. For example, none of the OWL 2
+profiles support exact cardinalities. If a profile does not support a type of axiom,
+an approximation is used instead (e.g., Well SubClassOf:
+id max 1 xsd:int
+id some xsd:int that is
+that is supported in OWL 2 RL, or Well SubClassOf:
+allowed in both OWL 2 QL and EL profiles). However, a representative approximation or alternative may not be always available for a database feature, as
+for the datatype restrictions (pattern (13) in Table 1), which is not supported
+by any of the profiles. BootOX, when the required ontology output is one of
+the OWL 2 profiles, keeps this knowledge as OWL 2 annotation axioms (e.g.,
+depth Annotations: ann:max value12, 500). These axioms have no logical
+impact on the ontology, but they can potentially be used in user interfaces to
+guide the formulation of queries (e.g., [3840]).
+
+Selection of Ontology Axioms. BootOX, in the default setting, encodes the
+database features with all axioms suitable for a required OWL 2 profile. The user
+can optionally select the kind of preferred axioms (i.e., local or global restric-
+tions). Additionally, the suggested OWL 2 axioms may require an extra validation step to accurately represent a database feature. This is the case of pattern
+(6) in Table 1 where the generated object property can be declared with different
+characteristics which may not necessarily hold in the database. For example, in
+our running example from Figure 1, the foreign key intersects field in table Field
+represents a self-reference to the same table. In this case, the foreign key can
+be encoded as a reflexive (a field intersects with itself) and symmetric object
+property; transitivity, however, does not necessarily apply for this property.
+
+Mapping SQL Datatypes to OWL 2. There is a clear mapping between SQL
+datatypes to XML schema datatypes. However, there are some XML schema
+datatypes that are not built-in datatypes in OWL 2. For example, xsd:date is
+not supported in OWL 2. Furthermore, OWL 2 profiles also include specific
+?
+
+?
+
+?
+restrictions on the supported datatypes. For example, xsd:boolean or xsd:double
+are not supported in OWL 2 QL nor OWL 2 EL. BootOX addresses this issue by
+mapping SQL datatypes, whose XML counterparts are not supported in OWL 2
+(resp., OWL 2 profile), to the OWL 2 built-in datatype rdfs:Literal. This datatype
+denotes the union of all datatypes (i.e., top datatype). Note that a more intuitive
+approximation of unsupported datatypes (e.g., xsd:double to xsd:decimal) is not
+possible since the value spaces of primitive datatypes are disjoint.10
+
+4.2 Mapping Generation
+
+Generation of Direct Mappings. BootOX follows the W3C direct mapping
+guidelines to generate mappings from a relational database to an ontological
+vocabulary. BootOX relies on the R2RML language to produce direct map-
+pings, which are particular cases of the mappings that can be expressed in
+R2RML. Intuitively, an R2RML mapping allows to map any valid SQL query or
+view (i.e., logical table) into a target vocabulary.
+
+The W3C direct mapping specification does not introduce specific restrictions
+on the used target ontological vocabulary, that is, it only requires to reference
+the ontological vocabulary via its URI. Hence, the generated mappings may
+reference the vocabulary of any given ontology. BootOX allows this behaviour
+and it can produce mappings for a vocabulary generated from the relational
+database (see Section 4.1) or for the vocabulary of an external domain ontology.
+
+Generation of Mappings beyond Direct Ones. Besides direct mappings described
+above, that involve only projection operator in the SQL part, BootOX can help
+user to build complex R2RML mappings, that may also include selection and/or
+join operators. There are three general approaches that we use to find candidate
+mappings:
+
+(i) In the direct mapping approach, tables are mapped to classes. To generalise
+this, consider a table T and a table T  that has a foreign key constraint
+referencing T or that can be joined. By taking the left join of T and T 
+we obtain a subset of the tuples in T . If this subset of tuples is sufficiently
+big and sufficiently different from T itself, we obtain a subclass of the
+class T was mapped to. Furthermore, by letting this process to continue
+recursively, we obtain rich class hierarchies. Here, as in direct mappings,
+the many-to-many exception applies.
+
+(ii) Another way to discover subclasses in the database is to look for clusters
+of tuples in a table. To this end, we can consider a tuple to be a vector of
+numerical values (assigning distinct numbers to each value), and look for
+sets of tuples whose distance from each other is sufficiently small.
+
+(iii) Finally, one can also consider subsets of the attributes of a table, particularly when tables are not known to in standard normal forms, such as
+BCNF. In such tables, there will usually be tuples with repeating values in
+
+10 http://www.w3.org/TR/swbp-xsch-datatypes/
+
+E. Jim enez-Ruiz et al.
+
+attributes. Such sets of tuples can, again, be considered subclasses of the
+class the table itself was mapped to.
+
+Note that the generation of these complex mappings heavily relies on interaction
+with the users since these techniques allow to generate only the SQL queries for
+mappings, while they do not offer the names of classes and properties defined
+by these queries; the names should be introduced by the users.
+
+Generation of Provenance Mappings. BootOX automatically extends direct
+mappings with metainformation about provenance.11 The provenance metainformation is modelled in the mapping assertion, adding, for instance, the source
+database from which the information is extracted, and more granular informa-
+tion, like table and column identifiers. Currently, provenance in BootOX comes
+into three different granularity levels, whose convenience will depend on the
+intended use of this information:
+
+(i) URI level: each generated URI is associated with provenance information.
+This is especially interesting when different database elements are merged
+into the same URI (e.g., see pattern (14) in Table 1).
+
+(ii) Triple level: triples are annotated with provenance via RDF reification (i.e.,
+
+three new triples are added for each triple).
+
+(iii) Graph level: in this granularity, provenance is attached to RDF named
+graphs that group triples with similar provenance characteristics. For exam-
+ple, one could group triples generated by automatically generated mappings
+or triples derived from the same data source.
+
+This metainformation can be later used for a wide range of purposes. For example
+it can be used to provide a richer query answering interface, to help in the
+debugging of a data access instance (i.e., identifying faulty ontology axioms or
+mappings), or to discard some sources based on a variety of criteria, e.g., licenses,
+access privileges, costs, etc.
+
+4.3
+
+Importing
+
+It is increasingly often the case that a high quality ontology of (parts of) the
+domain already exists and captures the domain experts vocabulary better than
+the directly mapped ontology. When such an ontology is available, BootOX
+allows importing it to extend the automatically generated ontology.12 To this end,
+BootOX integrates the ontology alignment system LogMap [18,19], that aligns
+two ontologies O1 and O2 by deriving OWL 2 equivalence and sub-class(property)
+axioms between the entities from O1s and O2s vocabularies using the lexical
+characteristics of the terms and the structure of the ontologies. BootOX gives
+special care to avoid introducing unwanted consequences that may lead to unexpected answers. Thus, LogMap will discard alignment axioms that would lead to
+
+11 Based on the W3C recommendation PROV-O http://www.w3.org/TR/prov-o/.
+12 If the imported ontology is outside the desired target profile it should first be approximated using off-the-shelf semantic or syntactic approximation techniques (e.g., [11]).
+?
+
+?
+
+?
+inconsistencies, or faulty consequences like Well SubClassOf: WellBore. This
+is based on novel techniques to avoid violations of the so called consistency and
+conservativity principles (the interested reader please refer to [37]).
+
+4.4 Conformance with Problem Requirements
+
+BootOX covers the two bootstrapping tasks defined in Section 3 and fully meets
+the Metrics (1) and (2) regarding the ontology and mapping language.
+
+Furthermore, as shown in Section 5, it provides reasonable results in practice
+with respect to Metrics (3) and (4). Query coverage, i.e., Metric (3), is enhanced
+thanks to the importing facility. Regarding query results, i.e., Metric (4), note
+that we supply the system with provenance capabilities, which are useful for
+analysis. In the case when query results contain unexpected answers, provenance
+will help the user to trace the source of these answers, thus helping to gain a
+better understanding of possible issues with the ontology or mappings.
+
+5 BOOTOX at Work
+
+BootOX has been tested with a number of databases and scenarios (e.g., virtual
+and materialised data access). In this section we present results with respect to
+the quality of the bootstrapped assets (i.e., vocabulary, ontology, and mappings).
+We have evaluated (i) the ability of formulating queries with the bootstrapped
+vocabulary in an industrial scenario (Section 5.1), and (ii) the ability of (enabling
+the) answering of queries with the bootstrapped ontology and mappings in a
+controlled scenario (Section 5.2).
+
+We compared BootOX13 to three other bootstrapping systems: IncMap [30],
+MIRROR [26], and -ontop- [32]. IncMap is designed to directly map a relational
+database to a target ontology, but is focused on a semi-automatic, incremen-
+tal/interactive approach rather than direct automated bootstrappings. Both -
+ontop- and MIRROR follow an approach that is similar to the one employed
+in BootOX, with respect to the generation of a semantic data access instance
+(i.e., vocabulary, ontology, and mappings).14
+
+5.1 Query Coverage in the EU Optique Project
+
+In this section we assess the quality of the bootstrapped ontology vocabulary
+to enable the formulation of queries. To this end we used the terms from the
+query catalogs available in the industrial scenario provided by the EU Optique
+project. We looked at how many terms from the catalogs were covered by the
+bootstrapped ontological vocabulary and then did manual verification of the
+quality of the coverage.
+
+13 Note that we have evaluated BootOX with its automatic setting, that is, with the
+
+functionality to generate complex mappings turned off.
+
+14 -ontop- generates only vocabulary, that is, an ontology containing only declaration
+
+axioms.
+
+E. Jim enez-Ruiz et al.
+
+Fig. 2. BootOX interfaces in the Optique platform, from left to right, top to bottom:
+the main BootOX menu, the bootstrapping form, and the query catalog coverage
+
+Industrial Scenario. The EU Optique project aims at facilitating scalable enduser access to big data in the oil and gas industry [14]. Optique advocates for an
+OBDA approach where the ontology provides a virtual access to the data and
+the mappings connect the ontology with the data source. The project is focused
+around two demanding use cases provided by Optique industry partners Siemens
+and Statoil. BootOX has been deployed in Siemens [20] and Statoil [22] as part
+of the Ontology and mapping management module provided by Optiques platform [21]. Furthermore, BootOX has already shown to save time, in the creation
+of the initial OBDA assets, to the IT experts of both Statoil and Siemens. Note
+that the Optique scenario requires BootOX to bootstrap an OWL 2 QL as it is
+required by the query rewriting engine in order to rewrite the queries formulated
+over the ontology into queries on the database using reasoning [8].
+
+BootOX in the Optique Platform. Figure 2 shows an overview of the BootOX
+related interfaces. The main menu presents to the user the available options
+currently supported in BootOX: automatic bootstrapper, guided bootstrapper,
+ontology alignment, provenance bootstrapping, bootstrapping related statistics,
+etc. The screenshot on the right shows the integrated bootstrapping form in
+BootOX where the user can select from a number of options including the
+database schema, imported ontology, provenance, OWL 2 QL approximation.
+The bottom screenshot shows the coverage of a selected query catalog by the
+vocabulary of a bootstrapped ontology.
+?
+
+?
+
+?
+Boots. Ontology (without importing)
+
+24%
+
+Domain Ontologies
+9%
+
+6%
+
+15%
+
+3%
+?
+
+?
+
+?
+15%
+
+18%
+
+20%
+
+Coverage
+Classes
+Query
+Catalog
+Total: 113
+
+17%
+
+24%
+
+18%
+
+BOOTOX (with importing)
+
+21%
+
+19%
+
+29%
+
+12%
+
+32%
+
+23%
+
+81%
+
+5%
+
+Coverage
+Properties
+Query
+Catalog
+Total: 21
+
+52%
+
+19% 19%
+
+38%
+
+19%
+
+81%
+
+38%
+
+5%
+
+52%
+
+19% 19%
+
+9%
+
+9%
+
+(a) Statoil use case.
+
+Boots. Ontology (without importing)
+
+Domain Ontologies
+
+BOOTOX (with importing)
+
+55%
+
+Coverage
+Classes
+Query
+Catalog
+
+50%
+
+25%
+
+50%
+
+50%
+
+17%
+
+17%
+
+Coverage
+Properties
+Query
+Catalog
+
+20%
+
+30%
+
+30%
+
+17%
+
+17%
+
+40%
+
+70%
+
+20%
+
+50%
+
+50%
+
+50%
+
+17%
+
+(b) Siemens use case.
+
+17%
+
+Fig. 3. Coverage of terms from the Optique query catalog with terms from ontologies.
+Inner pie charts show coverage by lexical confidence using I-SUB [43]:
+in [0.8, 0.9),
+quality of the terms with a coverage above 0.6:
+false positive. Note that semi-true positives are not clear-cut cases where the ontology
+term has a broader or narrower meaning with respect to the query term
+
+in [0.6, 0.8). Outer pie charts represent the manual verification of the
+
+semi-true positive,
+
+true positive,
+
+in [0.9, 1.0],
+
+Coverage of Statoil Query Catalog. The query catalog at Statoil currently
+includes 60 queries that contain representative information needs from Statoil
+geologists. Most of the data needed by Statoil geologists is stored in the Exploration and Production Data Store (EPDS), Statoils corporate data store for
+exploration and production data and interpretations. The NPD FactPages [36]
+ontology is relevant to the domain of EPDS.
+
+We bootstrapped ontological vocabulary from the relevant parts of EPDS
+using BootOX, MIRROR and -ontop-. The generated vocabulary, on average,
+
+E. Jim enez-Ruiz et al.
+
+contained more than 3,000 classes, 3,500 object properties, and 42,000 datatype
+properties. Note that IncMap relies on the vocabulary of the available domain
+ontology. BootOX, unlike -ontop- and MIRROR, includes a built-in ontology
+alignment system which allows to import the vocabulary of the domain ontologies
+into the bootstrapped ontology.
+
+The results of the query catalog coverage are summarised in Figure 3a. The
+first column represent the coverage of the bootstrapped ontologies computed by
+BootOX (without importing the domain ontologies), -ontop- and MIRROR.
+Since all three systems rely on the direct mapping directives, the bootstrapped
+vocabulary is, apart from minor differences, basically the same. The middle
+columns represent the coverage of the vocabulary of the domain ontology, which
+is equal to the coverage of IncMap. The third columns shows the coverage results
+achieved by the ontology bootstrapped by BootOX including importing. For
+example, 44% of the classes in the query catalog has a good lexical intersection
+(greater or equal 0.8) with terms of the ontology bootstrapped by BootOX;
+furthermore, 29% of the classes are fully covered (i.e., true positives).
+
+Coverage of Siemens Query Catalog. The data in the Siemens use-case is stored
+in several databases with different schemata. Although the schemata are not
+specially large, the size of the data is in the order of hundreds of terabytes, e.g.,
+there is about 15 GB of data associated to a single turbine, and it currently
+grows with the average rate of 30 GB per day [20]. As for the Statoil use case,
+we extracted the relevant terms of the query catalog, bootstrapped an ontology from one of the Siemens databases using BootOX, MIRROR and -ontop-.
+Additionally, BootOX performed alignment with two Siemens ontologies about
+diagnostic procedures and turbines. Finally, IncMap relied on the vocabulary of
+these ontologies. The results of the coverage are summarised in Figure 3b.
+
+Quality Assessment. The experiments show that the bootstrapped ontologies
+without importing had a higher coverage than the domain ontologies in isola-
+tion, e.g., 39% of query class coverage against 27% in the Statoil use case. These
+results suggest that there is an adequate number of table and column names with
+potentially adequate semantic relations with the terms that domain experts at
+Statoil and Siemens have in mind when they access data, and thus, the ontology vocabulary computed by the ontology bootstarppers is indeed relevant to
+query formulation. Nevertheless, the domain ontologies naturally complement
+the vocabulary obtained from the database and hence BootOX is able to bootstrap and ontology with better coverage over the query catalog than the ones
+generated by -ontop- and MIRROR. For example, 48% of the classes (resp.,
+90%) in the Statoil (resp., Siemens) catalog are fully or partially covered in the
+bootstrapped ontology computed by BootOX.
+?
+
+?
+
+?
+Table 2. RODI results of all tests per scenario. Values in cells are the success scores
+
+Scenario
+
+IncMap MIRROR -ontop- BootOX
+
+CONFERENCE
+
+SIGKDD
+
+CONFERENCE
+
+SIGKDD
+
+0.5
+0.26
+0.21
+
+0.44
+0.16
+0.11
+
+SIGKDD
+
+0.05
+
+CONFERENCE
+
+0.03
+
+0.22
+
+Adjusted naming
+
+0.28
+0.27
+0.3
+
+0.39
+0.37
+0.45
+
+Cleaned hierarchies
+
+0.17
+0.23
+0.11
+
+0.28
+0.3
+0.16
+
+Combined case
+0.16
+
+0.11
+
+Missing FKs
+0.17
+
+-
+
+Denormalised
+0.28
+0.22
+
+0.39
+0.37
+0.45
+
+0.28
+0.3
+0.16
+
+0.16
+
+0.17
+
+0.28
+
+5.2 Query Answering in a Controlled Scenario
+
+In this section we assess the quality of the bootstrapped ontology and mappings to enable the answering of queries in a controlled scenario.15 To this end
+we ran experiments with a recently released relational-to-ontology benchmark
+suite, RODI [29], comparing BootOX to IncMap, -ontop- and MIRROR. RODI
+is designed to test relational-to-ontology mappings end-to-end: it provides an
+input database and a target ontology and requests complete mappings or mapped
+data to query. RODI is based on scenarios, with each scenario comprising several
+query tests. While RODI is extensible and can run scenarios in different application domains, it ships with a set of default scenarios in the conference domain
+that are designed to test a wide range of fundamental relational-to-ontology
+mapping challenges in a controlled fashion. The effectiveness of mappings is
+then judged by a score that mainly represents the number of query tests that
+return expected results on mapped data.
+
+IncMap is designed to automatically map the target ontology directly to
+the input database, while BootOX approached this task in two steps: first, it
+bootstrapped an intermediate ontology and mappings from the database. Then,
+it aligned this intermediate, bootstrapped ontology to the target ontology as
+provided by the benchmark. As mentioned in Section 5.1, neither -ontop- nor
+MIRROR include a built-in ontology alignment system to support the importing
+of the target ontology provided by the benchmark. In order to be able to evaluate
+these systems with RODI, we aligned the generated ontologies by -ontop- and
+MIRROR with the target ontology using the LogMap system in a similar setup
+to the one used in BootOX.
+
+Scenarios. RODI default scenarios are a selection of benchmark scenarios set
+in the conference domain, based on three different conference ontologies: CMT,
+
+15 Note that assessing the quality of the bootstrapped ontology and mappings in an
+open scenario like Optique requires a huge involvement of domain experts, thus we
+leave it for future work.
+
+E. Jim enez-Ruiz et al.
+
+CONFERENCE, and SIGKDD16. For each ontology, the benchmark provides
+a set of database instances that are to be mapped to the ontology vocabulary.
+While all databases are modelled to contain the same data that the ontologies
+might contain, they deviate largely in how close they are to their corresponding
+ontologies in terms of structure and modelling patterns. For each ontology, there
+is a number of mapping challenges that can be tested: (i) Adjusted naming. Here
+the identifier names in the databases are syntactically changed in comparison
+with the names in the ontology. (ii) Cleaned hierarchies. In this scenarios, the
+databases are remodelled from ground to follow widely used relational database
+design patterns. Most significantly, this includes cases where abstract parent
+classes have no corresponding table in the database, several sibling classes are
+jointly represented in a single table, etc. (iii) Combined case mixes changes
+made in scenarios with adjusted naming and cleaned hierarchies. (iv) Missing
+FKs represents the case of a database with no explicit referential constraints
+at all. (v) In the denormalised case, the database contains a few denormalised
+tables.
+
+Results. Results show that the BootOX comes out in top position for seven out
+of nine tested scenarios (see Table 2). This shows that BootOX is well suited
+for meeting the requirements of an end-to-end scenario. Note that the results
+between BootOX and -ontop- may look very similar; however, currently RODI
+only provides the percentage of correctly answered queries (i.e., BootOX and
+-ontop- fail in the same queries). RODI is being extended to include a more
+fine grained evaluation in terms of Precision and Recall in order to take into
+account partially answered queries, which may reveal more differences among the
+evaluated systems. On a more generic note, however, results also demonstrate
+that none of the tested systems to date manages to solve relational-to-ontology
+mapping challenges with a score above 0.5. This confirms the need for specialised
+relational-to-ontology bootstrapping systems such as BootOX, which build the
+foundation for better solutions.
+
+Provenance. When we evaluated BootOX with RODI without the use of provenance mappings, the results were slightly worse than the ones in Table 2: in three
+scenarios we detected unexpected answers. Then we made use of the provenance
+functionality of BootOX to analyse the source of these unexpected answers.
+As an outcome of such an analysis we identified and fixed the faulty mappings,
+hence improving the results for those scenarios.
+
+6 Related Work
+
+The implementation of BootOX has been motivated by the fact that existing ontology and mapping bootstrappers provide limited or no support for
+the bootstrapping tasks and quality requirements described in Section 3 (see,
+e.g., [34,41]). Most of the state of the art bootstrappers fail to conform with
+
+16 http://oaei.ontologymatching.org/2015/conference/
+?
+
+?
+
+?
+the ontology and mapping language standards, or they do not provide profiling
+capabilities for the outpout ontology. Moreover, to the best of our knowledge
+they do not provide bootstrapping of complex mappings. For historical reasons
+(i.e., OWL was not yet defined), former systems used RDFS and F-Logic axioms
+(e.g., [5,44]). Other systems have also used DLR-Lite based languages (e.g., [25])
+and extensions based on SWRL (e.g., [13,24]). Regarding mapping generation,
+before R2RML became a W3C recommendation, system typically relied on their
+own native language to define mappings (e.g., D2RQ [7], Mastro [10]). To the
+best of our knowledge, currently only IncMap [30], MIRROR [26], -ontop- [32],
+and Ultrawrap [33,35] produce mappings in the R2RML language.
+
+Among the systems using OWL or OWL 2 as the ontology language, only
+BootOX put special attention to the target ontology expressiveness. BootOX
+allows to output different ontology axioms to conform to the required OWL 2
+profile as discussed in Section 4.1. Many bootstrapping systems typically use
+exact or min cardinality restrictions which fall outside the three OWL 2 profiles
+(e.g., [1,46]). Furthermore, other systems, like [6], produce an ontology that
+falls into OWL 2 Full due to the use of the InverseFunctional characteristic in
+both data and obtect properties. Finally, MIRROR, -ontop-, and Ultrawrap are
+conformant to the OWL 2 QL, but they do not support profiling to the other
+sublanguages of OWL 2.
+
+As BootOX, systems like Automapper [13], Relational.OWL [23] and
+ROSEX [12] complement the automatically generated ontology with links to
+domain ontologies. However, none of these systems apply logic-based techniques
+to assess the consequences of such links to domain ontologies.
+
+Special mention require the approaches in [9,36]. These approaches use (semi-
+automatic) ontology learning techniques to exploit the data and discover interesting patterns that can be included to enrich the ontology. Currenly, BootOX
+only relies on a (fully-automatic) schema-driven generation of the ontology and
+mappings.
+
+In the literature one can also find several appoaches to overcome the
+OWA problem when dealing with data-centric applications (e.g., [27,45]). These
+approaches typically extend the semantics of OWL 2. The integration of these
+approaches in a bootstrapping scenario is, however, still an open problem.
+
+7 Conclusions and Future Work
+
+We presented BootOX, an automatic ontology and mapping bootstrapper. To
+the best of our knowledge, BootOX is the only bootstrapper that (i) profiles the
+concrete language of the output OWL ontology, (ii) puts special attention to the
+datatype conversion, (iii) enhances the direct mappings with provenance metain-
+formation, (iv) bootstraps a range of complex mappings, and (v) includes a builtin logic-based ontology alignment system. Furthermore, we tested BootOX in a
+number of databases and test cases involving materialised or virtual data access.
+The evaluation suggests that automatic techniques to bootstrap an initial ontology and mappings are suitable to be used in practice.
+
+E. Jim enez-Ruiz et al.
+
+We see bootstrapping as the first step towards the creation of a fully-fledged
+semantic data access system. Bootstrapped assets are by no means perfect, and
+thus they should be post-processed, validated, and extended. Our evaluation in
+both industrial (i.e., Optique) and research contexts has also served to guide
+the extension of BootOX with semi-automatic techniques. For example, while
+working with Statoils EPDS database, we found that the discovery of implicit
+constraints represents a critical feature since EPDS has very few constraints, e.g.,
+many tables are materialised views without specified primary or foreign keys. In
+the close future we aim at extending our evaluation to understand the limits of
+semi-automatic ontology and mapping bootstrappers to enable the answering of
+the queries in open scenarios like Optique.
+
+Acknowledgments. This work was partially funded by the EU project Optique (FP7-
+ICT-318338), the Research Council of Norway through the project DOIL (RCN project
+n. 213115), and the EPSRC projects MaSI3, Score!, and DBOnto.

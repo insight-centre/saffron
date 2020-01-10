@@ -1,0 +1,1086 @@
+Towards Annotating Potential Incoherences
+
+in BioPortal Mappings
+
+Daniel Faria1, Ernesto Jim enez-Ruiz2, Catia Pesquita1,3,
+
+Emanuel Santos3, and Francisco M. Couto1,3
+
+1 LASIGE, Faculdade de Ciencias, Universidade de Lisboa, Portugal
+
+2 Department of Computer Science, University of Oxford, UK
+
+3 Departamento de Inform atica, Faculdade de Ciencias, Universidade de Lisboa, Portugal
+
+Abstract. BioPortal is a repository for biomedical ontologies that also includes
+mappings between them from various sources. Considered as a whole, these mappings may cause logical errors, due to incompatibilities between the ontologies
+or even erroneous mappings.
+
+We have performed an automatic evaluation of BioPortal mappings between
+19 ontology pairs using the mapping repair systems of LogMap and Agreement-
+MakerLight. We found logical errors in 11 of these pairs, which on average involved 22% of the mappings between each pair. Furthermore, we conducted a
+manual evaluation of the repair results to identify the actual sources of error, verifying that erroneous mappings were behind over 60% of the repairs.
+
+Given the results of our analysis, we believe that annotating BioPortal mappings with information about their logical conflicts with other mappings would
+improve their usability for semantic web applications and facilitate the identification of erroneous mappings. In future work, we aim to collaborate with BioPortal
+developers in extending BioPortal with these annotations.
+
+1 Motivation
+
+OWL ontologies are extensively used in biomedical information systems. Prominent
+examples of biomedical ontologies are the Gene Ontology [1], the National Cancer
+Institute Thesaurus (NCIT) [14] and the Foundational Model of Anatomy (FMA) [32].
+Despite some community efforts to ensure a coordinated development of biomedical ontologies [38], many ontologies are being developed independently by different
+groups of experts and, as a result, they often cover the same or related subjects, but
+follow different modeling principles and use different entity naming schemes. Thus,
+to integrate data among applications, it is crucial to establish correspondences (called
+mappings) between the entities of the ontologies they use.
+
+In the last ten years, the semantic web and bioinformatics research communities
+have extensively investigated the problem of (semi-)automatically computing correspondences between independently developed ontologies, which is usually referred to
+as the ontology matching problem. Resulting from this effort are the growing number of
+ontology matching systems in development [8,7,37] and the large mapping repositories
+that have been created (e.g., [2,10]).
+
+P. Mika et al. (Eds.) ISWC 2014, Part II, LNCS 8797, pp. 1732, 2014.
+c Springer International Publishing Switzerland 2014
+
+D. Faria et al.
+
+One such repository, BioPortal [10,33], is a coordinated community effort which
+currently provides access to more than 370 biomedical ontologies and over 12 million mappings between them.1 While not all BioPortal ontologies were originally OWL
+ontologies (e.g., some were developed in OBO format2), many have been (or can be)
+converted to OWL [15]. Mappings in BioPortal are either generated automatically by
+a sophisticated lexical matcher [13] or added manually by domain experts through the
+Web interface or the REST APIs [29].
+
+OWL ontologies have well-defined semantics [4] and thus the integration of independently developed ontologies via a set of mappings (i.e., an alignment) may lead to
+logical errors such as unsatisfiablities [25]. BioPortal, however, explicitly supports the
+idea that alternative (i.e., created for different purposes) mapping sets may co-exist and
+that they could potentially contradict each other [29].
+
+While it is true that many logical errors in alignments are caused by incompatibilities
+between the ontologies they map [19,31], some may be caused by erroneous mappings.
+Furthermore, logical soundness may be critical to some semantic web applications that
+integrate two or more ontologies [31]. For these reasons, we consider that it would be
+advantageous to enrich BioPortal mappings with annotations about potential logical
+conflicts with other mappings. This would improve the usability of BioPortal mappings
+for semantic web applications and domain users, and facilitate the identification of erroneous mappings and potential errors in the ontologies themselves.
+
+In this paper we quantify the logical errors in the BioPortal mappings among several
+ontologies by applying mapping repair algorithms. Furthermore, we manually analyze a
+subset of the identified conflicting mappings in order to qualify the causes of the errors.
+Our goal is to show the importance of identifying (and annotating) logical conflicts in
+BioPortal and the role ontology mapping repair algorithms may play in that task.
+
+The rest of the paper is organized as follows: Section 2 describes how mappings
+are represented in BioPortal; Section 3 introduces the concept of mapping repair and
+presents the repair algorithms used in this study; Section 4 details the automatic and
+manual evaluations we conducted and presents and discusses their results; and finally,
+Section 5 presents some conclusions and future work lines.
+
+2 Mappings in BioPortal
+
+Mappings are treated as first-class citizens in BioPortal [29,12], as it enables the query-
+ing, upload, and retrieval of all mappings between all of its ontologies. A survey conducted in 2009 revealed that 33% of BioPortal ontologies had 50% of their entities
+mapped to other ontologies [12], which indicates that BioPortal ontologies are highly
+interconnected.
+
+The number of mappings in BioPortal has grown quickly in recent years, from 30,000
+mappings between 20 ontologies in 2008 [29] to 9 million mappings between 302 ontologies in 2012 [33]. At the time of writing this paper, there were approximately 13
+million mappings between 373 ontologies.
+
+1 BioPortal: https://bioportal.bioontology.org/
+2 http://www.geneontology.org/GO.format.obo-1_4.shtml
+?
+
+?
+
+?
+Mappings in BioPortal are represented as a 4-tuple of the form e1, e2, Rel, Ann,
+where e1, e2 are the URIs of two entities from the vocabulary of two BioPortal ontolo-
+gies, Rel is the semantic relationship between them, and Ann is a set of annotations
+or metadata associated to the mapping. The relation Rel can be of one of the following types:3 skos:exactMatch, skos:relatedMatch, skos:closeMatch, skos:narrowMatch,
+skos:broadMatch. Ann includes, among other details, important provenance information about the mapping such as: origin (e.g., user-defined or alignment system em-
+ployed), application context, creator, and creation date.
+
+According to BioPortal authors [33], the statistics about mapping origin are the fol-
+lowing: (i) 64.96% of the mappings were created by the lexical matcher LOOM [13];
+(ii) 32.48% of the mappings had UMLS [2] as origin; (iii) 2.41% represented mappings between entities with the same URI; (iv) 0.02% came from Xref OBO Mappings;
+(v) finally 0.13% of the mappings were submitted by users.
+
+Mappings between entities with the same URI are labeled skos:exactMatch by Bio-
+Portal, LOOM and UMLS mappings are labeled skos:closeMatch, and Xref OBO Mappings are labeled skos:relatedMatch. User submitted mappings can be labeled with any
+of the relation types listed above.
+
+BioPortal mappings can be retrieved via its REST API, being straightforward to
+
+identify the entities involved in the mapping, its origin, and the source ontologies.4
+
+In this paper, we have focused only on skos:closeMatch mappings, which account for
+the large majority of BioPortal mappings. We represented these mappings as OWL 2
+equivalence axioms since that is typically the semantic relation they convey (the tag
+skos:closeMatch is used to link concepts that can be used interchangeably, at least in a
+given context). Mapping annotations Ann have (optionally) been represented as OWL 2
+axiom annotations. This representation of mappings enables the reuse of the extensive
+range of OWL 2 reasoning infrastructure that is currently available. Note that alternative formal semantics for ontology mappings have been proposed in the literature (e.g.,
+[3,6,28]).
+
+3 Mapping Repair
+The ontology resulting from the integration of O1 and O2 via a set of mappings M,
+may entail axioms that do not follow from O1, O2, or M alone. These new semantic
+consequences can be captured using the notion of deductive difference [24,18], and can
+be divided into desired and undesired entailments. Undesired entailments are typically
+introduced due to erroneous mappings in M. However, even if all mappings in M
+are correct, undesired entailments may occur due to conflicting descriptions between
+the overlapping entities in O1 and O2. Undesired entailment can be divided into two
+groups: entailments causing unsatisfiable classes, which can be easily detected using
+(automatic) logical reasoning; and entailments not causing unsatisfiable classes, which
+require domain knowledge to decide whether they are indeed undesired. In this paper
+we only focus on the first group of undesired entailments.
+
+3 http://www.bioontology.org/wiki/index.php/BioPortal_Mappings
+4 http://data.bioontology.org/documentation#Mapping
+
+D. Faria et al.
+
+A set of mappings that leads to unsatisfiable classes in O1  O2  M is referred to
+
+as incoherent w.r.t. O1 and O2 [26].
+Definition 1 (Mapping Incoherence). A set of mappingsM is incoherent with respect
+to O1 and O2, if there exists a class A in the signature of O1O2 such that O1 O2 |=
+A   and O1  O2  M |= A  .
+
+An incoherent set of mappings M can be fixed by removing mappings from M. This
+
+process is referred to as mapping repair (or repair for short).
+Definition 2 (Mapping Repair). Let M be an incoherent set of mappings w.r.t. O1
+and O2. A set of mappings R  M is a mapping repair for M w.r.t. O1 and O2 if
+M \ R is coherent w.r.t. O1 and O2.
+
+A trivial repair is R = M, since an empty set of mappings is obviously coherent.
+Nevertheless, the objective is to remove as few mappings as possible. Minimal (map-
+ping) repairs are typically referred to in the literature as mapping diagnosis [25].
+
+In the literature there are different approaches to compute a repair or diagnosis for
+an incoherent set of mappings. Early approaches were based on Distributed Description
+Logics (DDL) (e.g. [27,28,30]). The work presented in [30] deserves special mention,
+as it reports on a preliminary coherence evaluation of BioPortal mappings using DDL.5
+The authors, however, emphasized the problems of efficiency of the coherence checking task due to the reasoning complexity of DDL and suggest the use of approximate
+techniques in the future.
+
+Alternatively, if mappings are represented as OWL 2 axioms, mapping repairs can
+also be computed using the state-of-the-art approaches for debugging and repairing
+inconsistencies in OWL 2 ontologies, which rely on the extraction of justifications for
+the unsatisfiable classes (e.g. [36,22,39,18]). However, justification-based technologies
+do not scale when the number of unsatisfiabilities is large (a typical scenario in mapping
+repair problems [16]).
+
+does not guarantee that M \ R
+
+To address this scalability issue, mapping repair systems usually compute an approximate repair using incomplete reasoning techniques (e.g. [17,25,9]). An approximate
+repair R
+is coherent, but it will (in general) reduce
+significantly the number of unsatisfiabilities caused by the original mappings M. In-
+deed, approximate repair techniques have been successfully applied to audit the UMLS
+metathesaurus [19,17].
+
+In this paper, we have applied the approximate mapping repair techniques implemented in LogMap [17,20,21] and AgreementMakerLight (AML) [9,35] to the BioPortal mappings. As described in Section 2, we have represented the BioPortal mappings
+as OWL 2 equivalence axioms. Note that, although both LogMap and AML were originally implemented as ontology matching systems, they can also operate as a standalone mapping repair systems. From this point onwards, we will refer to LogMaps and
+AMLs repair modules as LogMap-Repair and AML-Repair respectively.
+
+5 To the best of our knowledge, no automatic repair was conducted.
+?
+
+?
+
+?
+: approximate mapping repair; CS: identified conflicting sets;
+
+2, Checkset := BuiltCoreFragments(O1,O2,M)
+
+1,O
+
+2, M
+
+: output mappings; R
+
+Algorithm 1. AML-Repair algorithm
+Input: O1, O2: input ontologies; M: input mappings
+Output: M
+MCS: mappings involved in conflicting sets
+1: M := M
+2: R := 
+1, O
+3: O
+4: CS := ConflictSets(O
+5: MCS := MappingsInConflictSets(CS)
+6: CS := CS
+7: while |CS| > 0 do
+8:
+9:
+10: M
+11:
+12: end while
+13: return M,R,CS,MCS
+
+w := SelectMappingToRemove(CS)
+CS := RemoveMapping(CS, w)
+: = M \ {w};
+R := R  {w}
+
+, Checkset)
+
+3.1 Mapping Repair Using AML-Repair
+
+The pseudocode of the algorithm implemented by AML-Repair is described in Algorithm 1. The algorithm is divided in three main tasks:
+
+1. The computation of the core fragments (see [34]) (step 3);
+2. The search for all (minimal) conflicting sets of mappings CS, i.e. mappings that
+
+lead to an incoherence (step 4);
+
+3. The resolution of incoherences using a heuristic to minimize the set of mappings
+4. The algorithm outputs a set of repaired mappings M
+
+, an approximate mapping
+, conflicting sets of mappings CS, and the set of all mappings involved in
+
+removed from every conflicting set (step 8 to 11);
+repair R
+at least one conflicting set MCS.
+
+AML-Repair implementation is based on a modularization of the input ontologies,
+called core fragments, that only contains the necessary classes and relations to detect
+all existing incoherences [34]. This modularization is computed by the BuildCoreFragments method (Step 3 of Algorithm 1), which also computes a minimal set of classes
+(the Checkset) that need to be checked for incoherences.
+
+AML-Repair determines subsumption relations between atomic classes syntactically
+(i.e., without using an OWL 2 Reasoner) and it also considers disjointness axioms between atomic classes. Unlike LogMap-Repair, equivalence mappings are considered
+indivisible units and are never split into two subsumption mappings. Thus, an input
+mapping is either removed or kept in the alignment during the repair procedure.
+
+The ConflictSets method (step 4) returns all mapping sets that will lead to an incoherence by doing a full depth-first search in the core fragments structure for each class in
+the Checkset. This way, AML-Repair determines all minimal sets of mappings, called
+conflicting sets CS, which cause the incoherences. Since conflicting sets are minimal, a
+
+D. Faria et al.
+
+: output mappings; R
+
+PC := P1  P2  M  {true  C}
+sat,M := DowlingGallier(PC)
+if sat = false then
+
+Algorithm 2. LogMap-Repair algorithm based on Horn propositional reasoning
+Input: O1, O2: input ontologies; M: input mappings
+: approximate mapping repair; CG: conflicting groups;
+Output: M
+MCG: mapping average in conflicting groups
+1: M := M
+2: R := 
+3: CG := 
+4: P1,P2 := PropEncoding(O1,O2)
+5: for each C  OrderedVariables(P1  P2) do
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23: end for
+24: MCG := AverageMappingsInConflictGroups(CG)
+25: return M,R,CG,MCG
+
+until Rep = 
+RC := element of Rep with minimum aggregated confidence.
+M := M \ RC
+R := R  RC
+
+CG := CG  {M}
+Rep := 
+rep size := 1
+repeat
+
+for each subset RC of M of size rep size do
+
+sat := DowlingGallier(PC \ RC )
+if sat = true then Rep := Rep  {RC}
+
+end for
+rep size := rep size + 1
+
+end if
+
+conflicting set is resolved if at least one of its mappings is removed. The algorithm also
+keeps the set MCS containing all mappings involved in a conflicting set (Step 5).
+
+AML-Repair aims to minimize the number of removed mappings by determining
+a minimal set of mappings that intersect all conflict sets. Given that computing this
+set is NP-Complete, AML-Repair uses an efficient heuristic procedure that consists of
+iteratively removing the mappings that belong to the highest number of conflicting sets
+(as identified in Step 8 of Algorithm 1), and in case of tie, those that have the lowest
+confidence values. This strategy typically produces near-optimal results.
+
+3.2 Mapping Repair Using LogMap-Repair
+
+Algorithm 2 shows the pseudocode of the algorithm implemented by LogMap-Repair.
+Steps 1-3 initialise the output variables. LogMap-Repair encodes the input ontologies
+O1 and O2 as Horn propositional theories P1 and P2 (Step 4) and exploits this encoding
+to subsequently detect unsatisfiable classes in an efficient and sound way during the
+repair process. The theory P1 (resp. P2) consists of the following Horn rules:
+?
+
+?
+
+?
+ A rule A  B for all distinct classes A, B such that A is subsumed by B in O1
+(resp. in O2); subsumption relations can be determined using either an OWL 2
+reasoner, or syntactically (in an incomplete way).
+ Rules Ai  Aj  false (1  i < j  n) for each disjointness axiom of the form
+ A rule A1  . . .  An  B for each subclass or equivalence axiom having the
+
+DisjointClasses (A1, . . . , An).
+
+intersection of A1, . . . An as subclass expression and B as superclass.
+In Step 5, propositional variables in P1 (resp. in P2) are ordered such that a variable
+C in P1 (resp. in P2) comes before D whenever D is subsumed by C in O1 (resp. in
+O2). This is a well-known repair strategy: subclasses of an unsatisfiable class are also
+unsatisfiable and hence before repairing an unsatisfiable class one first needs to repair
+its superclasses. Satisfiability of a propositional variable C is determined by checking
+satisfiability of the propositional theory PC (Step 6) consisting of (i) the rule (true 
+C); (ii) the propositional representations P1 and P2; and (iii) the current set of output
+mappings M
+(seen as propositional implications). Note that LogMap-Repair splits
+equivalence mappings into two equivalent subsumption mappings.
+
+LogMap-Repair implements the classical Dowling-Gallier algorithm for propositional Horn satisfiability [5,11]. LogMap-Repairs implementation of Dowling-Galliers
+algorithm also records all mappings potentially involved in an unsatisfiability. Thus, a
+call to Dowling-Gallier returns a satisfiability value sat and, optionally, the (overes-
+timated) group of conflicting mappings M (see Steps 7 and 14). For statistical pur-
+poses, the set CG keeps all conflicting groups for the identified unsatisfiable classes
+(Step 9). An unsatisfiable class C is repaired by discarding conflicting mappings for C
+(Steps 10 to 21). Thus, subsets RC of M of increasing size are then identified until a
+repair is found (Steps 12-18). Note that, LogMap-Repair does not compute a diagnosis
+for the unsatisfiable class C but rather the repairs of smallest size. If several repairs of
+a given size exist, the one with the lowest aggregated confidence is selected according
+to the confidence values assigned to mappings (Step 19). Steps 20 and 21 update the
+output mappings M
+by extracting and adding
+RC, respectively. Finally, Step 24 calculates the average number of mappings in each
+identified conflicting group CG.
+Algorithm 2 ensures that P1P2M{true  C} is satisfiable for each C occurring in P1  P2. The propositional encoding of O1 and O2 is, however, incomplete and
+hence the algorithm does not ensure satisfiability of each class in O1O2M
+. Never-
+theless, the number of unsatisfiable classes remaining after computing an approximate
+repair R
+
+and the approximate mapping repair R
+
+is typically small.
+
+4 Evaluation
+
+In order to evaluate the coherence of BioPortal mappings, we manually selected 19 ontology pairs from BioPortal such that (i) each pair had at least 500 mappings listed in
+BioPortal, (ii) at least one of the ontologies in the pair contained disjointness clauses
+between their classes, and (iii) the domain of both ontologies was biomedical. The purpose of the first two criteria is to exclude ontology pairs that are uninteresting from an
+(automatic) mapping repair perspective, whereas the third criterion ensures that we are
+
+D. Faria et al.
+
+Table 1. Ontologies comprising the 19 ontology pairs selected
+
+Ontology
+
+Acronym # Classes
+
+Bone Dysplasia Ontology
+
+Cell Culture Ontology
+
+Experimental Factor Ontology
+
+Human Developmental Anatomy Ontology, timed ver.
+?
+
+?
+
+?
+Cardiac Electrophysiology Ontology
+
+Foundational Model of Anatomy
+
+Mouse Adult Gross Anatomy Ontology
+
+NCI Thesaurus
+
+Online Mendelian Inheritance in Man
+
+Sleep Domain Ontology
+
+SNP ontology
+
+Sequence Types and Features Ontology
+
+Teleost Anatomy Ontology
+Uber Anatomy Ontology
+
+Zebrafish Anatomy and Development Ontology
+?
+
+?
+
+?
+Source
+BioPortal
+BioPortal
+BioPortal
+
+OBO Foundry
+
+BioPortal
+BioPortal
+
+OBO Foundry
+
+BioPortal
+BioPortal
+BioPortal
+BioPortal
+BioPortal
+
+13,817
+14,663
+14,499
+8,340
+81,957
+83,280
+3,205
+105,347
+76,721
+1,382
+2,206
+2,021
+3,372
+
+OBO Foundry
+UBERON 15,773 OBO Foundry
+OBO Foundry
+
+2,955
+
+Table 2. BioPortal mappings for the selected ontology pairs
+
+Ontology Pair Listed Mappings Retrieved Mappings Actual Mappings Unsat. Classes
+
+BDO-NCIT
+
+CCONT-NCIT
+
+EFO-NCIT
+EHDA-FMA
+
+EP-FMA
+EP-NCIT
+MA-FMA
+
+OMIM-NCIT
+
+SDO-EP
+SDO-FMA
+SNPO-SO
+
+UBERON-FMA
+ZFA-CCONT
+
+ZFA-EFO
+ZFA-EHDA
+ZFA-FMA
+ZFA-MA
+ZFA-TAO
+
+ZFA-UBERON
+
+1,637
+2,815
+3,289
+3,731
+79,497
+2,468
+5,491
+5,198
+?
+
+?
+
+?
+2,168
+2,233
+?
+
+?
+
+?
+2,595
+1,240
+1,639
+1,737
+
+1,636
+2,813
+3,287
+2,496
+78,489
+2,465
+
+5,198
+?
+
+?
+
+?
+2,150
+1,932
+?
+
+?
+
+?
+1,809
+?
+
+?
+
+?
+1,524
+
+1,636
+
+2,097 (-19)
+
+2,507
+2,496
+78,489
+
+34,341
+50,304
+60,347
+?
+
+?
+
+?
+2,465 (-1)
+
+14,687 (-1)
+
+5,178
+
+529 (-1)
+2,028 (-1)
+
+1,932
+?
+
+?
+
+?
+1,809
+?
+
+?
+
+?
+1,521
+
+70,172
+?
+
+?
+
+?
+4,753
+?
+
+?
+
+?
+able to manually evaluate the repair results as they lie within our domain of expertise.
+This selection was not exhaustive, as our goal was merely to select a substantial and
+representative set of ontology pairs.
+?
+
+?
+
+?
+MCS, and the approximate repair R
+
+Algorithm 3. Automatic repair evaluation of BioPortal mappings
+Input: O1, O2: two BioPortal ontologies; M: the set of BioPortal mappings between them
+1: Compute all conflict sets of mappings CS, the total number of mappings involved in conflicts
+ See Algorithm 1
+2: Get unsatisfiable classes of O1  O2  M \ R
+3: Compute the conflicting mapping groups CG per unsatisfiability, the average number of mapusing LogMap-Repair system
+
+pings per conflict group MCG, and the approximate repair R
+ See Algorithm 2
+
+4: Get unsatisfiable classes of O1  O2  M \ R
+
+using ELK reasoner
+
+using AML-Repair system
+
+using ELK reasoner
+
+The 15 ontologies comprising these 19 pairs are listed in Table 1. We retrieved the
+latest OWL version of each ontology from BioPortal, except for the ontologies that
+were only available in OBO format. Because AML is currently not set-up to handle
+ontologies in the OBO format, we retrieved the latter from the OBO Foundry6 [38] in
+OWL format (making sure the versions matched those in BioPortal).
+
+We implemented a script that, given a pair of ontologies, uses BioPortals REST API
+to retrieve all mappings between those ontologies. We focused only on skos:closeMatch
+mappings and we represented them as OWL 2 equivalence axioms. We did not consider
+skos:exactMatch mappings since they represent correspondences between entities with
+the same URI, which in OWL ontologies are considered equivalent (even though the
+equivalence between them is not explicitly defined). We also excluded a few mappings
+that had only a null source or involved only one entity.
+
+The mappings between the 19 selected ontology pairs are listed in Table 2. We verified that the number of retrieved mappings did not match the number of mappings
+listed in the BioPortal website, and that sometimes the discrepancy was large (i.e., not
+accounted for by the small fraction of mappings we excluded). BioPortal developers
+confirmed that there is indeed an inconsistency between the metrics and the available
+mappings. Furthermore, in several cases, some of the mappings retrieved pointed to
+classes that were not found in the ontologies (possibly obsolete classes), so the actual
+mappings between the ontologies were less than those retrieved. Additionally, in some
+cases less mappings were found when using the Jena API to read the ontologies (used
+by AML) than when using the OWL API (used by LogMap). The difference between
+the two is shown in parenthesis in Table 2.
+
+Finally, we computed the satisfiability of each alignment with the OWL 2 EL reasoner ELK [23], finding several unsatisfiable classes in 11 of the alignments. We opted
+for ELK for the sake of efficiency, given the size of some of the ontologies. ELK is incomplete and thus the identified unsatisfiabilities represent a lower bound of the actual
+number of such logical errors.
+
+4.1 Automatic Repair Evaluation
+
+For each of the 11 ontology pairs that had incoherent mapping sets (as detected by ELK
+and listed in Table 2), we conducted the evaluation detailed in Algorithm 3. The results
+
+6 http://www.obofoundry.org/
+
+D. Faria et al.
+
+Table 3. Automatic mapping repair using AML-Repair and LogMap-Repair
+
+LogMap-Repair
+
+Ontology Pairs M
+
+AML-Repair
+|CS|
+|MCS|
+1,649 1,374 (84%)
+1,197 1,136 (55%)
+1,731 1,541 (61%)
+
+109 (0.1%)
+307 (12%)
+?
+
+?
+
+?
+22 (2%)
+
+1,636
+BDO-NCIT
+
+2,097
+CCONT-NCIT
+
+2,507
+EFO-NCIT
+
+78,489
+EP-FMA
+
+2,465
+EP-NCIT
+?
+
+?
+
+?
+MA-FMA
+
+5,178
+OMIM-NCIT
+
+SDO-EP
+?
+
+?
+
+?
+UBERON-FMA 1,932
+?
+
+?
+
+?
+ZFA-EFO
+
+ZFA-UBERON
+?
+
+?
+
+?
+Average
+8,777
+
+M: number of BioPortal mappings; |CS|: number of conflict sets; |MCS|: number of distinct
+mappings in conflict sets; |CG|: number of conflict groups; MCG: average number of mappings
+
+|CG| MCG |R| Unsat.
+?
+
+?
+
+?
+3.2
+2.7
+4.3
+11.0
+3.8
+2.0
+10.2
+3.0
+6.3
+2.6
+?
+
+?
+
+?
+3,630
+3,687
+
+|R| Unsat.
+?
+
+?
+
+?
+per conflict group; |R|: repair size in number of mappings (AML) or number of
+
+1,800 1,078 (21%)
+?
+
+?
+
+?
+3 (2%)
+121 (6%)
+11 (3%)
+0 (0%)
+
+518 (22%)
+
+half-mappings (LogMap); Unsat.: unsatisfiable classes after repair.
+
+we obtained are shown in Table 3. Note that LogMap-Repair splits equivalence mappings into two subsumption mappings, so the value of R
+is not directly comparable
+with AML-Repair (the latter should be doubled to compare it with the former).
+
+The incoherence of the repaired mapping sets has been significantly reduced, and in
+many cases completely removed. The one exception was the ZFA-UBERON case, as
+neither AML-Repair nor LogMap-Repair could detect and repair any of the unsatisfiabilities in this alignment. Furthermore, the computed (approximate) repairs were not
+aggressive, as they removed at most 5.7% (AML-Repair) and 7% (LogMap-Repair) of
+the mappings (in the EFO-NCIT case).
+In addition to producing a repair, AML-Repair also identifies the number of conflicting mapping sets CS and the total number of mappings that are involved in at least one
+conflict MCS. For example, in the BDO-NCIT case, AML-Repair identifies 1,649 conflicting sets which involve 84% of the mappings M in this alignment. Given that these
+mappings were leading to 34,341 unsatisfiable classes (see Table 2), the fact that only 53
+equivalence mappings were removed indicates that (at least) some of these were causing several unsatisfiabilities, likely because they were in conflict with multiple other
+mappings.
+LogMap-Repair, on the other hand, identifies groups of potentially conflicting mappings CG (which contain one or more CS) involved in each unsatisfiability, and the
+average number of mappings in each conflicting group MCG. CG represents a lower
+bound of the total number of groups, since LogMap-Repair repairs on-the-fly and removing one mapping may solve multiple unsatisfiabilities. For example, in the BDONCIT case, LogMap-Repair only identifies 125 conflicting groups with an average of
+?
+
+?
+
+?
+3.2 mappings per group. Note that solving the 125 unsatisfiabilities corresponding to the
+conflict groups is sufficient to repair the original 34,341 unsatisfiabilities, which again
+suggests that a few mappings in the conflict groups were causing many of these errors.
+
+4.2 Manual Analysis
+
+To complement the automatic repair evaluation and investigate the causes behind the
+incoherences identified therein, we analyzed manually the mappings removed by AMLRepair and LogMap-Repair (up to a maximum of 100 mappings per ontology pair, and
+in the case of LogMap-Repair, only the cases where the subsumption mappings were
+removed in both directions).
+
+For each removed mapping, we assessed whether it was correct or erroneous (within
+the context of the ontologies). We deemed a mapping to be erroneous if it falls into one
+of the following categories:
+
+1. At least one of the entities it maps is obsolete/retired, as in the mapping: BDO#
+HP 0001596 (Alopecia)  NCIT#C2865 (Alopecia), where the latter class is retired in NCIT.
+2. The entities it maps are not directly related, as in the mapping: BDO#PATO
+0001901 (Back)  NCIT#C13062 (Back), where the former class stands for the
+directional qualifier and the latter stands for the body part.
+
+3. The entities it maps are related but the relationship between them should not be
+modeled as skos:closeMatch, as in the the mapping: BDO#G0000064 (CREBP)
+ NCIT#C17803 (CREB-Binding Protein), which maps entities that are related
+(the gene and corresponding protein) but semantically distinct. Moreover, this mapping conflicts with the correct (protein-protein) mapping: BDO#P000022 (CREB-
+Binding Protein)  NCIT#C17803 (CREB-Binding Protein).
+Additionally, when the removed mapping was deemed to be correct, we analyzed the
+conflict sets CS in which the removed mapping was present (computed by AML-Repair,
+see Algorithm 3) and assessed whether the mappings in conflict with it were correct or
+erroneous. For the purpose of our evaluation, the main issue is not whether the repair
+algorithms remove erroneous mappings, but rather whether any of the unsatisfiabilities
+in which it is involved are caused by erroneous mappings. Thus, if either the removed
+mapping or at least one of its conflicting mappings was erroneous, we attributed the
+cause of removal to a mapping error. If the mapping itself and all of its conflicting
+mappings were correct, we considered the cause of removal to be an incompatibility
+between the ontologies.
+
+The results of our manual analysis are summarized in Table 4. In total, over 40%
+of the mappings removed by both repair systems were indeed erroneous. Furthermore,
+errors in the mappings were the cause of removal of over 60% of the mappings.
+
+We found that category 1 errors (i.e., mappings including obsolete/retired classes)
+were relatively common in all alignments that included NCIT. Furthermore, there were
+two common category 3 error patterns in these alignments: gene-protein matches, and
+human-mouse matches. The former pattern consists of a mapping between a gene and
+its corresponding protein or vice-versa, as exemplified above. The latter pattern consists
+
+D. Faria et al.
+
+Table 4. Manual evaluation of the repaired BioPortal mappings
+
+Ontology Pairs
+
+BDO-NCIT
+CCONT-NCIT
+EFO-NCIT
+EP-FMA
+EP-NCIT
+MA-FMA
+OMIM-NCIT
+SDO-EP
+UBERON-FMA
+ZFA-EFO
+Total
+
+AML-Repair
+
+LogMap-Repair
+
+Analyzed Erroneous Err. Cause Analyzed Erroneous Err. Cause
+?
+
+?
+
+?
+55%
+33%
+53%
+0%
+43%
+100%
+48%
+100%
+0%
+60%
+44%
+
+83%
+62%
+91%
+0%
+71%
+100%
+71%
+100%
+0%
+100%
+71%
+?
+
+?
+
+?
+62%
+43%
+54%
+0%
+60%
+100%
+49%
+N/A
+0%
+75%
+42%
+
+83%
+59%
+93%
+0%
+73%
+100%
+76%
+N/A
+0%
+100%
+62%
+
+of a mapping between a (Human) Health/Anatomy classes and a corresponding NCIT
+Mouse class (from the Mouse Pathologic Diagnoses or Mouse Anatomy Concepts sec-
+tions) which naturally conflicts with the mapping to the main (Human) NCIT sections.
+One example of this pattern is the mapping: BDO#HP 0010786 (Urinary Tract Neo-
+plasm)  NCIT#C25806 (Mouse Urinary Tract Neoplasm). Another pattern of this
+category that occurred in the OMIM-NCIT alignment consists of a mapping between
+a disease/symptom and a corresponding adverse event, such as: OMIM#MTHU023845
+(Neck Pain)  NCIT#C56135 (Neck Pain Adverse Event).
+Regarding category 2 errors, there were few patterns other than number mismatches,
+such as in the mapping: BDO#G0000133 (TBX4)  NCIT#C101638 (TBX3 Gene).
+While the cause of these mismatches was often clear, as in the back example above,
+some defy reason as the case of: EFO#CHEBI 15366 (Acetic Acid)  NCIT#C37392
+(C58 Mouse).
+
+As for incompatibilities between the ontologies, one of the most interesting cases
+is the EP-FMA alignment, which is actually an alignment between the OBO version
+of FMA (which is imported by EP) and the BioPortal version of FMA. Indeed, it was
+surprising to find that the alignment is incoherent, given that all mappings are true
+equivalences. It turns out that there are a few structural differences between the two
+versions of the ontology which cause the incoherences, as some entities are modeled
+as Material Anatomical Entity in the OBO version and as Immaterial Anatomical
+Entity in the BioPortal version (with the latter appearing to be more correct in most
+cases). The same type of structural differences is also behind the incoherences in the
+UBERON-FMA alignment. Also interesting is the OMIM-NCIT alignment, as OMIM
+models diseases as subclasses of the anatomical structures where they occur, whereas
+NCIT models diseases as disjoint from anatomical structures, making it impossible to
+obtain a coherent alignment between the ontologies where both diseases and anatomical
+structures are mapped.
+?
+
+?
+
+?
+4.3 Discussion
+
+The results of our study reveal that many sets of BioPortal mappings lead to logical
+incoherences when taken as a whole, and that many of these incoherences involve erroneous mappings. Thus, adding annotations to BioPortal mappings about potential logical incompatibilities with other mappings would not only improve their usability for
+semantic web applications, which require logical integrity, but also contribute to identify and discard erroneous mappings.
+
+Our study also demonstrates that approximate repair algorithms such as AML-Repair
+and LogMap-Repair can effectively identify most of the logical conflicts in BioPortal
+mappings, as well as the mappings that cause them. Furthermore, unlike complete repair
+algorithms such as those based on DDL [30], AML-Repair and LogMap-Repair are
+feasible in practice (repair times in AML-Repair ranged from 10 seconds to 10 minutes,
+whereas in LogMap-Repair they ranged from 3 to 92 seconds, in a quad-core computer
+with 8 GB allocated RAM). Thus these algorithms could play a pivotal role in the task
+of identifying and annotating conflicts between BioPortal mappings.
+
+Furthermore, in addition to the annotation of existing mappings, AML-Repair and
+LogMap-Repair could be employed to screen newly submitted mappings, so that those
+leading to logical conflicts can be reviewed before being integrated into BioPortal. This
+could effectively preclude the addition of some erroneous mappings, and would enable
+the immediate annotation of the mappings accepted for integration.
+
+Regarding the categories of erroneous mappings found, the category 1 errors (i.e,
+mappings that include retired/obsolete entities) are straightforward to identify and handle automatically, even without the use of repair algorithms. These mappings should
+not be maintained as active mappings in BioPortal given that retired/obsolete entities
+are no longer be considered an active part of the ontologies. However, it makes sense
+to keep track of such mappings, so the best solution would be to annotate the mappings
+themselves as obsolete.
+
+Category 2 errors (i.e., mappings between unrelated classes) should definitely be
+excluded from BioPortal, whereas category 3 errors (i.e., mappings between classes
+that are related but not closely) can be addressed either by exclusion or by changing
+the semantic relationship. For instance, a gene and its corresponding protein could be
+considered skos:relatedMatch rather than skos:closeMatch, although ideally a more descriptive mapping relation should be used. However, if both ontologies describe the
+gene and the protein, at least one ontology describes the relation between them, and
+BioPortal includes both the gene-gene and the protein-protein mappings; then maintaining a gene-protein mapping is semantically redundant.
+
+Although finding category 2 and 3 errors typically requires human intervention, the
+use of mapping repair algorithms is critical to facilitate their detection. Note that, not
+all erroneous mappings necessarily lead to logical conflicts, particularly when the ontologies lack disjointness definitions. Nevertheless, addressing conflict-causing errors
+will surely be a significant improvement, and the common error patterns thus identified
+can be employed to search for (non-conflict causing) errors, even in ontologies that lack
+disjointness restrictions.
+
+The identification of logical conflicts caused by inherent incompatibilities between
+the ontologies is also critical to understand the limits of interoperability. For instance,
+
+D. Faria et al.
+
+integrating OMIM and NCIT requires excluding either mappings between anatomic
+entities or mappings between diseases (depending on the intended application), or ultimately relaxing the disjointness restrictions in the NCIT. Additionally, such incompatibilities may point to modeling errors in the ontologies, as in the EP-FMA case, and
+enable their correction.
+
+5 Conclusions
+
+BioPortal fulfills a critical need of the biomedical community by promoting integration
+and interoperability between the numerous biomedical ontologies with overlapping do-
+mains. However, the different scopes of these ontologies often lead to incompatible
+views of a given domain, placing restrictions on interoperability. Maintaining conflicting mappings may best serve the needs of the community, as a wider mapping coverage
+will satisfy more users and enable more applications. Nevertheless, if BioPortal mappings are to be usable on a large scale, and particularly by automatic applications, then
+identifying those that lead to logical errors is paramount.
+
+Another issue that affects BioPortal are mapping errors, which are inevitable on this
+scale, particularly when most mappings are produced by automated ontology matching
+techniques. Finding and correcting these errors is a daunting task, but one of the utmost
+importance, as they are likely to propagate if used to draw inferences. While not all
+errors cause logical conflicts, many do, and as our evaluation illustrates, identifying
+these enables the discovery of error patterns that can be applied to identify further errors.
+Identifying logical conflicts in BioPortal mappings thus serves the dual purpose of
+improving usability and facilitating error detection. Given that using complete reasoners for this task is unfeasible, due to the scale of BioPortal, approximate mapping repair
+systems such as AML-Repair and LogMap-Repair appear to be the ideal solution. In-
+deed, our study has shown that these systems are both effective and efficient in tackling
+large sets of mappings, and will be even more efficient considering that the goal is only
+to identify conflicts rather than to repair them.
+
+Our proposal is that BioPortal mappings be enriched with annotations about other
+mappings they conflict with, a solution which fits into BioPortals community-driven
+and multiple-perspective approach. While distinguishing mappings errors from incompatibilities will require manual analysis, this is a task that could be carried out gradually
+by the community once mappings are annotated with logical conflicts.
+
+There is, however, one type of error that can be addressed immediately: mappings
+that include obsolete/retired entities. Despite the fact that there are different representations of these entities among BioPortal ontologies, identifying them (and their map-
+pings) should be straightforward to do automatically. We propose that such mappings
+be annotated as obsolete, which would enable BioPortal and its users to keep track of
+them while allowing their automatic exclusion by applications.
+
+Our next step will be to contact BioPortal developers and collaborate with them in
+the process of finding and annotating mappings with information about logical conflicts,
+by applying our repair algorithms to the whole BioPortal.
+
+Acknowledgements. This work was supported by the EU FP7 IP project Optique
+(no. 318338) and the EPSRC project Score!, and by the Portuguese FCT through the
+?
+
+?
+
+?
+SOMER project (PTDC/EIA-EIA/119119/2010) and the LASIGE Strategic Project
+(PEst-OE/EEI/UI0408/2014).
+
+We would like to thank the invaluable help provided by Bernardo Cuenca Grau and
+Ian Horrocks in the development of LogMap-Repair, and by Isabel F. Cruz in the development of AML-Repair.

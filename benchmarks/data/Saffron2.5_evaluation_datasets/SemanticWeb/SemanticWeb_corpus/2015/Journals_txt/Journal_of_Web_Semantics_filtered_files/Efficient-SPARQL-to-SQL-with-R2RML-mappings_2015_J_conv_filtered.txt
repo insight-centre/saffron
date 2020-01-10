@@ -1,0 +1,3536 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+Efficient SPARQL-to-SQL with R2RML mappings
+Mariano Rodriguez-Muro 1, Martin Rezk
+
+KRDB Research Centre, Free University of Bozen-Bolzano, Italy
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Existing SPARQL-to-SQL translation techniques have limitations that reduce their robustness, efficiency
+and dependability. These limitations include the generation of inefficient or even incorrect SQL queries,
+lack of formal background, and poor implementations. Moreover, some of these techniques cannot be used
+over arbitrary DB schemas due to the lack of support for RDB to RDF mapping languages, such as R2RML.
+In this paper we present a technique (implemented in the -ontop- system) that tackles all these issues. We
+propose a formal approach for SPARQL-to-SQL translation that (i) generates efficient SQL by combining
+optimization techniques from the logic programming and SQL optimization fields; (ii) provides a welldefined specification of the SPARQL semantics used in the translation; and (iii) supports R2RML mappings
+over general relational schemas. We provide extensive benchmarks using the -ontop- system for Ontology
+Based Data Access (OBDA) and show that by using these techniques -ontop- is able to outperform well
+known SPARQL-to-SQL systems, as well as commercial triple stores, by several orders of magnitude.
+
+ 2015 Elsevier B.V. All rights reserved.
+
+Article history:
+Received 17 October 2013
+Received in revised form
+9 January 2015
+Accepted 13 March 2015
+Available online 23 March 2015
+
+Keywords:
+
+SPARQL
+
+R2RML
+
+RDB-to-RDF
+
+1. Introduction
+
+In an Ontology-Based Data Access (OBDA) framework, queries
+are posed over a conceptual layer and then translated into queries
+over the data layer. The conceptual layer is given in the form
+of an ontology that defines a shared vocabulary, and the data
+layer is in the form of one or more existing data sources. In
+this context, the most widespread data model for the conceptual
+layer and its matching query language are RDF (the Resource
+Description Framework) and SPARQL. Today, most enterprise data
+(data layer) is stored in relational databases, thus it is crucial
+that OBDA frameworks support RDB-to-RDF mappings. The new
+W3C standard for RDB-to-RDF mappings, R2RML [1], was created
+towards this goal.
+
+R2RML mappings are used to expose relational databases as
+virtual RDF graphs. These virtual graphs can be materialized,
+generating RDF triples that can be used with RDF triple stores,
+or they can also be kept virtual and queried only during query
+execution. The virtual approach avoids the cost of materialization
+and (may) allow to profit from the more than 30 years maturity
+of relational systems (e.g., efficient query answering, security,
+
+ Corresponding author.
+
+E-mail addresses: mrodrig@us.ibm.com (M. Rodriguez-Muro),
+
+mrezk@inf.unibz.it (M. Rezk).
+1 Mariano Rodriguez-Muro is currently working at IBM T.J. Watson Research
+Center.
+
+http://dx.doi.org/10.1016/j.websem.2015.03.001
+1570-8268/ 2015 Elsevier B.V. All rights reserved.
+
+robust transaction support, etc.). One of the most promising
+approaches for on-the-fly query answering over virtual RDF is
+query answering by query rewriting, that is, translating the original
+SPARQL query into an equivalent SQL query. This SQL query is then
+delegated to the DBMS for execution. In order to use the advantages
+provided by the DBMS, the query rewriting technique must
+produce reasonable SQL queries, that is, not excessively large or
+too complex to be efficiently optimized by the DB engine. Thus, the
+query rewriting technique needs to tackle two different issues: (i)
+a query translation problem that involves RDB-to-RDF mappings
+over arbitrary relational schemas, and (ii) a query optimization
+problem. There exist a number of systems and techniques related
+to this problem, such as the ones described in [24], However,
+each of these approaches has limitations that affect critical aspects
+of query answering over virtual RDF. These limitations include
+the generation of inefficient or even incorrect SQL queries, lack of
+formal background, and poor implementations. Moreover, some
+of them lack support for arbitrary DB schemas since they do not
+support RDB to RDF mapping languages, such as, R2RML.
+
+The approach presented in this paper, and depicted in Fig. 1,
+deals with all the aforementioned issues. First, the SPARQL query
+and the R2RML mappings are translated into a Datalog program;
+the Datalog program is not meant to be executed, instead we
+view this program as a formal representation of the query and
+the mappings that we can manipulate and then transform into
+SQL. Second, we perform a number of structural and semantic
+optimizations on the Datalog program, including optimization
+with respect to database metadata. We do this by adapting well
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 1. Proposed approach for SPARQL to optimized SQL through Datalog with R2RML mappings.
+
+known techniques for optimization of logic programs and SQL
+query optimization. Once the program has been optimized the final
+step is to translate it to relational algebra/SQL, and to execute it
+over the relational database. The technique presented in this paper
+is able to deal with all aspects of the translation, including URI
+and RDF Literal construction, RDF typing, and SQL optimization.
+This technique has been implemented in the -ontop- system2 for
+OBDA, a mature open source system that is currently being used in
+a number of projects and that currently outperforms other similar
+systems, sometimes by several orders of magnitude. -ontop- is
+available as a SPARQL endpoint, as a OWLAPI and Sesame query
+engine and as a Protege 4 plugin.
+
+The contributions of this paper are four: (i) a formal approach for SPARQL-to-SQL translation that generates efficient SQL
+by adapting and combining optimization techniques from logic
+programming the query optimization; (ii) a rule based formalization of R2RML mappings that can be integrated into our technique to support mappings to arbitrary database schemas; (iii)
+a discussion of the SQL features that are relevant in the context
+of SPARQL-to-SQL systems and that should be avoided to guarantee good performance in todays relational engines, together
+with experiments that validate these observations; (iv) an extensive evaluation comparing -ontop- with well known RDB2RDF
+systems and triple stores, showing that using the techniques
+presented here -ontop- can outperform them.
+
+The rest of the paper is organized as follows: In Section 2 we
+briefly survey other works related to SPARQLSQL translation. In
+Section 3 we introduce the necessary background. In Section 4
+we present the core technique for translation of SPARQL to SQL.
+In Section 5 we show how to incorporate R2RML mappings into
+our approach. In Section 6 we provide a discussion on the SQL
+features that degrade performance of query execution. In Section 7
+we describe how to optimize our technique with respect to the
+issues discussed in Section 7 by applying techniques from logic
+programming and SQL query optimization. In Section 8 we provide
+an evaluation of the performance of the technique. In Section 9 we
+conclude the paper. All proofs are given in the Appendix.
+
+2. Related work
+
+In this section we briefly survey related works regarding
+SPARQL query answering. We focus on two different but closely
+related topics: RDF stores and SPARQL to SQL translations.
+RDF stores. Several RDF stores, such as RStar [5] and Virtuoso
+6.1 [6], use a single table to store triples. This approach has the
+advantage that it is intuitive, flexible, and the mappings between
+the conceptual and data layer (if needed) are trivial. On the
+other hand such approach cannot use the known optimizations
+developed for normalized relational DBsmany of which are
+currently used in -ontop-. Our approach uses existing relational
+databases together with R2RML mappings to obtain a virtual
+representation of the RDF graph. Virtuoso 7 also provides columnwise compressed storage [7], which may be much faster than
+
+2 http://ontop.inf.unibz.it/.
+
+traditional row stores. -ontop- (and any other general SPARQL-to-
+SQL techniques) may also benefit from the performance of columnstores that support SQL, e.g., MonetDB.
+
+In addition to the RDF stores mentioned above, we explore
+the commercial RDF stores Stardog and OWLIM more in detail in
+Section 8.
+
+Stardog3 is a commercial RDF database developed by Clark &
+Parsia that supports SPARQL 1.1. Although it is a triplestore, Stardog uses query-rewriting techniques [8] to perform reasoning.
+
+OWLIM4 (renamed GraphDB) is a commercial triplestore
+developed by Ontotext that allows to query, reason, and update
+RDF data.
+SPARQL-to-SQL. Regarding SPARQL-to-SQL translations, there
+have been several approaches in the literature [24]. In addition
+one can also include here translations from SPARQL to Datalog
+[911] given that: (i) SPARQL (under set semantics) has the
+same expressive power of non-recursive safe Datalog with default
+negation [11]; and (ii) any recursion-free safe Datalog program
+is equivalent to an SQL query [12]. The work in [9] extends and
+improve the ones in [10,11] by modeling SPARQL 1.1 (under
+bag semantics, where duplicates are allowed), modeling non-safe
+queries,5 and modeling the W3C standard semantics of the SPARQL
+Optional operator. Since [10] was published before the publication
+of the SPARQL standard specification, the semantics presented
+there is not compliant with the current SPARQL semantics
+specification. To keep the presentation simple, in this paper we will
+use the academic set semantics of SPARQL, as in [13,10,11]. We
+build and re-use several results from the works mentioned above,
+however we extend this line of research in several ways. First,
+we include R2RML mappings in the picture; second, we provide
+a (concrete) SQL translation from the Datalog program obtained
+from the input query; and third, we optimize and evaluate the
+performance of this approach. It is worth noticing that not any SQL
+query correctly translated from the Datalog program is acceptable,
+since (i) one has to deal the mismatch between types in SPARQL
+and SQL; and (ii) the syntactic form of SQL queries can severely
+affect their performance.
+
+In [2] the authors introduce an SPARQL-to-SQL translation
+technique that focuses in the generation of efficient SQL queries.
+By efficient queries, we mean queries that result in efficient query
+plans when executed by the DB engine. The work in [2] has an
+objective similar to ours, however, it is different in that [2] covers
+a smaller fragment of SPARQL 1.0 and the technique lacks formal
+semantics, i.e., lacks proofs of soundness and completeness of the
+approach. In addition, the technique in [2] relies on a mapping
+language that lacks support for URI templates and is less expressive
+than R2RML.
+
+In [3] the authors propose a translation function that takes a
+query and two many-to-one mappings: (i) a mapping between the
+triples and the tables, and (ii) a mapping between pairs of the form
+
+3 http://stardog.com/.
+4 http://www.ontotext.com/.
+5 Non-safe queries: queries with filter expressions that mention variables that do
+not occur in the graph pattern being filtered.
+
+(triple, pattern, position) and relational attributes. Compared to that
+approach, -ontop- allows much richer mappings, in particular the
+W3C standard R2RML [1]. Moreover, the approaches in [3] assume
+that the underlying relational DB is denormalized, and stores RDF
+terms. The work in [3] was published before the publication of
+the SPARQL standard specification, thus the semantics used for
+the translation is outdated. The two semantics deviate in the
+definition of the Optional algebra operator. In SPARQL 1.1, the
+Optional operator has a non-compositional semantics with respect
+to the filter expression in the second argument. The work in [3]
+was recently extended in [14] to include R2RML mappings in
+the picture. However, [14] did not update the semantic of the
+Optional algebra operator. In [2,3] the authors present an adhoc evaluation with a small dataset. The work described in [4]
+also proposes a SPARQLSQL translation, but exhibits several
+differences compared to our approach: it uses non-standard SQL
+constructs, it does not formally prove that the translation is correct,
+and it lacks empirical results testing the proposed approach with
+real size DB. Ultrawrap uses a view-based technique for translating
+SPARQL to SQL [15]; however the optimization techniques used
+in the system appear to fail in several scenarios (see Section 6),
+for instance, when the mapping language allows arbitrary URI
+templates (such as R2RML), when the templates do not use keys, or
+when the SPARQL query is translated into an SQL query with nested
+UNIONs. In addition, the mappings generated by Ultrawrap have a
+pre-defined structure, while the mappings we discuss in this paper
+are general and defined by the user, i.e. as required by the R2RML
+standard. Furthermore, [15] does not describe how optimizations
+are performed.
+
+We are also aware of other (non-published) techniques used
+in commercial and open source SPARQL-to-SQL engines, such as,
+D2RQ and VirtuosoRDF Views. We empirically show in Section 8
+that the translation provided in this paper is more efficient than
+the ones implemented in those systems.
+
+Several of these approaches have also discussed different optimizations to obtain more efficient SQL queries. We summarized
+the most relevant ones to this work in Fig. 2. In Section 6 we described in detail the different optimizations performed by -ontop-.
+It is worth noticing that although when we say that a system does
+not perform a given optimization, we mean that such optimization has not been published as part of the system (to the best of
+our knowledge). In addition, when we say that a system (beside -
+ontop-) performs an optimization, it means that there is a publication that mentions it. However, often articles such as [15,14] cover
+very briefly these topics omitting important details and issues that
+are critical for performance. For instance, [14] does not tackle URI
+templates in the optimization section, and [15] presents a technique that cannot remove string concatenation from JOIN conditions when keys are missing or when the involved URI templates
+have different arity.
+
+Note 1. After the first submission of this paper several papers about
+SPARQL-to-SQL were published, such as, [16] [17] and [18].
+
+3. Preliminaries
+
+In this section we review the material required for the presentation of the core SPARQL-to-SQL technique and the optimization
+techniques.
+
+3.1. Logic programs
+
+We start by reviewing basic notions from standard logic programming [19] needed in following sections. Intuitively, a rule is a
+logic statement of the form:
+If condition A holds then conclude B.
+
+(1)
+
+Fig. 2. Optimizations presented in the OBDA literature.
+
+Next we present the formal definitions.
+Syntax. The language L in traditional logic programming consists
+of:
+ A countably infinite set of variables V.
+ A countably infinite set of function symbols F , where constants
+are treated as 0-arity function symbols.
+ A countably infinite set of predicates P .
+ The symbols {,,,, not}
+Terms and atoms are defined as usual in first order logic. We denote
+the set of all atoms in the language as A. Atoms will be also called
+positive literals. The symbol not will be used for default negation. A
+literal is either an atom or its negation. Literals that do not mention
+not are said to be not -free. Otherwise we say they are not -literals.
+A logicprogram is a collection of statements (called rules) of the
+
+As standard convention, (2) will be simply written as:
+
+form
+x: (l0  l1    lm  not lm+1    not ln)
+(2)
+where each li is a literal, l0 is not -free, and x are all the variables
+mentioned in l0 . . . ln. The literal l0 is called the head of the rule. The
+set of literals {l1, . . . , ln} is called the body of the rule. If the body
+is empty, then  can be dropped, and the rule is called a fact. We
+may also use the term clause to refer to a rule or a fact.
+Given a rule r of the form (2), the sets {l0}, {l1 . . . lm},
+and {lm+1 . . . ln} are referred to as head(r), pos(r) and neg(r)
+respectively. The set lit(r) stands for head(r)  pos(r)  neg(r).
+l0  l1, . . . , lm, not lm+1, . . . , not ln.
+(3)
+We may also replace the symbol  by :-. An expression  a rule,
+a program, or a literal  is called ground if it does not contain any
+variable.
+ X: l1    lm
+(4)
+where l1, . . . , lm are literals and  X are all the variables mentioned
+in l1, . . . , lm. The existential quantifier is usually omitted and
+comma is used often in lieu of the conjunction symbol .
+Stable model semantics for Logic Programs. In this section, we review
+the main concepts of stable model semantics [20]. Intuitively, a
+stable model of a program is a set I of atoms such that: (i) for every
+rule in the program, if the condition of the rule is satisfied by I, then
+the conclusion of the rule is in the model; and (ii) I is minimal in
+the sense that removing an atom from I would violate some rule in
+the program.
+
+Queries are statements of the form
+
+For the sake of simplicity, we assume that logic rules are of the
+form (3) and ground. Lifting to the non-ground case is done in a
+standard way.
+
+The Herbrand universe, U, is just the set of all constants in the
+language L. The Herbrand base, B, is a set of all ground literals in
+the language. Note that the Herbrand universe and Herbrand base
+are infinite, fixed, and depend only on the language L.
+
+Definition 1 (Herbrand Interpretation). A Herbrand interpreta-
+tion, M, is a consistent subset of the Herbrand base. 
+
+Observe that under stable model semantics, interpretations are
+2-valued. Satisfaction of a formula  by Herbrand interpretation,
+M, denoted M |	 , is defined as follows:
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+ M |	 l, where l is a (not -free) literal, iff l  M.
+ M |	 1  2, iff M |	 1 and M |	 2.
+ M |	 not , iff it is not the case that M |	 .
+ M |	 r, where r is a ground rule of the form (3), iff l0  M
+whenever M |	 l1  . . . lm and M |	 not (lm+1  . . . ln).
+Given a not -free program , we write M |	  if M |	 r for
+every rule r  . In this case we say that M is a stable model
+(a.k.a. answer set) of . It is known that every not -free program
+ has a unique least model [21]a model M0 such that for any
+other model N of , l  M0 implies l  N for any l  B.
+To extend the definition of stable model (answer set) to
+arbitrary programs, take any program , and let I be a Herbrand
+interpretation in L. The reduct,  (S), of  relative to a subset of
+the Herbrand Base S is obtained from  by first dropping every
+rule of the form (3) such that {lm+1, . . . , ln}  M = ; and then
+dropping the{lm+1, . . . , ln} literals from the bodies of all remaining
+rules. Thus  (M) is a program without default negation.
+
+Definition 2 (Stable Model). A Herbrand interpretation M is a
+stable model for  if M is an answer set for  (M).
+
+Observe that not every program has stable models, for instance,
+
+the following rule has not stable model.
+p  not p.
+
+Definition 3 (Entailment). A program  entails a ground literal l,
+written  |	 l, if l is satisfied by every stable model of .
+
+Let  be a program and q a query. (for simplicity we assume
+that q is a not -free literal), we say that the program s answer to
+q is yes if  |	 li for every i = 1 . . . m, no if  |	 not li for some
+i = 1 . . . m, and unknown otherwise.
+Partial evaluation. Partial evaluation is a logic programs technique
+in which, given a logic program , one computes a new program
+ that represents the partial execution of . This technique is
+used to either iteratively simplify the program to either compute
+the model of  or to obtain a more efficient representation of the
+program. In this paper we use two notions of partial evaluation,
+i.e., partial evaluation with respect to a set of facts (used in the
+proofs of soundness and completeness) and partial evaluation with
+respect to a goal (i.e., query) which we use to optimize our Datalog
+programs for SQL efficiency. We now elaborate on both notions.
+Partial evaluation w.r.t. a goal. Let G be a query (a.k.a. goal) as
+defined in above (c.f. Eq. (4)). Given a program , intuitively the
+partial evaluation of  produces a new program  that represents
+a pre-computation of  needed to answer the goal G. Observe that
+ should still provide sound and complete answers with respect
+to , and that G should run more efficiently for  than for .
+
+The notion of partial evaluation with respect to a goal is built
+on top of several other logic programming notions. We now start
+recalling the basic ones. All of these can be found in [22,23].
+
+Definition 4 (Substitution). A substitution  is a finite set of the
+form {x1/t1, . . . , xn/tn}, where for each i = 1, . . . , n:
+1. xi is a variable,
+2. ti is a term distinct from xi
+3. for each xj (j = i) it holds that xi = xj
+Each element xi/ti is called a binding for xi.
+Definition 5 (Instance). Let  = {x1/t1, . . . , xn/tn} be a substitution and E be an expression. Then E, the instance of E by , is the
+expression obtained from E by simultaneously replacing each occurrence of the variable xi (i = 1, . . . , n) in E by the term ti.
+
+Definition 6 (Unifier). Let S be a nonempty set of expressions
+(terms, atoms or a literals). A substitution  is called unifier of S
+if for every pair of expressions E1, E2  S, it holds that E1 = E2.
+Definition 7 (Most General Unifier). A unifier  of a set of
+expressions S is called most general unifier (mgu) of S if for every
+unifier  of S, every binding in  is also in  .
+
+We note that computing a mgu for a set of expressions can be
+done in linear time [22]. Now we introduce the important notions
+of partial evaluation the we exploit later. All these notions where
+introduced in [24].
+
+Now define how new rules are computed from existing rules, a
+core step in SLD-resolution and the base for the computation of a
+partial evaluation.
+Definition 8 (Goal Derivation). Let G be the goal  A1, . . . , Am,
+. . . , Ak and C be a not -free rule of the form
+A  B1, . . . , Bq.
+Then G is derived from G and C using the most general unifier
+(mgu)  if the following conditions hold:
+ Am is an atom in G, called the selected atom,
+  is a mgu of Am and A, and
+ G is the goal
+ (A1, . . . , Am1, B1, . . . , Bq, Am+1, . . . , Ak)
+where (A1, . . . , An) = A1 , . . . , An and A is the atom
+obtained from A applying the substitution 
+
+That is, a goal derivation is obtained by computing a mgu  between the selected atom and the head of another rule C, replacing
+the selected atom with the body of C, and applying  to the resulting goal.
+
+Now we introduce a key concept, SLD-Trees. That is, the
+structure that represents a full SLDNF-resolution computation for
+a program. This structure is crucial since it allows us to manipulate
+the computation in an abstract way and describe its properties. The
+SLD-Tree nodes are resultants, which are defined next:
+
+Definition 9 (Resultant). A resultant is an expression of the form
+Q1  Q2
+where Qi (i = 1, 2) is either absent or a conjunction of literals. All
+variables in Q1 and Q2 are assumed to be universally quantified.
+
+Definition 10 (SLD-Tree). Let  be a program and let G be a goal.
+Then, a (partial) SLD-Tree of   {G} is a tree satisfying the
+following conditions:
+ Each node of the tree is a resultant,
+ The root node is G0  G0, where G0 = G0 = G (i.e., 0 is the
+empty substitution),
+ Let G0 . . . i  Gi be a node at depth i  0 such that Gi has
+the form Ai, . . . , Am, . . . , Ak, and suppose that Am is the selected
+atom. Then, for each input not -free rule A  B1, . . . , Bq such
+that Am and A are unifiable with mgu i+1, the node has a child
+G12 . . . i+1  Gi+1
+where Gi+1 is derived from Gi and Am by using i+1, i.e., Gi+1 has
+the form
+(A1, . . . , B1, . . . , Bq, . . . , Ak)i+1
+ Nodes that are the empty not -free rule have no children.
+
+Given a branch of the tree, we say that it is a failing branch if
+it ends in a node such that the selected atom does not unify with
+the head of any not -free rule. Moreover, we say that a SLD-tree
+is complete if all non-failing branches end in the empty not -free
+rule.
+Finally, given a node Q   Qn at depth i, we say that the
+derivation of Qi has length i with computed answer , where  is
+the restriction of 0, . . . , i to the variables in G, i.e.,  is the subset
+substitutions in 0, . . . , i such that for each substitution domain
+is a variable in G.
+
+Now we define the notion of the partial evaluation (PE) of an
+
+atom and the partial evaluation of a query.
+
+Definition 11 (Partial Evaluation (PE) of A in P). Let  be a program,
+A an atom, and T a SLD-tree for   { A}. Let G1, . . . , Gr be a
+set of (non-root) goals in T such that each non-failed branch of T
+contains exactly one of them. Let Ri(i = 1, . . . , r) be the resultant
+of the derivation from  A down to Gi associated with the branch
+leading to Gi. Then
+ the set of resultants  = {R1, . . . , Rr} is a PE of A in . These
+resultants have the following form
+Ri = A1  Qi(i = 1, . . . , r)
+where we have assumed Gi = Qi
+
+Definition 12 (Partial Evaluation of P w.r.t. A). Let  be a not -free
+program and A atom, a partial evaluation of  with respect to A is
+a program  obtained by replacing the set of not -free rules in
+ whose head contains A (called the partially evaluated predicate)
+with a partial evaluation of A in .
+For an example of this process see Section 7.
+Partial Evaluation w.r.t. a set of literals. Next we will explain
+how partial evaluation is used to iteratively compute the intended
+model of a program. In the following, we will work with stratified
+programs; these have certain properties that we will use through
+out the paper and we now introduce. Intuitively, a program 
+is stratified if it can be partitioned or split into disjoint strata
+0 . . . n such that: (i)  = 0    n, (ii) 0 is not -
+free, and (iii) all the negative literals in i (0 < i  n) are only
+allowed to refer to predicates that are already defined in i1.
+Intuitively, in a stratified program , the intended model is obtained
+via a sequence of bottom-up derivation steps. In the first step, 
+is split into strata. The first stratum is a bottom part that does not
+contain negation as failure. Since this subprogram is positive, it has
+a unique stable model. Having substituted the values of the bottom
+predicates in the bodies of the remaining rules,  is reduced to a
+program with fewer strata. By applying the splitting step several
+times, and computing every time the unique stable model of a
+positive bottom, we will arrive at the intended model of . Further
+details can be found in [25].
+
+Definition 13 (Splitting Set [26]). A splitting set for a program  is
+any set U of literals such that for every rule r  , if head(r)U =
+ then lit(r)  U. If U is a splitting set for , we also say that U
+splits P. The set of rules r   such that lit(r)  U is called the
+bottom of  relative to the splitting set U and denoted by bU ( ).
+The subprogram  \bU ( ) is called the top of  relative to U. 
+Definition 14 (Partial Evaluation w.r.t. a Set of Literals). The partial
+evaluation of a program  with splitting set U with respect to a set of
+literals X, is the program eU ( , X ) defined as follows. For each rule
+r   such that
+(pos(r)  U)  X and (neg(r)  U)  X = 
+
+put in eU ( , X ) all the rules r that satisfy the following property
+head(r) = head(r)
+pos(r) = pos(r) \ U
+neg(r) = neg(r) \ U. 
+
+Definition 15 (Solution). Let U be a splitting set for a program .
+A solution to  with respect to U is a pair (X , Y ) of literals such
+that
+ X is an stable model for bU ( )
+ Y is an stable model for eU ( \ bU ( ), X )
+ X  Y is consistent. 
+Example 1 ([27]). Consider the following program :
+a  b, not c
+b  c, not a
+c  .
+The set U = {c} splits ; the last rule of  belongs to the bottom
+and the first two rules from the top. Clearly, the unique stable
+model for the bottom of  is {c}. The partial evaluation of the top
+part of  consists in dropping its first rule, because the negated
+subgoal c makes it useless, and in dropping the trivial positive
+subgoal c in the second rule. The result of simplification is the
+program consisting of one rule
+b  not a.
+(5)
+The only stable model for P can be obtained by adding the only
+stable model for (5), which is{b}, to the stable model for the bottom
+used in the evaluation process, {c}.
+Proposition 1 ([26]). Let U be a splitting set for a program . A set
+S of literals is a consistent stable model for  if and only if S = X  Y
+for some solution (X , Y ) of  with respect to U.
+
+3.2. Relational algebra and SQL
+
+Relational Algebra is a formalism for manipulating relations
+(e.g., sets of tuples). It is mainly used as the formal grounds for
+SQL and we will use it to represent SQL queries (there is a direct
+correspondence from one to the other). We now introduce the
+basic notions of relational algebra. The operations in relational
+algebra that takes one or two relations as inputs and produce a new
+relation as a result. These operations enable users to specify basic
+retrieval request.
+
+In this section we use the following notation: r, r1, r2 denote
+relational tables, t, t2 denote tuples, c1, c2 denote attributes,
+v1 . . . vn denote domain elements, p denotes a filter condition, jn
+denotes join condition of the form r1.ci = r2.cj . . . r1.c
+i = r2.c2
+
+and the function col(r) returns the set of attributes of r.
+The following are the relational algebra operators used in this
+paper:
+Union (): This binary operator, written as, r1r2, requires that the
+two relations involved must be union-compatible, that is, the two
+relations must have the same set of attributes. The result includes
+all tuples that are in r1 or in r2.
+r1  r2 = {t | t  r1 or t  r2}.
+Cartesian Product (): This binary operator, written as, r1  r2,
+requires that the two relations involved must have disjoint set of
+attributes. The result includes all tuples that are in r1 or in r2.
+r1  r2 = {t1, t2 | t1  r1 and t2  r2}.
+Difference (\): This binary operator, written as, r1 \ r2, requires
+that the two relations involved must be union-compatible, that is,
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+the two relations must have the same set of attributes. The result
+includes all tuples that are in r1 but not in r2.
+r1 \ r2 = {t | t  r1 and t  r2}.
+Selection ( ): This operator is used to choose a subset of the tuples
+(rows) from a relation that satisfies a selection condition, acting as
+a filter to retain only tuples that fulfills a qualifying requirement.
+p(r) = {t | t  r and p(t)}.
+(r), where
+Rename (): This is a unary operation written as, c1/c2
+the result is identical to r except that the c1 attribute in all tuples
+is renamed to a c2 attribute.
+Projection (): This operator is used to reorder, select and filter
+out attributes from a table.
+c1...ck
+
+(r) = {v1 . . . vk | vk . . . vn  r}
+
+(r) to denote c1/c2
+
+(r), can be encoded as nullttr/c2
+
+In order to ease the presentation, we will often mimic SQL and
+include the renaming in the projection using AS statements. Thus,
+(r). We will also overload
+we write c1 AS c2
+(r) where
+the projection with statements of the form constant AS c2
+constant is null, or an string, or a concatenation of an string and
+an attribute. Observe that this second operation can be easily
+encoded in relational algebra using auxiliary tables. For instance,
+attr(r)\ c2r NullTable
+constant AS c2
+where NullTable is a table with a single attribute nullttr and a single
+null record.
+Natural join ((cid:111)(cid:110)): This is a binary operator written as, r1 (cid:111)(cid:110) r2, where
+the result is the set of all combinations of tuples in r1 and r2 that
+are equal on their common attribute names.
+r1 (cid:111)(cid:110)jn r2 = sc (jn(r1  r2)).
+r2, where
+Left join (
+the result is the set of all combinations of tuples in R and S that
+are equal on their common attribute names, in addition (loosely
+speaking) to tuples in r1 that have no matching tuples in r2.
+r1
+
+jnr2 = (r1 (cid:111)(cid:110)jn r2)
+((r1 \ col(r1)(r1 (cid:111)(cid:110)jn r2))  NullTableattr(r2)\attr(r1))
+where NullTableattr(r2)\attr(r1) is a table with a attributes attr(r2) \
+attr(r1) and a single record consisting only on null values.
+Recall that every relational algebra expression is equivalent to
+
+): This is a binary operator written as, r1
+
+a SQL query. Further details can be found in [28].
+
+3.3. SPARQL
+
+For formal purposes we will use the algebraic syntax of SPARQL
+similar to the ones in [10,11] and defined in the standard.6 How-
+ever, to ease the understanding, we will often use graph patterns
+(the usual SPARQL syntax) in the examples. It is worth noticing,
+that although in this paper we restrict ourselves to SELECT queries,
+in -ontop- we also allow ASK, DESCRIBE and CONSTRUCT queries,
+which can be reduced or implemented using SELECT queries.
+
+The SPARQL language that we consider contains the following
+pairwise disjoint countably infinite sets of symbols: I, denoting
+the IRIs, B, denoting blank nodes, L, denoting RDF literals; and V,
+denoting variables.
+
+The SPARQL algebra is constituted by the following graph
+pattern operators (written using prefix notation): BGP (basic graph
+pattern), Join, LeftJoin, Filter, and Union. A basic graph pattern is a
+statement of the form:
+BGP(s, p, o)
+
+where s  I  B  V, p  I  V, and o  I  B  L  V. In the
+standard, a BGP can contain several triples, but since we include
+here the join operator, it suffices to view BGPs as the result of 
+of its constituent triple patterns. Observe that the only difference
+between blank nodes and variables in BGPs, is that the former do
+not occur in solutions. So, to ease the presentation, we assume that
+BGPs contain no blank nodes. The remaining algebra operators are:
+ Join(pattern, pattern)
+ LeftJoin(pattern, pattern, expression)
+ Union(pattern, pattern)
+ Filter(pattern, expression)
+and can be nested freely. Each of these operators returns the result
+of the sub-query it describes. Details on how to translate SPARQL
+queries into SPARQL algebra can be found in the W3C specification,
+and, in addition, several examples will be presented along the
+paper.
+Note. Converting Graph Patterns.
+It is critical to notice that
+graph patterns are not translated straightforwardly into algebra
+expressions. There is a pre-processing of the graph patterns where
+filter expressions are either moved to the top of graph, or absorbed
+by LeftJoin expressions. Details can be found in the SPARQL 1.0
+specification.7
+
+A SPARQL query is a graph pattern P with a solution modifier,
+which specifies the answer variables, that is, the variables in P
+whose values should be in the output. In this work we ignore this
+solution modifiers for simplicity.
+
+Definition 16 (SPARQL Query). Let P be a SPARQL algebra expres-
+sion, V a set of variables occurring in P, and G a set of RDF triples.
+Then a query is a triple of the form (V , P, G).
+
+We will often omit specifying V and G when they are not relevant
+to the problem at hand.
+
+Example 2. Consider the following SPARQL query Q :
+
+This query is then translated into an SPARQL algebra expression
+
+that has the following tree shape:
+
+where T1, T2 and T3 represent (x, knows, y), (x, email, z), and
+(x, site, w) respectively.
+
+Semantics. Now we briefly introduce the formal set semantics of
+SPARQL as specified in [10] with the difference that we updated
+the definition of the LeftJoin to match the published standard
+specifications. The result is a semantic which is more strict as the
+one in [9] and the standard W3C semantics in the sense that:
+1. We do not allow joins through null values.
+2. We work with set semantics opposed to bag semantics.
+
+6 http://www.w3.org/TR/rdf-sparql-query/#sparqlAlgebra.
+
+7 http://www.w3.org/TR/rdf-sparql-query#convertGraphPattern.
+
+3. We do not actually model the error value of filter expressions.
+Observe that this is not a limitation in practice since, as specified
+by the standard, FILTERs eliminate any solutions that, when
+substituted into the expression, either result in an effective
+boolean value of false or an error.
+
+It is worth noticing that constraints (1) and (2) can be actually
+modeled inside SPARQL by using Select Distinct and adding BIND
+filters to avoid null bindings in the variables occurring in joins and
+filter expressions. This means that we work with a fragment of all
+the possible SPARQL queries, but also implies we can still re-use
+the results in [9] regarding the SPARQL-Datalog translation.
+
+Intuitively, when a query is evaluated, the result is a set of
+substitutions of the variables in the graph pattern for symbols in
+(I L{null}). We now provided the necessary definitions for this
+purpose.
+
+Let Tnull denote the following set (I  L  {null}).
+
+Definition 17 (Substitution). A substitution, , is a partial function
+: V  Tnull.
+The domain of , denoted by dom( ), is the subset of V where  is
+
+defined. Here we write substitutions using postfix notation.
+Definition 18 (Union of Substitution). Let 1 and 2 be substitu-
+tions, then 1  2 is the substitution obtained as follows:
+x(1  2) =
+
+x(1) if x(1) is defined and x(2)  {null, x(1)}
+else: x(2) if x(2) is defined and x(1) = null
+else: undefined.
+
+Definition 19 (Compatibility). Two substitutions 1 and 2 are
+compatible when
+1. for all x  dom(1)  dom(2) it holds that x(1  2) = null.
+2. for all x  dom(1)  dom(2) it holds that x(1) = x(2). 
+Definition 20 (Evaluation of Filter Expressions). Let R be a filter
+expression. Let v, u be variables, and c  B  I  L. The evaluation
+of R on a substitution  returns one of three values {,, } and
+it is defined in Fig. 3. 
+In the following we describe the semantics of the SPARQL algebra.
+Definition 21. Let 1 and 2 be two sets of substitutions over
+domains D1 and D2 respectively. Then
+1  2 = {1  2 | 1  1, 2  2 are compatible}
+1  2 = { | 1  1 with  =  D1D2
+
+or 2  2 with  =  D1D2
+1 R 2 = { |   1 and for all 2  2
+
+either  and 2 are not compatible or 
+and 2 are compatible and R(  2) =  }. 
+
+The semantics of a algebra expression P over dataset G is defined
+
+next.
+Definition 22 (Evaluation of Algebra Expressions).
+ BGP(t) = { | dom( ) = vars(P) and t  G}
+ Join(P1, P2) = P1  (cid:111)(cid:110)  P2 
+ Union(P1, P2) = P1    P2 
+ LeftJoin(P1, P2, R)  =  Filter(Join(P1, P2), R) 
+ Filter(R, P1) = {  P | R = }
+
+where R is a FILTER expression.
+Definition 23 (Evaluation of Queries). Let Q = (V , P, G) be a
+SPARQL query, and  a substitution in  P , then we call the tuple
+V[(V \ vars(P))  null] a solution tuple of Q .
+
+( P1  R  P2 )
+
+3.4. SPARQL to executable Datalog
+
+The following technique allows to translate SPARQL queries
+(and RDF data) into a Datalog program. The technique was
+introduced in [9] and intuitively, works as follows. We take
+the SPARQL algebra tree of a SPARQL query and generate rules
+for each node in the tree, starting from the root. The rules we
+generated for a given node encode the semantics of the operator
+(the node). The head of the rules project the bindings that the
+corresponding SPARQL algebra operator should return, the body of
+the rules implements the operation itself. A program is generated
+by recursively translating each node, and their children, into rules.
+The leafs of the SPARQL algebra trees are always access to the RDF
+data, hence, the corresponding Datalog rules must do the same.
+This is done by defining a ternary predicate named triple that serves
+as container for all the RDF facts. Once the query is translated, all
+RDF triples can be translated into fact rules (tuples for the triple
+relation) and the program can be delegated to a Datalog engine for
+execution.
+
+From this technique, in this paper we will reuse the technique
+to translate SPARQL queries into Datalog, hence, we introduce it
+here. We present a simplified version of the one in [9] since at the
+moment we tackle SPARQL 1.0 and not 1.1. Moreover, to ease the
+presentation, we kept some of the notation used in [10] instead of
+the one in [9].
+
+Before introducing the formal definition, we will give an
+
+example to give the intuition behind.
+Example 3. Consider the following SPARQL query Q in Example 2.
+For convenient reference we reproduce it here:
+
+This query is then translated into an SPARQL algebra expression
+
+that has the following tree shape:
+
+where T1, T2 and T3 represent (x, knows, y), (x, email, z), and
+(x, site, w) respectively.
+To map this algebra expression into Datalog we will create one
+predicate symbol for each operator node in the tree, the predicate
+will have the form ansop where ans stands for answer. Now, if we
+map the dependency graph of these new predicate symbols, we
+would get a tree as follows:
+
+The technique introduced in [9] would then produce the follow-
+
+ing Datalog program.
+ansProject(x, w, z)
+(x, y, w, z)
+ansJoin1
+(x, y)
+(y, w, z)
+(y, z)
+(y, w)
+
+ansBGP2
+ansBGP3
+
+ansJoin2
+
+ansBGP1
+
+:- ansJoin1
+(x, y, z, w)
+:- ansBGP1
+(x, y), ansJoin2
+:- triple(x, knows, y)
+:- ansBGP2
+(y, z), ansBGP3
+:- triple(x, email, z)
+:- triple(x, site, w).
+
+(y, w, z)
+
+(y, w)
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 3. Evaluation of R on a substitution .
+
+Fig. 4. Translation SPARQL-Datalog first presented in [10] and extended in [9].
+
+Note how we have one rule for each operator, and in the rule for
+each operator, we refer to the predicates over which the current
+node depends. For example, since our top Join operation depends
+on the bindings of the leftmost BGP and right most join, the rules
+for ansJoin1 reflect this by making reference to the predicates ansBGP1
+and ansJoin2.
+Now let us proceed with the formal definition. Recall that given
+two tuples of variables V and V, V[V
+ c] means that all the
+variables in V  V are replaced by c in V .
+Definition 24 (SPARQL-Datalog). Let Q = (V , P, G), be a SPARQL
+query. The translation of this query to a logic program Q is
+defined as follows:
+Q = {G}   (V , P)
+where {G} = {triples(s, p, o) | (s, p, o)  G}. The first set of facts
+brings the data from the graph, the second is the actual translation
+of the graph SPARQL query that is defined recursively in Fig. 4. 
+Intuitively, the LT () operator disassembles complex filter
+expressions that includes boolean operators such as , , .
+The LT rewrite proceeds as follows: Complex filters involving 
+are transformed by standard normal form transformations into
+negation normal form such that negation only occurs in front of
+atomic filter expressions. Conjunctions of filter expressions are
+simply disassembled to conjunctions of body literals, disjunctions
+are handled by splitting the respective rule for both alternatives in
+the standard way. Expressions are translated as follows:
+ E = Bound(v) is translated to not v = null,
+ E = Bound(v) is translated to v = null,
+ E = isBlank(v)/isIRI(v)/isLiteral(v) are translated to their
+corresponding external atoms.
+Observe that in rules (2) and (6) prevent null-bindings, and
+
+filter expressions involving null values.
+
+As the original SPARQL-Datalog translations, we require welldesigned queries [10]. This constraint imposes a restriction over the
+variables occurring in LeftJoin (Optional) and Unions operators.
+
+Definition 25 (UNION-Free Well-Designed Graph Pattern). An
+UNION-free query Q is well-designed if for every occurrence of a
+sub-pattern P = LeftJoin(P1, P2) of P and for every variable v occurring in P, the following condition holds: if v occurs both in P2
+and outside P then it also occurs in P1.
+Definition 26 (Well-Designed). A query Q is well-designed if the
+condition from Definition 25 holds and additionally for every
+occurrence of a sub-pattern P = Union(P1, P2) of P and for every
+variable v occurring in P, the following condition holds: if v occurs
+outside P then it occurs in both P1 and P2.
+
+Proposition 2 (Soundness and Completeness [9]). Let Q be a welldesigned SPARQL query and let Q be the Datalog translation of Q.
+Then for each atom of the form answerP (s) in the unique answer set
+M of Q , s is a solution tuple of the subquery P in Q . In addition, all
+solution tuples in Q are represented by the extension of the predicate
+answerQ in M.
+
+3.5. Datalog to SQL
+
+Recall that safe Datalog with negation and without recursion
+is equivalent to relational algebra [12]. From the previous section
+one can see that it is exactly the fragment of Datalog that we
+are working with. Therefore, it follows that any Datalog program
+obtained from the translation of a well-designed SPARQL query can
+translated to SQL.
+
+3.6. R2RML
+
+R2RML is a language that allows to specify mappings from
+relational databases to RDF data. The mappings allow to view
+the relational data in the RDF data model using a structure and
+vocabulary of the mapping authors choice.8
+
+8 http://www.w3.org/TR/r2rml/.
+
+Fig. 5. A well formed R2RML mapping node.
+
+An R2RML mapping is expressed as a RDF graph (in Turtle
+syntax). The graph is not arbitrary, a wellformed mapping consists
+of one or more trees called triple maps with a structure as shown
+in Fig. 5. Each tree has a root node, called triple map node, which is
+connected to exactly one logical table node, one subject map node
+and one or more predicate object map nodes.
+
+Example 4. Let DB be a database composed by the table stud with
+columns [id, name, course] (primary keys are underlined) and
+the table course with columns [id, name]. Let DB contain the
+following data:
+
+id
+
+name
+John
+Mary
+
+course
+
+id
+
+name
+
+
+Suppose that the desired RDF triples to be produced from these
+
+database are as follows:
+
+:stud/20 rdf:type :Student ; :name "John" .
+:stud/21 rdf:type :Student ; :name "Mary" .
+:stud/20 :takes :course/1 .
+:stud/21 :takes :course/1 .
+:course/1 rdf:type :Course ; :name "SWT 101" .
+
+The following R2RML mapping produces the desired triples:
+
+_:m1 a rr:TripleMap;
+
+# First triple map
+
+rr:logicalTable [ rr:tableName "stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ;
+
+rr:class :Student ] ;
+
+rr:predicateObjectMap [ rr:predicate :name ;
+
+rr:objectMap [ rr:column "name"]].
+
+rr:predicateObjectMap [ rr:predicate :takes ;
+
+rr:objectMap [ rr:parentTriplesMap _:m2 ;
+rr:joinCondition [ rr:child "ID"; rr:parent "ID" ]].
+
+_:m2 a rr:TripleMap;
+
+# Second triple map
+
+rr:logicalTable [ rr:tableName "course" ] ;
+rr:subjectMap [ rr:template ":course/{id}" ;
+
+rr:class :Course ] ;
+
+rr:predicateObjectMap [ rr:predicate :name ;
+
+rr:objectMap [ rr:column "name"]].
+
+This R2RML mapping contains two triple maps. Intuitively,
+each triple map states how to construct a set of triples (subject,
+predicate, object) using (i) the data from the logical table (which
+can be a table, view or SQL query), (ii) the subject URI specified by
+the subject map node, and (iii) the predicates and objects specified
+by each of the predicate object map nodes. In this particular case,
+the first 4 triples are entailed by the triple map that starts with
+node _:m1, and the last triple is entailed by _:m2.
+
+Note that the mapping constructs URIs out of values from the
+DB using templates that get instantiated with the data from the
+columns of the logical table. Also, the mapping uses a custom
+vocabulary (:Student, :Course, :takes and :name).
+
+Having introduced the core idea behind R2RML mappings we
+now introduce the core definitions and assumptions of R2RML that
+
+are relevant for the work presented in this paper. For further detail
+we refer the reader to the official R2RML specification.
+
+The logical table of a triple map is a tabular SQL query result that
+is to be mapped to RDF triples. It may be either (i) an SQL base table
+or view, (i) or an R2RML view. A logical table row is a row in a logical
+table.
+
+An SQL base table or view is a logical table containing SQL
+data from a database table or view in the input database and is
+represented by a resource that has exactly one rr:tableName
+property with the string denoting the table or view name.
+
+An R2RML view is a logical table whose contents are the
+results of executing a SQL query against the input database. It is
+represented by a resource with exactly one rr:sqlQuery property
+whose value is a SQL query string.
+
+A logical table has an effective SQL query that produces the results
+
+of the logical table.
+The effective SQL query of a table or view is SELECT * FROM
+{table} where {table} is replaced with the table or view name.
+The effective SQL query of an R2RML view is the value of its
+rr:sqlQuery property.
+
+A triple map specifies how to translate each row of a logical
+table to zero or more RDF triples. Given a row, all triples generated
+from it share the same subject. The triple map has exactly one
+rr:logicalTable property and one subject map that specifies
+how to generate the subject for the triples generated by a row
+of the logical table. Last, a triple map may have zero or more
+predicate object maps specified with the rr:predicateObjectMap
+property. These specifies pairs of predicate maps and object maps,
+that together with the subject generated by the subject map, for
+the RDF triples for each row. Predicate, object and subject maps
+are constructed using term maps. A term map specifies what is
+the RDF term used for a subject, predicate or object and may be
+either a RDF constant (i.e., a URI o RDF Value), a column reference or
+a URI template to indicate how to construct a URI using strings and
+column references. All referenced columns in a triple map element
+must be column names that exists in the term maps.
+
+A subject map may specify one or more class IRIs represented by
+the rr:class property. The value of the property must be a valid
+IRI. A class IRI generates triples of the form s rdf:type i for each
+row in the logical table, where s is the IRI generated by the subject
+map and i is the class IRI specified by the rr:class property.
+
+Triples are generated by a triple map per row, i.e., each row in
+the logical table entails a set of triples. All the triples entailed by
+a row share the same subject. Then for each row we generate the
+following triples (all share the same subject S, as is defined by the
+subjectMap).
+ For each rr:class C connected to the subject, we generate the
+triple S rdf:type C.
+ For each predicate-object map of the triple map, we add the
+triples S P O, where P is the predicate as specified by the
+predicate map and O is the object as specified by the object map.
+For ease of exposition and due to space constraints, we will
+not deal here with RDF types, nor with referencing object maps.
+However, it is possible to extend our technique to deal with these
+features.
+
+4. SPARQL to SQL through Datalog
+
+We now describe the core technique for SPARQL to SQL. The
+translation consists of two steps: (i) translation of the SPARQL
+query into Datalog rules, and (ii) generation of a relational algebra
+expression from the Datalog program. Once the relational algebra
+expression has been obtained, we generate an SQL query by
+using the standard translation of the relational operators into
+the corresponding SQL operators [28]. We now describe steps (i)
+and (ii).
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+4.1. SPARQL to Datalog encoding
+
+The first step of the translation process is generating a Datalog
+program that has equivalent semantics to the original SPARQL
+query. For this translation we use a syntactic variation of the
+translation proposed by [9] and introduced in Section 3.4. The
+original translation was developed in [10,9] with the intention
+of using Datalog engines for SPARQL execution. Our intention is
+different, we will use the rule representation of the SPARQL query
+as means to manipulate and optimize the query before generating
+an SQL query. We will discuss the key differences in our translation
+during the presentation and we will use the same notation for
+readers familiar with [9]. To keep the grounding finite, we only
+allow functional terms that has nesting depth of at most 2.
+
+The original translation takes the SPARQL algebra tree of a
+SPARQL query and translates each operator into an equivalent
+set of Datalog rules. To get an intuition of the process we advice
+the reader to see Example 3 in Section 3. Here, we syntactically
+modify the techniques output to obtain a more compact result
+that (i) uses built in predicates available in SQL and avoid the
+use of negation in rules and the exponential growth present in
+the original technique, (ii) provides a formal ground to ensure
+correctness of the transformation and clearly understand when
+this approach deviates from the official semantics. (iii) can be
+optimized using slight extensions to standard notions of logic
+programming and database theory.
+
+It is critical to notice that we do not change the semantics
+of the Datalog translation, we only produce a more compact
+representation of the same program.
+
+In this section, we assume that RDF facts are stored in a 3-ary
+relation named triple (which can also be seen as a DB table with
+3 columns, s p o). This assumption is the same as in the original
+translation in [10], and we will remove this restriction in the next
+section, when we introduce R2RML mappings. Observe the null
+cannot occur in an RDF triple in the graph, and hence there are also
+no null values in the triple relation.
+We now provide the translation.
+
+Definition 27 (Q ). Let Q = (V , P, G) be a SPARQL query. The
+logic program of Q , denoted Q , is defined as:
+Q = {G}   (V , P)
+where {G} = {triple(s, p, o) | (s, p, o)  G} and  , which is
+defined inductively in Fig. 6, stands for the actual translation of
+the SPARQL algebra query to rules. Expressions are translated as
+follows:
+ E = Bound(v) is translated into isNotNull(v),
+ E = Bound(v) is translated into isNull(v),
+ We will not consider in this paper the expressions for typing
+(isBlank(v), isIRI(v), and isLiteral(v)). However, these
+expressions can be handled easily using our approach.
+ Every occurrence of  in E is replaced by NOT .
+The translation presented in Definition 27 deviates from [9] in
+that it exploits SQL built-ins in the generated rules. In particular,
+the differences are:
+ Rule (4): In [9], the authors translate this operator (c.f. rule (4)
+in Section 3.4) using a set of rules. We encode this set using a
+single rule and the distinguished predicate LeftJoin.
+ Rule (5): In [10], the authors translate filter boolean expressions
+into a set of rules that is exponential in the number of 
+operators (c.f., LT operator). We encode this set in a single rule
+by leaving the boolean expression untouched. In [9] instead, the
+authors translate filter boolean expressions by adding facts that
+simulate filter evaluation, for instance, equals(x, x, true). Clearly
+this is undesirable in our case.
+
+ Boolean expressions: We encode the expressions Bound,
+Bound, and  using the distinguished predicates isNull,
+isNotNull, and NOT .
+We highlight that the semantics of rules (4) and (5) is exactly
+that of the corresponding rules in [9]. Hence, our variation is equivalent to the one in [9] and the soundness and completeness results
+for the SPARQL-Datalog translation still hold (see Appendix).
+
+It is worth noticing that, intuitively, the resulting Datalog
+program can be seen as a tree, where ans1 is the root, and the
+triple atoms and boolean expressions are the leaves. Moreover, the
+trees representing the SPARQL algebra and the Datalog translation
+have very similar structures. The following examples illustrate the
+concepts presented above.
+
+Example 5. Let Q be a SPARQL query asking for the name of all
+students, and the grades of each student by year if such information
+exists, as follows:
+
+Using SPARQL algebra:
+
+The Datalog program, Q , for this query is as follows (note,
+we use numeric subindexes instead of unique names due to space
+constrains):
+ans1(x, y, z, w, u)
+
+:- LeftJoin(ans2(x, y),
+ans3(x, z, w, u), true)
+
+ans2(x, y)
+ans3(x, z, w, u)
+ans4(x)
+ans5(x, y)
+ans6(x, z)
+ans7(z, u, w)
+ans8(w, z)
+ans9(u, z)
+
+:- ans4(x), ans5(x, y)
+:- ans6(x, z), ans7(u, w, z)
+:- triple(x, rdf : type, Student)
+:- triple(x, hasName, y)
+:- triple(x, hasEnrolment, z)
+:- ans8(w, z), ans9(u, z)
+:- triple(z, hasYear, w)
+:- triple(z, hasGrade, u). 
+
+As with the original translation, the dependency graph of the
+predicates in the Datalog program corresponds to the dependency
+graph of the SPARQL algebra operators, as can be seen in the
+following graph.
+
+where each Ti represents triple(x, rdf : type, Student),
+triple(x, hasName, y),
+triple(x, hasEnrolment, z),
+triple(z, hasYear, w) and triple(z, hasGrade, u), respec-
+tively.
+
+4.2. Datalog to SQL
+
+Next we show how to generate a relational algebra expression
+that corresponds to the Datalog program presented above. This is
+
+Fig. 6. Translation Q from SPARQL algebra to rules.
+
+possible because the program we obtain is stratified and does not
+contain any recursion. From this relational algebra expression we
+generate the SQL query as usual. Since Datalog is position-based
+(uses variables) while relational algebra SQL is usually name-based
+(use column names) we apply standard ([28]/Section 4.4) syntactic
+transformations to the program to go from one paradigm to the
+other. These transformations are not particularly interesting, but
+for the sake of completeness we describe them in Appendix C. After
+this transformation, each rule body consists of a single atom since
+joins are made explicit with a distinguished atom Join and every
+boolean expression is added to a Filter atom. Now, we are ready
+to provide the relational algebra translation for a program.
+
+Given a Datalog program Q , the operator[[]]Q
+
+takes an atom
+and returns a relational algebra expression. We drop the subindex
+Q whenever it is clear from the context. We first define how
+to translate ans atoms. Then we define how to translate triple
+atoms and the distinguished Join, Filter and LeftJoin atoms.
+Intuitively, the ans atoms are the SQL projections, whereas Join,
+LeftJoin, and Filter are (cid:111)(cid:110),
+
+and  respectively.
+
+ans(zn)]])
+
+ans(z1)]]    [[bodyn
+
+ans is the atom in the body of the jth rule defining ans.
+
+Definition 28 (Q to SQL). Let Q be a query, ans be defined predicate symbol in Q , P1, P2 any predicates in Q , x,z vectors of
+terms, and E a filter expression. Then:
+[[ans(x)]] = x([[body1
+where bodyj
+[[triple(z)]] = z (triple)
+[[Join(P1( x1), P2( x2), jn)]] = (cid:111)(cid:110)jn(([[P1( x1)]],[[P2( x2)]]))
+[[LeftJoin(P1( x1), P2( x2), ljn)]] = ljn(([[P1( x1)]],[[P2( x2)]]))
+[[Filter(P1( x1), E)]] = E ([[P1( x1)]]). 
+Observe that in the previous definition, if there are null constants
+(or any other constant) in the ans atoms, they are translated as
+statements of the form null AS x in the projections. Recall that
+we are overloading the projection algebra operator to ease the
+presentation.
+
+Example 6. Let Q be the Datalog program presented in Example 5. Then [[ans1(x)]] is as follows:
+
+Here we omit the definitions of the join, leftjoin, and filter
+conditions, and the projections to avoid distracting the reader
+from the core of the translation. The full definitions is given in
+Example 13 in Appendix C.
+
+SQL-compatibility: It is well known that there are some important
+differences between SQL and SPARQL with respect to the scope of
+results. This differences require restrictions on the SPARQL queries
+to guarantee a correct SQL translation. We now elaborate on this.
+We start with an illustrating example.
+
+Example 7. Consider the following SPARQL algebra expression:
+
+LeftJoin(A(x, z), R(x, y), z > 0).
+
+Following the translation presented in [9], we would obtain a
+Datalog program of the following (simplified) form:
+
+:- A(x, z), R(x, y), z > 0
+:- A(x, z), not answer2(x, y, z)
+:- R(x, y), z > 0
+
+answer1(x)
+answer1(x)
+answer2(x, y, z)
+Although the semantics of this program is correct as far as Datalog
+is concerned, the fact that the variable z does not occur in any nonboolean atom in the body of answer2 is a problem when one tries
+to translate that into SQL.
+
+As the original SPARQL-Datalog translations, we require welldesigned queries [9]. This constraint imposes a restriction over the
+variables occurring in Optional and Unions operators. However, in
+order to produce a sound translation to SQL we need to require a
+further restriction  not present in [9]  as shown by the following
+example:
+
+Example 8. Consider the following SPARQL query:
+
+Next, we show the relevant fragment of Q :
+:- LeftJoin(ans4(x1), ans5(x1), x3 < 1)
+:- triple(x1, rdf : type,  : B)
+:- triple(x1, rdf : type,  : C).
+
+ans3(x1)
+ans4(x1)
+ans5(x1)
+
+Observe that using Datalog semantics, the boolean expression
+x3 < 1 works almost as an assignment, since as the program is
+grounded, x3 will be replaced for all the values in the Herbrand
+Base smaller than 1. However, it does not work in the same way
+in relational algebra.
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Here we omit the definitions of asi, fci and ljni since they are not
+relevant for this example. Clearly the relational algebra expression
+shown above is incorrect since T1.s is not defined inside the scope
+of the second left join. This issue arises from the boolean operation
+in Datalog rules involving variables that do not occur in atoms with
+non built-in predicate symbols.
+
+To avoid this issue we require SPARQL queries to be SQL-
+
+compatible, which is defined as follows.
+
+Definition 29 (SQL-Compatible). Let Q be a query. We say that Q is
+SQL-compatible if Q is well-designed, and in addition, Q does
+not contain any rule r where there is a variable v in a boolean
+expression in the body of r such that there is neither a defined
+atom, nor an extensional atom in the body of r where v occurs.
+
+Observe that the previous constraint does not have a major
+impact in real-life queries. Queries in well-known benchmarks
+such as BSBM [29], LUBM [30], FishMark [31], NPD [32], etc. hold
+in this category.
+
+Theorem 1. Let Q be an SQL-compatible SPARQL query, Q the
+Datalog encoding of Q , and [[ansQ (x)]] the relational algebra
+statement of Q . Then it holds:
+t  [[ansQ (x)]]  Q |	 ansQ (t).
+Proof. See Appendix B. 
+
+5. Integrating R2RML mappings
+
+In this section we present a translation of R2RML [1] mappings
+into Datalog rules. This translation allows to generalize our
+SPARQL-to-SQL technique to be able to deal with any relational
+schema. The necessary background needed to understand this
+section can be found in Section 3.6.
+
+In the previous section we used the ternary predicate triple as
+an extensional predicate, that is, a DB relation in which all the
+data is stored (in that particular case, RDF terms). Now when we
+introduce R2RML mappings, triple becomes a defined predicate.
+The rules that define the triple predicate will be generated from the
+R2RML mapping (adding one more strata to the Datalog program).
+The Datalog rules coming from the mappings will also encode the
+operations needed to generate URIs and RDF Literals from the
+relational data.
+
+The objective of our translation R2RML-to-Datalog is to generate a set of rules that reflect the semantics of every triple map in
+the R2RML mapping. Intuitively, for each triple map, we generate
+a set of rules whose bodies refer to the effective SQL query of
+the triple map, and whose heads entail the triples required by the
+R2RML semantics (see Section 3.6).
+
+Before providing the formal definition we present an example
+
+illustrating the idea.
+
+Example 9. Consider the R2RML mapping from Example 4 minus
+the mappings related to courses, the following Datalog rules would
+capture their semantics:
+triple(cc( : stud/, id), rdf : type,  : Student)
+: stud(id, name, course), NotNull(id)
+triple(cc( : stud/, id),  : name, name)
+: stud(id, name, course), NotNull(id), NotNull(name)
+where cc stands for a built-in function that is interpreted as the
+string concatenation operator.
+
+ All shortcuts for constants are expanded,
+ All SQL shortcuts have been expanded,
+ All rr:class definitions are replaced by predicate object maps,
+ All predicate-object maps with multiple predicate or object
+definitions are expanded into predicate-object maps with a
+single predicate and a single object definition,
+ All referencing predicate-object maps have been replaced by a
+new triple map equivalent to the predicate-object map,
+ All triple maps with multiple predicate-object maps have been
+replaced by a set of equivalent triple maps.
+
+These transformations are described in Appendix A.
+
+Next, we define a function that allows to obtain Datalog terms
+and atoms, from R2RML nodes. First, given a term map node t (those
+nodes that indicate how to construct RDF terms), we use tr(t) to
+denote (i) a constant c if t is an constant node with value c, (ii)
+a variable v if t is a column reference with name v, (iii) cc(x)
+if t is a URI template where cc is a built-in predicate interpreted
+as the string concatenation function and x are the components
+of the template to be concatenated (constant strings and column
+references denoted by variables).
+
+Definition 30 (Triple Map Node Translation). Let m be a triple map
+node, let Vt the set of variables occurring in the term map nodes
+in m, let prop the property map node of the mapping m, and obj
+the object map node of prop. Then the mapping rule for m, denoted
+(m), is
+triple(tr(subjectm), tr(prop), tr(obj))
+:-translated_logical_table, NN
+
+and where NN is a conjunctions of atoms of the form NotNull(xi)
+for each variable xi appearing in the head of the corresponding
+rule, and translated_logical_table is (i) A(x1, . . . , xn) if the logic
+atoms, and boolean condition B(y) with y n
+table is a base table or view with name A and arity n, or (ii)
+A1( x1), . . . , An( xn), B(y), that is, a conjunction of table or view
+1 xi if the logic table
+is an SQL query whose semantics can be captured by the body of
+a data log rule, (iii) otherwise Aux(x1, . . . , xn), if the logical table
+is an SQL query of arity n whose semantics cannot be captured in
+Datalog.
+
+Note that the previous definition avoids the generation of RDF
+triples in which null values are involved (as required by the R2RML
+standard). Also, it is important to highlight that processing of
+translated_local_table in the case of arbitrary SQL queries requires
+a system to perform SQL parsing of the SQL queries in the R2RML
+mapping. Providing full details on how to do this goes beyond
+the scope of this paper. However, recall that the semantics of a
+large fragment of SQL can be captured by Datalog rules. When
+the query cannot be translated into Datalog, the translation uses
+auxiliary predicates Aux, that captures the semantics of the logical
+table. By keeping a map between these auxiliary predicates and the
+corresponding SQL query, the SQL generator can then use SQL inline subqueries to generate an appropriate translation.
+
+Last, we also note that a system implementing this technique
+should aim at implementing an SQL parser that is as complete as
+possible, as to be able to avoid the generation of SQL queries with
+subqueries. Since these, as we will discuss in the next section, are
+detrimental to performance.
+
+Now we continue by extending the definitions so that we can
+integrate the SPARQL Datalog translation with the translation of
+the R2RML mappings.
+
+First, the following definitions assume that the R2RML mapping
+
+has been normalized so that:
+
+Definition 31 (R2RML Mapping Program). Let M be an R2RML
+mapping. Then the mapping program for M, denoted (M) is the
+
+set of rules
+M = { (m) | for each triple map node m  M}. 
+
+Now, we can introduce SQL query programs, that is, the program
+that allows us to obtain a full SQL rewriting for a given SPARQL
+query through the R2RML mappings.
+
+Definition 32 (SQL Query Program). Given a SPARQL query Q , and
+Q =
+an R2RML mapping M, an SQL query program is defined as  M
+Q  M.
+
+In order to show the preservation of soundness and completeness as stated by Proposition 2 it is suffices to prove the following:
+
+Lemma 1. Let DB be a database, M be a R2RML mapping for DB and
+G be the RDF graph entailed by M and a DB. Then
+(s, p, o)  G iff m |	 triple(s, p, o) : 
+Proof. See Appendix.
+
+Last, we extend the translation from Datalog to relational
+algebra to be able deal with the rules introduced by the mappings.
+
+Definition 33 (Q to SQL). Let Q be a query, M an R2RML mapping,
+Q . Then [[triple(s, p, o)]] is defined
+and let triple be defined in  M
+next:
+
+[[triple(s, p, o)]] =
+
+
+triple(z1)]]  
+triple(zn)]]
+
+[[body1
+[[bodyn
+[[NULL_table]]
+
+If triple has
+n  1 rules
+defining it in Q
+If triple has
+0 definitions
+
+triple
+
+where bodyj
+is the body of the jth rule defining it; and
+NULL_table is a DB table that contains the same number of columns
+as the number of variables in triple, and 1 single row with null
+values in every column.
+
+Theorem 2. Let Q be an SQL-compatible SPARQL query, M an R2RML
+mapping, Q the Datalog encoding of Q and M, and [[Q]] the
+relational algebra statement of Q . Then it holds:
+t  [[ans1(x)]]  Q |	 ans1(t).
+Proof. The proof
+Lemma 1.
+
+follows immediately from Theorem 1 and
+
+Some features of R2RML that are not discussed here due
+to space constraints, but can easily be added to the presented
+technique are: RDF typing, data errors, default mappings, percent
+encoding. In particular, an important feature of R2RML mappings
+which is not addressed here is inverse mappings. In the -ontop-
+(the system that implements our technique) we have implemented
+a form of default inverse mapping that allows to transform URIs
+that appear in SPARQL queries into the corresponding functional
+terms (e.g., cc(x)). An in-depth extension of our technique to cover
+inverse R2RML mappings will be done on a follow up paper.
+
+6. On SQL performance
+
+We have presented the core of our SPARQL to SQL translation,
+however, as is, the technique produces SQL queries which are
+suboptimal with respect to performance.
+
+Example 10. Consider the following SPARQL query asking for the
+URI and name of all the students.
+
+SELECT * WHERE { ?x a :Student; :name ?y }
+
+together with the following R2RML mappings (in Datalog syntax)
+triple(cc(stud1/id, id), rdf : type,  : Student)
+:-stud1(id, name)
+triple(cc(stud1/id, id),  : name, name)
+:-stud1(id, name)
+triple(cc(stud2/id, id), rdf : type,  : Student)
+:-stud2(id, name)
+triple(cc(stud2/id, id),  : name, name)
+:-stud2(id, name)
+a direct translation of the SPARQL query to SQL would render a
+query similar to query (a) in Fig. 7. This is in fact the kind of queries
+that our technique, as far as it has been presented up to now, will
+generate.
+
+We have observed that queries structured in this way perform
+poorly in most databases (see experiments in this section).
+However, it is very often possible to obtain equivalent queries that
+perform much better, e.g., query (d) in our example.
+
+To arrive to query (d), -ontop- performs a procedure called
+partial evaluation (c.f. Section 3.1), extended with semantic query
+optimization.
+
+The process transforms the query, roughly, through the steps
+shown in Fig. 7. However, this transformations are done to the
+Datalog program, which is easier to manipulate than the algebra
+expression or the SQL query. We will describe this process formally
+in Section 7. Next we will isolate the features of these queries that
+trigger this bad performance, propose optimized alternatives, and
+evaluate their impact on the query execution time.
+
+6.1. Structural analysis of direct SPARQL-to-SQL translations
+
+Consider query (a) in Fig. 7. There are 4 features of this query
+that we highlight as triggers for bad performance:
+ JOINs over URI templates,
+ JOINs of UNION-subqueries,
+ unsatisfiable conditions, and
+ redundant JOINs with respect to keys.
+We will now elaborate on each point, describing why these are
+
+present and what are the alternatives.
+JOINs over URI templates. URI templates in R2RML are usually
+translated as functional terms. We refer as functional terms  in
+the context of SQL  as values that result from a computation,
+e.g., string manipulation, arithmetic operation, etc. Functional
+terms in the context of SPARQL to SQL appear whenever a query
+involves URI templates, and they may appear in SELECT clauses to
+construct URIs, or as terms in boolean conditions of JOIN or WHERE
+clauses. For example,
+
+SELECT name as Y FROM student
+WHERE :stud/|| ID = ":stud/22"
+
+or
+
+SELECT :stud/|| v1.ID as X, name as Y
+FROM student v1 JOIN student v2
+ON stud/|| v1.ID = :stud/|| v2.ID
+Our technique as is produce this kind of terms.
+
+Example 11. Consider the from Example 10 and let cc be a
+function to compute string concatenation and suppose we have
+the following R2RML mappings that includes a URI template in the
+subject position (in Datalog syntax).
+triple(cc(stud/id, id), rdf : type,  : Student)
+:-stud(id, name)
+triple(cc(stud/id, id),  : name, name)
+:-stud(id, name)
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 7. SQL for the SPARQL query and mappings in Example 10. Variations are: (a) SQL queries with UNION-subqueries (b) simplified UNION-subqueries (c) equivalent query
+without subqueries (d) optimal query.
+
+our translation of this SPARQL query to SQL with these mappings
+would produce a query similar to the second SQL query presented
+in this section. In particular, this SQL query is produced form the
+following relational expression9:
+T1.s as X ,T2.o as Y ((cid:111)(cid:110)T1.s=T2.s
+ (stud/id || IDAST1.s,rdf:typeAST1.p,:StudentAST1.o(stud),
+stud/id || IDAST2.s,:nameAST2.p,:nameAST2.o(stud))). 
+
+Evidence that queries with this feature perform poorly has
+been reported for all major databases engines [33,15] and in
+our new experiments (see next section). The reason for the bad
+performance is that query planners are not able to use indexes to
+evaluate the conditions.
+
+At the same time, in the context of SPARQL-to-SQL systems,
+it is often possible to transform a query with expressions over
+functional terms to a semantically equivalent query where the
+function does not appear. For example, the previous query can be
+rewritten as:
+
+SELECT :stud/|| v1.ID as X, name as Y
+FROM stud v1 JOIN stud v2
+ON v1.ID = v2.ID
+
+This alternative queries usually perform significantly better,
+as shown in the next section. However, performing these
+transformations is not trivial, e.g., to arrive to query (c) in Fig. 7
+
+9 Recall that we are overloading the projection algebra operator to ease the
+presentation.
+
+first we need to transform a JOIN of UNIONs into a UNION of JOINs.
+In some cases it is impossible to perform such transformation (see
+our comment on OPTIONAL/LEFT JOIN with UNIONs on their right
+argument).
+
+It is critical to notice that often such optimization is only correct
+in the context of R2RML mappings, for example, the ON expression
+in the following SQL query:
+
+SELECT *
+FROM courseGrade v1 JOIN courseGrade v2
+
+http://course||v1.studid||/||v1.courseid =
+http://course||v2.studid||/||v2.courseid
+can be simplified to the expression
+
+ON v1.studid
+
+= v2.studid AND
+
+v1.courseid = v2.courseid
+
+only if we know that the slash character / does not appear
+in the columns studid and courseid. However,
+the R2RML
+standard does have a restriction on the form of
+the URI
+templates that guarantee this (see safe separator in Section 7.3 in
+http://www.w3.org/TR/r2rml/).
+UNION-subqueries. We refer as UNION-subqueries  in the context
+of SQL  to in-line subqueries with UNION or UNION ALL operators.
+These may appear in any location where a table reference is
+allowed, e.g., in FROM clauses, JOIN operators, IN, etc. As with any
+table reference, columns from the subquery can be referenced to
+impose conditions in WHERE clauses or in ON conditions of JOIN
+operations.
+
+UNION-subqueries in the context of SPARQL-to-SQL techniques
+
+appear in SQL queries due to several reasons.
+
+The first possibility is because the original SPARQL query may
+have UNION operators, which is usually translated as an SQL
+UNION of the translations of the graph patterns involved in the
+SPARQL UNION. This is the case with our basic technique.
+
+The second possibility is the SPARQL-to-SQL technique itself,
+which often translate BGPs in the SPARQL query into a UNION of
+SQL queries. Recall that, intuitively, each BGP gets replaced by a
+subquery that is the union of all the SQL queries derived from
+the R2RML mappings. See for instance query (a) in Example 10.
+Although the technique takes the union of all SQL queries, in
+practice one takes only the SQL queries relevant for the given BGP.
+Finding out the relevant mappings is in general a simple task, just
+by looking at the constants in the SPARQL query and the mappings.
+For example, query (a) in Example 10 can be simplified to query
+(b) by using only mappings for rdf:type :Student and mappings for
+:name to construct the subquery for the first and second BGP of the
+SPARQL query (respectively). This kind of simplification is done by
+most OBDA systems.
+
+However, in the case where there exist multiple mappings for a
+given predicate/class, this simplification cannot avoid the UNION.
+This is a common scenario that appears constantly, particularly
+in scenarios for data integration where multiple tables/queries
+provide relevant data for any given property or class.10 An example
+of this, again, is Example 10 where we have two mappings for
+the class Student and two mappings for the property name. In this
+cases, it is not possible to simplify the query beyond query (b).
+
+This kind of query performs worse than the simplified
+alternative in the form of a UNION of JOIN queries (query (c)),
+mostly because in the second form it is possible to simplify the JOIN
+expressions (as we will show in our experiments).
+
+This transformation is in general non-trivial, especially in the
+presence of functional terms. In particular, UNIONs can never be
+eliminated from the right side of a OPTIONAL operator in SPARQL
+since the OPTIONAL operator is non distributable with respect to
+UNION.
+Unsatisfiable conditions. We distinguish two types of unsatisfiable conditions. The first type, already mentioned in the previous
+section, is related to URI constants in Predicate and Object (Class)
+maps in R2RML mappings. These URIs interact with URI constants
+in Predicate and Object (Class) positions in BGPs of SPARQL queries.
+The second type is related to functional terms, in particular,
+
+those used for URI templates.
+
+The first type yields unsatisfiable conditions as those in query
+(a) in Fig. 7 in which there is a condition that requires that v1.p =
+rdf:type, v1.o = :Student and v2.p =:name holds, but
+the nested UNIONs include subqueries which do not satisfy those
+conditions.
+
+When detected, it allows to go from query (a) to query (b) in
+the same example. As mentioned before, this situation is easy to
+avoid and almost all OBDA system for SPARQL and OWL support it
+(e.g., -ontop-, Ultrawrap, Mastro, Quonto, Requiem).
+
+Here, we focus on detecting the second kind of unsatisfiable
+conditions. Such conditions involve URI templates that participate
+in JOINs. For example:
+
+http://example/data1/ || v1.u1 ||
+http://example/data2/ || v2.u1 ||
+or, the more complex
+
+/ ||
+/ ||
+
+v1.u2 ==
+v2.u2
+
+http://example/ || v1.u1 || /1/ ||
+http://example/ || v2.u1 || /2/ ||
+
+v1.u2 ==
+v2.u2
+
+This kind of conditions arise in data integration scenarios in
+which classes and properties are mapped to multiple tables and
+hence, URI templates are often different to reflect the fact that the
+tables contain object of a different nature.
+
+To detect such unsatisfiable expressions, one needs to go from
+UNION of JOINs to JOIN of UNIONs as in query (c) in the example.
+
+10 As a side note beyond the scope of this paper, this is a recurrent issue when
+query rewriting is used to support RDFS or OWL entailment regimes in SPARQL 1.1.
+
+Fig. 8. Wisconsin Benchmark schema description.
+
+Redundant JOINs w.r.t. KEYs. This situation arises when a SPARQL
+query is translated into a union of JOIN queries in which some
+of these JOINs are redundant w.r.t. primary or foreign keys. The
+situation is relevant only after transforming JOIN of UNIONs into
+UNIONs of JOINs (since keys are defined only over tables), as in
+query (c) from Fig. 7, which can be simplified into query (d) in the
+presence of a primary key over the column ID.
+
+This redundancy arises often because the RDF data model (over
+which SPARQL operates) is a ternary model (s p o) while the
+relational model is n-ary, hence, the SPARQL equivalent of SELECT
+* FROM t on an n-ary table t requires exactly n triple patterns.
+When translating each of these triple patterns, a SPARQL-to-SQL
+technique will generate an SQL query with exactly n-1 self-JOIN
+operations.
+
+It is well known that keeping those redundant JOINs is
+detrimental for performance and a lot of research has been devoted
+to optimizing SQL queries in these cases. The most prominent
+area that investigates this subject is Semantic Query Optimization
+(SQO), from which we borrow techniques to optimize SPARQL
+translations.
+
+6.2. Experiments
+
+In this section we present a series of experiments that
+demonstrate that: (i) the SQL features discussed in Section 6 are
+detrimental to performance; (ii) the alternatives discussed in the
+same section  and obtained by -ontop- through partial evaluation
+ perform better.
+
+We setup an environment based on the Wisconsin Benchmark [34], that is, one of the first benchmarks that aimed at systematically testing the performance of database engines.
+
+Our benchmark defines a single table (which can be used
+to instantiate multiple tables), inspired by original Wisconsin
+Benchmark table. The table, which we now call simple T, contains
+16 attributes as shown in Fig. 8.
+
+The data for each attribute is generated with a distribution that
+allows to compute the degree of selectivity of SQL operations (in
+JOINs with conditions, WHERE clauses, cross products, unions). In
+particular, given a target number of rows N in T, the data for each
+attribute is generated as follows:
+ unique1. Integers from 0 to N (sequential).
+ unique2. Integers from 0 to N (randomly ordered)
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+ stringu1. A 6 character alphabetic string generated from
+unique1.
+ stringu2. A 6 character alphabetic string generated from
+unique2.
+We refer the reader to [34] for details on the algorithm that
+generates stringu1 and stringu2. Using these definitions we
+created databases with 5 tables and 100,000 rows per table. In
+addition we defined unique indexes on each of the four attributes
+above.
+
+In the following sub-sections we describe the queries used in
+our experiments. These queries do not belong to the Wisconsin
+benchmark, they were crafted to evaluate different forms of SQL
+that are relevant in the context of SPARQL-to-SQL translations. All the
+queries and their respective execution times are available online.11
+All experiments were conducted on a HP Proliant server with 24
+Intel Xeon CPUs (144 cores @3.47 GHz), 106 GB of RAM and a 1TB
+15K RPM HD. The OS is Ubuntu 12.04 64-bit edition. Note that all
+queries were ran sequentially, and hence only one core was used at
+a time. This was a conscious choice meant to isolate performance
+of the SQL queries at hand from the capacities of the underlying OS
+and DB engine w.r.t. to parallelism.
+
+The database engines used were MySQL 5.6, Postgres 9.1 and
+DB2 Express-C 10.5. These engines were chosen to represent
+two classes of engines, open source and industrial. All the query
+execution times presented here refer to cold execution (as in, a
+freshly started DB engine and flushed caches).
+Combined case. In this experiment we show that indeed, SPARQL
+translations that combine nested-subqueries,
+JOINs over URI
+templates and unsatisfiable conditions are significantly slower
+than the equivalent optimized queries. That is, queries expressed
+as UNION of JOINs, where JOIN conditions are over table columns
+and which avoid unsatisfiable conditions. For instance:
+
+SELECT v1.subj FROM (
+
+SELECT http://example/data1||/||unique1 as s,
+
+unique1 FROM t1
+
+UNION ALL
+SELECT http://example/data2||/||unique1 as s,
+
+unique1 FROM t2
+
+) v1
+JOIN (
+
+SELECT http://example/data1||/||unique1 as s,
+
+unique1 FROM t1
+
+UNION ALL
+SELECT http://example/data2||/||unique1 as s,
+
+unique1 FROM t2
+
+) v2
+ON v1.s = v2.s
+WHERE v2.unique1 = 666
+against queries of the form
+
+SELECT http://example/data1/||v1.unique1 as s
+
+FROM t1 v1 JOIN t1 v2 ON
+
+v1.unique1 = v2.unique1 WHERE v2.unique1 = 666
+
+UNION ALL
+SELECT http://example/data2/||v1.unique1 as s
+
+FROM t2 v1 JOIN t2 v2 ON
+
+v1.unique1 = v2.unique1 WHERE v2.unique1 = 666 ;
+
+Note that -ontop- aims at generating the latter form of queries.
+In each experiment we evaluated 2 sets of 4 series of queries. In
+one set we evaluated JOINs of UNION queries (JU) where the JOIN
+conditions involve URI templates. In the second set we evaluated
+UNION of JOINs (UJ) where JOIN conditions are expressed over
+plain columns. In each set, each of the 4 series stands for a form
+of JOIN condition. We considered the following 4 cases:
+
+ u1 JOIN on unique1
+ u1, u2 JOIN on unique1 and unique2
+ st1 JOIN on stringu1
+ st1, st2 JOIN on stringu1 and stringu2
+In the cases of JU queries, the JOIN conditions are always of the
+form v1.s = v2.s. However, the inner subqueries construct values
+for s as URIs using string concatenation operations, as would be
+necessary to handle a common URI template, i.e., with a URI prefix,
+and series of values separated by the slash character /. The values
+being concatenated in each series depend on the kind of JOIN we
+want to evaluate. For example, if we are evaluating (st1, st2), the
+concatenation expression is of the form:
+
+http://example/||v1.stringu1||
+
+/ || v2.stringu2
+
+To introduce unsatisfiable conditions we used two different
+
+prefixes for the URI templates in the inner subqueries, that is
+
+http://example.org/data1/
+
+and
+
+http://example.org/data2/
+
+To verify the behavior of the queries w.r.t. to the volume of
+data returned by the query, each series contains 7 queries with
+decreasing degree of selectivity. This was accomplished through
+constraints over the column unique1 in the WHERE clause of the
+query. In particular we used the following (decreasingly selective)
+constraints:
+1. v1.unique1 = 666
+2. v1.unique1 >5000 AND v1.unique1 <6000
+3. v1.unique1 BETWEEN 5000 AND 6000
+4. v1.unique1 >20000 AND v1.unique1 <30000
+5. v1.unique1 BETWEEN 20000 AND 30000
+6. v1.unique1 >10000 AND v1.unique1 <30000
+7. v1.unique1 BETWEEN 10000 AND 30000
+
+This experiment evaluates a total of 56 queries.
+The results of this experiment are shown in Fig. 9. In all cases,
+our optimized queries (dashed lines) outperform the corresponding
+non-optimized queries, often by several orders of magnitude.
+While selectivity of the query does affect the performance of each
+query, it does not seem to affect the difference in performance
+between optimized and not optimized queries. Also, in some cases,
+the type of column being JOINed appears to affect the performance
+of the queries. This is particularly visible in the non-optimized
+queries in MySQL, where queries that JOIN URIs constructed with
+integer values (square and triangle marks) are considerable slower
+than queries that concatenate only strings (circle and crossed
+circle marks). Last, an interesting observation is that indeed, in all
+databases we see different performance for the queries in which
+BETWEEN is used to express ranges (3, 5, 7) instead of inequalities
+(2, 4, 6). In most cases BETWEEN seems to offer better performance.
+Having confirmed the general claim, we now present the
+experiments that allow us to understand this performance
+differences. In particular, we will evaluate the effect of each of the
+features we discussed in the previous section in isolation.
+JOIN over URI templates. In this experiment we compare the
+performance of
+JOIN queries in which the ON condition is
+expressed over plain attributes against that of JOIN queries in
+which the condition is expressed over a string concatenation
+operation as those generated by URI templates. That is, queries of
+the form:
+
+11 https://github.com/marianormuro/onto-wisbench.
+
+SELECT * FROM t1 v1 JOIN t2 v2
+ON t1.stringu1 = t2.stringu1
+
+Fig. 9. Full summary, non-optimal vs. optimal queries. Execution time in milliseconds.
+
+against queries of the form
+SELECT * FROM t1 JOIN t2
+ON http://example.org/ ||
+http://example.org/ ||
+
+t1.stringu1 =
+t2.stringu1
+
+As before, we evaluated 8 series of 7 queries each. Four of these
+series are queries that join on table columns, while half of them
+join on CONCAT operations for URI templates. In particular. The 8
+join conditions we considered are:
+u1
+
+v1.unique1 = v2.unique1
+
+u1, u2
+
+v1.unique1 = v2.unique1 AND v1.unique2 = v2.unique2
+
+st1
+
+v1.stringu1 = v2.stringu1
+
+st1, st2
+
+v1.stringu1 = v2.stringu1 AND v1.stringu2 =
+v2.stringu2
+
+|| u1
+
+http://example.org/ || v1.unique1 =
+http://example.org/ || v2.unique1
+
+|| u1, u2
+
+http://example.org/ || v1.unique1 || / ||
+v1.unique2 = http://example.org/ ||
+v2.unique1 || / || v2.unique2
+
+|| st1
+
+http://example.org/ || v1.stringu1 =
+http://example.org/ || v2.stringu1
+
+|| st1, st2
+
+http://example.org/ || v1.stringu1 || / ||
+v2.stringu2 = http://example.org/ ||
+v2.stringu1 || / || v2.stringu2
+
+As before, the seven queries decreasing degrees of selectivity and
+we use inequalities or BETWEEN to describe intervals (see previous
+section). We evaluated a total of 56 queries.
+
+The results of this experiment are summarized in Fig. 10.
+In general, the results confirm our expectation, i.e., JOINs over
+plain columns outperform the equivalent query with concat. The
+results also show that it does not make a difference if the join
+involves one or two columns, or integer vs. string columns. The
+only exception being DB2 in which JOINs over integer columns
+involving concat operators perform poorly w.r.t. to the rest, and
+where joins with or without concats for the rest of the series appear
+to behave similarly. Note that this good performance in concat
+operations involving only strings is anomalous, We will investigate
+this situation further in a follow-up paper.
+UNION-subqueries. In this experiment we compare the performance of queries in the form of JOIN of UNIONs (JU) against the
+performance of queries that are a UNION of JOINs (UJ). In this case
+we will not mix join conditions (i.e., plain columns vs. concatenation of strings) nor we will involve unsatisfiable conditions. That is,
+we will compare queries of the form
+SELECT * FROM
+
+(SELECT * FROM t1 UNION ALL SELECT * FROM t2) v1
+
+(SELECT * FROM t1 UNION ALL SELECT * FROM t2) v2
+
+ON v1.unique1 = v2.unique1
+WHERE v2.unique1 > 5000 AND v2.unique1 < 6000
+
+against queries of the form
+
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+v1.unique1 = v2.unique1
+WHERE v2.unique1 > 5000 AND v2.unique1 < 6000
+
+UNION ALL
+SELECT * FROM t1 v1 JOIN t2 v2 ON
+
+v1.unique1 = v2.unique1
+WHERE v2.unique1 > 5000 AND v2.unique1 < 6000
+
+UNION ALL
+SELECT * FROM t2 v1 JOIN t1 v2 ON
+
+v1.unique1 = v2.unique1
+WHERE v2.unique1 > 5000 AND v2.unique1 < 6000
+
+UNION ALL
+SELECT * FROM t2 v1 JOIN t2 v2 ON
+
+v1.unique1 = v2.unique1
+WHERE v2.unique1 > 5000 AND v2.unique1 < 6000
+
+As before, we will have 2 sets of series, one for JUs and one for
+UJs. In each of these sets we will have 4 types of joins (u1), (u1,
+u2), (str1) and (str1, str2). The selectivity of the queries will also be
+decreased from query 1 to query 7, as before.
+
+The results of this experiment are summarized in Fig. 11. As
+expected, these results indicate that UNIONs of JOINs outperform
+JOINs of UNIONs.
+
+To further understand the behavior of these queries we
+repeated the experiment now expressing JOIN conditions only
+using concatenation operations as described before. That is, we
+compare queries of the form
+
+SELECT * FROM (
+
+SELECT http://example/|| u1 as s, u1 FROM t1
+UNION ALL
+SELECT http://example/|| u1 as s, u1 FROM t2
+
+) v1
+JOIN (
+
+SELECT http://example/|| u1 as s, u1 FROM t1
+UNION ALL
+SELECT http://example/|| u1 as s, u1 FROM t2
+
+) v2 ON v1.s = v2.s WHERE v2.u1 = 555
+against the equivalent of the form
+
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+http://example/|| v1.u1 = http://example/|| v2.u1
+WHERE v2.u1 = 555
+
+UNION ALL
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+http://example/|| v1.u1 = http://example/|| v2.u1
+WHERE v2.u1 = 555
+
+UNION ALL
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+http://example/|| v1.u1 = http://example/|| v2.u1
+WHERE v2.u1 = 555
+
+UNION ALL
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+http://example/|| v1.u1 = http://example/|| v2.u1
+WHERE v2.u1 = 555
+
+Surprisingly, as we can see from Fig. 12, the result is the
+opposite of the result of the previous experiment. That is, the
+queries expressed as JOINs of UNIONs tend to outperform queries
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 10. Performance of JOIN on concat expressions vs. simple columns.
+
+Fig. 11. UNION of JOINs vs. JOIN of UNIONs. JOINs over table columns. Time in milliseconds, log scale.
+
+expressed as UNIONs of JOINs when JOIN conditions contain string
+concatenation. This indicates that when JOIN are expensive (due
+to string concatenation) it is better not to push the JOIN inside the
+unions (avoid flattening the query).
+Unsatisfiable conditions. In this experiment we isolate the effect
+in performance of unsatisfiable conditions in queries. We focus on
+unsatisfiable conditions on string concatenation, of the form used
+to create URIs as specified by URI templates.
+
+In the first experiment we study the effect of unsatisfiable
+conditions in JOINs of UNIONs. As we mentioned in the previous
+section, unsatisfiable conditions in JOINs of UNIONs often only
+make sense once we consider the query plans of these queries in
+which the DB actually expands the JOIN of UNIONs to a UNION of
+JOINs. For example, in the query
+
+SELECT v1.s FROM (
+
+SELECT http://example/d1/|| u1 as s, u1 FROM t1
+UNION ALL
+SELECT http://example/d2/|| u1 as s, u1 FROM t2
+
+) v1
+JOIN (
+
+SELECT http://example/d1/|| u1 as s, u1 FROM t1
+UNION ALL
+SELECT http://example/d2/|| u1 as s, u1 FROM t2
+
+) v2
+ON v1.s = v2.s
+WHERE v2.u1 = 666
+the condition v1.s = v2.s is only unsatisfiable for half of the
+rows resulting from the cross product involved in the query.
+In particular, it is only unsatisfiable in rows that try to match
+strings of the form http://example/data1|| u1 with strings
+of the form http://example/data2|| u1. In other words, if
+we transform the query into a UNION of JOINs, we obtain the query
+
+SELECT * FROM t1 v1 JOIN t1 v2 ON
+
+http://example/d1/|| v1.u1 =
+http://example/d2/|| v2.u1
+
+WHERE v2.u1 = 666
+UNION ALL
+SELECT * FROM t1 v1 JOIN t2 v2 ON
+
+http://example/d1/|| v1.u1 =
+
+http://example/d2/|| v2.u1
+
+WHERE v2.u1 = 666
+UNION ALL
+SELECT * FROM t2 v1 JOIN t1 v2 ON
+
+http://example/d1/|| v1.u1 =
+http://example/d2/|| v2.u1
+
+WHERE v2.u1 = 666
+UNION ALL
+SELECT * FROM t2 v1 JOIN t2 v2 ON
+
+http://example/d1/|| v1.u1 =
+http://example/d2/|| v2.u1
+
+WHERE v2.u1 = 666
+
+Comparing these queries is very similar to comparing JOIN of
+UNIONs against UNION of JOINs, however, in this case the strings
+created by concatenation do not always match, and hence, the DB
+engine could detect this and optimize the queries accordingly. As
+before, we tested with the 4 different types of join (with concat),
+and decreased the selectivity as usual (7 variations) for a total of
+56 queries.
+
+The results of this experiment where the same (i.e., negligible
+variation) as those in our tests of UNIONs of JOINs against JOIN of
+UNIONs in the presence of string concatenation. This indicates that
+indeed, this kind of unsatisfiable conditions cannot be detected
+and optimized by the database engine, and that a SPARQL-to-SQL
+translation technique would need to perform the optimization.
+Redundant JOINs w.r.t. KEYs. It is well-known that removing
+redundant JOINs improves the performance of SQL queries,
+therefore, we did not evaluate the this scenario.
+Conclusions. The previous experiments confirmed that the SQL
+queries that we call optimized perform considerably better than
+their non-optimized counterparts. All the features we highlighted
+contribute to this performance difference. From the four features
+we listed, the ones that appear to be more critical are the
+presence of conditions over string concatenation functions as well
+as pushing the JOINs into the UNIONs (flattening queries with
+nested subqueries).
+
+However, given that the answer to a SPARQL query should be a
+set of RDF terms (that contain URIs) removing boolean condition
+
+Fig. 12. UNION of JOINs vs. JOIN of UNIONs. JOINs over string concatenation. Time in milliseconds, log scale.
+
+and concatenation operations from the SQL UNIONs is non-trivial.
+This task becomes particularly complex in presence of multiple and
+incompatible forms of templates.
+
+In the following section we present a technique that is able
+to apply all these transformations in a sound way, generating
+optimized queries when it is possible to do so.
+
+7. Optimization through partial evaluation and SQO
+
+Partial evaluation is an optimization technique from logic
+programming. The intuitive idea behind partial evaluation is that,
+given a fixed goal, it is possible to compute variations of a logic
+program which are more efficient to execute. Semantic Query
+Optimization (SQO) is a research area from the fields of Deductive
+Databases and SQL query optimization where the main objective
+is to optimize queries by performing static and semantic analysis
+of queries. In the current section we will show how to use both to
+optimize the SQL query programs produced by our technique to
+avoid the issues discussed in the previous section.
+
+7.1. Partial evaluation for SPARQL-to-SQL
+
+In this Section we show how to use partial evaluation with
+respect to a goal (from now on simply partial evaluation) to
+optimize the SPARQL query programs (see Definition 32) to avoid
+conditions on functional terms, UNION-subqueries and conditions
+on UNION-subqueries. We show how to extend the original
+definitions of partial evaluation as 1. to deal with the nested
+expressions used in our SPARQL-to-Datalog technique, 2. to deal
+with partial evaluations of rules involving LeftJoin, and 3. to stop
+partial evaluations from evaluating rules that are ready to be
+translated into SQL queries. For the original definitions see partial
+evaluation with respect to a goal in Section 3.1.
+
+It is worth noticing that negation only occurs in filter atoms,
+and we use NOT instead of not . Therefore, the program we obtain
+is not -free.
+
+We start by showing that even without extensions, applying
+partial evaluation allows to eliminate all the aforementioned issues
+when the original SPARQL query does not involve OPTIONAL
+clauses.
+
+Given a SPARQL query Q , an R2RML mapping M and its SQL
+query program  M
+Q , we compute a partial evaluation of the atom
+ans1 in  M
+Q and stop when all non-failing branches are formed
+by resultants whose bodies are composed only by database atoms
+(i.e., their predicates stand for database relations) or boolean atoms
+(as in boolean conditions of the query).
+
+Example 12. Consider the SPARQL query and R2RML mappings
+from Example 10. The partial evaluation would start with a root
+resultant of the form
+ans1(x, y):-ans1(x, y)
+
+and would iteratively resolve against  M
+progression of the partial evaluation is shown in Fig. 13(b).
+
+Q (see Fig. 13(a)). The
+Note how in the end of the partial evaluation we only two
+successful branches ending in the resultants r18 and r19, which
+constitute the result of the partial evaluation. Also note that when
+translated into SQL by our technique, these rules generate exactly
+the optimal SQL queries shown in Example 7(d).
+
+The first thing to note is that the partial evaluation process
+is a query answering procedure and filters out options that would
+not generate valid answers. For example, this is what happens
+with r13 in our example when it generates r14 and r15. Note
+that there are 4 candidate rules for the triple in r13, however,
+only two of them unify with the atom due to the presence of
+the constants rdf : type and : Student. We have a similar, but
+stronger situation for the triple atoms in r16 and r17. Again,
+there we have 4 rules that could potentially unify, however, in
+each case, only one rule can actually unify with the atom. In the
+case of r16, we have that only r6 unifies due to the presence of the
+constant : name and the functional symbol cc(: stud1/, id)
+(similar for r17). This makes it so that only rules that can produce
+satisfactory answers are used during the translation process,
+strongly simplifying the output.
+
+The second thing to note is that partial evaluation deals with
+multiple choices by distribution, eliminating unions in the process.
+That is, whenever there are more than one possibility to partially
+evaluate an atom, the definition of partial evaluation forces the
+partial evaluation engine to branch. Hence, all unions are expanded.
+For an example see again the situation with the triple atom in
+r13 where there are 2 rules that unify with the atom, and that
+branch r13 into r14 and r14. This affects not only SPARQL queries
+with UNION, but any situation in which multiple choices may be
+involved, like in our example in which multiple mappings exist for
+a given predicate (common situation in data integration scenarios)
+or when the OBDA system supports entailment regimes for RDFS
+or OWL 2 QL (query rewriting techniques usually introduce new
+rules in the program to cope with entailments).
+
+Last, note that the functional terms introduced by mappings
+(e.g., the concatenation operators) are moved during the derivations from the rules introduced by the mappings, to the head and
+body of the resultants and step by step, all non-database atoms are
+replaced by database atoms. For example, this is what happens in
+r13 in our example when it generates r14 and r15, in both cases the
+triple atom is replaced by a database atom and the derivation process moves the functional terms to locations in the query in which
+those functional terms participate. Moreover, the derivation process gets rid of these functional terms in the end, as can be seen
+from the triple atoms in r16 and r17. This has the strong effect
+that in the end of the process, no conditions are expressed over
+functional terms and these only appear in the head of the queries,
+where they do not affect performance of query execution.
+Extensions for LeftJoin. The original definitions for partial
+evaluations were not capable of dealing with Join or LeftJoin atoms,
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+(a) SQL Query Program  M
+
+Q for the SPARQL query and mappings in Example 10.
+
+(b) Progression of the partial evaluation w.r.t. the goal ans1.
+
+Fig. 13. Partial Evaluation of ans1 in  M
+
+Q . Each block shows the leafs of the non-failing branches of the SLD-Tree.
+
+as required by our translation, since this distinguished atoms have
+a semantics not encoded in the program itself. Recall that LeftJoin,
+for instance, encodes a set of rules. LeftJoin atoms must be handled
+in a way that maintains the correct semantics of the system, in
+particular, we cannot allow the right component of a LeftJoin atom
+to branch into more than one branch (since LeftJoin is a nondistributable operation on the right side relation) and we must
+ensure that if no rules unify with the right side of a LeftJoin, then
+the appropriate bindings to the null constant are generated. Now
+we provide the extensions to the definitions that allow for this to
+happen. We start by extending the definition of goal derivation to
+be able to deal with nested expressions (Join and LeftJoin).
+
+Definition 34 (Goal Derivation if Nested Atoms). Let G be the goal
+ A1, . . . , Join(. . . , Am, . . .), . . . , Ak and C be a program clause of
+the form A  B1, . . . , Bq. Then G is derived from G and C using
+the most general unifier (mgu)  if the following conditions hold:
+ Am is an atom in G, called the selected atom,
+  is a mgu of Am and A, and
+ G is the goal
+ (A1, . . . , Join(. . . , Am1, B1, . . . , Bq, Am+1, . . .), . . . , Ak)
+where (A1, . . . , An) = A1 , . . . , An and A is the atom
+obtained from A applying the substitution .
+Goal derivation of atoms nested in LeftJoins is defined
+
+analogously.
+
+Now we extend the definition of SLD-tree as to (a) avoid
+branching on the right side of a left join, (b) stop the derivation
+when all atoms are database atoms (extensional atoms).
+
+Definition 35 (Partial SLD-tree With Join and LeftJoin). Let  be a
+program and let G be a goal. Then, a (partial) SLD-Tree of   {G}
+is a tree satisfying the following conditions:
+ Each node of the tree is a resultant,
+ The root node is G0  G0, where G0 = G0 = G (i.e., 0 is the
+empty substitution),
+
+ Let G0 . . . i  Gi be a node at depth i  0 such that Gi
+and Am be the selected atom in Gi. Then, for each input clause
+A  B1, . . . , Bq such that Am and A are unifiable with mgu i+1,
+the node has a child
+G1  2 . . . i+1  Gi+1
+where Gi+1 is derived from Gi and Am by using i+1, except when
+Am is the second argument in a LeftJoin atom,
+ Nodes that are the empty clause have no children.
+Given a branch of the tree, we say that it is a failing branch
+if it ends in a node such that the selected atom does not unify
+with the head of any program clause. Moreover, we say that a SLDtree for a SPARQL-to-SQL translation is complete if all non-failing
+branches end in resultants in which only defined atoms (non-
+database atoms) appear only on the right side of LeftJoin atoms.
+
+Correctness of this definition of this extension of partial evaluation in the context of SPARQL-to-SQL translations follows from
+Theorem 4.3 in [24] (which states soundness and completeness of
+partial evaluations) and the following observations:
+1. the definition of goal derivation is equivalent to the original one
+if we consider the way in which we interpret Join and LeftJoin
+atoms (i.e., syntactic shortcuts for a set of rules).
+
+2. extensional atoms are the only atoms that may be grounded in
+SPARQL-to-SQL programs, and only through the data in the DB.
+
+7.2. Semantic query optimization
+
+Semantic Query Optimization (SQO) [35,36] refers to techniques that do semantic analysis of SQL/Datalog queries to transform them into a more efficient form, for example, by removing
+redundant JOINs, to detecting unsatisfiable or trivially satisfiable
+conditions, etc. SQO techniques often focus on the exploitation of
+database dependencies (e.g., SQL constraints) to do this analysis,
+and rely heavily on query containment theory. Most work on SQO
+was developed in the context of rule based formalisms (e.g., Data-
+log) and can be directly applied to our framework.
+
+We will highlight two optimizations that we found critical in
+obtaining the best performance in most situations and that are
+implemented in the -ontop- system. In particular, optimization of
+queries with respect to keys and primary keys, and optimization
+of queries with respect to boolean conditions. In both cases, these
+optimizations are applied during or after the partial evaluation
+procedure.
+Keys and primary keys. Recall that keys and primary keys are a form
+of equality generating dependencies (egd) [28]. That is, a (primary)
+key over a relation r defines a set of dependencies of the form
+1 = yi
+yi
+for each yi
+
+2  r(x, y1), r(x, y2)
+
+2 in y1 and y2, respectively.
+
+1, yi
+
+For example, given a table stud1 as in our previous example, the
+primary key on the first column, id would generate the following
+equality generating dependencies:
+x = x  stud1(x, y1), stud(x, y2)
+y1 = y2  stud1(x, y1), stud(x, y2).
+
+(6)
+(7)
+By chasing the dependencies (e.g., applying the equalities
+to the query) we will be able to either detect unsatisfiable
+queries, i.e., when two different constants are equated, or generate
+duplicated atoms which can be safely eliminated since a query with
+a duplicated atom is always equivalent to the query in which this
+atoms is removed (with respect to the standard query containment
+notions [28]). For example, given the query
+ans1(id1, name):-stud1(id1, name1), stud1(id1, name)
+by chasing egd (7) one obtains the query
+ans1(id1, name):-stud1(id1, name), stud1(id1, name)
+which can be simplified to
+ans1(id1, name):-stud1(id1, name).
+Boolean conditions. Another kind of optimization that can have
+a strong impact on performance is the detection of unsatisfiable
+boolean conditions, or the simplification of queries with respect to
+trivially satisfiable conditions.
+
+Unsatisfiable conditions often arise from the partial evaluation
+process, in particular, when queries contain FILTER expressions
+and mappings involve constants. For example, consider the
+following SPARQL query asking for all people that attend either
+NYC or Columbia universities
+
+SELECT ?x WHERE {
+
+?x :attends ?y.
+FILTER (?y = :NYC ||
+
+?y = :Columbia)
+
+Now consider a mapping for the attends property that states
+that all people from the table stud1 attend Stanford university, as
+follows
+triple(cc(stud1/id, id),  : attends,  : Stanford)
+:-stud1(id, name)
+then we would have that after the partial evaluation process we
+would end up with the following partial evaluation:
+triple(cc(stud1/id, id)):-stud1(id, name),
+OR( : Stanford =  : NYC,  : Stanford =  : Columbia)
+Clearly, this query is empty. However, when translated into SQL
+and executed, few relational DBs would be able to realize this since
+the analysis of arbitrary boolean expressions is beyond the scope
+of most query optimizers.
+as 1 = 1, x = x, etc., which can be simplified or eliminated.
+
+A similar situation arises with trivially satisfied conditions such
+
+Implementing this kind of optimization requires a partial
+evaluation engine that is aware of boolean logic, as well as the
+semantics of some built-in operators such as the concat operator,
+the SPARQL built-in functions and all the arithmetic operators.
+While this kind of optimization is not theoretically very interesting,
+we have found that in -ontop-, this functionality enables the system
+to deal effectively with complex situations in which mappings are
+not trivial and which otherwise would generate slow queries, even
+in commercial database engines.
+
+8. Evaluation
+
+This section provides an evaluation of our SPARQL-to-SQL
+technique implemented in -ontop- and using DB2 and MySQL as
+backends.12 We compared -ontop- with two systems that offer
+similar functionality to -ontop- (i.e., SPARQL through SQL and
+mappings): Virtuoso RDF Views 6.1 (open source edition) and
+D2RQ 0.8.1 Server over MySQL. We also compare -ontop- with three
+well known triple stores: OWLIM 5.3, Stardog 1.2 and Virtuoso
+RDF 6.1 (Open Source). Another system that is relevant in this
+experiments is Ultrawrap [15], however the system is commercial
+and we were not able to obtain a copy for evaluation.
+Systems. Next, we provide a brief description of each of the
+systems we benchmarked:
+-ontop- is an open source framework developed in the Free
+University of Bozen-Bolzano to query databases as Virtual RDF
+Graphs using SPARQL 1.0.
+It relies on the query rewriting
+techniques presented in Section 4; and supports RDFS, OWL 2
+QL reasoning, and all major DBMS (open-source and commercial)
+as backends. Regarding the mappings languages, -ontop- supports
+both, R2RML and its own mapping language. -ontop- comes in three
+different flavors: as an API, as a plugin for Protege 413  that also
+includes a mapping editor  and as a SPARQL end-point based in
+Sesame.14
+D2RQ is a system for accessing relational databases as virtual RDF
+graphs. It is developed and maintained by the Free University
+of Berlin, and DERI. It offers SPARQL 1.1 query-answering to the
+content of relational databases without having to replicate it into
+an RDF store. It provides its own mapping language, similar in
+expressivity to R2RML, however it does not support R2RML.
+OWLIM is a commercial triple store developed by Ontotext that
+allows to query, reason, and update RDF data. It supports the
+Sesame API; supports several query languages, such as, SeRQL and
+SPARQL 1.1; and several fragments of OWL, such as, OWL 2 RL and
+OWL 2 QL.
+Virtuoso 6.1 Open Source is a hybrid server developed by OpenLink
+Software that allows relational, RDF, and XML data management.
+We used the RDF triple store functionality provided in the OpenSource edition of the system. Although the Open-Source edition
+does not include some of the features available in the commercial
+edition such as, clustering, database federation, etc.; such features
+are not relevant for this evaluation.
+Virtuoso Views is developed by OpenLink Software, and is a system
+allows to query relational DBs as Virtual RDF. It supports a
+proprietary mapping language that is similar in expressivity to
+R2RML. We used the free version of Virtuoso Views which can
+only be used in conjunction with open links own relational DB (no
+MySQL or DB2).
+
+12 This section extends the work presented in [37].
+13 http://protege.stanford.edu
+14 http://www.openrdf.org.
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 14. Find products for a given more specific set of features. Query [3].
+
+the material
+
+Stardog is a commercial RDF triple store developed by Clark&Parsia
+that supports SPARQL 1.1 and OWL for reasoning. It provides a
+command line interface to query, load, and update the data.
+Benchmarks. We considered two benchmarks, BSBM and FishMark which we now describe. All
+for these
+including mappings, queries and schemas can
+benchmarks,
+be found at
+https://babbage.inf.unibz.it/trac/obdapublic/wiki/
+BSBMFISH13aBench.
+BSBM. The Berlin SPARQL Benchmark (BSBM) [29] evaluates the
+performance of query engines in use cases from the e-commerce
+domain. The benchmark comes with a suite of tools for data
+generation and query execution. The benchmark also includes
+a relational version of the data,
+for which mappings D2RQ
+mappings are included (we translated these into equivalent R2RML
+mappings).
+
+The schema of BSBM consists of 10 tables that store information
+about products, their types, reviews and reviewers. There is a
+total of 79 columns distributed among these tables. Although the
+number of rows is not fixed (it can be scaled), the distribution of
+the rows in the tables is constant, in particular, we always have
+that the tables offers and review are 3 to 4 orders of magnitude
+larger than the rest. As an example, if we generate a 100M triple
+BSBM instance, the tables for Offers and Reviews contain 5696,529
+and 2848,260 rows respectively, while Producers, Product Types
+and Vendors contain 5k, 2k and 3k rows and Reviewers contains
+146k rows.
+
+The ontology contains 8 classes, 30 properties and no logical
+axioms. The R2RML mappings contain 59 individual triple maps.
+A few URI templates used in these mappings involve multiple
+columns. The benchmark includes 12 queries that, although small
+in comparison to the FishMark queries, use all SPARQL 1.0 features,
+e.g., negation as expressed in Fig. 14. The R2RML mappings for
+BSBM can be found here:
+
+http://tinyurl.com/pc7qfvz.
+
+FishMark. The FishMark benchmark [31] is a benchmark for RDB-
+to-RDF systems that is based on a fragment of the FishBase DB,
+a publicly available database about fish species. The benchmark
+comes with an extract of the database (approx. 16 M triples in RDF
+and SQL version), and 22 SPARQL queries obtained from the logs
+of FishBase. The queries are substantially larger (max 25 atoms,
+mean 10) than those in BSBM. Also, they make extensive use of
+OPTIONAL graph patterns. The queries return information about
+fish attributes, fish species, fish families, etc. Fig. 15 shows an
+example of these queries.
+
+The benchmark comes with an ontology the contains 10 classes,
+10 object properties, 84 data properties and approximately 200
+OWL axioms, however, we ignored the latter. The manually created
+R2RML mapping contains 72 individual triple maps. Some of the
+
+URI templates in these mappings involve multiple columns. The
+R2RML mappings can be found here:
+
+http://tinyurl.com/oswp74e.
+These two benchmarks together use a total of 36 queries and
+
+350+ million triples.
+Experiment setup. The basic setup for the experiment is as
+follows: BSBM provides 12 query templates (i.e., queries with
+place holders for constant values). A predefined sequence of 25
+of these templates constitutes a Query Mix. A BSBM run is the
+instantiation of a query mix with random constants and execution
+of the resulting queries. Performance is then measured in Query
+Mixes per Hour (QMpH). To compute QMpH we ran 150 query
+mixes, out of which 50 are considered warm up runs and their
+statistics are discarded. The collected statistics for QMpH over
+BSBM instances with 25, 100 and 200 million triples (or the
+equivalent in relational form). In the case of FishMark, the 22
+queries are already instantiated and they constitute the query mix.
+We ran 150 query mixes, discarding the initial 50. We tested with
+1, 4, 8, 16 and 64 simultaneous clients.
+
+We exploited -ontop-s simple SQL caching mechanism which
+stores SQL queries generated for any SPARQL query that has been
+rewritten previously. This allows to avoid the rewritten process
+completely and hence, the cost of query execution of a cached
+query is only the cost of evaluating the SQL query over the DBMS.
+To force the use of this cache, we re-ran the BSBM benchmark 5
+more times (and averaged the results). For FishMark, this was not
+necessary since the queries are always the same. All experiments
+were conducted on a HP Proliant server with 24 Intel Xeon CPUs
+(144 cores @3.47 GHz), 106 GB of RAM and a 1TB 15K RPM HD. The
+OS is Ubuntu 12.04 64-bit edition. All the systems run as SPARQL
+end-points. All configuration files are available online.15
+Discussion. The results are summarized in Figs. 1719 and in
+Table 1. In Fig. 17 we show the QMpH for the 12 BSBM queries.
+Query 6 is not included since it contains a regex function that was
+not supported by -ontop- when this evaluation was done. We also
+included in this table the query rewriting time (SPARQL to SQL).
+Observe that the time required for this step is independent of the
+database, and of the selectivity of the query, and usually takes few
+milliseconds. It is not possible to give a precise general statement
+about the impact of the query rewriting time in whole query execution time given that BSBM queries have place holders that are filled
+in each execution, changing the answer given by the query. How-
+ever, given an instantiation of a query, we can give the percentage
+of the query execution time taken by the query rewriting step. We
+run an instantiation of the query mix in BSBM 200 (MySql), and
+we observed that the query rewriting step takes around 20%40%
+
+15 https://babbage.inf.unibz.it/trac/obdapublic/wiki/BSBMFISH13aBench.
+
+Fig. 15. Find information about a specific species. Query Name: speciespage.
+
+(a) FishMark query.
+
+(b) SQL translation by -ontop-.
+
+Fig. 16. Optimization by -ontop-.
+
+of the execution time. The queries had very high selectivity, therefore the execution time is small. For instance, -ontop- requires 4ms
+to rewrite Query 1, and 17 ms to perform the whole execution (in-
+cluding rewriting). The harder is the execution in the database, the
+smaller is the impact of the query rewriting step.
+
+In Figs. 18 and 19, first we note that the D2RQ server always
+ran out of memory, timed out in some queries or crashed. This is
+why it does not appear in our summary table. D2RQs SPARQL-to-
+SQL technique is not well documented, however, by monitoring
+the queries being sent by D2RQ to MySQL, it appears that D2RQ
+does not translate the SPARQL query into a single SQL query,
+instead it computes multiple queries and retrieves part of the data
+from the database. We conjecture that D2RQ then uses this data
+to compute the results. Such approach is, in general, limited in
+scalability and prone to large memory consumption, being the last
+
+point the reason for the observed behavior. Also, Virtuoso Views
+is not included in the FishMark benchmark because it provided
+wrong results, we reported this to the developers which confirmed
+the issue. Also, we did not run -ontop- with DB2 for FishMark due
+to errors during data loading.
+
+In Fig. 18 we also included the original BSBM SQL queries.
+We ran these queries directly over the database engine, therefore
+the execution time includes neither the rewriting time, nor the
+time to post-process the SQL result to generate an RDF result
+set. The performance obtained by MySQL is clearly much better
+than the one obtained by all the other systems, although the gap
+gets smaller as the dataset increases. It is worth noting that these
+queries are not SQL translation of SPARQL queries, thus they are
+intrinsically simpler, for instance, by not considering URIs.
+
+Next, we can see is that for BSBM in almost every case, the
+performance obtained with -ontop-s queries executed by MySQL
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. 17. Summary of results for BSBM-200 with 64 clients. Per query units are in queries per second, totals are in query mixes per hour.
+
+Fig. 18. Query performance for BSBM. X axis = parallel clients, Y axis = Query Mixes per Hour (QMpH, higher is better).
+
+or DB2 outperforms all other Q&A systems by a large margin. The
+only cases in which this does not hold are when the number of
+clients is less than 16 and the dataset is small (BSBM 25). This
+can be explained as follows: -ontop-s performance can be divided
+in three parts, (i) the cost of generating the SQL query, (ii) the
+cost of execution over the RDBMs and (iii) cost of fetching and
+transforming the SQL results into RDF terms. When the queries
+are cached, (i) is absent, and if the scenario includes little data
+(i.e., BSBM 25), the cost of (ii), both for MySQL and DB2, is very low
+and hence (iii) dominates. We attribute the performance difference
+to a poor implementation of (iii) in -ontop-, and the fact that
+triple stores do not need to perform this step. However, when the
+evaluation considers 16 parallel clients, executing -ontop-s SQL
+queries with MySQL or DB2 outperforms other systems by a large
+margin. We attribute this to DB2s and MySQLs better handling of
+parallel execution (i.e., better transaction handling, table locking,
+I/O, caching, etc.). When the datasets are larger, e.g., BSBM 100/200,
+-ontop- (i) stays the same. In these cases, (ii) dominates (iii), since
+in both benchmarks queries return few results. The SQL queries
+produced by -ontop- allow MySQL and DB2 to exploit their superior
+planning, caching, and I/O mechanisms. This allows -ontop- to
+outperform the rest of the systems already from 1 single client for
+BSBM 100 and BSBM 200.
+
+We can see the strong effect of SELF JOIN elimination by Primary
+Keys. Consider the FishMark benchmark that has little data, only
+16M triples, but in which in almost all queries -ontop-s SQL
+executed over MySQL outperforms the rest almost in every case
+even from 1 single client. In this setting, 1 client and little data,
+the cost of (ii) is distributed between the cost of planning and
+executing JOINs and LEFT JOINs by the DBMS or triple store. At the
+same time, in FishMark, the original tables are structured in such a
+way that many of the SPARQL JOINs can be simplified dramatically
+when expressed as optimized SQL. For example, consider the
+FishMark query in Fig. 16(a). This query expresses a total of 16 Join
+operations. When translated into SQL, -ontop- is able to generate
+the query in Fig. 16(b), that is, a simple and flat SQL query (easy
+
+Fig. 19. Query performance for FishMark. X axis = parallel clients, Y axis = Query
+Mixes per Hour (QMpH, higher is better).
+
+to execute) with a total of 3 Joins. Note that the use of a large
+number of JOIN operations is intrinsic to SPARQL since the RDF data
+model is ternary. However, if the data is stored in a n-ary schema
+(as usual in RDBMs), -ontop- can use semantic query optimization
+w.r.t. primary keys to construct the optimal query over the n-ary
+tables. Triple stores have no means to do this since data is denormalized once it is transformed into RDF.
+
+9. Conclusion and future work
+
+The main contribution of this paper is a formal approach for
+SPARQL-to-SQL translation that generates efficient SQL by adapting and combining standard techniques from logic programming.
+In this context, we discussed several SQL features that affects per-
+formance, and showed how to avoid them. In addition, we presented a rule based formalization of R2RML mappings that can
+be integrated into our technique to support mappings to arbitrary
+database schemas.
+
+The technique presented in this work has been implemented
+in the -ontop- system. To evaluate our approach, we compared -
+ontop- with well known RDB2RDF systems and triple stores. Our
+
+Table 1
+Result summary for all systems and datasets.
+
+Benchmark
+
+Size
+
+25M
+
+100M
+
+200M
+
+FishMark
+
+16.5M
+
+System
+
+onTop-MySQL
+onTop-DB2
+
+Stardog
+Virtuoso RDF
+Virtuoso Views
+
+onTop-MySQL
+onTop-DB2
+
+Stardog
+Virtuoso RDF
+Virtuoso Views
+
+onTop-MySQL
+onTop-DB2
+
+Stardog
+Virtuoso RDF
+Virtuoso Views
+onTop-MySQL
+
+Stardog
+Virtuoso RDF
+
+Number of clients
+
+Loading
+time
+00:01:57
+00:02:12
+00:12:21
+00:02:54
+00:18:41
+00:36:43
+
+00:11:33
+00:15:20
+00:49:45
+00:11:47
+01:13:04
+02:01:05
+
+00:25:13
+00:24:38
+01:43:10
+00:22:59
+02:21:46
+03:52:14
+00:01:04
+00:06:32
+00:02:34
+00:12:21
+
+results show using our techniques -ontop- can outperforms all
+other systems that we evaluated.
+
+-ontop- supports inference for OWL and SWRL, and we will
+
+describe how this is down in a follow-up paper.
+
+Acknowledgments
+
+We thank the -ontop- development team (J. Hardi, T. Bagosi,
+M. Slusnys, S. Komla-Ebri) for the help developing the system and
+with the experiments. This work was supported by the EU FP7
+project Optique (grant 318338).
+
+Appendix A. Normalization of R2RML mappings
+
+In the following we describe the normalization we apply to
+R2RML mappings that guarantee that R2RML document includes
+only triple maps with one single object predicate map. All these
+transformations are applied in the order listed here.
+
+A.1. Expansion of rr:constants
+
+Any shortcut for URI constants of the form
+ rr:subject C
+ rr:predicate C
+ rr:object C
+is replaced by
+ rr:subjectMap [ rr:constant C]
+ rr:predicateMap [ rr:constant C]
+ rr:objectMap [ rr:constant C]
+
+A.2. Expansion of SQL shortcuts
+
+We remove all shortcuts for SQL tables and replace them with
+SQL queries that correspond to the effective SQL query defined by
+that shortcuts as indicated in Section 5 of the R2RML specification.
+For example, given the R2RML mapping:
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:tableName "stud" ] ;
+...
+
+we produce
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+...
+
+A.3. Expansion of rr:class shortcuts
+
+We remove all shortcuts that generate triples of the form
+s rdf:type C and replace them with explicit predicate-object
+maps. For example:
+
+_:m1 a rr:TripleMap;
+
+...
+rr:subjectMap
+
+...
+
+[ rr:template ":stud/{id}" ;
+
+rr:class C ] ;
+
+we rewrite it as:
+
+_:m1 a rr:TripleMap;
+
+...
+rr:subjectMap
+rr:predicateObjectMap [
+
+[ rr:template ":stud/{id}" ]
+
+rr:predicateMap [ rr:constant rdf:type ];
+rr:objectMap [ rr:constant ex:Employee ]
+
+A.4. Expansion of predicate-object maps with multiple predicates/
+objects
+
+We remove any predicate-object map m that has multiple
+predicate or object maps and replace it with a set of predicateobject maps that created by combining each predicate map in m
+with every object map in m, as to generate the triples described
+in Section 11.1 of the R2RML specification. For example, from the
+following mapping,
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :name ] ;
+rr:predicateMap [ rr:constant :info ] ;
+[ rr:column "name"]].
+
+rr:objectMap
+
+We obtain
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :name ] ;
+
+rr:objectMap
+
+[ rr:column "name"]] ;
+
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :info ]
+
+rr:objectMap
+
+[ rr:column "name"]] .
+
+A.5. Expansion of referencing predicate object maps
+
+We remove all shortcuts defined by referencing object maps
+and replace them by a new triple map with a single predicateobject map that generates triples as specified in Section 11.1 in
+the R2RML specification. That is, the logical table is the joint SQL
+query of the referencing map, the subject map is the subject map of
+the child, and in the predicate-object, the predicate is the predicate
+map of the referencing object map and the object is as specified the
+map of the parent. Section 11.1. For example, given the following
+R2RML mapping:
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [ rr:predicate :takes ;
+
+rr:objectMap
+rr:joinCondition [ rr:child "ID"; rr:parent "ID" ]].
+
+[ rr:parentTriplesMap _:m2 ;
+
+_:m2 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM course" ] ;
+rr:subjectMap [ rr:template ":course/{id}" ;
+
+rr:class :Course ] ;
+
+...
+
+we produce a reference-less version as follows:
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+
+_:m2 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM course" ] ;
+rr:subjectMap [ rr:template ":course/{id}" ;
+
+rr:class :Course ] ;
+
+...
+
+_:m3 a rr:TripleMap ;
+
+rr:logicalTable [ rr:sqlQuery "
+SELECT * FROM (SELECT * from stud) AS child,
+
+(SELECT * from course) AS parent
+
+WHERE child.ID=parent.ID"] ;
+
+rr:subjectMap [ rr:template ":stud/{child.id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant rdf:takes ];
+rr:objectMap [ rr:template ":course/{parent.id}"
+
+] ].
+
+A.6. Splitting of triple maps with multiple predicate-object maps
+
+Each triple map m that has n predicate-object maps where n >
+1 we split into n fresh triple maps. Each i fresh triple map uses
+the logical table and subject map of the original triple map m and
+contains exactly one predicate-object map, the ith predicate-object
+map found in m. For example, from the following triple map,
+
+_:m1 a rr:TripleMap;
+
+# First triple map
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :name ] ;
+[ rr:column "name"]].
+
+rr:objectMap
+
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :info ]
+
+rr:objectMap
+
+[ rr:column "name"]] .
+
+We obtain the following triple maps;
+
+_:m1 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :name ] ;
+
+rr:objectMap
+
+[ rr:column "name"]] .
+
+_:m2 a rr:TripleMap;
+
+rr:logicalTable [ rr:sqlQuery "SELECT * FROM stud" ] ;
+rr:subjectMap [ rr:template ":stud/{id}" ] ;
+rr:predicateObjectMap [
+
+rr:predicateMap [ rr:constant :info ]
+
+rr:objectMap
+
+[ rr:column "name"]] .
+
+Appendix B. Proofs
+
+Theorem 1. Let Q be an SQL-compatible SPARQL query, Q the
+Datalog encoding of Q , and [[ansQ (x)]] the relational algebra
+statement of Q . Then it holds:
+t  [[ansQ (x)]]  Q |	 ansQ (t).
+
+Proof. From the definition of Q it is clear that it is a stratified
+program of the form:
+Q = 0 . . . n.
+Therefore it has a unique Herbrand model, and moreover, such
+model is the union of the unique models of each stratum i. Recall
+that 0 is a bottom part that does not contain negation as failure
+(c.f. Section 3.1). The proof will be by induction on the number of
+splits needed to calculate the model of Q . Therefore, it is enough
+to show that for every step k:
+
+Note 2 (Inductive Claim:). For every triple or defined predicate A such
+that for everyt, k |	 A(t) iff Q |	 A(t)  that means that A must
+be entirely computed inside k  it holds that:
+k |	 A(t) if and only if t is a tuple in [[A(x)]].
+
+The additional restriction that the predicate A must be entirely
+computed inside k is to handle LeftJoin. Recall that the LeftJoin
+predicate is a syntactic sugar for the set of rules in Fig. B.20.
+Observe that these rules contain not -atoms. Here we assume that
+we replace the syntactic sugar NOT by the original not in filter
+atoms.
+
+Therefore, the LeftJoin as a whole is defined in the union
+of rules that belong to different strata. Observe that since the
+graph is finite, and the set of predicates is finite, the grounding of
+the program will also be finite and therefore we will eventually
+cover every possible ground atom A(t). Recall that we only allow
+functional terms that has nesting depth of at most 2.
+Base Case (0): Recall that 0 is not -free and therefore it has a
+unique least Herbrand model, M. This implies that 0 |	
+A(t) if and only if A(t)  M. This model is computed via a
+sequence of bottom-up derivation steps, which apply the
+rules of 0 to the facts in 0 and then repeatedly to the
+newly derived facts. Our proof will proceed by induction
+on the number N of such steps.
+1. N = 0: Then A has to be a triple predicate. Then the
+claim follows trivially from the definition of Q , 0,
+and Definition 28.
+2. N = k + 1: Suppose that A was derived in the k + 1
+step. It follows that it is a defined predicate ansP (x).
+Then P can be a Union, a Join, or a Filter.
+
+Fig. B.20. Translation SPARQL-Datalog first presented in [10] and extended in [9].
+
+ Suppose P is a Union. Then, it is defined by a set of
+
+(zn)]].
+
+(z1)
+(zn)
+
+(z1)]]    x[[ansPn
+(ci).
+(zi)]] iff M |	 ansPi
+ Suppose that P has the form
+
+rules of the form:
+ansUnion( x1)
+:  ansP1
+...
+ansUnion( xn)
+:  ansPn
+Recall that Union may add null constants to some
+xi, and these are translated as AS statements in
+the projections in the relational algebra expression.
+Then, by Definition 28, it follows that [[ansUnion(x)]]
+is defined as follows:
+x[[ansP1
+By Inductive Hypothesis we know that (i = 1 . . . n)
+ci  [[ansPi
+It follows that
+c  [[ansUnion(zi)]] iff M |	 ansUnion(c)
+(w), E(w))
+Filter(ansP1
+(w) has been computed in k steps and
+where ansP1
+E is a filter condition. The proof remains the same
+if we consider a triple atom instead. The atom
+Filter(ansP1
+ansP1
+By inductive hypothesis,
+(t), E(t)
+0 |	 ansP1
+iff
+It follows that
+0 |	 ansFilter (t)
+t  x([[ansFilter (x)]])
+iff
+( w1), ansP2
+( w2), jn)
+Join(ansP1
+( w1) and ansP2
+( w2) have been comwhere ansP1
+puted in k steps and jn is the join condition. The
+proof remains the same if we consider a triple atom
+instead, and follows applying inductive hypothesis
+as above.
+Inductive Case (Step k + 1): Notice that by Proposition 1 and
+the definition of splitting set (c.f. Section 3.1) we can
+conclude that
+ The strata k has a unique answer set Mk
+ The set Uk = {lit(r) | head(r)  Mk} forms a splitting
+ By Proposition 1, it follows that M is an answer set of
+
+ Now suppose that P has the form
+
+(w), E) represents the body
+
+(w), E(w)]].
+
+t  [[ansP1
+
+(w), E(w).
+
+set for Q
+
+Q iff
+M = Mk  Mtop
+where Mtop is an answer set of the partial evaluation
+eUk
+
+(Q \ bUk
+
+, Mk).
+
+, Mk).
+
+(Q \ bUk
+
+(Q \ bUk
+
+Using the same proposition, it follows that Mtop can be
+computed iteratively in the same way, that is, computing
+, Mk),
+the model of the positive part of eUk
+and the continue splitting and computing the partial
+evaluations. Let Me be the unique model of the positive
+part of eUk
+Suppose that ansP (t)  Me and ansP is completely
+Here we assume that we replace the syntactic sugar
+LeftJoin by the original set of rules. We have several
+cases:
+ ansP defines a Join
+ ansP defines an Union
+
+defined in Me in the sense specified above.
+
+ ansP defines an LeftJoin (Optional operator)
+ ansP defined a Filter
+We will prove the case where ansP defines a LeftJoin. The
+rest of the case are analogous and simpler.
+
+Since ansLeftJoin(P1,P2) is a Datalog translation of the
+
+fragment of a query of the form:
+
+LeftJoin(P1, P2, E)
+we can conclude Q contains rules of the form shown in
+Fig. B.20.
+
+(1) defining answerLeftJoin(P1,P2) above.
+
+rule (4) defining answerLJoin(P1,P2) above.
+
+rule (2) defining answerLeftJoin(P1,P2) above.
+
+rule (3) defining answerLeftJoin(P1,P2) above.
+
+These rules intuitively represent:  of the join (rule
+(1)), and  of the difference of P1, P2 (rules 2 and 3). Recall
+that after the splitting process, the rules in (Fig. B.20) lose
+several literals, since literals of the form A(t) (including
+negative ones) in Uk have been removed from the rules.
+For every atoms A removed in the successive splittings of
+Q , we can use inductive hypotheses to conclude that:
+Me |	 A(t)  M |	 A(t)  t  [[A(x)]]
+for positive atoms, and analogously
+Me |	 not A(t)  M |	 not A(t)  t  [[A(x)]].
+ Let body1
+ Let body2
+ Let body3
+ Let body4
+
+ansLeftJoin(P1,P2) be the body of the not -free rule
+
+ansLeftJoin(P1,P2) be the positive part of the body in
+
+ansLeftJoin(P1,P2) be the positive part of the body in
+
+ansLeftJoin(P1,P2) be the positive part of the body in
+Thus from the previous facts, it follows that for every c
+satisfying rule (1) encoding the join part of the left join,
+there exist c1 c2 such that
+Me |	 ansLeftJoin(P1,P2)(c)
+iff Me |	 body1
+ansLeftJoin(P1,P2)
+Then, from the definition of translation we know that:
+Me |	 ansLeftJoin(P1,P2)(c)
+( c1c2)
+iff Me |	 body1
+ansLeftJoin(P1,P2)
+iff Me |	 Join(P1(c1), P2(c2), E(c1c2))
+iff c1c2  [[P1( x1)]] (cid:111)(cid:110)E[[P2( x2)]]
+E[[P2( x2)]]
+iff c1c2  [[P1( x1)]]
+iff c  x([[body1
+ansLeftJoin(P1,P2)
+iff c  [[ansLeftJoin(P1,P2)(x)]].
+And for every c satisfying either rule (2) encoding the
+Me |	 ansLeftJoin(P1,P2)(c)
+iff Me |	 body2
+ansLeftJoin(P1,P2)
+iff c1  [[P1(x1)]] and there is no c2 such that coin-
+(c2),
+(c2) and therefore Me |	 answerLJoin(P1,P2)(c1). iff
+iff c  x[[P1( x1)]]
+iff c  [[ansLeftJoin(P1,P2)(x)]].
+
+cides with c1 in the join positions and Me |	 ansP1
+ansP2
+c1  [[P1(x1)]]\E[[P2(x2)]]]]
+
+difference part of the left join, there exist c1 such that
+
+(c1) and c = c1 null
+
+( x1x2)]]) iff
+
+E[[P2( x2)]]
+
+(c1 c2).
+
+M. Rodriguez-Muro, M. Rezk / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 141169
+
+Fig. C.21. Modified Q .
+
+And for every c satisfying either rule (3) encoding the
+
+difference part of the left join, there exist c1 such that
+Me |	 ansLeftJoin(P1,P2)(c)
+iff Me |	 body3
+iff c1  [[P1(x1)]] and there is a c2 such that coincides
+with c1 in the join positions and c2  [[P2(x2)]] but Me |	
+E(c1, c2)
+
+(c1) and c = c1 null
+
+iff c1  [[P1(x1)]]\E[[P2(x2)]]]]
+iff c  x[[P1( x1)]]
+E[[P2( x2)]]
+iff c  [[ansLeftJoin(P1,P2)(x)]].
+This concludes the proof for the Left Join case, and the
+
+ansLeftJoin(P1,P2)
+
+proof this theorem. 
+
+Lemma 1. Let M be a R2RML mapping. Let G be a RDF graph defined
+by M. Then
+(s, p, o)  G iff m |	 triple(tr(s), tr(p), tr(o)).
+Proof. Since the definition of (m) changes depending on o, we
+need to consider each case in turn. Suppose that o is an object
+which is not a class. The case where it is a class is analogous. By
+definition we know that (s, p, o)  G if and only if there is a
+mapping M with
+1. a triple map node n;
+2. a subject map node s hanging from m;
+3. a property map node p and an object map node o hanging from
+
+the PropertyObjectMap of m;
+
+4. and a logic table lt from where s, p, o are extracted.
+From the previous facts it follows that M contains:
+triple(tr(s), tr(p), tr(o)):-translated_logic_table
+where translated_logic_table is the Datalog translation of lt. For the
+sake of simplicity assume that lt is a table T with columns c1 . . . cn.
+Then m has the following rule:
+triple(tr(xs), tr(xp), tr(xo)):-T (x)
+where xs, xp, xo correspond to the columns in T as specified in m.
+We know that there is a row in T where s, p, o are projected from
+it. It immediately follows that
+M |	 triple(tr(s), tr(p), tr(o)). 
+
+Appendix C. Datalog normalization
+
+Before performing the translation into Datalog, we need to deal
+with a number of issues that arise from the different nature of
+the formalisms at hand. For instance, Datalog is position-based
+(uses variables) while relational algebra and SQL are name-based
+(use column names). To cope with these issues while keeping
+the representation simple, we apply the following syntactic
+transformations to the program in this specific order:
+
+ Constants: For every atom of the form triple(t1, t2, t3) in Q
+where ti is a constant symbol, add a new boolean atom of the
+form vi = ti to the rule, and replace ti by the fresh variable vi in
+the triple atom. For instance:
+triple(x, a,: Student)
+is replaced by
+
+triple(x, y, z), y = a, z =: Student
+This set of atoms will be denoted as fc, and the whole set
+is replaced by a single Filter atom. In our example above, this
+would be:
+
+Filter(triple(x, y, z), fc)
+where fc = y =: a, z =: Student.
+
+ Shared variables: For every rule r, and every variable x such
+that the variable occurs in two different positions (in the same
+or different atoms in r), replace the variables with two new
+fresh variables x1, x2, and add them to the body of the query
+in the form x1 = x2, e.g., ans1(x):-ans2(x, y), ans3(x, z)
+becomes:
+ans1(x1):-ans2(x1, y), ans3(x2, z), x1 = x2
+These sets of join conditions together with any other boolean
+atom in the rule will be denoted jn. If there are several atoms in
+the body of r, the atoms will be renamed to a single Join atom,
+for instance: Join(ans2(x, y), ans3(x, z), jn).
+ Variable Names: Recall that Q can be seen as a tree where
+the root is ans1(x) and the leaves are either triple atoms or
+boolean expressions. Then we:
+1. Enumerate the triple atoms in the leaves from left to right:
+
+1 . . . n.
+2. For each of these triple leaves T, enumerated as j, and each
+variable x in the position i = 1, 2, 3 replace x by Tj.s (if i = 1)
+or Tj.p (if i = 2) or Tj.o (if i = 3).
+3. Spread this change to the boolean expressions and the inner
+nodes of the tree.
+
+In Fig. C.21 we show the Datalog program from Example 5 after
+
+the transformation explained above.
+
+Example 13. Let Q be the Datalog program presented in
+Example 5. Then [[ans1(x)]] is as follows:
+
+where
+ as1 = [T2.s, T2.o, T3.o, T5.s, T5.o]
+ as2 = [T2.s, T2.o]
+ as3 = [T3.s, T3.o, T4.s, T5.o]
+ as4 = [sAST1.s, pAST1.p, oAST1.o]
+ as5 = [sAST2.s, pAST2.p, oAST2.o]
+ as6 = [sAST3.s, pAST3.p, oAST3.o]
+ as7 = [T4.s, T5.o, T4.o]
+ as8 = [sAST4.s, pAST4.p, oAST4.o]
+ as9 = [sAST5.s, pAST5.p, oAST5.o]
+ ljn = [T2.s = T3.s]
+
+ jn1 = [T1.s = T2.s]
+ jn2 = [T3.o = T4.o]
+ jn3 = [T4.s = T5.s]
+ fc1 = [T1.p = rdf : type, T1.o =: Student]
+ fc2 = [T2.p =: hasName]
+ fc3 = [T3.p =: hasEnrolment]
+ fc4 = [T4.p =: hasYear]
+ fc5 = [T5.p =: hasGrade]
+Observe that there is a very close relation between the ans
+predicates and the asi statements, as well as Join, LeftJoin, and Filter

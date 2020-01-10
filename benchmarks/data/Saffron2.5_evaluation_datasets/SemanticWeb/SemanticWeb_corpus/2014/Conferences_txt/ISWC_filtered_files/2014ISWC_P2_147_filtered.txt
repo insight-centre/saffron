@@ -1,0 +1,853 @@
+Querying Factorized Probabilistic Triple
+
+Databases
+
+Denis Krompa1, Maximilian Nickel2, and Volker Tresp1,3
+
+1 Ludwig Maximilian University, 80538 Munich, Germany
+
+Denis.Krompass@campus.lmu.de
+
+2 Massachusetts Institute of Technology, Cambridge, MA
+
+and Istituto Italiano di Tecnologia, Genova, Italy
+
+mnick@mit.edu
+
+3 Siemens AG, Corporate Technology, Munich, Germany
+
+Volker.Tresp@siemens.com
+
+Abstract. An increasing amount of data is becoming available in the
+form of large triple stores, with the Semantic Webs linked open data
+cloud (LOD) as one of the most prominent examples. Data quality and
+completeness are key issues in many community-generated data stores,
+like LOD, which motivates probabilistic and statistical approaches to
+data representation, reasoning and querying. In this paper we address the
+issue from the perspective of probabilistic databases, which account for
+uncertainty in the data via a probability distribution over all database
+instances. We obtain a highly compressed representation using the recently developed RESCAL approach and demonstrate experimentally
+that efficient querying can be obtained by exploiting inherent features of
+RESCAL via sub-query approximations of deterministic views.
+
+Keywords: Probabilistic Databases, Tensor Factorization, RESCAL,
+Querying, Extensional Query Evaluation.
+
+Introduction
+
+The rapidly growing Web of Data, e.g., as presented by the Semantic Webs
+linked open data cloud (LOD), is providing an increasing amount of data in
+form of large triple databases, also known as triple stores. However, the LOD
+cloud includes many sources with varying reliability and to correctly account
+for data veracity remains a big challenge. To address this issue, reasoning with
+inconsistent and uncertain ontologies has recently emerged as a research field
+of its own [6,31,4,9,3,15]. In this paper we approach the veracity issue from the
+perspective of probabilistic databases (PDB), which consider multiple possible
+occurrences of a database via a possible worlds semantics and account for uncertainty in the data by assigning a probability distribution over all database
+instances [27]. As such, querying PDBs has a clear interpretation as generalizations of deterministic relational database queries.
+
+When applying PDBs to large triple stores various key challenges need to be
+addressed. First, consider storage requirements. A common assumption in PDBs
+
+P. Mika et al. (Eds.) ISWC 2014, Part II, LNCS 8797, pp. 114129, 2014.
+c Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+is tuple independence, or in our case triple independence, which requires a representation of each triples uncertainty. Unless default values are used, representing
+the individual uncertainty levels can lead to huge storage requirements.
+
+Second, there is the question of how the triple uncertainty is quantified and
+where it is specified. In PDBs one typically assumes that the data uncertainty
+is specified by the application, e.g., one assumes given measurements of uncer-
+tainty. However, in the Web of Data such information is typically not available.
+Rather the Web of Data is incomplete and contains incorrect information, as
+triples are missing and existing triples can be false. The third issue concerns
+probabilistically correct and efficient querying. Although individual triples are
+assumed to be independent, complex queries introduce dependencies such that
+correct query answering becomes, in the worst case, intractable.
+
+We address all three issues by exploiting the recently developed RESCAL approach [19], which computes a memory-efficient low-rank tensor representation
+of a triple store from which probabilities for individual triples can be derived
+easily without materializing the whole probabilistic representation of the triple
+store. These probabilities are meaningful in as much as the underlying data generation process (which we explore through the factorization) is sensible for the
+particular triple store; experimentally it has been shown that this is the case,
+e.g., for significant parts of the LOD [20]. While the RESCAL model alone allows to query the probability of individual ground triples, more complex queries,
+which generally might contain complex dependencies between ground triples
+throughout the complete PDB, remain a major challenge. When restricting the
+allowed queries to so-called safe queries, extensional query evaluation can provide answers with polynomial time complexity [27]. Unfortunately, polynomial
+time complexity does not necessarily imply acceptable query time. During query
+evaluation it might be necessary to materialize sub-queries, which often produce
+large (dense) views and as such have high computational and high memory com-
+plexity. Here, we propose a new method for extensional query evaluation (after
+factorization) that avoids the expensive materialization of dense database views
+by exploiting the factorized low-rank representation of a triple store computed
+by RESCAL. The idea is to first materialize the sub-query in the initial deterministic representation of the triple store (that can be efficiently constructed and
+is generally sparse) and to then derive a low-rank approximation of that view
+using fast RESCAL updates, which then produces the probabilistic view.
+
+The paper is organized as follows: In the next section we discuss related work.
+Section 3 reviews PDBs and Section 4 describes the RESCAL approach. Section 5
+contains the main contribution of the paper and addresses the querying of a
+factorized probabilistic triple databases. Section 6 describes our experimental
+results and Section 7 contains our conclusions.
+
+2 Related Work
+
+Probabilistic databases (PDB) have gained much interest in recent years and
+an overview over the state of the art is provided by [27]. Important ongoing
+
+D. Krompa, M. Nickel, and V. Tresp
+
+research projects include the MayBMS project [10] at Cornell University, the
+MystiQ project [2] at the University of Washington, the Orion project [26] at
+the Purdue University, and the Trio project [16] at the Stanford University. The
+idea of materialized views on PDBs has been developed in [5], where it was
+proposed to materialize probabilistic views to be used for query answering at
+runtime.
+
+Uncertainty in Semantic Web ontologies has been addressed in BayesOWL [6]
+and OntoBayes [31]. Furthermore, PR-OWL [4] is a Bayesian Ontology Language
+for the Semantic Web. The link between PDBs, Description Logic and Semantic
+Web data structures has been explored by [9,3,15]. In contrast to these ap-
+proaches, we start with a deterministic triple store and then derive probabilities
+via the factorization. Common to all these approaches is the challenge of efficient
+querying.
+
+In our work we perform a probabilistic ranking of candidate query answers
+as done by the top-k querying approaches [7,21,25], however without pruning of
+low-confidence answers. In these top-k querying approaches the computation of
+exact probabilities for the potential top-k answers are avoided by using lower
+and upper bounds for the corresponding marginal probabilities. Unfortunately,
+none of these approaches, apart from [7], can avoid extensive materializations in
+finding answer candidates [28].
+
+Tensors have been applied to Web analysis in [12] and to ranking predictions
+in the Semantic Web in [8].
+[23] applied tensor models to rating predictions.
+Using factorization approaches to predict ground atoms was pioneered in [29];
+[19], [30], [1], and [11] applied tensor models for this task, where [19] introduced
+the RESCAL model.
+[24] applied matrix factorization for relation extraction in
+universal schemas.
+
+In [20] the YAGO ontology was factorized and meaningful predictions of simple triples in selected subgroups of YAGO were derived through the reconstruction from the low rank representation of the triple store. However, in these papers
+querying was limited to the evaluation of independent ground triples. Here, we
+study the significantly more difficult problem of complex queries on predicted
+triple confidence values (including existentially quantified variables). Thereby we
+realize extensional query evaluation on safe queries, which can induce complex
+dependencies between individual predicted triple probabilities throughout the
+database. In particular, we are concerned with how these queries can be executed efficiently, without the need for extensive materialization of probability
+tables, by exploiting the factorized representation during querying.
+
+3 Probabilistic Databases
+
+3.1 Semantics
+
+Probabilistic databases (PDB) have been developed to extend database technologies to handle uncertain data. A general overview is provided by [27]. PDBs
+build on the concept of incomplete databases, i.e. databases that are allowed to
+be in one of multiple states (worlds): Given an active domain ADom of constants
+?
+
+?
+
+?
+(resources in RDF) each world contains a subset of all possible ground atoms
+(triples), formed by the elements of ADom and the predicates in the database.
+A PDB then assigns a probability distribution to all possible worlds W  W,
+where W is the set of all worlds under consideration. More precisely, given an
+active domain ADom of constants or resources in terms of a RDF framework,
+each world contains a subset of all possible ground atoms (triples), formed by the
+elements of ADom and the predicates. A PDB is an incomplete database where,
+furthermore, a probability distribution is assigned to the possible worlds. In the
+following, we adopt the common assumption of PDBs that the probabilities for
+all ground atoms are mutually independent (i.e., tuple independence).
+
+3.2 Querying on Probabilistic Databases
+
+Query evaluation in PDBs remains a major challenge. In particular, scalability to
+large domains is significantly harder to achieve when compared to deterministic
+databases.
+Of interest here is the possible answer semantics which calculates the probability that a given tuple t is a possible answer to a query Q in a world W  W
+of a PDB D. For the marginal probability over all possible worlds, we get
+
+P (t  Q) =
+?
+
+?
+
+?
+P (W )
+
+WW:tQW
+
+where QW is the query with respect to one possible world of D.
+An important concept in query evaluation is the lineage D
+
+Q of a possible
+answer tuple t to Q with respect to D. The lineage of a possible output tuple to
+a query is a propositional formula over tuple states in the database, which says
+which input tuples must be present in order for the query to return the particular
+output. The concept of lineage allows a reduction of the query evaluation problem
+to the evaluation of propositional formulas. For queries involving many variables
+the lineage can become very complex but can still be derived in polynomial time
+(with the size of the database).1
+
+In intensional query evaluation, probabilistic inference is performed over the
+lineage of all possible answers to a query Q. Every relational query can be evaluated this way, but the data complexity depends dramatically on the query being
+evaluated, and can be hard for #P. Thus it is in general advantageous to avoid
+the evaluation of the lineage.
+
+In contrast, extensional query evaluation is concerned with queries where the
+entire probabilistic inference can be computed in a database engine and thus,
+can be processed as effectively as the evaluation of standard SQL queries. Relational queries that can be evaluated this way are called safe queries. If the
+extensional query plan does compute the output probabilities correctly for any
+input database, then it is called a safe query plan.
+
+In this paper we focus on queries that allow an extensional query evaluation,
+
+as discussed next.
+1 For a more detailed explanation on the concept of lineage we refer to [27, Chp.2].
+
+D. Krompa, M. Nickel, and V. Tresp
+
+3.3 Extensional Query Evaluation
+
+Extensional query evaluation is only dependent on the query expression itself
+and the lineage does not need to be computed. During the evaluation process,
+several rules are applied to the query in order to divide it into smaller and easier
+sub-queries until it reduces to ground tuples with elementary probability val-
+ues. Queries that can be completely simplified to ground tuples with extensional
+evaluation rules are safe, in the sense mentioned above. Extensional query evaluation can be implemented via the application of six rules [27]. In the following
+we will briefly describe three of those rules relevant throughout this paper.
+
+Consider a query that can be written as a conjunction of two simpler queries
+
+Q = Q1  Q2.
+
+If one can guarantee that the sub-queries are independent probabilistic events,
+one can write
+
+P (Q1  Q2) = P (Q1)  P (Q2).
+
+(independent-join rule)
+
+More formally one needs the condition of a syntactical independence between Q1
+and Q2: Two queries Q1 and Q2 are syntactically independent if no two relational
+atoms unify, which means that it is not possible that exactly the same ground
+tuples, under any assignments of constants, can occur in both sub-queries. With
+syntactical independence we also get
+
+P (Q1  Q2) = 1  (1  P (Q1))  (1  P (Q2)).
+
+(independent-union rule)
+Further for queries of the form x.Q we can use the independent-project rule
+
+P (x.Q) = 1  
+
+bADom
+
+(1  P (Q[b/x])).
+
+(1)
+
+This rule can always be applied if x is a separator variable.2 As an example,
+consider that we want to know the probability that Jack is born in Rome and
+that he likes someone who is a child of Albert Einstein (AE). This query can be
+written as a conjunction of two sub-queries Q1 and Q2,
+
+Q1(x, t) :  bornIn(x, t)
+Q2(x, z) :  y.(likes(x, y), childOf(y, z))
+
+with x = Jack, t = Rome and z = AE. Q1 asks if Jack is born in Rome and
+Q2 if Jack likes somebody who is a child of Albert Einstein. By exploiting the
+
+2 x is a separator variable if it occurs in all atoms in Q and if in the case that atoms
+unify, x occurs at a common position. Two atoms unify if they can be made identical
+by an assignment of constants.
+?
+
+?
+
+?
+j-th entity
+
+i-th
+entity
+
+k-th
+relation
+
+j-th
+entity
+
+i-th
+entity
+
+
+
+k-th
+relation
+
+R 1 A 2 A
+
+Fig. 1. RESCAL model for binary relations
+
+independent join rule on Q1 and Q2 and the independent project rule on Q2 this
+query can be calculated as,
+
+P (Q(x = Jack, t = Rome, z = AE) = P (bornIn(Jack, Rome))
+?
+
+?
+
+?
+[1  P (likes(Jack, b))  P ((childOf(b, AE))]
+
+.
+?
+
+?
+
+?
+1  
+
+
+
+bADom
+
+Note that since a person can like many other persons the likes atoms in Q2 are
+not mutually exclusive what induces a complex expression that is not simply the
+sum or the product or probabilities.
+
+4 RESCAL
+
+In PDBs one typically assumes that the data uncertainty is specified by the
+application. Although there are efforts towards uncertainty management for the
+Web of Data, currently such information not widely available. Rather the Web
+of Data is incomplete, i.e., many triples are missing, and contains incorrect in-
+formation, i.e., existing triples are false. To overcome this problem, we employ a
+probabilistic model of the triple database  i.e. the recently developed RESCAL
+approach  and derive data uncertainty from the agreement of the data with
+this model. RESCAL relies on a specific factorization of a third-order adjacency
+tensor from which triple probabilities can be derived. In addition, RESCAL
+computes a highly compressed representation of the PDB, reducing the memory
+footprint dramatically. The latter point is of particular interest, since PDBs can
+be dense.
+
+4.1 Notation
+
+To describe RESCAL, we need to introduce some notation. We consider a
+database as a set of M relations {rk}M
+k=1. A relation is a table with attributes
+as columns and subject-object entity pairs Ez = (ei, ej) as rows. If rk is a re-
+lation, then rk() is the corresponding predicate. A predicate is a function that
+
+D. Krompa, M. Nickel, and V. Tresp
+
+maps a tuple to true (or one), if the tuple is part of the relation, and to false
+(or zero), otherwise. A predicate applied to a particular tuple rk(Ez) is called a
+ground atom. A mapping of all possible tuples for all predicates to true or false,
+i.e., the assignment of true or false to all ground atoms, defines a world W (see
+Section 3). We now assume the following parameterization for a possible world,
+?
+
+?
+
+?
+P (W|) =
+
+P (rk(Ez)|k,Ez ()).
+
+(2)
+
+k,z
+
+Here,  is a set of model parameters and k,Ez () is a scalar that is a function
+of the parameters. As it is common in probabilistic databases, Equation (2)
+assumes that all ground atoms are independent given the model parameters.
+
+4.2 Parameterization
+
+RESCAL [19] is a latent variable method for learning from multi-relational data
+where Equation (2) is parametrized as
+
+k,(ei,ej ) =
+
+r
+
+r
+
+l1=1
+
+l2=1
+
+Rkl1 ,l2 ai,l1aj,l2 = aT
+
+i Rkaj.
+
+(3)
+
+Note that the parameters  = {{ai}n
+
+Thus in RESCAL each entity ei is assigned a vector of r latent variables ai
+and the matrix Rk describes how these latent variables interact for a particular
+relation.
+} are coupled via the unique
+representation of the entities, what permits the global exchange of information
+across different relations and across subject/object-occurrences of entities. Here,
+n is the number of entities and m is the number of relation types. This property
+is also referred to as collective learning.
+
+i=1,{Rk}m
+
+k=1
+
+4.3 Cost Functions
+
+In RESCAL, one uses a least-squares penalty on the parameters (implying a
+Gaussian prior distribution) and uses the cost function
+?
+
+?
+
+?
+lossk,Ez + AA2
+
+F + R
+
+Rk2
+?
+
+?
+
+?
+k,Ez
+
+k
+
+where A is the matrix of latent factors with (A)i,j = ai,j and A  0 and
+R  0 are hyperparameters for the regularization. F is the Frobenius norm.
+For the loss function there are several options. An appropriate choice for the
+conditional probability in Equation (2) would be a Bernoulli distribution and
+we would obtain lossk,Ez = rk(Ez) log k,Ez  (1  rk(Ez))(1  k,Ez ). After
+training, we can interpret k,Ez  P (rk(Ez) = 1|k,Ez ). Alternatively, one can
+use a least-squared loss
+
+lossk,Ez = (rk(Ez)  k,Ez )2
+?
+
+?
+
+?
+with the same interpretation of k,Ez . A drawback is that we cannot guarantee
+that predicted values are nonnegative and upper bounded by one. To overcome
+this issue, we employ a post-processing step of the form,
+
+z = sig	(G
+B
+z )
+
+(4)
+
+z is the parameter derived from the Gaussian model and B
+
+where G
+z would be
+an estimate for the corresponding Bernoulli parameter. The precise definition of
+sig	(G
+z ) can be found in the Appendix. Alternatively, a form of Platt scaling
+can be used to define sig	(G
+
+z ) [22].
+
+In our work we employ the least squares cost function since then the highly
+efficient alternating least-squares (ALS) updates can be employed that exploit
+data sparsity [19]. RESCAL has been scaled up to work with several million
+entities and close to 100 relation types. In contrast, with the Bernoulli cost
+function it would not be possible to exploit the sparsity of the data efficiently:
+gradient-based methods for the Bernoulli cost function would require to compute
+the dense tensor ARkAT explicitly, what is both slow and impractical [18] and
+pattern-based approaches (such as stochastic gradient descent) have not proven
+to be effective with a Bernoulli cost function.
+
+4.4 Tensor Factorization
+
+Note, that in Equation (3) we need to optimize the latent entity representations
+ai and the relation-specific Rk matrices. This can be done by first factorizing an
+adjacency tensor X  {0, 1}nnm whose entries xijk correspond to all possible
+ground atoms over n entities and m different relation types. In particular, the
+entries of X are set to one, if the ground atom rk(Ez) exists and to zero otherwise.
+Figure 1 illustrates the tensor factorization.
+
+5 Querying Factorized Probabilistic Databases
+
+We will describe now how complex queries on PDBs can be answered efficiently
+via the RESCAL model when the queries are restricted to x.Q-type safe queries.
+A naive approach would be to use the triple probabilities as calculated by the
+
+RESCAL model in the extensional query evaluation rules,
+
+P (likes(Jack, Jane)) = sig	(aT
+
+JackRlikesaJane)
+
+where sig	 is defined in Equation (4). However, this would not remove the computational complexity of the evaluation and would computationally be demanding
+for any reasonably sized triple store. A probabilistic database is not sparse in
+general: e.g., the evaluation of a query the examples used in Section 3.3 requires
+on the order of |ADom| evaluations of the RESCAL model. The complexity
+is mainly introduced by the existentially quantified query variables and their
+product-aggregation in the independent-project rule (Equation (1)). Assuming
+further that we are not only interested in the probability with x = Jack but
+
+D. Krompa, M. Nickel, and V. Tresp
+
+in a probabilistic ranking of all persons in the database, the total costs become
+already quadratic in |ADom|.
+The key idea is to approximate safe sub-queries of the type x.Q by employing the RESCAL tensor factorization model. Through this approach, we avoid
+costly evaluations of sub-queries and additionally construct materialized views
+that have a memory efficient factorized representation. To illustrate the proposed approach, consider the query example from Section 3.3. This query can
+
+be subdivided into two parts, Q(x, t, z) = Q1(x, t)  Q2(x, z) with
+
+Q1(x, t) :  bornIn(x, t)
+Q2(x, z) :  y.(likes(x, y), childOf(y, z)).
+
+As discussed before, the calculation of Q2 can become very expensive. To overcome this problem, we approximate the probabilistic answer to Q2 by a two-step
+process. First, we create a newly formed compound relation likesChildOf, which
+represents the database view generated by Q2
+
+Q2(x, z) : likesChildOf(x, z).
+
+To create the compound relation we use the deterministic and sparse representation of the affected relations from Q2 and join them into a single relation.
+This avoids the expensive calculation of the probabilities for each instance of
+the active domain of y and can be computed efficiently as the deterministic join
+is not expensive if the (deterministic) domain is sparse. However, the representation of Q2 would only be based on the available deterministic information so
+far and would not utilize the probabilistic model of the triple store computed
+by RESCAL. Hence in a second step we now need to derive probabilities for the
+triples in the newly formed relation. Fortunately, all that is needed to derive these
+probabilities under the RESCAL model is to compute a latent representation of
+the newly created compound relation likesChildOf, which can be done very effi-
+ciently. In the following, let X() denote the newly created compound relation.
+Furthermore, assume that a meaningful latent representation of the entities has
+been explored via the factorization of the deterministic triple store. Since the
+RESCAL model uses a unique representation of entities over all relations, all
+that is needed to derive probabilities for a new relation is to compute its latent
+representation R(). The big advantage of the proposed method is that R() can
+now be derived by simply projecting X() into the latent space that is spanned
+by the RESCAL factor matrix A. This can be done very efficiently: Consider
+the ALS updates derived in [17]. Essentially what is needed is to calculate the
+latent matrix for the materialized view, i.e., R() as
+
+R() = (Z T Z + I)
+
+with Z = A  A.
+
+1Z T X()
+
+R() can be calculated more efficiently by using the following property of the
+singular value decomposition regarding the Kronecker product [13]
+
+A  A = (U  U )(  )(V T  V T )
+?
+
+?
+
+?
+where A = U V T . From this property the following update for R() can be
+derived [17],
+
+R() = V (S  U T X()U )V T
+
+where  represents the Hadamard (element-wise) matrix product and S is defined as
+
+[S]ij =
+
+ij
+i 2
+2
+
+j + 
+
+where i is the i-th singular value of A. The calculation of R() for the newly
+created relation can now be done in O(r3 + nr + pr), where p represents the
+number of nonzero entries in X(), r represents the rank of the factorization,
+and where n  r represents all entities in the triple database. Please note that
+the computation of R() is now linear in all parameters regarding the size of
+the triple store and cubic only in the number of latent components r that are
+used to factorize the triple store. As such it can be computed efficiently even for
+very large triple stores. Furthermore, for each query of the same type the same
+relational representation can be used, i.e. R() only needs to be computed once.
+
+6 Experiments
+
+6.1 Evaluating the Quality of the Approximation
+
+First we conducted experiments on various smaller benchmark datasets. Here,
+the materialized views (compound relations) can still be computed (and stored)
+and we can compare the standard approach using materialized views constructed
+by extensional query evaluation (Section 3.3) with our proposed method that approximates these views. The constructed views that we consider in these experiments range over the join of two relational atoms of the type y.S(x, y), T (y, z).
+For evaluation, we removed ground tuples only from the deterministic relations S
+and T and factorized the truncated triple store with RESCAL. From the resulting factorization, we construct the compound relation of S and T by extensional
+query evaluation or approximated it with our proposed method. For both ap-
+proaches, we measure the quality of the ranking via the Area Under the Receiver
+Operating Characteristic Curve (AUC) in two settings: First, we compared the
+ranking to the full ground truth, i.e. against the ranking constructed from the
+full triple store(called all tuples in the following) including training and test
+data (evaluation setting all). Second, we compared the ranking to that part of
+the ground truth that could not have been inferred deterministically from the
+truncated (training) data, therefore evaluating only the discovery of new tuples
+(called unknown tuples in the following)(evaluation setting unknown). We report
+the average scores after 10-fold cross-validation. Additionally, we also compared
+the runtime of both techniques. All experiments were conducted with an Intel(R)
+Core(TM) i5-3320M CPU @ 2.60GHz.
+
+D. Krompa, M. Nickel, and V. Tresp
+
+(a) negativeBehaviorTo.
+
+(b) Runtime
+
+(c) associatedAndResultOf
+
+(d) Runtime
+
+for
+
+the
+
+(Nations) and associatedToResultOf
+
+two materialized views negativeBehaviorToAlliedNa-
+Fig. 2. Results
+tionOf
+(UMLS): RESCAL+Rules(blue) represents the construction solely with the independent-project rule (Section 3.3).
+RESCAL+Approx.(green) represents the approximation of these views with the method
+proposed in this work (Section 5). (a,c) The left two bars show the performance (AUC)
+on all tuples of the deterministic version of the corresponding materialized view (eval-
+uation setting all). The right two bars show the performance (AUC) on the tuples that
+were unknown at factorization and querying time (evaluation setting unknown).(b,d)
+Show the runtime for constructing the views for each technique (independent-project
+rule or approximation).
+
+In the experiments, we used the Nations and the UMLS datasets:
+Nations. 14  14  56 multi-relational data that consist of relations between
+
+nations (treaties, immigration, etc).
+
+UMLS. 135  135  49 multi-relational data that consist of biomedical relationships between categorized concepts of the Unified Medical Language System.
+For the nations dataset we explored the view : Does x show negative behavior
+
+towards an ally of z?, leading to the query
+
+negativeBehaviorToAlliedNationOf(x, z) : y.negativeBehaviorTo(x, y),
+
+alliedNationOf(y, z).
+
+For the UMLS dataset we materialized the view associatedToAndResultOf as
+
+associatedToAndResultOf(x, z) : y.associatedTo(x, y), resultOf(y, z).
+
+The results of the experiments are shown in Figure 2. Generally, the results
+in Figure 2.a and Figure 2.b show that both techniques do a good job when
+constructing the compound relations. Regarding the ranking of all tuples in these
+views, very high AUC values could be achieved. In case of the UMLS dataset,
+the score is almost perfect (0.999). Also the discovery of unknown tuples seems
+to work quite well (right bars in plots a and c). As would have been expected,
+in both views the materializations based on the independent-project rule seem
+to work a little bit better than the ones approximated by our proposed method,
+but the performance is comparable (0.843/0.805 and 0.996/0.978).
+?
+
+?
+
+?
+When we are looking at the runtime of the materialization of the views, it
+can be clearly seen that the approximated compound relations are constructed
+significantly faster than the ones constructed through the independent-project
+rule. For the compound relation negativeBehaviorTo the rules based approach
+takes 124 times longer (40 times longer for negativeBehaviorToAlliedNationOf ).
+This result was expected since the complexity of the approximation is mostly
+dependent on the rank of the factorization, where the construction through
+independent-project is cubic in |ADom|.3
+
+6.2 Evaluating Queries
+
+In the second set of experiments, we used a larger triple store, i.e., a sample of the
+DBpedia dataset4 [14] covering the musical domain and the task was to answer
+predefined queries. The queries are answered by using both techniques, rules and
+the sub-query approximation proposed in this work. We measure the quality of
+the probabilistic ranking of answer tuples to the different predefined queries in
+AUC. For evaluation we removed ground tuples from those relations that take
+part in constructing parts of the query where our method is supposed to approximate the sub-query. The resulting truncated triple store is then factorized
+by RESCAL. We compare the query answers inferred solely through extensional
+
+(a) Q1(x)
+
+(b) Runtime
+
+(c) Q2(x)
+
+(d) Runtime
+
+the answering with extensional query evaluation rules
+
+Fig. 3. Results for the queries (a) Q1(x) and Q2(x): RESCAL+Rules(blue) rep-
+resents
+(Section 3.3).
+RESCAL+Approx.(green) represents the query answer of a combination of extensional
+query evaluation rules and the approximation of joined y.Q type relational atoms.
+(Section 5). (a,c) The left two bars show the quality of the probabilistic ranking (AUC)
+when compared to all answer tuples returned from the complete deterministic triple
+store with respect to the corresponding query (evaluation setting all). The right two
+bars show the ranking quality (AUC) with respect to unknown answer tuples (eval-
+uation setting unknown).(b,d) Shows the runtime for answering the query with each
+technique (Extensional query evaluation with or without sub-query approximation).
+
+3 |ADom| products have to be computed for each tuple in the compound relation
+matrix when applying the independent-project rule.
+
+4 http://wiki.dbpedia.org/Downloads35?v=pb8
+
+D. Krompa, M. Nickel, and V. Tresp
+
+query evaluation rules against our method, where sub-queries (compound rela-
+tions) were approximated instead of applying the independent-project rule. As
+in the first set of experiments, we compare the ranking of possible answer tuples
+to the full ground truth, i.e. against the answer tuples inferred from the complete
+deterministic triple store, including training and test data (called all tuples in
+the following)(evaluation setting all). In addition we compared the ranking to
+those answer tuples that could not have been inferred deterministically from the
+truncated (training) data, therefore evaluating only the discovery of new tuples
+(called unknown tuples in the following)(evaluation setting unknown). For the
+query evaluation process the runtime of both approaches was also compared.
+
+The DBpedia dataset:
+DBpedia-Music. 44345  44345  7 multi-relational data that consists of
+relations and entities regarding the musical domain. The relations are Genre,
+RecordLabel (rL), associatedMusicalArtist, associatedBand, musicalArtist (mA),
+musicalBand, album. We pre-defined the following queries for the experiments:
+
+ What songs or albums from the Pop-Rock genre are from musical artists
+
+that have/had a contract with Atlantic Records?
+
+Q1(x)
+
+: y.(genre(x, z)  mA(x, y)  rL(y, Atlantic Records)).
+
+ Which musical artists from the Hip Hop music genre have/had a contract
+
+with Shady (SD), Aftermath (AM) or Death Row (DR) records?
+
+Q2(x) : y.(genre(x, Hip hop music)mA(x, y)rL(y,{SD, AM, DR}))
+
+ Which musical artists from the Hip Hop music genre are associated with
+musical artists that have/had a contract with Interscope Records and are
+involved in an album whose first letter is a T?
+
+Q3(x) : y.(associatedMusicalArtist(x, y)  rL(y, Interscope Records))
+genre(x, Hip hop music)  z.t.(mA(z, x)  album(z,{Album T.*}))
+
+Q1 and Q2 are calculated as
+
+Q1(x) =
+
+
+1  
+?
+
+?
+
+?
+
+1  P (genre(x, z))
+
+
+z{PopRock}
+
+
+1  
+
+bADom
+?
+
+?
+
+?
+1  P (mA(x, b)  P (rL(b, Atlantic record))
+
+.
+
+Q2(x) = P (genre(x, Hip hop music))
+1  P (mA(x, b)
+
+
+1  
+
+
+
+bADom
+
+
+1  
+
+c{SD,AM,DR}
+
+
+
+1  P (rL(b, c))
+
+ .
+?
+
+?
+
+?
+The computation of Q3 is omitted, since its structure is a combination of Q1
+and Q2. For the factorization of the database, a rank of r=100 was used. The
+results of the experiments for Q1 and Q2 are shown in Figure 3. Similar to
+the previous results, both approaches perform well and comparable in answering the queries. Also the discovery of unknown answer tuples seems to work
+quite well (above 0.9) for both methods. Regarding the answering time (Figure
+3.b,d) it can be clearly seen that the proposed method, which approximates the
+view on musicalArtist(x, y)  recordLabel(y, l), resulted in a significantly faster
+response time for both queries, even though the complete join of musicalArtist
+and recordLabel was not needed when using the independent-project rule. For
+Q1, the query was answered 180 times faster and in case of Q2 this difference is
+even greater, because we have a nested independent-project in the query (we ask
+for multiple record labels). The response time of our method is almost the same
+for both queries, where the runtime of the answer generated solely through the
+extensional rules doubles for Q2. In case of Q3 (results not shown) this becomes
+even more dramatic, because there are many potential albums that start with
+T. As expected, the answer generated by the proposed approach doubles its runtime to 3.6 seconds since Q3 is a combination of Q1 and Q2 (AUC 0.997, 0.985
+(unknown answer tuples)), but without sub-query approximation the evaluation
+of Q3 did not terminate even after 6 hours runtime! In addition, we constructed
+a factorized representation of the approximated views which can be stored with
+almost no cost (100  100 entries  80kByte). In comparison, a materialized
+view constructed with rules would take 44345  44345 entries  15.7GB.
+
+From the results presented in this section, it can be observed that with the
+technique introduced in Section 5 we are able to join sub-queries of the form
+x.Q orders of magnitudes faster and that the join is competitive to a probabilistically correct join generated solely through extensional query evaluation
+rules (independent-project).
+
+7 Conclusions
+
+In this paper we have demonstrated how a factorized model based on the
+RESCAL approach can lead to a very efficient representation of the probabilistic
+database and also can be used to derive the probabilities for the ground tuples.
+Most importantly, we have shown how efficient querying can be achieved within
+the RESCAL framework by factorizing a deterministic view at query time.
+In general, the approach is not restricted to the x.Q type queries but can
+always be employed when factorized materialized deterministic views can be used
+to simplify the probabilistic query. Note that after we perform the deterministic
+joins, we might obtain views with arities larger than two. This is not a serious
+problem since our approach is not restricted to binary relations.
+
+Acknowledgements. Maximilian Nickel acknowledges support by the Center
+for Brains, Minds and Machines (CBMM), funded by NSF STC award CCF-
+1231216
+
+D. Krompa, M. Nickel, and V. Tresp
