@@ -30,12 +30,6 @@ public class TemporalFrequencyStats {
         this.interval = interval;
     }
     
-    private LocalDateTime convertToLocalDateViaInstant(Date dateToConvert) {
-        return dateToConvert.toInstant()
-        .atZone(ZoneId.systemDefault())
-        .toLocalDateTime();
-    }
-    
     private long divCeil(long x, long y) {
         if(x % y == 0) {
             return x / y;
@@ -44,8 +38,7 @@ public class TemporalFrequencyStats {
         }
     }
     
-    public void add(FrequencyStats stats, Date d) {
-        LocalDateTime time = convertToLocalDateViaInstant(d);
+    public void add(FrequencyStats stats, LocalDateTime time) {
         if(start == null) {
             start = time;
             freqs.add(stats);

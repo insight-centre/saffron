@@ -21,8 +21,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +36,7 @@ import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
+import org.joda.time.format.DateTimeFormat;
 import org.xml.sax.SAXException;
 
 /**
@@ -161,14 +163,10 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
-                Date lastModified = null;
-                if(htmlParseData.getMetaTags().containsKey("Last-Modified")) {
-                    SimpleDateFormat format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");                    
-                    try {
-                        lastModified = format.parse(htmlParseData.getMetaTags().get("Last-Modified"));
-                    } catch (ParseException ex) {
-                        System.err.println("Failed to parse date: " +htmlParseData.getMetaTags().get("Last-Modified"));                        
-                    }
+                LocalDateTime lastModified = null;
+                if (htmlParseData.getMetaTags().containsKey("Last-Modified")) {
+                    DateTimeFormatter format = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz");
+                    lastModified = LocalDateTime.parse(htmlParseData.getMetaTags().get("Last-Modified"), format);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null, lastModified)
                         .withLoader(new CrawlLoader()));
@@ -186,7 +184,7 @@ public class SaffronCrawler extends WebCrawler {
                     System.err.println("Could not write binary for " + url + " due to " + x);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null)
-                    .withLoader(new CrawlLoader()));
+                        .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }

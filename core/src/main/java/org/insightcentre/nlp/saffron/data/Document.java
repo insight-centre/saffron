@@ -1,9 +1,20 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.deser.std.DateDeserializers;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -11,6 +22,11 @@ import java.io.InputStreamReader;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Month;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -36,7 +52,9 @@ public class Document {
     public List<Author> authors;
     private Loader contents;
     public Map<String, String> metadata;
-    public Date date;
+    @JsonSerialize(using=DateSerializer.class)
+    @JsonDeserialize(using=DateDeserializer.class)
+    public LocalDateTime date;
 
     @JsonCreator
     public Document(@JsonProperty(value = "file") SaffronPath file,
@@ -47,7 +65,7 @@ public class Document {
             @JsonProperty("authors") List<Author> authors,
             @JsonProperty("metadata") Map<String, String> metadata,
             @JsonProperty("contents") String contents,
-            @JsonProperty("date") Date date) {
+            @JsonProperty("date") LocalDateTime date) {
         if (file == null && contents == null && url == null) {
             System.err.println("id=" + id);
         }
@@ -320,4 +338,49 @@ public class Document {
         return isoDate.format(date);
     }
     
+    
+    public static class DateDeserializer extends StdDeserializer<LocalDateTime> {
+        public DateDeserializer() {
+            super(LocalDateTime.class);
+        }
+        
+        
+        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+        
+        private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(
+                "yyyy[-MM[-dd]]");
+        
+        @Override
+        public LocalDateTime deserialize(JsonParser jp, DeserializationContext dc) throws IOException, JsonProcessingException {
+            String s = jp.getText();
+            if(s.matches("\\d{4}")) {
+                return LocalDateTime.of(Integer.parseInt(s), Month.JANUARY, 1, 0, 0);
+            } else if (s.matches("\\d{4}-\\d{1,2}")) {
+                return LocalDateTime.of(Integer.parseInt(s.substring(0,4)), Integer.parseInt(s.substring(5,7)), 1, 0, 0);
+            }
+            try {
+                return LocalDateTime.parse(s, formatter);
+            } catch(Exception x) {
+                return LocalDate.parse(s, dateFormatter).atStartOfDay();
+            }
+        }
+    
+    }
+    
+    public static class DateSerializer extends StdSerializer<LocalDateTime> {
+
+        public DateSerializer() {
+            super(LocalDateTime.class);
+        }
+        
+        
+        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+        @Override
+        public void serialize(LocalDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException {
+            jg.writeString(formatter.format(t));
+        }
+        
+    }
 }
