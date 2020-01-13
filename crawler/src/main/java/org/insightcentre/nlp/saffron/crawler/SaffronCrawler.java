@@ -19,10 +19,9 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -161,14 +160,10 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
-                Date lastModified = null;
+                LocalDateTime lastModified = null;
                 if(htmlParseData.getMetaTags().containsKey("Last-Modified")) {
-                    SimpleDateFormat format = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");                    
-                    try {
-                        lastModified = format.parse(htmlParseData.getMetaTags().get("Last-Modified"));
-                    } catch (ParseException ex) {
-                        System.err.println("Failed to parse date: " +htmlParseData.getMetaTags().get("Last-Modified"));                        
-                    }
+                    DateTimeFormatter format = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz");
+                    lastModified = LocalDateTime.parse(htmlParseData.getMetaTags().get("Last-Modified"), format);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null, lastModified)
                         .withLoader(new CrawlLoader()));
