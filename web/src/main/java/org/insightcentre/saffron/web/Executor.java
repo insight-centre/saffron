@@ -295,10 +295,11 @@ public class Executor extends AbstractHandler {
         }
         new Thread(new Runnable() {
             @Override
+            @SuppressWarnings("UseSpecificCatch")
             public void run() {
                 try {
                     execute(corpus, newConfig, data, saffronDatasetName, true);
-                } catch (IOException x) {
+                } catch (Exception x) {
                     Status _status = statuses.get(saffronDatasetName);
                     _status.fail(x.getMessage(), x);
                 }
