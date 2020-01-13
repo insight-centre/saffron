@@ -77,14 +77,14 @@ public class Document {
         this.authors = authors == null ? new ArrayList<Author>() : authors;
         this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
         this.date = date;
-        if(contents != null) {
+        if (contents != null) {
             this.contents = new InMemory(contents);
-        } else if(file != null) {
+        } else if (file != null) {
             this.contents = new OnDisk();
-        } else if(url != null) {
+        } else if (url != null) {
             this.contents = new Remote();
         } else {
-            throw new IllegalArgumentException("Please give either document contents or link to file");            
+            throw new IllegalArgumentException("Please give either document contents or link to file");
         }
     }
 
@@ -96,7 +96,7 @@ public class Document {
      */
     public Document withLoader(Loader contents) {
         // Skip this in the case that the contents are in memory
-        if(this.contents == null || !(this.contents instanceof InMemory)) {
+        if (this.contents == null || !(this.contents instanceof InMemory)) {
             this.contents = contents;
         }
         return this;
@@ -120,6 +120,7 @@ public class Document {
     /**
      * Retrieve the contents of the document. Note this method cause documents
      * to be read from disc
+     *
      * @return The contents of the document
      */
     public String contents() {
@@ -253,13 +254,13 @@ public class Document {
         }
 
     }
-    
+
     public static class Remote implements Loader {
 
         @Override
         public String getContents(Document d) {
-            if(d.url != null) {
-                try(BufferedReader reader = new BufferedReader(new InputStreamReader(d.url.openStream()))) {
+            if (d.url != null) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(d.url.openStream()))) {
                     StringBuilder sb = new StringBuilder();
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -278,7 +279,7 @@ public class Document {
         public String getContentsSerializable(Document d) {
             return null;
         }
-        
+
     }
 
     /**
@@ -305,82 +306,81 @@ public class Document {
 
     @Override
     public String toString() {
-        if(contents != null && contents instanceof InMemory) {
+        if (contents != null && contents instanceof InMemory) {
             return String.format("Document(%s,InMemory)", id);
-        } else if(contents != null && contents instanceof OnDisk) {
-            return String.format("Document(%s,%s)", id, file.toFile().getAbsolutePath());            
-        } else if(contents != null && contents instanceof Remote) {
-            return String.format("Document(%s,%s)", id, url);   
-        } else if(contents != null) {
-            return String.format("Document(%s,%s)", id, contents.toString());   
+        } else if (contents != null && contents instanceof OnDisk) {
+            return String.format("Document(%s,%s)", id, file.toFile().getAbsolutePath());
+        } else if (contents != null && contents instanceof Remote) {
+            return String.format("Document(%s,%s)", id, url);
+        } else if (contents != null) {
+            return String.format("Document(%s,%s)", id, contents.toString());
         } else {
             return String.format("Document(%s,NoContent)", id);
         }
     }
-    
-    private static final SimpleDateFormat isoDate = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd]]");
+
     /**
      * Parse a date
+     *
      * @param date The date as an ISO String
      * @return The date object
      */
-    public static Date parseDate(String date) {
-        if(date == null || date.equals("")) return null;
+    public static LocalDateTime parseDate(String s) {
+        if(s == null || s.equals(""))
+            return null;
+        if (s.matches("\\d{4}")) {
+            return LocalDateTime.of(Integer.parseInt(s), Month.JANUARY, 1, 0, 0);
+        } else if (s.matches("\\d{4}-\\d{1,2}")) {
+            return LocalDateTime.of(Integer.parseInt(s.substring(0, 4)), Integer.parseInt(s.substring(5, 7)), 1, 0, 0);
+        }
         try {
-            return isoDate.parse(date);
-        } catch(ParseException x) {
-            throw new RuntimeException(x);
+            return LocalDateTime.parse(s, formatter);
+        } catch (Exception x) {
+            return LocalDate.parse(s, dateFormatter).atStartOfDay();
         }
     }
-    
+
     @JsonIgnore
     public String getDateAsString() {
-        return isoDate.format(date);
+        if (date == null) {
+            return null;
+        }
+        return formatter.format(date);
     }
-    
-    
+
     public static class DateDeserializer extends StdDeserializer<LocalDateTime> {
+
         public DateDeserializer() {
             super(LocalDateTime.class);
         }
-        
-        
-        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
-            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
-        
-        private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(
-                "yyyy[-MM[-dd]]");
-        
+
         @Override
         public LocalDateTime deserialize(JsonParser jp, DeserializationContext dc) throws IOException, JsonProcessingException {
             String s = jp.getText();
-            if(s.matches("\\d{4}")) {
-                return LocalDateTime.of(Integer.parseInt(s), Month.JANUARY, 1, 0, 0);
-            } else if (s.matches("\\d{4}-\\d{1,2}")) {
-                return LocalDateTime.of(Integer.parseInt(s.substring(0,4)), Integer.parseInt(s.substring(5,7)), 1, 0, 0);
-            }
-            try {
-                return LocalDateTime.parse(s, formatter);
-            } catch(Exception x) {
-                return LocalDate.parse(s, dateFormatter).atStartOfDay();
-            }
+            return parseDate(s);
         }
-    
+
     }
-    
+
     public static class DateSerializer extends StdSerializer<LocalDateTime> {
 
         public DateSerializer() {
             super(LocalDateTime.class);
         }
-        
-        
+
         private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
-            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+                "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+
         @Override
         public void serialize(LocalDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException {
             jg.writeString(formatter.format(t));
         }
-        
+
     }
 }
