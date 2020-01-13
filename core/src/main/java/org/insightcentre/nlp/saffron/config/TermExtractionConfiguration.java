@@ -71,7 +71,7 @@ public class TermExtractionConfiguration {
      * The length of time (in days) to use as intervals in temporal prediction
      * or negative to disable temporal prediction
      */
-    public int intervalDays = -1;
+    public int intervalDays = 365;
 
     /**
      * If set always output at least one term for each input document (overrides maxTerms
