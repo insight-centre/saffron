@@ -1,9 +1,9 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
 import java.util.Set;
+
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
-import org.insightcentre.nlp.saffron.taxonomy.search.Link;
-import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 
 /**
@@ -12,28 +12,9 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  *
  * @author John McCrae
  */
-public interface TaxonomyScore<T extends Link> {
+public interface TaxonomyScore extends Score<TaxoLink> {
 
-    /**
-     * Calculate the change in score of adding a single link
-     *
-     * @param taxoLink The taxonomy link to add
-     * @return The change in score
-     */
-    double deltaScore(T taxoLink);
-
-    /**
-     * Generate a new taxonomy score for the solution which differs from this
-     * solution only by adding the link bottom -&gt; top
-     *
-     * @param top The broader term
-     * @param bottom The narrower term
-     * @param soln The new solution
-     * @return An object that is updated for this case
-     */
-    TaxonomyScore next(T link, Solution soln);
-
-    /**
+	/**
      * Create an instance of taxonomy search
      * @param config The configuration
      * @param score The value of the score (should be config.score)

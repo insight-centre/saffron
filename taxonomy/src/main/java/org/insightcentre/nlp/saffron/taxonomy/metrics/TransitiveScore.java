@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  *
  * @author John McCrae
  */
-public class TransitiveScore implements TaxonomyScore<TaxoLink> {
+public class TransitiveScore implements TaxonomyScore {
 
     private final SupervisedTaxo classifier;
     private final Object2DoubleMap<TaxoLink> scores;

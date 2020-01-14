@@ -37,7 +37,7 @@ import java.util.Arrays;
  * 
  * @author John McCrae
  */
-public class BhattacharryaPoisson implements TaxonomyScore<TaxoLink> {
+public class BhattacharryaPoisson implements TaxonomyScore {
     private final TaxonomyScore baseScore;
     private final Object2IntMap<String> term2index;
     private final int[] f;
