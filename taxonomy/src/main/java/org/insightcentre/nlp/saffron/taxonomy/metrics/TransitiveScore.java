@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  *
  * @author John McCrae
  */
-public class TransitiveScore implements TaxonomyScore {
+public class TransitiveScore implements HierarchicalScore {
 
     private final SupervisedTaxo classifier;
     private final Object2DoubleMap<TaxoLink> scores;
@@ -72,7 +72,7 @@ public class TransitiveScore implements TaxonomyScore {
     }
 
     @Override
-    public TaxonomyScore next(TaxoLink link, Solution soln) {
+    public HierarchicalScore next(TaxoLink link, Solution soln) {
         HashMap<String, Set<String>> newParents = new HashMap<>(parents);
         // Shouldn't already be parents
         Set<String> p = newParents.containsKey(link.getBottom()) ? newParents.get(link.getBottom()) : new HashSet<String>();

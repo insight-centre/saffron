@@ -66,7 +66,7 @@ public class TransitiveScoreTest {
         System.out.println("deltaScore");
         TaxoLink tl = new TaxoLink("a", "ab");
         Solution soln = Solution.empty(new HashSet<String>(Arrays.asList("", "a", "ab", "abc")));
-        TaxonomyScore instance = new TransitiveScore(new TestSupervisedTaxo());
+        HierarchicalScore instance = new TransitiveScore(new TestSupervisedTaxo());
         instance = instance.next(new TaxoLink("", "a"), soln.add("", "a", 0, 0, 0, false));
         instance = instance.next(new TaxoLink("ab", "abc"), soln.add("ab", "abc", 0, 0, 0, false));
         double expResult = 2.0 / 3.0 + 1.0 / 3.0 + 2.0 / 4.0 + 1.0/4.0 - 0.5 * 4;
@@ -96,7 +96,7 @@ public class TransitiveScoreTest {
         for (int i = 0; i < 5; i++) {
             shuffleArray(tls);
             Solution soln = Solution.empty(new HashSet<String>());
-            TaxonomyScore instance = new TransitiveScore(new TestSupervisedTaxo());
+            HierarchicalScore instance = new TransitiveScore(new TestSupervisedTaxo());
             double score = 0.0;
             for (TaxoLink tl : tls) {
                 score += instance.deltaScore(tl);

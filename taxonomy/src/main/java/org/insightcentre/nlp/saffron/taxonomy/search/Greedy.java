@@ -1,17 +1,18 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
+
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 /**
  * Implements a simple greedy search for the best taxonomy
@@ -20,16 +21,16 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
  */
 public class Greedy implements TaxonomySearch {
 
-    private final TaxonomyScore emptyScore;
+    private final Score emptyScore;
 
-    public Greedy(TaxonomyScore score) {
+    public Greedy(Score score) {
         this.emptyScore = score;
     }
 
     @Override
     public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
-        TaxonomyScore score = this.emptyScore;
+        Score score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(termMap.size() == 0) {
             return new Taxonomy("NO TERMS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);

@@ -2,11 +2,12 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import java.util.HashSet;
 import java.util.Iterator;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.Map;
 import java.util.Set;
+
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
 
 /**
  *
@@ -14,10 +15,10 @@ import org.insightcentre.nlp.saffron.data.Term;
  */
 public class BeamSearch implements TaxonomySearch {
 
-    private final TaxonomyScore emptyScore;
+    private final Score emptyScore;
     private final int beamSize;
 
-    public BeamSearch(TaxonomyScore emptyScore, int beamSize) {
+    public BeamSearch(Score emptyScore, int beamSize) {
         this.emptyScore = emptyScore;
         this.beamSize = beamSize;
         assert (beamSize > 0);
@@ -28,7 +29,7 @@ public class BeamSearch implements TaxonomySearch {
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);
-        TaxonomyScore score = emptyScore;
+        Score score = emptyScore;
         Solution soln = Solution.empty(termMap.keySet());
         double s2 = 0.0;
         Set<String> whiteHeads = new HashSet<>();
@@ -93,11 +94,11 @@ public class BeamSearch implements TaxonomySearch {
     private static class Soln implements Comparable<Soln> {
 
         public final Solution soln;
-        public final TaxonomyScore score;
+        public final Score score;
         public final double totalScore;
         public final boolean rooted;
 
-        public Soln(Solution soln, TaxonomyScore score, double totalScore, boolean rooted) {
+        public Soln(Solution soln, Score score, double totalScore, boolean rooted) {
             this.soln = soln;
             this.score = score;
             this.totalScore = totalScore;

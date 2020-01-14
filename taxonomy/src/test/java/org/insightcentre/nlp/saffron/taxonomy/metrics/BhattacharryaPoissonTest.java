@@ -1,15 +1,16 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.Arrays;
 import java.util.HashSet;
-import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
+
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -42,7 +43,7 @@ public class BhattacharryaPoissonTest {
     @Test
     public void testDeltaScore() {
         System.out.println("deltaScore");
-        TaxonomyScore instance = new BhattacharryaPoisson(new NullScore(),
+        HierarchicalScore instance = new BhattacharryaPoisson(new NullScore(),
                 new HashSet<>(Arrays.asList("", "a","b","c","d")), 2.0, 1.0);
         // Initial BP = 0.0
         assertEquals(2.081, instance.deltaScore(new TaxoLink("", "a")), 0.001);
