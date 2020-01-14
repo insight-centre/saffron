@@ -479,8 +479,6 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        try {
-            System.err.println("Start execute <<---->>");
         BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
         if (bwList == null) {
             bwList = new BlackWhiteList();
@@ -600,10 +598,6 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(saffronDatasetName, topRootGraph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
         _status.completed = true;
-        } catch(RuntimeException x) {
-            x.printStackTrace();
-            throw x;
-        }
     }
 
     public BlackWhiteList extractBlackWhiteList(String datasetName) {
