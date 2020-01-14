@@ -87,7 +87,7 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     
     @Override
     public double deltaScore(TaxoLink taxoLink) {
-        int t = term2index.get(taxoLink.top);
+        int t = term2index.get(taxoLink.getTop());
         final double delta;
         if(c[t] > 0) {
             delta =

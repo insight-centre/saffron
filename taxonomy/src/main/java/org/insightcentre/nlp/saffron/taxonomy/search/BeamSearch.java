@@ -34,13 +34,13 @@ public class BeamSearch implements TaxonomySearch {
         Set<String> whiteHeads = new HashSet<>();
 
         for (TaxoLink sp : whiteList) {
-            soln = soln.add(sp.top, sp.bottom,
-                    termMap.get(sp.top).getScore(),
-                    termMap.get(sp.bottom).getScore(),
+            soln = soln.add(sp.getTop(), sp.getBottom(),
+                    termMap.get(sp.getTop()).getScore(),
+                    termMap.get(sp.getBottom()).getScore(),
                     score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
-            score = score.next(sp.top, sp.bottom, soln);
-            whiteHeads.add(sp.bottom);
+            score = score.next(sp.getTop(), sp.getBottom(), soln);
+            whiteHeads.add(sp.getBottom());
         }
         previous.push(new Soln(soln, score, s2, false), s2);
         for (String t1 : termMap.keySet()) {

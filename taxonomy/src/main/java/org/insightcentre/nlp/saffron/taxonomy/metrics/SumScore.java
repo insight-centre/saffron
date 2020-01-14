@@ -23,7 +23,7 @@ public class SumScore implements TaxonomyScore {
     @Override
     public double deltaScore(TaxoLink tl) {
         if (!scores.containsKey(tl)) {
-            scores.put(tl, classifier.predict(tl.top, tl.bottom));
+            scores.put(tl, classifier.predict(tl.getTop(), tl.getBottom()));
         }
         return scores.getDouble(tl);
     }

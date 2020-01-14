@@ -100,7 +100,7 @@ public class TransitiveScoreTest {
             double score = 0.0;
             for (TaxoLink tl : tls) {
                 score += instance.deltaScore(tl);
-                instance = instance.next(tl.top, tl.bottom, soln.add(tl.top, tl.bottom, 0.0, 0.0, 0.0, false));
+                instance = instance.next(tl.getTop(), tl.getBottom(), soln.add(tl.getTop(), tl.getBottom(), 0.0, 0.0, 0.0, false));
                 
             }
             assertEquals(expSolution, score, 0.001);

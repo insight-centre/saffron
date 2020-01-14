@@ -49,12 +49,12 @@ public class Greedy implements TaxonomySearch {
 
         Solution soln = Solution.empty(termMap.keySet());
         for (TaxoLink sp : whiteList) {
-            if (termMap.get(sp.top) != null && termMap.get(sp.bottom) != null) {
-                soln = soln.add(sp.top, sp.bottom,
-                        termMap.get(sp.top).getScore(),
-                        termMap.get(sp.bottom).getScore(),
+            if (termMap.get(sp.getTop()) != null && termMap.get(sp.getBottom()) != null) {
+                soln = soln.add(sp.getTop(), sp.getBottom(),
+                        termMap.get(sp.getTop()).getScore(),
+                        termMap.get(sp.getBottom()).getScore(),
                         score.deltaScore(sp), true);
-                score = score.next(sp.top, sp.bottom, soln);
+                score = score.next(sp.getTop(), sp.getBottom(), soln);
             }
         }
         SOLN_LOOP:
@@ -74,14 +74,14 @@ public class Greedy implements TaxonomySearch {
             });
             while (!candidates.isEmpty()) {
                 TaxoLink candidate = candidates.remove(0);
-                Solution soln2 = soln.add(candidate.top, candidate.bottom,
-                        termMap.get(candidate.top).getScore(),
-                        termMap.get(candidate.bottom).getScore(),
+                Solution soln2 = soln.add(candidate.getTop(), candidate.getBottom(),
+                        termMap.get(candidate.getTop()).getScore(),
+                        termMap.get(candidate.getBottom()).getScore(),
                         scores.getDouble(candidate), false);
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;
-                    score = score.next(candidate.top, candidate.bottom, soln);
+                    score = score.next(candidate.getTop(), candidate.getBottom(), soln);
                     continue SOLN_LOOP;
                 }
             }

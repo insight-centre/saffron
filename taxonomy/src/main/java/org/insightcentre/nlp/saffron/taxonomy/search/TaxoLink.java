@@ -6,21 +6,25 @@ import java.util.Objects;
  * A single link in a taxonomy
  * @author John McCrae
  */
-public class TaxoLink implements Comparable<TaxoLink> {
+public class TaxoLink extends TypedLink {
 
-    public final String top;
-    public final String bottom;
-
-    public TaxoLink(String _s1, String _s2) {
-        this.top = _s1;
-        this.bottom = _s2;
+    public TaxoLink(String top, String bottom) {
+    	super(top,bottom,TypedLink.Type.hypernymy);
+    }
+    
+    public String getTop() {
+    	return this.getSource();
+    }
+    
+    public String getBottom() {
+    	return this.getTarget();
     }
 
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 17 * hash + Objects.hashCode(this.top);
-        hash = 17 * hash + Objects.hashCode(this.bottom);
+        hash = 17 * hash + Objects.hashCode(this.getSource());
+        hash = 17 * hash + Objects.hashCode(this.getTarget());
         return hash;
     }
 
@@ -36,10 +40,10 @@ public class TaxoLink implements Comparable<TaxoLink> {
             return false;
         }
         final TaxoLink other = (TaxoLink) obj;
-        if (!Objects.equals(this.top, other.top)) {
+        if (!Objects.equals(this.getSource(), other.getSource())) {
             return false;
         }
-        if (!Objects.equals(this.bottom, other.bottom)) {
+        if (!Objects.equals(this.getTarget(), other.getTarget())) {
             return false;
         }
         return true;
@@ -47,17 +51,7 @@ public class TaxoLink implements Comparable<TaxoLink> {
 
     @Override
     public String toString() {
-        return "(" + top + ", " + bottom + ')';
-    }
-
-    @Override
-    public int compareTo(TaxoLink o) {
-        int c1 = this.top.compareTo(o.top);
-        if (c1 != 0) {
-            return c1;
-        }
-        int c2 = this.bottom.compareTo(o.bottom);
-        return c2;
+        return "(" + getSource() + ", " + getTarget() + ')';
     }
 
 }

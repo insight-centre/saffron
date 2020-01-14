@@ -37,21 +37,21 @@ public class TransitiveScore implements TaxonomyScore {
     @Override
     public double deltaScore(TaxoLink tl) {
         if (!scores.containsKey(tl)) {
-            scores.put(tl, classifier.predict(tl.top, tl.bottom) - 0.5);
+            scores.put(tl, classifier.predict(tl.getTop(), tl.getBottom()) - 0.5);
         }
         double s = scores.getDouble(tl);
-        if (parents.containsKey(tl.top)) {
-            for (String p : parents.get(tl.top)) {
-                TaxoLink tl2 = new TaxoLink(p, tl.bottom);
+        if (parents.containsKey(tl.getTop())) {
+            for (String p : parents.get(tl.getTop())) {
+                TaxoLink tl2 = new TaxoLink(p, tl.getBottom());
                 if (!scores.containsKey(tl2)) {
-                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom) - 0.5);
+                    scores.put(tl2, classifier.predict(tl2.getTop(), tl2.getBottom()) - 0.5);
                 }
                 s += scores.getDouble(tl2);
-                if (children.containsKey(tl.bottom)) {
-                    for (String c : children.get(tl.bottom)) {
+                if (children.containsKey(tl.getBottom())) {
+                    for (String c : children.get(tl.getBottom())) {
                         TaxoLink tl3 = new TaxoLink(p, c);
                         if (!scores.containsKey(tl3)) {
-                            scores.put(tl3, classifier.predict(tl3.top, tl3.bottom) - 0.5);
+                            scores.put(tl3, classifier.predict(tl3.getTop(), tl3.getBottom()) - 0.5);
                         }
                         s += scores.getDouble(tl3);
 
@@ -59,11 +59,11 @@ public class TransitiveScore implements TaxonomyScore {
                 }
             }
         }
-        if (children.containsKey(tl.bottom)) {
-            for (String c : children.get(tl.bottom)) {
-                TaxoLink tl2 = new TaxoLink(tl.top, c);
+        if (children.containsKey(tl.getBottom())) {
+            for (String c : children.get(tl.getBottom())) {
+                TaxoLink tl2 = new TaxoLink(tl.getTop(), c);
                 if (!scores.containsKey(tl2)) {
-                    scores.put(tl2, classifier.predict(tl2.top, tl2.bottom) - 0.5);
+                    scores.put(tl2, classifier.predict(tl2.getTop(), tl2.getBottom()) - 0.5);
                 }
                 s += scores.getDouble(tl2);
             }
