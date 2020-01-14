@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;

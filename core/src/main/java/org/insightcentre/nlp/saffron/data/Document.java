@@ -159,14 +159,22 @@ public class Document {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 67 * hash + Objects.hashCode(this.id);
-        hash = 67 * hash + Objects.hashCode(this.name);
-        hash = 67 * hash + Objects.hashCode(this.authors);
+        hash = 97 * hash + Objects.hashCode(this.file);
+        hash = 97 * hash + Objects.hashCode(this.id);
+        hash = 97 * hash + Objects.hashCode(this.url);
+        hash = 97 * hash + Objects.hashCode(this.name);
+        hash = 97 * hash + Objects.hashCode(this.mimeType);
+        hash = 97 * hash + Objects.hashCode(this.authors);
+        hash = 97 * hash + Objects.hashCode(this.metadata);
+        hash = 97 * hash + Objects.hashCode(this.date);
         return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
         if (obj == null) {
             return false;
         }
@@ -180,11 +188,27 @@ public class Document {
         if (!Objects.equals(this.name, other.name)) {
             return false;
         }
+        if (!Objects.equals(this.mimeType, other.mimeType)) {
+            return false;
+        }
+        if (!Objects.equals(this.file, other.file)) {
+            return false;
+        }
+        if (!Objects.equals(this.url, other.url)) {
+            return false;
+        }
         if (!Objects.equals(this.authors, other.authors)) {
+            return false;
+        }
+        if (!Objects.equals(this.metadata, other.metadata)) {
+            return false;
+        }
+        if (!Objects.equals(this.date == null ? null : this.date.withNano(0), other.date == null ? null : other.date.withNano(0))) {
             return false;
         }
         return true;
     }
+
 
     /**
      * Enables on-demand loading of document contents
@@ -383,4 +407,6 @@ public class Document {
         }
 
     }
+    
+     
 }
