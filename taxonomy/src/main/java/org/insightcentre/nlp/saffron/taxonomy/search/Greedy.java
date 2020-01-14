@@ -54,7 +54,7 @@ public class Greedy implements TaxonomySearch {
                         termMap.get(sp.getTop()).getScore(),
                         termMap.get(sp.getBottom()).getScore(),
                         score.deltaScore(sp), true);
-                score = score.next(sp.getTop(), sp.getBottom(), soln);
+                score = score.next(sp, soln);
             }
         }
         SOLN_LOOP:
@@ -81,7 +81,7 @@ public class Greedy implements TaxonomySearch {
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;
-                    score = score.next(candidate.getTop(), candidate.getBottom(), soln);
+                    score = score.next(candidate, soln);
                     continue SOLN_LOOP;
                 }
             }

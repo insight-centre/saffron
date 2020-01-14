@@ -37,7 +37,7 @@ import java.util.Arrays;
  * 
  * @author John McCrae
  */
-public class BhattacharryaPoisson implements TaxonomyScore {
+public class BhattacharryaPoisson implements TaxonomyScore<TaxoLink> {
     private final TaxonomyScore baseScore;
     private final Object2IntMap<String> term2index;
     private final int[] f;
@@ -107,8 +107,8 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     }
 
     @Override
-    public TaxonomyScore next(String top, String bottom, Solution soln) {
-        int t = term2index.get(top);
+    public TaxonomyScore next(TaxoLink link, Solution soln) {
+        int t = term2index.get(link.getTop());
         int[] newC = Arrays.copyOf(c, c.length);
         newC[t]++;
         int[] newF = Arrays.copyOf(f, f.length);

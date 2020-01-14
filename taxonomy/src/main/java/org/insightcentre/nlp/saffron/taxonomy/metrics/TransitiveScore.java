@@ -13,7 +13,7 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  *
  * @author John McCrae
  */
-public class TransitiveScore implements TaxonomyScore {
+public class TransitiveScore implements TaxonomyScore<TaxoLink> {
 
     private final SupervisedTaxo classifier;
     private final Object2DoubleMap<TaxoLink> scores;
@@ -72,20 +72,20 @@ public class TransitiveScore implements TaxonomyScore {
     }
 
     @Override
-    public TaxonomyScore next(String top, String bottom, Solution soln) {
+    public TaxonomyScore next(TaxoLink link, Solution soln) {
         HashMap<String, Set<String>> newParents = new HashMap<>(parents);
         // Shouldn't already be parents
-        Set<String> p = newParents.containsKey(bottom) ? newParents.get(bottom) : new HashSet<String>();
+        Set<String> p = newParents.containsKey(link.getBottom()) ? newParents.get(link.getBottom()) : new HashSet<String>();
 
         HashMap<String, Set<String>> newChildren = new HashMap<>(children);
-        Set<String> c = newChildren.containsKey(top) ? newChildren.get(top) : new HashSet<String>();
+        Set<String> c = newChildren.containsKey(link.getTop()) ? newChildren.get(link.getTop()) : new HashSet<String>();
 
-        if (newParents.containsKey(top)) {
-            p.addAll(newParents.get(top));
+        if (newParents.containsKey(link.getTop())) {
+            p.addAll(newParents.get(link.getTop()));
         }
 
-        if (newChildren.containsKey(bottom)) {
-            c.addAll(newChildren.get(bottom));
+        if (newChildren.containsKey(link.getBottom())) {
+            c.addAll(newChildren.get(link.getBottom()));
         }
 
         for (String parent : p) {
@@ -93,7 +93,7 @@ public class TransitiveScore implements TaxonomyScore {
                 newChildren.put(parent, new HashSet<String>());
             }
             newChildren.get(parent).addAll(c);
-            newChildren.get(parent).add(bottom);
+            newChildren.get(parent).add(link.getBottom());
         }
 
         for (String child : c) {
@@ -101,14 +101,14 @@ public class TransitiveScore implements TaxonomyScore {
                 newParents.put(child, new HashSet<String>());
             }
             newParents.get(child).addAll(p);
-            newParents.get(child).add(top);
+            newParents.get(child).add(link.getTop());
         }
 
-        p.add(top);
-        newParents.put(bottom, p);
+        p.add(link.getTop());
+        newParents.put(link.getBottom(), p);
 
-        c.add(bottom);
-        newChildren.put(top, c);
+        c.add(link.getBottom());
+        newChildren.put(link.getTop(), c);
 
         return new TransitiveScore(classifier, scores, newParents, newChildren);
     }

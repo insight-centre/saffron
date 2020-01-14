@@ -47,13 +47,13 @@ public class BhattacharryaPoissonTest {
         // Initial BP = 0.0
         assertEquals(2.081, instance.deltaScore(new TaxoLink("", "a")), 0.001);
         // Now BP = 2.081
-        instance = instance.next("", "a", null);
+        instance = instance.next(new TaxoLink("", "a"), null);
         // Now BP = 2.081
         assertEquals(0.0, instance.deltaScore(new TaxoLink("", "b")), 0.001);
-        instance = instance.next("", "b", null);
+        instance = instance.next(new TaxoLink("", "b"), null);
         // Now BP = 1.699
         assertEquals(-0.382, instance.deltaScore(new TaxoLink("", "c")), 0.001);
-        instance = instance.next("", "c", null);
+        instance = instance.next(new TaxoLink("", "c"), null);
         // Now BP = 2.673
         assertEquals(0.973, instance.deltaScore(new TaxoLink("b", "d")), 0.001);
     }

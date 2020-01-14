@@ -9,7 +9,7 @@ import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
  * 
  * @author John McCrae
  */
-public class NullScore implements TaxonomyScore {
+public class NullScore implements TaxonomyScore<TaxoLink> {
 
     @Override
     public double deltaScore(TaxoLink taxoLink) {
@@ -17,7 +17,7 @@ public class NullScore implements TaxonomyScore {
     }
 
     @Override
-    public TaxonomyScore next(String top, String bottom, Solution soln) {
+    public TaxonomyScore next(TaxoLink link, Solution soln) {
         return this;
     }
 
