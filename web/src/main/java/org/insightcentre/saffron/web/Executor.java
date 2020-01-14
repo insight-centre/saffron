@@ -427,7 +427,8 @@ public class Executor extends AbstractHandler {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     Corpus corpus = CorpusTools.fromJson(tmpFile);
-                    List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
+                    
+                    /*List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
                     if (corpus.getDocuments() != null) {
                         for (org.insightcentre.nlp.saffron.data.Document doc : corpus.getDocuments()) {
                             if (doc.file != null) {
@@ -449,7 +450,7 @@ public class Executor extends AbstractHandler {
                         if (newDocs.size() > 0) {
                             corpus = CorpusTools.fromJsonFiles(tmpFile);
                         }
-                    }
+                    }*/
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
