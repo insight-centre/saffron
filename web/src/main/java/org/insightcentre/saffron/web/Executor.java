@@ -139,9 +139,7 @@ public class Executor extends AbstractHandler {
                 doExecute(name, response, baseRequest, hsr);
             } else if (corpus != null && (target.startsWith("/execute/advanced/"))) {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
-                if (doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest)) {
-                    return;
-                }
+                doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest);
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
@@ -293,6 +291,8 @@ public class Executor extends AbstractHandler {
             x.printStackTrace();
             return true;
         }
+        // Clear the 'advanced' status so the system switches to the spinner
+        statuses.get(saffronDatasetName).advanced = false;
         new Thread(new Runnable() {
             @Override
             @SuppressWarnings("UseSpecificCatch")
