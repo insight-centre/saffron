@@ -1,0 +1,1056 @@
+Pushing the Boundaries
+
+of Tractable Ontology Reasoning
+
+David Carral1, Cristina Feier2, Bernardo Cuenca Grau2,
+
+Pascal Hitzler1, and Ian Horrocks2
+
+1 Department of Computer Science, Wright State University, Dayton US
+
+2 Department of Computer Science, University of Oxford, Oxford UK
+
+Abstract. We identify a class of Horn ontologies for which standard
+reasoning tasks such as instance checking and classification are tractable.
+The class is general enough to include the OWL 2 EL, QL, and RL
+profiles. Verifying whether a Horn ontology belongs to the class can be
+done in polynomial time. We show empirically that the class includes
+many real-world ontologies that are not included in any OWL 2 profile,
+and thus that polynomial time reasoning is possible for these ontologies.
+
+Introduction
+
+In recent years there has been growing interest in so-called lightweight ontology
+languages, which are based on logics with favourable computational properties.
+The most prominent examples of lightweight ontology languages are the EL, QL
+and RL profiles of OWL 2 [23]. Standard reasoning tasks, such as classification
+and fact entailment, are feasible in polynomial time for all profiles, and many
+highly scalable profile-specific reasoners have been developed [3,6,8,16,24,26,28].
+All the OWL 2 profiles are Horn languages: any ontology in a profile can be
+translated into a set of first-order Horn clauses. However, many Horn OWL 2
+ontologies fall outside the profiles, and when reasoning with such ontologies we
+are forced to resort to a fully-fledged OWL 2 reasoner if a completeness guarantee is required. Indeed, in contrast to the lightweight logics underpinning the
+profiles, the logics required to capture Horn OWL 2 ontologies are intractable:
+standard reasoning is ExpTime-complete for the description logic Horn-SHOIQ
+and 2-ExpTime-complete for the more expressive Horn-SROIQ [25].
+
+Our aim is to push the tractability boundaries of lightweight ontology lan-
+guages, and devise efficiently implementable reasoning algorithms that can be
+applied to most existing Horn ontologies. In our recent work, we took a first step
+towards achieving this goal by defining a new class of tractable ontologies based
+on a role (aka property) safety condition, the idea behind which is to preclude
+the interactions between language constructs that are ultimately responsible for
+intractability [9]. We showed that Horn-SHOIQ ontologies in the QL, RL and
+EL profiles contain only safe roles,1 and that for ontologies containing only safe
+1 The intersection of the normative profiles and Horn-SHOIQ excludes certain features such as property chain axioms.
+
+P. Mika et al. (Eds.) ISWC 2014, Part II, LNCS 8797, pp. 148163, 2014.
+c Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+roles, standard reasoning tasks are still tractable even if the ontology is not captured by any of the profiles. However, our evaluation revealed that, although this
+usefully extends the range of ontologies for which tractable reasoning is known to
+be possible, many real-world Horn ontologies contain (a relatively small number
+of) unsafe roles, and for these ontologies tractability remains unclear.
+In this paper we go a step farther and define a new class of Horn-SHOIQ
+ontologies in which unsafe roles are allowed to occur, but only under certain
+restrictions. Membership in this class can be efficiently checked by first generating a graph from the materialisation of a Datalog program, and then checking
+whether the generated graph is an oriented forest. We call the ontologies satisfying this condition role safety acyclic (RSA), and show that standard reasoning
+tasks remain tractable for RSA ontologies. To this end, we employ a reasoning
+algorithm based on a translation from a Horn-SHOIQ ontology O into a set NO
+of first-order Horn rules with function symbols. We show that this transformation preserves standard reasoning outcomes and hence one can reason over NO
+instead of O. Furthermore, if O is RSA, then the Skolem chase [10,22] terminates
+in polynomially many steps when applied to NO, and yields a Herbrand model
+of polynomial size from which the relevant reasoning outcomes can be directly
+retrieved. Finally, we propose a relaxation of the acyclicity condition for which
+tractability of reasoning is no longer guaranteed, but that still ensures termination of the Skolem chase over NO with a Herbrand model of exponential size.
+We refer to ontologies satisfying this relaxed condition as weakly RSA (WRSA).
+We have tested our acyclicity conditions over two large ontologies repositories.
+Our results show that a large proportion of out-of-profile ontologies are RSA.
+Our conditions can thus have immediate practical implications: on the one hand,
+RSA identifies a large class of ontologies for which reasoning is known to be
+tractable, and on the other hand, we show that reasoning for both RSA and
+WRSA ontologies can be implemented using existing Logic Programming engines
+with support for function symbols, such as DLV [21] and IRIS [5].
+
+Finally, we note that our notion of acyclicity is related to (yet, incomparable
+with) existing acyclicity notions applicable to existential rules and ontologies
+[4,10,11,18,22]. Unlike existing notions, our main goal is to ensure tractability of
+reasoning rather than chase termination. Indeed, even if O is RSA, the Skolem
+chase applied to (the clausification of) O may not terminate.2
+
+This paper comes with an extended version with all proofs of our results.3
+
+2 Preliminaries
+The Logic Horn-SHOIQ. We assume basic familiarity with the logics underpinning standard ontology languages, and refer the reader to the literature
+for further details [1,13,14]. We next define Horn-SHOIQ [20,25] and specify its
+semantics via translation into first-order logic with built-in equality. W.l.o.g. we
+restrict our attention to ontologies in a normal form close to those in [19,25].
+
+2 We defer a detailed discussion to the Related Work section.
+3 http://www.cs.ox.ac.uk/isg/TR/RSAcheck.pdf
+
+D. Carral et al.
+
+Horn-SHOIQ axioms 
+
+A1  . . .  An  B
+
+R1  R2
+R1  R
+
+Tra(R)
+A  {a}
+R.A  B
+A  1S.B
+A  R.B
+Ran(R) = A
+A  R.{a}
+
+First-order sentences ()
+
+R1(x, y)  R2(x, y)
+R1(x, y)  R2(y, x)
+
+R(x, y)  R(y, z)  R(x, z)
+A1(x)  . . .  An(x)  B(x)
+
+A(x)  x  a
+
+R(x, y)  A(y)  B(x)
+
+A(x)  S(x, y)  B(y)  S(x, z)  B(z)  y  z
+
+A(x)  y.(R(x, y)  B(y))
+
+R(x, y)  A(y)
+A(x)  R(x, a)
+
+A(a)
+R(a, b)
+
+A(a)
+R(a, b)
+
+(R1)
+(R2)
+(R3)
+(T1)
+(T2)
+(T3)
+(T4)
+(T5)
+(T6)
+(T7)
+(A1)
+(A2)
+
+Fig. 1. Horn-SHOIQ syntax and semantics, where A(i)  NC, B  NC, R(i), S  NR
+with S simple, and a, b  NI. Universal quantifiers are omitted. Axioms (T6) and (T7)
+are redundant, but are useful for defining (resp.) the EL and the RL profiles.
+
+
+
+
+
+) = R.
+
+and Inv(R
+
+R R, R 
+
+A (DL) signature  consists of disjoint countable sets of concept names NC,
+role names NR and individuals NI, where we additionally assume that {,} 
+NC. A role is an element of NR  {R
+|R  NR}. The function Inv() is defined
+over roles as follows, where R  NR: Inv(R) = R
+An RBox R is a finite set of axioms (R1)-(R3) in Fig. 1. We denote with R
+the minimal relation over roles in R s.t. R R S and Inv(R) R Inv(S) hold if
+R as the reflexive-transitive closure of R. A role R
+R  S  R. We define 
+is transitive in R if there exists S s.t. S 
+R S and either Tra(S)  R
+or Tra(Inv(S))  R. A role R is simple in R if no transitive role S exists s.t.
+R R. A TBox T is a finite set of axioms (T1)-(T5) in Fig. 1.4 An ABox
+S 
+A is a finite, non-empty set of assertions (A1) and (A2) in Fig. 1. An ontology
+O = R  T  A consists of an RBox R, TBox T , and ABox A. The signature of
+O is the set of concept names, role names, and individuals occurring in O.
+We define the semantics of a Horn-SHOIQ ontology by means of a mapping
+ from Horn-SHOIQ axioms into first-order sentences with equality as specified
+in Fig. 1. This mapping is extended to map ontologies to first-order knowledge
+bases in the obvious way. Ontology satisfiability and entailment in first-order
+logic with built-in equality (written |=) are defined as usual.
+We sometimes treat  and  as ordinary unary predicates, the meaning of
+which is axiomatised. For a finite signature , we denote with F
+ the smallest
+set with a sentence A(x)  (x) for each A  NC and R(x, y)  (x)  (y)
+for each R  NR. This is w.l.o.g. for Horn theories: a Horn-SHOIQ ontology O
+ |= y.(y). Furthermore, O |= 
+with signature  is satisfiable iff (O)  F
+with O satisfiable and  an axiom over  iff (O)  F
+Similarly, we may treat the equality predicate  as ordinary and denote with
+ its axiomatisation as a congruence relation over , and we denote with |=
+F
+4 For presentational convenience, we omit axioms A   n R.B. These can be simulated using axioms A  R.Bi and Bi  Bj   for 1  i < j  n.
+
+ |= ().
+?
+
+?
+
+?
+the entailment relationship where equality is treated as an ordinary predicate.
+Axiomatisation of equality preserves entailment: for each set F of sentences with
+signature  and each sentence  over , we have F |=  iff F  F
+
+ |= .
+
+OWL 2 Profiles. The OWL 2 specification defines three normative profiles,
+EL, QL, and RL, all of which are captured by Horn-SROIQ. In this paper
+we restrict our attention to the intersection of these profiles with Horn-SHOIQ
+(which excludes features such as property chain axioms), as this greatly simplifies
+the algorithms and proofs. A Horn-SHOIQ ontology O is: (i) EL if it does not
+contain axioms of the form (R2) or (T4); (ii) RL if it does not contain axioms of
+the form (T5); and (iii) QL if it does not contain axioms of the form (R3), (T2)
+or (T4), each axiom (T1) satisfies n = 1, and each axiom (T3) satisfies A = .
+
+Horn Rules and Datalog. A Horn rule is a first-order sentence of the form
+
+xz.[(x, z)  (x)]
+
+where tuples of variables x, z are disjoint, (x, z) is a conjunction of functionfree atoms, and (x) is a conjunction of atoms (possibly with function symbols).
+A fact is a ground, function-free atom. A Horn program P consists of a finite
+set of Horn rules and facts. A rule (program) is Datalog if it is function-free.5
+Forward-chaining reasoning over Horn programs can be realised by means of the
+Skolem chase [10,22]. We adopt the treatment of the Skolem chase from [10].
+?
+
+?
+
+?
+= H  F
+
+  F
+
+A set of ground atoms S
+
+is a consequence of a Horn rule r on a set of ground
+atoms S if a substitution  exists mapping the variables in r to the terms in S
+  . The result of applying r to S, written r(S), is the
+such that   S and S
+union of all consequences of r on S. For H a set of Horn rules, H(S) =
+rH r(S).
+Let S be a finite set of ground atoms, let H be a set of rules, and let  be the
+ .The chase sequence for S and H
+signature of H  S. Let H
+is a sequence of sets of ground atoms S0H, S1H, . . . where S0H = S and, for each
+i > 0 : SiH = Si1H  H(Si1H ).
+The Skolem chase of the program P = H  S is defined as the (possibly
+i SiH. The Skolem chase can be used to
+infinite) Herbrand interpretation I
+determine fact entailment: for each fact  it holds that P |=  iff   I
+
+P . The
+Skolem chase of P terminates if i  0 exists such that SiH = S
+jH for each j > i.
+P is the finite least Herbrand model of P,
+
+which we refer to as the materialisation of P. Furthermore, by slight abuse of
+notation, we sometimes refer to the Skolem chase of a Horn-SHOIQ ontology
+O as the chase for the program obtained from (O) by standard Skolemisation
+of existentially quantified variables into functional terms.
+
+If P is a Datalog program, then I
+?
+
+?
+
+?
+
+P =
+
+3 The Notion of Role Safety
+
+In contrast to the logics underpinning the OWL 2 profiles, the logics required
+to capture existing Horn ontologies are intractable. In particular, satisfiability is
+5 We adopt a more liberal definition of Datalog that allows conjunction in rule heads.
+
+D. Carral et al.
+
+ExpTime-hard already for Horn-ALCI (the fragment of Horn-SHOIQ without
+nominals [15,19] or cardinality restrictions).
+
+A closer look at existing complexity results reveals that the main source of
+intractability is the phenomenon typically known as and-branching: due to the
+interaction between existential quantifiers over a role R (i.e., axioms of type
+(T5)) and universal quantifiers over R (encoded by axioms of type (T3) and
+(R2)), an ontology may only be satisfied in models of exponential size. The
+same effect can be achieved via the interaction between existential quantifiers
+and cardinality restrictions (axioms of type (T4)): reasoning in the extension of
+the EL profile with counting is also known to be ExpTime-hard [2].
+
+And-branching can be tamed by precluding the harmful interactions between
+existential quantifiers and universal quantifiers, on the one hand and existential
+quantifiers and cardinality restrictions, on the other hand. If we disallow existential quantifiers altogether (axioms (T5)), then we obtain the RL profile, and
+ontologies become equivalent to Datalog programs with equality. Similarly, if we
+disallow the use of inverse roles and cardinality restrictions, thus precluding both
+universal quantification over roles and counting, then we obtain the EL profile.
+The main idea behind our notion of role safety is to identify a subset of the
+roles in an ontology over which these potentially harmful interactions between
+language constructs cannot occur. On the one hand, if a role does not occur
+existentially quantified in axioms of type (T5), then its behaviour is similar
+to that of a role in an RL ontology, and hence it is safe. On the other hand, if
+a role occurs existentially quantified, but no axioms involving inverse roles or
+counting apply to any of its super-roles, then the role behaves like a role in an
+EL ontology, and hence it is also safe.
+Definition 1. Let O = RT A be an ontology. A role R in O is safe if either
+it does not occur in axioms of type A  R.B, or the following properties hold
+for each role S:
+1. R 
+2. R 
+Example 1. Consider the example ontology OEx in Figure 2, which is not captured by any of the normative profiles. The role Attends is safe: although it occurs
+existentially quantified in axiom (2), its inverse AttendedBy does not occur in an
+axiom of type (T3), and the ontology does not contain cardinality restrictions.
+In contrast, the role AttendedBy is unsafe since it occurs existentially quantified
+
+in (5) and its inverse role Attends occurs negatively in (3).
+Note that Definition 1 explains why (Horn-SHOIQ) ontologies captured by
+any of the normative profiles contain only safe roles: in the case of EL, roles can
+be existentially quantified, but there are no inverse roles or cardinality restric-
+tions, and hence conditions 1 and 2 in Definition 1 hold trivially; in the case of
+RL, roles do not occur existentially quantified in axioms of type (T5); and in the
+case of QL, there are no cardinality restrictions, all axioms of type (T3) satisfy
+A = , and hence conditions 1 and 2 also hold.
+
+R S and R 
+R Inv(S) if S occurs in an axiom of type R.A  B with A = .
+
+R Inv(S) if S occurs in a concept  1 S.B;
+?
+
+?
+
+?
+LazySt  Student
+Student  Attends.Course
+
+Attends.MorningCourse  DiligentSt
+
+LazySt  DiligentSt  
+
+Course  AttendedBy.Student
+
+Attends
+
+AttendedBy
+
+  AttendedBy
+  Attends
+
+LazySt(David)
+
+Fig. 2. Example ontology OEx
+
+4 Role Safety Acyclicity
+
+(1)
+
+(2)
+
+(3)
+
+(4)
+
+(5)
+
+(6)
+
+(7)
+
+(8)
+
+In this section, we propose a novel role safety acyclicity (RSA) condition that
+is applicable to Horn-SHOIQ ontologies and that does not completely preclude
+unsafe roles. Instead, our condition restricts the way in which unsafe roles are
+used so that they cannot lead to the interactions between language constructs
+that are at the root of ExpTime-hardness proofs; in particular, and-branching.
+To check whether an ontology O is RSA we first generate a directed graph GO
+by means of a Datalog program PO. The edges in GO are generated from the
+extension of a fresh edge predicate E in the materialisation of PO. Intuitively,
+the relevant facts over E in the materialisation stem from the presence in O
+of existential restrictions over unsafe roles. Once the directed graph GO has
+been generated, we check that it is a directed acyclic graph (DAG) and that it
+does not not contain diamond-shaped subgraphs; the former requirement will
+ensure termination of our reasoning algorithm in Section 5, while the latter is
+critical for tractability. Furthermore, we define a weaker version of RSA (WRSA)
+where GO is only required to be a DAG. Although this relaxed notion does not
+ensure tractability of reasoning, it does guarantee termination of our reasoning
+algorithm, and hence is still of relevance in practice.
+Definition 2. Let O be an ontology, let  be the signature of O, and let  be the
+mapping defined in Figure 1. Let PE and E be fresh binary predicates, and let U
+be a fresh unary predicate. Furthermore, for each pair of concepts A, B and each
+role R from , let vA
+R,B be a fresh constant. Let  be the function mapping each
+axiom  in O to a datalog rule as given next, and let (O) = {() |  in O}:
+?
+
+?
+
+?
+() =
+
+A(x)  R(x, vA
+()
+
+R,B)  B(vA
+
+R,B)  PE(x, vA
+
+R,B)
+
+if  = A  R.B
+Otherwise.
+
+Then, PO is the following datalog program:
+PO = (O)  {U(x)  PE(x, y)  U(y)  E(x, y)}  {U(vA
+
+R,B) | R is unsafe}
+
+D. Carral et al.
+
+LazySt(x)  Student(x)
+Student(x)  Attends(x, vSt
+Attends(x, y)  MorningCourse(y)  DiligentSt(y)
+
+LazySt(x)  DiligentSt(x)  (x)
+
+Course(x)  AttendedBy(x, vCo
+Attends(y, x)  AttendedBy(x, y)
+
+AttendedBy(x, y)  Attends(y, x)
+
+U(x)  PE(x, y)  U(y)  E(x, y)
+
+At,Co)  Course(vSt
+
+At,Co)  PE(x, vSt
+
+At,Co)
+
+Ia,St)  Student(vCo
+
+Ia,St)  PE(x, vCo
+
+Ia,St)
+
+LazySt(David)
+Ia,St)
+
+U(vCo
+
+Fig. 3. Checking acyclicity of our example ontology OEx
+
+Let GO be the smallest directed graph having an edge (c, d) for each fact E(c, d)
+PO . Then, O is Role Safety Acyclic (RSA) if GO is an oriented
+s.t. E(c, d)  I
+
+forest.6 Finally, O is weakly RSA (WRSA) if GO is a DAG.
+
+The core of the program PO is obtained from O by translating its axioms
+into first-order logic in the usual way with the single exception of existentially quantified axioms , which are translated into Datalog by Skolemising
+the (unique) existential variable in () into a constant. The fresh predicate PE
+is used to track all facts over roles R generated by the application of Skolemised
+rules, regardless of whether the relevant role R is safe or not. In this way, PE
+records possible edges in the graph. The safety distinction is realised by the
+unary predicate U, which is populated with all fresh constants introduced by
+the Skolemisation of existential restrictions over the unsafe roles. Finally, the
+rule U(x)  PE(x, y)  U(y)  E(x, y) ensures that only possible edges between
+Skolem constants in the extension of U eventually become edges in the graph.
+Example 2. Figure 3 depicts the rules in the program POEx for our example
+ontology OEx. The constant vCo
+Ia,St is the only fresh constant introduced by the
+Skolemisation of an existential restriction (AttendedBy.Student) over an unsafe
+role (AttendedBy), and hence the predicate U is populated with just vCo
+Next consider the application of the Skolem chase on POEx, which applies to
+the initial facts S = {LazySt(David), U(vCo
+\ S. The chase
+terminates after the following iterations:
+
+Ia,St)} and rules H = POEx
+
+Ia,St.
+
+S1H = S  {Student(David)}
+S2H = S1H  {Attends(David, vSt
+S3H = S2H  {AttendedBy(vSt
+S4H = S3H  {Attends(vCo
+Ia,St, vSt
+
+At,Co), Course(vSt
+
+At,Co), PE(David, vSt
+
+At,Co, vCo
+
+Ia,St), Student(vCo
+At,Co)}
+
+Ia,St, vSt
+
+At,Co), PE(vCo
+
+Ia,St), PE(vSt
+
+At,Co)}
+Ia,St)}
+At,Co, vCo
+
+6 An oriented forest is a disjoint union of oriented trees; that is, a DAG whose under-
+
+lying undirected graph is a forest.
+?
+
+?
+
+?
+v1
+R,2
+
+v2
+R,3
+
+vn1
+
+R,n
+
+vn
+R,n+1
+
+v1
+L,2
+
+v2
+L,3
+
+vn1
+
+L,n
+
+vn
+L,n+1
+
+Fig. 4. An acyclic graph which is not an oriented forest
+
+= S4H. Note
+No more atoms are derived in subsequent steps and hence I
+that the graph induced by the auxiliary PE predicate is cyclic; in contrast, the
+
+extension of E is empty and GOEx has no edges. Clearly, OEx is thus RSA.
+
+
+POEx
+
+The following example illustrates the difference between RSA and WRSA.
+
+Example 3. Consider the (family of) ontologies On consisting of the fact A1(a)
+and the following axioms for each n  1 and each 1  i  n:
+
+Ai  L.Ai+1,
+  1L.,
+
+Ai  R.Ai+1
+  1R..
+
+Clearly, both R and L are unsafe roles since they are defined as functional.
+The program POn then contains facts A1(a), U(vi
+R,i+1) for each
+1  i  n, as well as the following rules for each 1  i  n:
+
+L,i+1), and U(vi
+
+Ai(x)  Ai+1(vi
+Ai(x)  Ai+1(vi
+U(x)  PE(x, y)  U(y)  E(x, y)
+
+L,i+1)  L(x, vi
+R,i+1)  L(x, vi
+
+L,i+1)  PE(x, vi
+R,i+1)  PE(x, vi
+
+L,i+1)
+R,i+1)
+
+The chase terminates in n + 1 steps. The graph GOn induced by the edge
+predicate E is given in Figure 4. Note that the graph is always a DAG, but it is
+a tree only if n < 3; hence all ontologies On are WRSA, but they are RSA only
+
+for n < 3.
+
+The following theorem establishes that checking RSA and WRSA is tractable.
+Intuitively, the program PO is linear in the size of O and each of its rules contains
+at most three variables regardless of O; as a result, the materialisation (and hence
+also the resulting graph) is polynomially bounded.
+Theorem 1. Checking whether an ontology O is RSA (resp. WRSA) is feasible
+in polynomial time in the size of O.
+
+5 Reasoning over Acyclic Ontologies
+
+In this section, we show that standard reasoning tasks are tractable for RSA
+ontologies. To this purpose, we propose a translation from a Horn-SHOIQ ontology O into a set NO of first-order Horn rules, which may contain function
+
+D. Carral et al.
+
+LazySt(x)  Student(x)
+Student(x)  Attends(x, vSt
+Attends(x, y)  MorningCourse(y)  DiligentSt(y)
+
+LazySt(x)  DiligentSt(x)  (x)
+
+At,Co)  Course(vSt
+
+At,Co)
+
+Ia,St(x))  Student(fCo
+
+Ia,St(x))
+
+Course(x)  AttendedBy(x, fCo
+Attends(y, x)  AttendedBy(x, y)
+
+AttendedBy(x, y)  Attends(y, x)
+
+LazySt(David)
+
+Fig. 5. Running Example: Reasoning
+
+symbols in the head. Axioms in O are translated directly into first-order rules as
+specified in Fig. 1. As can be seen, axioms of type (T5) are translated into rules
+with existentially quantified variables in the head; such variables are eliminated
+via Skolemisation into a constant (if the corresponding role is safe) or into a
+function term (if the corresponding role is unsafe).
+Definition 3. Let O be an ontology, let  be the signature of O, and let  be the
+mapping defined in Fig. 1. Furthermore, for each pair of concepts A, B and each
+safe role R from , let vA
+R,B be a fresh constant, and for each pair of concepts
+A, B and each unsafe role R from , let f A
+R,B be a fresh unary function symbol.
+Let  be the function mapping each axiom  in O to a Datalog rule as given
+next:
+
+
+
+
+
+A(x)  R(x, vA
+A(x)  R(x, f A
+()
+
+R,B)  B(vA
+R,B)
+R,B(x))  B(f A
+
+R,B(x))
+
+if  = A  R.B with R safe
+if  = A  R.B with R unsafe
+Otherwise.
+
+() =
+
+Finally, we define the Horn program NO as the set {() |  in O}.
+
+Example 4. Figure 5 depicts the rules of the Horn program NOEx for our running
+example OEx. Let us compare NOEx with the Datalog program POEx in Fig. 3,
+which we used for acyclicity checking. In contrast to POEx, the program NOEx contains function terms involving unsafe roles; furthermore, NOEx does not include
+the auxiliary graph generation predicates from POEx . Next, consider the application of the Skolem chase on NOEx , i.e., to the initial fact S = {LazySt(David)}
+\ S. We can check that the chase terminates after four itand rules H = NOEx
+erations and generates function terms of depth at most one. Furthermore, the
+only fact that is derived over the individuals from OEx is Student(David).
+?
+
+?
+
+?
+We next show that this translation preserves satisfiability, subsumption, and
+instance retrieval reasoning outcomes, regardless of whether the ontology O is
+acyclic or not. Thus, we can reason over NO instead of O without sacrificing
+correctness. Since NO is a strengthening of O, due to the Skolemisation of some
+existential quantifiers into constants, completeness is trivial. To show soundness,
+?
+
+?
+
+?
+
+
+R,B), S(vA
+
+
+NO{A(c)}.
+
+we propose an embedding of the Skolem chase of NO into the chase of O. This
+embedding is not a homomorphism, as it does not homomorphically preserve
+binary facts; however, we can show that unary facts are indeed preserved.
+Theorem 2. The following properties hold for each ontology O, concept names
+A, B and constants a and b, where  is the signature of O and c is a fresh
+constant not in :
+NO contains no fact over .
+1. O is satisfiable iff NO is satisfiable iff I
+
+2. O |= A(a) iff NO |= A(a) iff A(a)  I
+
+NO ;
+3. O |= A  B iff NO  {A(c)} |= B(c) iff B(c)  I
+A closer inspection of the proof of the theorem (see our online technical report)
+reveals that preservation of binary facts can also be ensured if the relevant role
+satisfies certain properties. The following example illustrates the only situation
+for which binary facts may not be preserved.
+Example 5. Consider the ontology O consisting of ABox assertions A(a), A(b),
+TBox axiom A  R.B and RBox axioms R  S, R  S
+, and Tra(S). Clearly,
+R is a safe role, and the fresh individual vA
+R,B is introduced by Skolemisation.
+We can check that NO |= {S(a, vA
+R,B, b)} and hence NO |= S(a, b) since
+role S is transitive. Note, however that O |= S(a, b) since O has a canonical tree
+
+model in which a and b are not S-related.
+Proposition 1. Let O be an ontology with signature . Furthermore, let R  
+be a role name satisfying at least one of the following properties: (i) R is simple,
+(ii) for every axiom of type A  S.B in O, with S being a safe role S 
+R R, or
+(iii) for every axiom of type A  S.B in O, with S being a safe role S 
+
+R R
+.
+Then, O |= R(a, b) iff NO |= R(a, b) iff R(a, b)  I
+Example 6. Coming back to our running example, recall that the only relevant
+facts contained in the chase of NOEx are LazySt(David) and Student(David). Thus,
+we can conclude that NOEx is satisfiable and does not entail unary facts other
+than these ones. Furthermore, all roles in OEx are simple and hence we can also
+conclude that OEx entails no relevant binary facts.
+
+So far, we have established that we can dispense with the input ontology O and
+reason over the Horn program NO instead. The Skolem chase of NO, however,
+may still be infinite. We next show that acyclicity of O provides a polynomial
+bound on the size of the Skolem chase of NO. Intuitively, every functional term
+occurring in an atom of the chase of NO corresponds to a single path in GO,
+and the size of the graph is polynomial in O. In an oriented forest there is at
+most one path between any two nodes, which bounds polynomially the number
+of possible functional terms. In contrast, the latter condition does not hold for
+DAGs, where only a bound in the length of paths can be guaranteed.
+Theorem 3. Let O be an RSA ontology with signature . Then, the Skolem
+chase of NO terminates with a Herbrand model of polynomial size. Furthermore,
+if O is WRSA, then the Skolem chase of NO terminates with a Herbrand model
+of size at most exponential.
+
+
+NO .
+
+D. Carral et al.
+
+Example 7. As already mentioned, the chase for NOEx terminates and computes
+only ground atoms of functional depth at most one. Consider, however, the chase
+for the programs NOn corresponding to the family of ontologies On in Example
+3. Program NOn contains the following rules for every 1  i  n:
+
+Ai(x)  Ai+1(f i
+Ai(x)  Ai+1(f i
+
+L,i+1(x))  L(x, f i
+R,i+1(x))  R(x, f i
+
+L,i+1(x))
+R,i+1(x))
+
+When initialised with the fact A1(a), the Skolem chase will generate in each step
+i the following atoms:
+
+Ai(f i+1
+
+L,i (ti)), Ai(f i+1
+
+R,i (ti)), L(ti, f i+1
+
+L,i (ti)), R(ti, f i+1
+
+R,i (ti)),
+
+j
+
+j
+L,j1 or gj = f
+
+where ti  {gi(. . . (g2(a)) . . .) | gj = f
+
+R,j1, 2  j  i}. Note that
+
+for every i, the number of terms ti is exponential in i.
+Theorems 2 and 3 suggest a reasoning algorithm for acyclic ontologies O. First,
+compute the program NO as in Definition 3. Then, run the Skolem chase for NO
+and read out the reasoning outcomes from the computed Herbrand model. If GO
+is an oriented forest (i.e., O is RSA) we can implement our algorithm efficiently,
+which yields the following result as a corollary of the previous theorems.
+
+Theorem 4. Satisfiability and unary fact entailment is feasible in polynomial
+time for the class of RSA ontologies.
+
+In contrast to RSA, our algorithm runs in exponential time for WRSA ontolo-
+gies. We next show that, indeed, reasoning with WRSA ontologies is intractable
+under standard complexity-theoretic assumptions.
+
+Theorem 5. Unary fact entailment is Pspace-hard for WRSA ontologies.
+
+Finally, note that our reasoning technique can be implemented by reusing
+
+existing Logic Programming engines with support for function symbols [21,5].
+
+6 Stronger Notions of Acyclicity
+
+Note that Theorem 4 does not make any claims about the tractability of concept
+subsumption for RSA ontologies. To check whether O |= A  B we need to
+extend NO with an assertion A(c) over a fresh individual c, run the Skolem chase,
+and check whether B(c) is derived (see Theorem 2). However, as illustrated by
+the following example, RSA is not robust under addition of ABox assertions.
+Example 8. Let O consist of a fact B(c) and the following axioms:
+
+A  B B  C A  R.A   1.R.
+
+Ontology O is RSA because the rule corresponding to the dangerous axiom
+A  R.A involving the unsafe role R does not fire during materialisation; as a
+?
+
+?
+
+?
+result, the graph generated by PO is empty. Indeed, the chase terminates on NO
+and determines satisfiability as well as all the facts entailed by O. In contrast,
+if we add the fact A(c) to NO to determine the subsumers of A, the chase will
+no longer terminate because the ontology O extended with A(c) is now cyclic. 
+
+To ensure tractability of subsumption and classification, we therefore propose
+
+the following stronger notion of acyclicity.
+Definition 4. Let O be an ontology with signature . For each concept name
+A  , let cA be a fresh constant and let ACl = {A(cA) | A  }. We say that
+O is RSA for classification if O extended with ACl is RSA.7
+
+Tractability of subsumption immediately follows from our results in Section 5.
+Proposition 2. Checking whether O |= A  B is feasible in polynomial time
+for ontologies O that are acyclic for classification.
+
+Although this notion is well-suited for TBox reasoning, data-intensive appli-
+
+cations where the ABox changes frequently require a further strengthening.
+Definition 5. An ontology O is universally RSA if O  A
+ABox A
+
+is RSA for every
+
+.
+
+Checking whether O = R  T  A is universally RSA can be reduced to
+checking whether the ontology O extended with a special critical ABox AO
+ is
+RSA, where AO consists of all facts that can be constructed using concept and
+role names from O, all individuals occurring in T , and a fresh individual .
+Proposition 3. An ontology O is universally RSA iff O  AO
+Example 9. The critical ABox for our example ontology OEx consists of all facts
+A() and R(,) for A a concept name and R a role name from OEx. It can be
+checked that OEx is universally RSA, and hence also RSA for classification.
+?
+
+?
+
+?
+ is RSA.
+
+Universal RSA is, however, a rather strict condition, especially in the presence
+of equality. The following example illustrates that, e.g., every ontology with a
+functional role used in an existential restriction is not universally RSA.
+Example 10. Consider O consisting of axioms A  R.B and   1R..
+The critical ABox contains facts A(), B(), and R(,). The corresponding
+R,B) due to axiom A  R.B. Due to the
+Datalog program entails a fact R(, vA
+functionality of R, the individuals  and vA
+R,B become equal, and hence we have
+A(vA
+R,B). Since R is unsafe, the graph contains
+
+a cyclic edge E(vA
+
+R,B). Indeed, the chase of both O and NO is infinite.
+
+R,B, vA
+
+R,B) and eventually also R(vA
+
+R,B, vA
+
+It is well-known that the Skolem chase often does not terminate in the presence
+of equality [10,22]. The standard approach to circumvent this issue is to exploit
+the so-called singularisation technique [22]. Roughly speaking, singularisation
+
+7 Note that ontologies that are RSA for classification are also RSA.
+
+D. Carral et al.
+
+replaces equality  in O with a fresh predicate Eq. The Eq predicate is axiomatised in a similar way to equality, but without the usual replacement rules (i.e.,
+rules of the form A(x)  Eq(x, y)  A(y), for each concept name A, are not included in the axiomatisation); instead, the premises of rules in the ontology are
+modified to compensate for the lack of replacement rules. After application of
+the singularisation transformation, the ontology is thus equality-free. Singularisation preserves reasoning outcomes in a well-understood way, and it is effective
+in addressing non-termination problems.
+We have exploited this technique by checking acyclicity over a singularisation
+Os of the input ontology O, instead of checking acyclicity over O itself (see
+our online TR for further details). If the singularised ontology Os is acyclic,
+of NOs is finite and
+then our results in Section 5 ensure that the chase I
+captures reasoning outcomes over Os. The properties of singularisation then
+ensure that reasoning outcomes over the original O are also preserved, and they
+can be retrieved from I
+. The use of singularisation significantly increased the
+number of universally acyclic ontologies in our evaluation (see Section 8).
+
+
+NOs
+
+
+NOs
+
+7 Related Work
+
+In recent years the computational properties of Horn Description Logics have
+been extensively investigated. The logical underpinnings for the EL and QL
+profiles of OWL 2 are provided by, respectively, the Horn logics EL++ [2] and DLLiteR [7], while the RL profile is based on Datalog and its intersection with DLs
+[12]. Hustadt et al. proposed the expressive logic Horn-SHIQ, and establised its
+complexity [15]. Kr otzsch et al. studied the complexity of a wide range of Horn
+DLs with complexities in-between the tractable logics underpinning the profiles
+and Horn-SROIQ [20,19]. Finally, the exact complexity of Horn-SHOIQ and
+Horn-SROIQ was determined by Ortiz et al. [25].
+
+Our techniques in Section 5 extend the so-called combined approach to reasoning in EL [17,27], where ontologies are transformed into Datalog programs
+by means of Skolemisation of all existentially quantified variables into constants.
+Skolemisation into constants was also exploited by Zhou et al. [29] to compute
+upper bounds to query answers.
+
+Finally, in the literature we can find a wide range of acyclicity conditions that
+are sufficient to ensure chase termination. Weak acyclicity [11] was one of the
+first such notions, and was subsequently extended to joint acyclicity [18], acyclicity of a graph of rule dependencies [4], and super-weak acyclicity [22], amongst
+others. The notion of acyclicity closest to ours is model summarising acyclicity
+(MSA) [10], where acyclicity can also be determined by the materialisation of
+a Datalog program. Unlike existing acyclicity notions, ours was designed to ensure tractability of reasoning rather than chase termination. In particular, the
+Skolem chase of our example RSA ontology OEx is infinite and hence OEx cannot
+be captured by any acyclicity condition designed for chase termination. Instead,
+our notion ensures termination of the Skolem chase over a particular transformed
+Horn program NO, which we can use for reasoning over O. Another important
+?
+
+?
+
+?
+Table 1. Acyclicity evaluation results for ontologies outside the OWL 2 profiles
+
+Repository Reasoning Task Total Safe
+
+Satisfiability
+Oxford
+Ontology Classification
+Repository Universality
+Ontology Satisfiability
+Design
+Classification
+Patterns Universality
+?
+
+?
+
+?
+Cyclic
+
+Time-out
+
+no Sing. Sing. no Sing. Sing. no Sing. Sing.
+37+43
+37+35
+37+2
+14+9
+14+8
+14+4
+
+37+44 46
+37+35 52
+37+31 87
+14+9 0
+14+8 1
+14+8 5
+?
+
+?
+
+?
+difference is that, in contrast to the chase of O, the chase of the transformed program NO is not a universal model of O, and hence it does not preserve answers to
+general conjunctive queries (but only for satisfiability and fact entailment). Fi-
+nally, although existing acyclicity conditions guarantee termination of the chase,
+none of them ensures polynomiality of the computed Herbrand model. Indeed,
+checking fact entailment over Horn-SHI ontologies that are weakly acyclic [11]
+(the most basic acyclicity notion for chase termination) is Pspace-hard [10].
+
+8 Proof of Concept
+
+We have implemented RSA and WRSA checkers using RDFox [24] as a Datalog
+reasoner. For testing, we used the ontologies in the Oxford Repository and the
+Design Patterns repository. The former is a large repository currently containing
+761 real-world ontologies; the latter contains a wide range of smaller ontologies
+that capture design patterns commonly used in ontology modeling (these ontologies are particularly interesting as they highlight common interactions between
+language constructs). Experiments were performed on a laptop with 16 GB RAM
+and an Intel Core 2.9 GHz processor running Java v.1.7.0 21, with a timeout of
+30 min. The software and data used for testing are available online.8
+Our results are summarised in Table 1. For each repository, we first selected
+those ontologies that are Horn-SHOIQ and are not captured by any of the
+OWL 2 profiles. We found 126 such ontologies in the Oxford Repository and
+23 in the Design Patterns repository. We then tested our acyclicity conditions
+for satisfiability (Def. 2), classification (Def. 4) and universality (Def. 5) on all
+these ontologies.9 We performed tests both with and without singularisation.
+Interestingly, in both repositories we could not find any ontology that is WRSA
+but not RSA, and hence the two notions coincided for all our tests.
+
+As we can observe, 37 ontologies in the Oxford Repository contained only
+safe roles, and hence are RSA. Without singularisation, we found 43 additional
+ontologies with unsafe roles that are RSA, 35 of which were also RSA for classification and only 2 universally acyclic. When using singularisation the number of
+
+8 https://www.dropbox.com/sh/w1kh3vuhnvindv1/AAD59BK3s5LlD7xCblIsrlSHa
+9 For classification and universality, we disregarded the ABox part of the ontologies.
+
+D. Carral et al.
+
+additional RSA ontologies increased significantly, and we obtained 29 additional
+universally RSA ontologies, but unfortunately our tests timed-out for several on-
+tologies. This can be explained by the fact that the use of singularisation leads
+to more complicated Datalog rules for which RDFox is not optimised.
+
+In the case of the Design Patterns repository, all ontologies are RSA. We only
+found one ontology that was not universally RSA when using singularisation.
+Ontologies in this repository are smaller, and we encountered no time-outs.
+
+9 Conclusions and Future Work
+
+We have proposed the new tractable class of RSA ontologies, which is based
+on the notion of safe roles, and a novel acyclicity condition. Our experiments
+suggest that a significant proportion of out-of-profile ontologies are RSA; as a
+result, we can exploit a worst-case optimal algorithm that runs in polynomial
+time to solve standard reasoning tasks over such ontologies, where only worstcase exponential algorithms were applicable before. This result thus opens the
+door to further optimisation of ontology reasoning.
+
+So far, our experiments have established that many ontologies satisfy our RSA
+condition. Our next goal is to develop and optimise our reasoning algorithm as
+well as our acyclicity checker. We also plan to extend our techniques to apply to
+Horn-SROIQ and hence to all Horn OWL 2 ontologies.
+
+Acknowledgements. Work supported by the Royal Society, the EPSRC project
+Score!, the NSF under award 1017255 III: Small: TROn: Tractable Reasoning
+with Ontologies and La Caixa Foundation.

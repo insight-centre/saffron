@@ -1,0 +1,3492 @@
+Semantic Web 0 (0) 1
+IOS Press
+
+Complexity of redundancy detection on RDF
+graphs in the presence of rules, constraints,
+and queries
+
+Editor(s): Diego Calvanese, Free University of Bozen-Bolzano, Italy; Thomas Lukasiewicz, University of Oxford, UK
+Solicited review(s): Adila A. Krisnadhi, Kno.e.sis Center, Wright State University, USA; one anonymous reviewer
+
+Reinhard Pichler a, Axel Polleres b,c, Sebastian Skritek a, and Stefan Woltran a,
+a Vienna University of Technology, Faculty of Informatics, Favoritenstrae 9, A-1040 Wien, Austria
+E-mail: {lastname}@dbai.tuwien.ac.at
+b Siemens AG Osterreich, Siemensstrasse 90, A-1210 Wien, Austria
+E-mail: axel.polleres@siemens.com
+c Digital Enterprise Research Institute, National University of Ireland, Galwway, IDA Business Park, Lower
+Dangan, Ireland
+
+Abstract. Based on practical observations on rule-based inference on RDF data, we study the problem of redundancy detection
+on RDF graphs in the presence of rules (in the form of Datalog rules) and constraints, (in the form of so-called tuple-generating
+dependencies), and with respect to queries (ranging from conjunctive queries up to more complex ones, particularly covering
+features of SPARQL, such as union, negation, or filters). To this end, we investigate the influence of several problem parameters
+(like restrictions on the size of the rules, the constraints, and/or the queries) on the complexity of detecting redundancy. The main
+result of this paper is a fine-grained complexity analysis of both graph and rule minimisation in various settings.
+
+Keywords: RDF, Optimisation, Rules, Constraints, Computational Complexity
+
+1. Introduction
+
+The Semantic Web promises to enable computers
+to gather machine readable meta-data in the form of
+RDF statements published on the Web and make inferences about these statements by means of accompanying standards such as RDFS and OWL2. While
+complete OWL2 reasoning is hard  and in many
+cases even inappropriate for Web data [15]  (incom-
+plete) rule-based inference is becoming quite popular and supported by many RDF stores and query en-
+gines: frameworks like GiaBATA [17], Jena, Sesame,
+
+OWLIM,1 etc. allow for custom inference on top of
+RDF stores, supporting different rule-based fragments
+of RDFS and OWL. Several such fragments have been
+defined in the literature, such as DF [22], DLP [11],
+OWL [7], ter Horsts pD* [28], or SAOR [16], and
+ more recently  the W3C standardised OWL2RL,
+a fragment of OWL implementable purely in terms
+of rule-based inference [20]. All these fragments have
+in common that they are implementable by simple
+Datalog-like rules over RDF. As an example, depicted in Figure 1, let us take (1) the sub-property rule
+from RDFS [14, Section 7.3, rule rdfs7], rules (2)(6)
+from OWL2RL [14, Section 4.3, rules prp-inv1,prp-
+
+*Corresponding author. E-mail: skritek@dbai.tuwien.ac.at.
+**A preliminary version of this paper appeared at RR2010 [26].
+
+1cf. http://jena.sourceforge.net/, http://openrdf.
+
+org/, and http://ontotext.com/owlim/
+
+1570-0844/0-1900/$27.50 c 0  IOS Press and the authors. All rights reserved
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+ { S Q O }
+(1) { S P O . P subPropertyOf Q . uri(Q) }
+ { O Q S }
+(2) { S P O . P inverseOf Q . uri(O)  uri(Q) }
+(3) { S P O . P inverseOf Q . blank(O)  uri(Q) }  { O Q S }
+ { O P S }
+(4) { S P O . P type SymmetricP roperty . uri(O) }
+(5) { S P O . P type SymmetricP roperty . blank(O) }  { O P S }
+(6) { S P0 O1. ... On Pn O. P propertyChainAxiom (P0 ...Pn) }  { S P O }
+
+(7) GD = { <http://semanticweb.org/wiki/Pat_Hayes> made <http://www.w3.org/TR/rdf-mt/>.
+(8)
+(9)
+
+<http://semanticweb.org/wiki/Pat_Hayes> name "Patrick J. Hayes".
+<http://www.w3.org/TR/rdf-mt/> creator "Patrick J. Hayes".}
+
+(10) GO = { name subPropertyOf
+(11)
+(12)
+(13)
+(14)
+
+inverseOf type SymmetricP roperty.
+made inverseOf maker.
+maker inverseOf made.
+creator propertyChainAxiom (maker label). }
+
+label.
+
+Fig. 1. Rules and RDF graph for the example: Rule (1) is taken from RDFS, rules (2)(6) from OWL2RL. The RDF graph GD (7)(9) describes
+authors and their publications, and GO (10)(14) the ontology used by GD.
+
+symp,prp-spo2] representing inverse properties, symmetric properties, and property chains:2
+
+Further, let GD (Figure 1, (7)(9)) be an RDF graph
+talking about authors and their publications. Moreover,
+let graph GO (Figure 1, (10)(14)) be part of the ontology defining the terms used in GD.
+When storing the graph G = GD  GO in an RDF
+store that supports inference over rules (1)(6), different questions of redundancy arise like if some statements may be deleted since they can be inferred by
+the rules. In our example, e.g. statement (9) as well
+as statement (13) may be deleted, since they could be
+reproduced by inference. Similarly, suppose that we
+transfer the graph G = GD  GO to a weaker RDF
+store that only supports rules (1)(3). Then the question is if we thus loose any inferences. In fact, the answer is no.
+
+We emphasize that the investigations in this paper
+are very much driven by practical observations on published Linked Data and common inference rules: redundancies do occur in practice, both in terms of published sets of inference rules for RDF as well as within
+published data from popular Linked Data datasets. For
+
+inverseOf ,
+
+2We disregard full URIs for common RDF terms,
+
+i.e., we
+just write e.g.
+for <http://www.w3.org/2002/
+07/owl#inverseOf>, name for <http://xmlns.com/foaf/0.
+1/name>, or creator for <http://purl.org/dc/elements/
+in RDF is
+1.1/creator>, etc. Further,
+(P1 . . . Pn)
+short
+for a fresh variable X plus additional
+triples X first P1
+. X1 rest X2. ...Xn first Pn . Xn rest nil . using
+reserved terms first, rest, nil.
+
+instance, on the one hand, standard rule sets such as
+OWL2RL are known to be non-minimal [20, Section 4.3]. On the other hand, if we take as an example the RDF data published at http://dbpedia.
+org/resource/Vienna  which is RDF data extracted automatically from Wikipedia within the DBpedia project [5]  we can observe that this data contains a number of redundant RDF triples such as the
+triple3
+
+@prefix : <http://dbpedia.org/resource/>
+
+:Vienna rdfs:label "Vienna" .
+
+which is already implied by the RDF Schema semantics via the two triples
+
+@prefix : <http://dbpedia.org/resource/>
+:Vienna foaf:name "Vienna" .
+foaf:name rdfs:subPropertyOf rdfs:label .
+
+which can be found on DBpedia itself and within the
+
+FOAF ontology, respectively.
+
+Many more such cases of redundancy can be found
+in published Linked Data online which is why it seems
+worthwhile to investigate how expensive removing
+such redundancies would be.
+
+We thus want to be able to answer the general question about redundancy of both triples and rules. How-
+
+3We use here common Turtle [3] syntax with prefixes to be found
+
+at http://prefix.cc.
+
+ever, it is often important to limit the minimisation of
+RDF graphs in such a way that certain consistency conditions must be preserved. These consistency conditions can be expressed by means of constraints [18].
+We shall restrict ourselves here to constraints in the
+form of so-called tuple-generating dependency (tgd)
+constraints [4], which are a generalisation of the familiar foreign-key dependencies in the relational database
+world. Roughly speaking, a tgd may be viewed as a
+generalised rule read as constraint. I.e. instead of allowing to infer new information, a constraint tests if
+the current data satisfies certain requirements (cf. [21]
+for a discussion on the difference between rules and
+constraints). So, for instance, if we read rules (4)-(5) as
+constraints, we could say that graph G alone without
+rules satisfies these constraints, and likewise the closure of G with respect to rules (1)-(3) does. Tgd constraints can be more general than (Horn) rules in that
+they also allow otherwise unbound, existential variables in the head, possibly occurring in a larger con-
+junct. That is, tgds are  rather than rules  constraining queries (in the head) triggered by bindings coming from a query in the body; for instance, a constraint
+(15) { A made D }  { A label N . D creator N}
+would hold only on graphs where everybody who
+made something also has a declared label and that label
+is also used to denote the creator. Note that constraint
+(15) holds on the closure of G with respect to rule (1)
+but  as opposed to the constraint reading of (4)-(5) 
+not on G alone.
+
+Next, we are interested in redundancy with respect
+to queries. This might be particularly relevant for RDF
+stores that expose a narrow SPARQL query inter-
+face. For instance, suppose that, in our example, we
+are interested only in completeness with respect to
+the query SELECT ?D ?L { ?D maker ?M . ?M
+label ?L } which is the SPARQL way of writing a
+conjunctive query:
+(16) { D maker M . M label L }  ans(D, L)
+
+In such a setting, rules (3)(6) as well as triples
+(9),(11),(13), and (14) can be dropped. Such redundancy elimination is not unique; for instance, keeping
+triples (11), (13), and rule (4) we could drop (12), still
+preserving completeness.
+
+The primary goal of our work is a systematic complexity analysis of both graph and rule minimisation
+under constraints, as well as with respect to queries.
+To this end, we investigate the influence of several
+problem parameters (like restrictions on the size of the
+rules, constraints, and queries) on the complexity of
+detecting redundancy. A first important step in this in-
+
+vestigation has been recently made by Meier [19]. He
+studied the following problem: Given a graph G, a set
+R of rules and a set C of tgds, can G be reduced to a
+proper subgraph G  G, such that G still satisfies
+C and the closure of G under R coincides with the
+closure of G under R? For the special case that both
+the rules in R and the constraints in C have bounded
+size (referred to as b-boundedness), this problem was
+shown to be NP-complete in [19]. In this paper, we
+want to extend the work initiated in [19] and provide
+a much more fine-grained analysis of the complex-
+ity, e.g., by weakening or strengthening restrictions
+such as b-boundedness and by considering redundancy
+elimination that only preserves RDF entailment (rather
+than keeping the closure of the original graph under the
+original rules unchanged) and additionally considering
+redundancy with respect to queries.
+
+We shall come up with a collection of complexity
+results, ranging from tractability to P
+3 -completeness.
+Additionally, we address the orthogonal problems of
+rule minimisation and the problem of reducing rules or
+triples without preserving completeness of the entire
+closure, but only ensuring that the answers to certain
+queries are preserved.
+
+We shall also discuss further variations of the graph
+and rule minimisation problem. For instance, the rules
+and tgds in [19] do not allow variables in predicate po-
+sitions, which is a severe restriction in the sense that
+many of the common RDF inferences rules are not
+covered (e.g., all except rules (4) and (5) above). We
+will not make this restriction, since it can be dropped
+without significant change of the complexity results.
+Organisation of the paper and summary of results.
+In Section 2, we recall some basic notions and results.
+A conclusion and an outlook to future work are given
+in Section 7. Sections 36 contain the main results of
+the paper, namely:
+ Graph Minimisation. In Section 3, we provide a
+comprehensive complexity analysis of the RDF graph
+minimisation problem, both when full reconstruction
+of the graph or only RDF entailment is required. We
+study various settings which result from different restrictions on the rules and/or tgds like restricting their
+size, considering them as fixed, omitting them, or imposing no restrictions at all. Our complexity results
+range from tractability to P
+ Rule Minimisation. In Section 4, we consider the
+problem of minimising the set of rules. We show that
+the problem of finding redundant rules with respect to
+
+3 -completeness.
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+a given RDF graph is NP-complete for b-bounded rules
+and not harder than P
+2 for arbitrary rules. Note that
+rule minimisation is closely related to the field of Datalog equivalence and optimisation. We therefore discuss how the large body of results in this area can be
+fruitfully applied to the problems studied here.
+ Graph Minimisation w.r.t. Queries. In Section 5,
+we study how guaranteeing completeness only w.r.t.
+a given set of conjunctive queries (CQs) or unions of
+conjunctive queries (UCQs) influences the complexity for each of the above settings. Considering different restrictions on the size of the queries, hardness
+never exceeds P
+3 , but for some settings raises by two
+levels in the polynomial hierarchy compared to Section 3. Finally we extend our findings to the problem
+of rule minimisation. We shall also briefly touch on
+full SPARQL queries beyond unions of conjunctive
+queries.
+ Problem Variations. In Section 6, we analyze the
+complexity of further problems which are either variations of or strongly related to the graph and rule
+minimisation problems mentioned above. For instance,
+rather than asking if an RDF graph contains redundant
+tuples, we consider the problem whether an RDF graph
+can be reduced below a certain size. We show that this
+problem is NP-complete also in those settings where
+the graph minimisation problem is tractable. We also
+discuss the effect of allowing blank nodes in predicate
+positions in the Datalog rules.
+
+The present paper significantly extends the conference version [26] in several ways: above all, full
+proofs of all results are given here. In Section 4
+and Section 5, all of the P
+2 [log n]-completeness results are new (note that in the conference version, the
+2 -membership was shown while hardness was only
+
+proved for NP- or coNP). Section 5 now also considers for some settings the extension to UCQs with safe
+negation. Further, in Section 5 we initiate the study
+of the influence of SPARQL as query language for
+the graph minimisation problem. Finally, the proof
+sketches of hardness proofs in [26] were based on a
+reduction from the SAT or QSAT problem. In this pa-
+per, all hardness proofs except Theorem 6.1 have been
+rewritten to reduce from graph colorability problems
+instead of SAT or QSAT to provide much more intuitive reductions.
+
+2. Preliminaries
+
+This section reviews the basic notions of RDF and
+and RDF Entailment, formally defines the versions of
+RDF Rules, constraints, and queries considered in this
+paper, introduces further basic notions and fixes some
+notational conventions.
+
+2.1. RDF
+
+Let U, B, and L denote pairwise disjoint alphabets
+for URI references, Blank nodes (or variables) and Lit-
+erals, respectively. Throughout this paper, unions of
+these sets are simply denoted by concatenating their
+names.4 An RDF statement (or triple) is a statement
+of the form (s, p, o)  UB  U  UBL, and an RDF
+graph is a set of triples. In this paper, no distinction is
+made between variables and blank nodes. Just note that
+blank nodes/variables appearing in the data are understood to be existentially quantified within the scope of
+the whole RDF graph they appear in. Elements from B
+(U) are written as alphanumeric strings starting with
+an upper case letter (lower case letter or number), elements from L as quoted strings, and  inspired by the
+common Turtle [3] syntax  RDF statements as whitespace separated triples and RDF graphs as . separated
+lists of triples in curly braces. Additionally, the aforementioned shortcut notation for lists is used. That is,
+graph GD from above would be written as:
+{ patHayes made rdfmt.
+
+patHayes name Patrick J. Hayes.
+rdfmt creator Patrick J. Hayes }
+A homomorphism h between two RDF graphs G1
+and G2 (written as h : G1  G2) is a blank node mapping h : B  UBL such that h(G1)  G2, where
+h(G1) denotes the graph obtained by replacing in G1
+every variable B  B with h(B). A homomorphism h
+is an extension of a homomorphism h if h(B) = h(B)
+for all blank nodes B on which h is defined.
+
+It is convenient to define the notion of entailment
+between two RDF graphs via the interpolation lemma
+from [14, Section 2] rather than in a model-theoretic
+way: an RDF graph G1 entails G2, written G1 |= G2
+if a subgraph of G1 is an instance of G2, that is, if
+there exists a homomorphism h : G2  G1. Given G1,
+G2, deciding whether there exists a homomorphism
+G2  G1 (thus also G1 |= G2) is well known to be
+NP-complete.
+
+4In this paper, a slightly simplified notion of RDF compared
+
+to [14] is used, e.g. not considering typed literals separately.
+
+2.2. Rules and constraints
+
+A basic graph pattern (BGP) is a set of generalised
+triples (s, p, o)  UBL  UBL  UBL and a filter
+condition is a conjunct of the unary predicates uri(),
+blank(), literal() (denoting the unary relations
+U, B, and L, respectively). A filtered basic graph pattern (FBGP) is a BGP conjoined with a filter condi-
+tion, the latter containing only variables already appearing in the BGP. Given an FBGP P , denote its components with BGP (P ) and F (P ), that is its BGP and
+its filter condition, respectively. Homomorphisms between BGPs and from BGPs to RDF graphs are defined analogously as before. Hence a homomorphism
+h : P1  P2 is a blank node mapping h : B  UBL
+such that h(P1)  P2, where P1 is a BGP and P2 is
+either a BGP or an RDF graph. Further, a blank node
+mapping h is a homomorphism h : P1  P2 from an
+FBGP P1 into a BGP or RDF graph P2 if h is a homomorphism h : BGP (P1)  P2, and h(F (P1)) is sat-
+isfied. Thereby h(F (P1)) is satisfied if for every filter
+condition filter(x) in F (P1) (where filter 
+{uri, blank, literal}) the value of h(x) is of
+the correct type where h(x) = h(x) if x  B and
+h(x) = x for x  UL.
+
+Note that for a FBGP P , given a homomorphism h
+on BGP(P ) it is easy to check if h also satisfies F(P )
+(a more detailed discussion of how to do this can be
+found in Section 6.3). Therefore, for a (F)BGP P , an
+RDF graph or BGP G and a blank node mapping h,
+throughout the paper only h(P )  G is used to denote
+the property that h is indeed a homomorphism h : P 
+G. Hence it is not distinguished if P is a BGP or FBGP,
+and in the latter case the additional requirement that h
+satisfies F(P ) is not stated explicitly.
+
+order formula  (cid:126)XAnte( (cid:126)X)  ((cid:126)Y )Con( (cid:126)X, (cid:126)Y )
+
+The type of constraints considered in this paper are
+RDF tuple-generating dependency (tgd) constraints
+(cf. [4]). A tgd constraint (or simply constraint) r is defined as Ante  Con, where the antecedent Ante is a
+FBGP and the consequent Con is a BGP. A constraint
+Ante  Con is a short-hand notation for the first-
+(where (cid:126)Y denotes the blank nodes occurring in Con
+only, while (cid:126)X are the remaining blank nodes). Hence,
+a constraint Ante  Con is satisfied over an RDF
+graph G if for each homomorphism h : Ante  G
+on (cid:126)X there exists an an extension h of h to (cid:126)Y , s.t.
+h(Con)  G. To increase the readability, sometimes
+the quantifiers and variable vectors will be stated ex-
+plicitly.
+
+ingly, let TR(G) =
+
+RDF rules (or simply rules), are syntactically restricted constraints, where (cid:126)Y = , i.e. all variables appearing in Con also appear in Ante (akin to the common notion of safety [29] in Datalog). In the following,
+RDF rules with an empty filter condition will be called
+Datalog rules.5 Given a set R of rules and an RDF
+graph G, the closure of G with respect to R, written
+ClR(G), is defined as usual by the least fix-point of the
+immediate consequence operator. I.e. using the notation from [17], for a rule r  R with r : Ante  Con,
+let Tr(G) = {(Con) |  : Ante  G}. AccordrR Tr(G). Also, let G0 = G and
+Gi+1 = Gi  TR(Gi) for i  0. Then, there exists a
+smallest n such that Gn+1 = Gn and ClR(G) = Gn.
+A rule or constraint is said to be b-bounded if both,
+antecedent and consequent contain at most b triples.
+Given an RDF graph and an arbitrary tgd , testing
+if G satisfies  is P
+2 -hard [10, Proposition 5.5, (1)].
+On the other hand, for b-bounded tgds, it follows from
+well-known results that the problem is tractable, cf.
+[19, Proposition 3]. Testing if an RDF rule is applicable is well-known to be NP-complete, and tractable in
+case of b-bounded rules (cf. [19, Proposition 9]).
+For a given graph G or a given set R of rules, let
+XG and XR (X  {U, B, L}) denote the subset of U
+(resp. B, L) used in G or R, respectively.
+
+2.3. Queries
+
+2.3.1. Conjunctive Queries
+A conjunctive query (CQ) q over an RDF graph G
+is of the form Gq  ans( (cid:126)X), where Gq is a FBGP,
+ans is a distinguished predicate, and (cid:126)X is a vector
+of blank nodes occurring in Gq. Gq is referred to as
+the body of q (body(q)), and ans( (cid:126)X) as the head of q
+(head (q)). A union of conjunctive queries (UCQs) is
+a set of CQs, all having the same head. The result of
+a CQ q over some RDF graph G is defined as the set
+q(G) = { ( (cid:126)X) |  : body(q)  G}. The result of a
+UCQ is the union of the results of its CQs.
+For extending (U)CQs to (U)CQs (i.e. allowing
+for negation), given a query q, partition BGP(body(q))
+into two sets, pos(q) and neg(q). Intuitively, pos(q)
+encodes positive information that must be satisfied by
+G, while G must not contain the negative information encoded by neg(q). In the following, assume all
+
+5In fact, in most parts of this paper, only Datalog rules will be
+considered. Extension to arbitrary RDF rules will be revisited at the
+end of Section 6, concluding that this extension does not change any
+of the results presented.
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+(U)CQs to be safe, that is, all blank nodes appearing
+in head (q) and neg(q) must also appear in pos(q). The
+result of a CQ q over some RDF graph G is defined
+as the set q(G) = { ( (cid:126)X) |  : pos(q) F (body(q)) 
+G and  (t) / G for all t  neg(q)}. The result of
+a UCQ is the union of the results of its CQs. In
+the following, when considering a CQ or UCQ q (i.e.
+neg(q) = ), the expressions body(q) and pos(q) are
+used interchangeably.
+
+A conjunctive query q is said to be body-b-bounded
+if body(q) contains at most b triples. Moreover, q is
+said to be head-b-bounded if | (cid:126)X|  b for some constant b (however, body(q) may be arbitrary). A set Q
+of (U)CQs is body-b-bounded (resp. head-b-bounded)
+if every q  Q is body-b-bounded (resp. head b-
+bounded).
+
+2.3.2. SPARQL graph patterns
+
+SPARQL [27] is the W3C Recommendation for a
+query language for RDF. A SPARQL query consists of
+two main parts. In the body of a query, a set of variable
+bindings is created. The head of the query then allows
+to apply several solution modifiers (like projection, or-
+der, . . . ) on these variable mappings. The main part of
+the body are the so called SPARQL graph patterns,
+which are used to define the variable bindings. They
+have been studied in [24]. Following [24], this paper
+concentrates on SPARQL graph patterns only.
+
+Assume a set V of variables disjoint from UBL.
+The basic building block of a SPARQL graph pattern is a SPARQL triple pattern, which is a triple in
+VU  VU  VUL. Note that in this work, SPARQL
+triple patterns are not allowed to contain blank nodes.
+Therefore elements from V are written as alphanumeric strings starting with an upper case letter just as
+elements from B, since the specific kind of an element
+will be always clear from the context.
+
+Complex SPARQL graph patterns are constructed
+from SPARQL triple patterns by using operators AND,
+OPT, UNION, and FILTER. Formally, SPARQL
+graph patterns are recursively defined as follows. (1)
+A SPARQL triple pattern is a SPARQL graph pat-
+tern, and (2) if P1 and P2 are SPARQL graph patterns and R is a SPARQL filter expression,
+then
+(P1 AND P2), (P1 OPT P2), (P1 UNION P2),
+and (P1 FILTER R) are SPARQL graph patterns.
+Thereby a SPARQL filter expression is built of elements from ULV , logical connectives, equality and inequality symbols, predicates similar to the filter conditions uri(.) and literal(.) introduced above, and
+further features (for a complete reference see [27]).
+
+For a SPARQL triple pattern t, let vars(t) denote
+the set of variables occurring in t, and for a SPARQL
+graph pattern P let vars(P ) denote the set of variables
+that occur in the triples that compose P .
+
+Next, the semantics of SPARQL graph patterns is
+defined, following closely the definitions proposed
+in [24]. A mapping  is a partial function  : V  U.
+The domain of , denoted by dom(), is the set of
+all variables from V for which  is defined. Given a
+triple pattern t and a mapping  such that vars(t) 
+dom(), denote by (t) the RDF triple obtained by
+replacing the variables in t according to . Two mappings 1 and 2 are said to be compatible, denoted by
+1  2, if for every ?X  dom(1)  dom(2) it
+holds that 1(X) = 2(X). The mapping with empty
+domain, denoted by  is compatible with any map-
+ping. The fact that a mapping  satisfies a SPARQL filter expression R is denoted as  |= R. Since SPARQL
+filter expressions are of little importance in this paper,
+a formal definition of the semantics of SPARQL filter expression is omitted. Note however that their formal semantics represents their intuitive meaning. For
+details, see [24].
+
+The semantics of SPARQL graph patterns is defined
+with the help of the following operations between sets
+of mappings that resemble relational operators over
+sets of tuples. Let M1 and M2 be sets of mappings.
+Then the join and the left-outer join between M1 and
+M2 are defiend as follows:
+M1 1 M2 = {1  2 | 1  M1, 2  M2
+M1 M2 = (M1 1 M2) 
+
+and 1  2}
+{  M1 |   M2 :   }
+This allows one to formalize the evaluation of a
+SPARQL graph pattern over an RDF graph G as a
+
+function G that, given a SPARQL graph pattern,
+returns a set of mappings. Formally,PG is defined
+1. If P is a triple pattern t, thenPG =
+
+{ | dom() = vars(t) and (t)  G}.
+
+recursively as follows [24]:
+
+2. If P = (P1 AND P2), then
+
+3. If P = (P1 OPT P2), then
+
+Given a mapping , it was shown in [24] that deciding
+
+if  PG is PSPACE-complete.
+
+PG =P1G 1P2G.
+P2G.
+PG =P1G
+PG =P1G P2G.
+PG = { P1G |  |= R}.
+
+4. If P = (P1 UNION P2), then
+
+5. If P = (P1 FILTER R), then
+
+2.4. Graphs and further notation
+
+A graph G = (V, E) consists of a set V of nodes
+(also called vertices) and a set E of edges. Thereby
+an edge e  E is a pair (vi, vj) of nodes vi, vj  V .
+Throughout the paper, unless stated otherwise, edges
+are considered to be undirected, i.e. (vi, vj) = (vj, vi).
+A graph G = (V , E) is a subgraph of G if V   V
+and E  E. A clique is a complete graph, i.e. G =
+(V, E) is a clique if for all pairs vi, vj  V , the edge
+(vi, vj)  E. Further, given some graph G = (V, E), a
+3-coloring of V is a mapping  : V  {1, 2, 3}. A 3-
+coloring  is called a valid 3-coloring of G if (vi) =
+(vj) for all pairs vi, vj  V s.t. (vi, vj)  E. Also
+recall the well-known NP-complete problems graph 3-
+colorability (3COL) and vertex cover.
+Introducing some additional notation, let [n] denote
+the set {1, . . . , n}. Finally, recall that given some set
+V , subsets V1, . . . , Vn  V are a partition of V if Vi 
+
+Vj =  for i, j  [n] with i = j andn
+
+i=1 Vi = V .
+
+2.5. Complexity classes and complete problems
+
+The different problems studied in this paper are
+shown to be complete for a handful of different complexity classes. In the following, a short recapitulation of the less well-known classes among them is
+given. Further, the less well-known problems used in
+the hardness proofs are introduced.
+
+0 = P
+
+i and P
+
+i and P
+
+i+1 = NP P
+
+k ) and QSAT,k (for P
+
+All problems under consideration are shown to be
+contained in some class of the polynomial hierar-
+chy. Recall that the polynomial hierarchy contains the
+for all i  0, which are defined
+classes P
+as P
+0 = P, and P
+i+1 =
+for i  0. The prototypical problem comcoNP P
+plete for the the kth level of the polynomial hierarchy
+are QSAT,k (for P
+k ) (cf. for
+example [23, Theorem 17.10]). However, due to the
+syntactic restriction of RDF to consider only triples,
+reducing from QSAT to the problems studied in this
+paper turns out to be rather tedious. Therefore, in most
+cases, hardness will be shown via reduction from the
+appropriate quantified variants of 3COL.
+Definition 2.1 (Q-3COL,3). Let Q-3COL,3 be the
+following decision problem:
+INPUT: A graph G = (V, E) together with a partition
+(V1, V2, V3) of V .
+QUESTION: Does there exist a 3-coloring 1 of V1,
+such that for all possible 3-colorings 2 of V2 there
+exists a 3-coloring 3 of V3, such that the 3-coloring
+ = 1  2  3 is a valid 3-coloring of G.
+
+Definition 2.2 (Q-3COL,2). Let Q-3COL,2 be the
+following decision problem:
+INPUT: A graph G = (V, E) together with a partition
+(V1, V2) of V .
+QUESTION: Does there exist a 3-coloring 1 of V1,
+such that for all possible 3-colorings 2 of V2 the 3-
+coloring  = 1  2 is no valid 3-coloring of G?
+
+The P
+
+3 -completeness of Q-3COL,3 and the P
+2 -
+completeness of Q-3COL,2 follow immediately from
+the property k-round 3-colorability of
+[1]. There,
+graphs was introduced via a k-round game and shown
+to be complete for P
+k ([1, Theorem 11.4]). An inspection of the proof of this theorem reveals the completeness results for Q-3COL,3 and Q-3COL,2.
+
+Next, consider the co-problem of Q-3COL,2, which
+
+can be defined as follows.
+Definition 2.3 (Q-3COL,2). Let Q-3COL,2 be the
+following decision problem:
+INPUT: A graph G = (V, E) together with a partition
+(V1, V2) of V .
+QUESTION: For all possible 3-colorings 1 of V1,
+does there exist a 3-coloring 2 of V2 such that the
+3-coloring  = 1  2 is a valid 3-coloring of G?
+
+2 -completeness of the problem follows im-
+
+The P
+mediately.
+
+The final complexity class of interest in this paper
+is the class P
+2 [log n]. It contains all decision problems that can be solved by a deterministic Turing machine having access to an NP-oracle in polynomial
+time while calling the oracle at most O(log n) times
+(where n is the size of the input). The following problem is known to be complete for P
+Definition 2.4 (ODD CLIQUE). Let ODD CLIQUE
+be the following decision problem:
+INPUT: A graph G = (V, E).
+QUESTION: Is the size of the biggest clique in G odd?
+
+2 [log n] [31].
+
+2 [log n] directly, but
+
+In fact, it is sometimes convenient not to prove
+instead to
+membership for P
+show membership for the class PNP(cid:107) . However, since
+2 [log n] is known to be equivalent with the class
+
+(cf. for example [23, Theorem 17.7]), this imme-
+PNP(cid:107)
+diately also gives P
+
+2 [log n] membership.
+
+Thereby PNP(cid:107)
+
+is the class of all decision problems
+that can be solved in polynomial time by a deterministic Turing machine M with an NP-oracle under the
+following restrictions. M is allowed to call the oracle a
+polynomial number of times, but all these calls must be
+performed in parallel. I.e. all these calls must be inde-
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+pendent of the results returned from the other calls, and
+must not be adapted according to the answers from the
+oracle. Note that it follows immediately that a problem is still in P
+2 [log n] (hence also in PNP(cid:107) ) if it can
+be solved in polynomial time by the machine M described above, but allowing in addition a fixed number of queries to the oracle that depend of the results
+retrieved from the polynomial number of parallel calls.
+
+3. RDF graph minimisation
+
+Given an RDF dataset and an additional set of rules
+that allow one to infer information from the explicitly
+stored data, the first question of interest is  beside asking what information can be actually inferred  if it
+is indeed necessary to keep all the explicit data, or if
+some of this data could be removed because it is still
+derivable from the remaining data and the rules. Therefore this is the basic question considered in this sec-
+tion. As already motivated in the introduction, beside
+a set of rules, it might also be the case that certain constraints are defined that must hold on the dataset. This
+leads to the two problems whose complexity is investigated in this section, formally defined as follows:
+Definition 3.1. Let MINI-RDF|=(G,R,C) be the following decision problem:
+INPUT: RDF graph G, set R of RDF rules, set C of
+tgds (G satisfies C).
+QUESTION: Is there a G  G s.t. ClR(G) |=
+ClR(G) and G satisfies C?
+Definition 3.2. Let MINI-RDF(G,R,C) be the following decision problem [19]:
+INPUT: RDF graph G, set R of RDF rules, set C of
+tgds (G satisfies C).
+QUESTION: Is there a G  G s.t. ClR(G) =
+ClR(G) and G satisfies C?
+
+The main motivation for these two problems (maybe
+even more important than the obvious goal of reducing the size of the dataset) is the avoidance of redundancy in the stored data. Thereby two kinds of redundancy elimination are addressed by the above settings.
+On the one hand, in MINI-RDF, triples which can
+be restored via the rules are considered as redundant.
+On the other hand, the minimisation of RDF graphs
+via entailment is an important topic on RDF in gen-
+eral. Minimisation via entailment allows to replace a
+graph G by a proper subgraph  G  G if  G |= G
+holds, i.e. one checks if G is lean (see [12]). The MINI-
+
+RDF|=(G,R,C) problem introduced above combines
+these two approaches and thus yields the strongest redundancy criterion. Nevertheless, in most cases, its
+complexity is not higher than for MINI-RDF (see
+Theorem 3.1).
+
+3.1. Overview of results
+
+It turns out that both problems, MINI-RDF and
+MINI-RDF|= are P
+3 -complete in the general case.
+Thus several restrictions on the input parameters (more
+concrete on the set of rules and set of constraints) are
+taken into account. Based on these restrictions, the
+complexity of the problems varies between tractability
+and P
+3 -completeness. The results are summarised in
+the following theorem.
+Theorem 3.1. For MINI-RDF|= and MINI-RDF, the
+complexity with respect to different assumptions on the
+input (arbitrary, b-bounded, or fixed rule set; arbi-
+trary, b-bounded, fixed, or no constraints) is as depicted in Table 1.
+
+The remainder of this section is devoted to discuss
+and prove the correctness of the entries in Table 1. First
+of all, note that several settings are special cases of oth-
+ers. The following lemma makes some of these relationships explicit. It thus justifies that in order to show
+the correctness of Theorem 3.1 it is not necessary to
+give an explicit completeness proof for each entry in
+Table 1, but points out a proof plan for Theorem 3.1.
+Lemma 3.2. The graph in Fig. 2 correctly describes
+the dependencies between the problems (identified by
+their line number) in Table 1, i.e.: if there is an arrow
+from A to B, then B is a special case of A.
+
+Proof. The Lemma follows immediately from the observation that arbitrary sets R (resp. C) include b-
+bounded sets R (resp. C), which in turn include sets
+of constant size. Finally, the empty set is of constant
+size.
+
+Hence an arrow from A to B means that membership results for A hold also for B, and that hardness results for B apply also to A. Note that the graph in Fig. 2
+is not complete, i.e. not all dependencies are made ex-
+plicit, but only those needed in order to prove Theorem 3.1. To prove this theorem, it now suffices to show
+membership for both problems for (1) and (2), and additionally for MINI-RDF for setting (8). On the other
+hand, hardness must be shown for both problems for
+setting (9), in addition for MINI-RDF|= in setting (12)
+
+R arb., C arb.
+(1)
+R arb., C bb
+(2)
+R arb., C fixed
+(3)
+R arb., C = 
+(4)
+R bb., C arb.
+(5)
+R bb, C bb
+(6)
+R bb, C fixed
+(7)
+R bb, C = 
+(8)
+R fixed, C arb.
+(9)
+(10) R fixed, C bb
+(11) R fixed, C fixed
+(12) R fixed, C = 
+
+MINI-RDF|=
+3 -complete
+
+NP-complete
+NP-complete
+NP-complete
+3 -complete
+
+NP-complete
+NP-complete
+NP-complete
+3 -complete
+
+NP-complete
+NP-complete
+NP-complete
+
+MINI-RDF
+3 -complete
+
+NP-complete
+NP-complete
+NP-complete
+3 -complete
+
+NP-complete [19]
+
+NP-complete
+
+in P
+
+3 -complete
+
+NP-complete
+NP-complete
+
+in P
+
+Table 1
+
+The complexity of MINI-RDF|= and MINI-RDF w.r.t. input parameters (bb indicates the set to be b-bounded, and arb. allows
+for arbitrary sets.)
+
+Fig. 2. Dependency graph: Numbers refer to lines in Table 1. An arrow from A to B means that B is a special case of A.
+
+and for MINI-RDF for settings (4) and (11). The concrete proofs are given in Section 3.2, but beforehand,
+the rough intuition of these results is sketched.
+
+The idea of the P
+
+3 -membership in the most general case, (1), can be seen by the following guess and
+check algorithm that is allowed to call a P
+2 oracle for
+the checks. In order to solve the problem, one has to
+guess: a subgraph G of G, a sequence of rule applications on G, and for each rule application a homomorphism justifying that the rule is applicable. Note that
+ClR(G)  AD 3 (with AD = UGURBGBRLGLR).
+Hence if considering all possible rule applications of
+length |AD|3, one of them has to return ClR(G). The
+most expensive check is to test if G satisfies C. How-
+2 . The completeness result
+ever, it obviously fits into P
+shows that the above intuition of the sources of complexity for the problem is indeed correct.
+
+Concerning the restricted settings from Theorem 3.1,
+the reasons for the lower complexity are the following
+properties: If R is a b-bounded set, then ClR(G) can
+be computed in polynomial time [19, Proposition 9]
+and if C is a b-bounded set, then testing if G satisfies C is in PTIME [19, Proposition 3]. These two observations lead to the NP-complete settings. For the
+
+tractable cases, note that in addition to the two properties mentioned above, if C = , then not all subgraphs of G have to be checked, but only those missing exactly one triple from G. It thus suffices to check
+only a polynomial number of subgraphs, instead of an
+exponential number.
+
+3.2. Complexity of RDF graph minimisation
+
+Almost all complexity results presented in this section make use of the following observations. First of
+all, it is easy to see that the condition ClR(G) =
+to G 
+ClR(G) in Definition 3.2 is equivalent
+ClR(G). The following lemma shows that similarly,
+for MINI-RDF|=, it is enough to show ClR(G) |= G
+rather than ClR(G) |= ClR(G).
+Lemma 3.3. Let G1, G2 be RDF graphs and R a
+set of rules. Then the following equivalence holds:
+ClR(G2 ) |= ClR(G1 )  ClR(G2 ) |= G1 .
+Proof. The -direction is trivial. To show the -
+direction, recall that the closure ClR(G) of a graph G
+under a set of rules R is defined by the least fix-point
+of the immediate consequence operator.
+
+Let r  R with r = (cid:126)xAnte((cid:126)x)  Con((cid:126)x). A
+
+single application of the immediate consequence operator T w.r.t. r extends the graph G1 to the graph
+1 = G1Con(((cid:126)x)), where  is a mapping on (cid:126)x with
+
+Ante(((cid:126)x))  G1. It suffices to prove the implication ClR(G2 ) |= G1  ClR(G2 ) |= G
+1 . From this,
+the lemma follows by induction on the number of rule
+applications when computing the closure ClR(G1 ).
+By assumption, Ante(((cid:126)x))  G1. Moreover,
+ClR(G2 ) |= G1 holds. Hence, there exists a mapping  on the blank nodes in G1, s.t. (G1)  G2.
+In total, for  =   , we thus have Ante(((cid:126)x)) 
+G2. Since ClR(G2 ) is closed under R, the inclusion
+Con(((cid:126)x)))  G2 holds as well. We claim that  is
+1  G2. Clearly, we
+the desired homomorphism  : G
+have (G1)  G2 by the above considerations. It re-
+1 \ G1
+mains to show that  also maps the triples in G
+1 \ G1 = Con(((cid:126)x)). By definito G2. Consider G
+tion,  =   . Moreover, Con(((cid:126)x))  G2. Hence,
+(Con(((cid:126)x))) = Con(  ((cid:126)x)) = Con(((cid:126)x))  G2.
+1)  G2 and, therefore,
+In total, we thus have (G
+ClR(G2 ) |= G
+1 .
+
+3.2.1. Settings complete for P
+
+The idea of why both problems are P
+
+3 -complete
+in the case of unrestricted constraints was already
+sketched above. Next, the result is shown formally.
+Lemma 3.4. Both, MINI-RDF|=(G,R,C) and MINI-
+RDF(G,R,C), for arbitrary sets R and C can be
+solved in P
+3 .
+
+Proof. First of all, note that every rule with more than
+one triple in the consequent can be replaced in a preprocessing step by several rules with the same an-
+tecedent, each of them containing in its consequent exactly one triple from the original consequent. Further,
+let r0 encode some do nothing rule r0 :    and
+denote with AD the active domain AD = UG  UR 
+BGBRLGLR. Then the following nondeterministic algorithm decides MINI-RDF|=(G,R,C) in polynomial time using a P
+
+2 -oracle:
+
+1. Guess a subgraph G  G with G = 
+2 -oracle) if G satisfies C
+2. Check (by a P
+3. Set G0 = G and k = |AD|3
+4. For j = 1, . . . , k:
+
+If it does not, return no.
+
+(a) Guess a rule ri : Gi  {ti} from R  {r0}
+(b) Guess a mapping  : Gi  Gj1 (i.e. from
+the rule body Gi to the intermediate graph)
+
+(c) Check whether  is a homomorphism Gi 
+Gj1. If it is not return no
+(d) Set Gj = Gj1  {(ti)}
+5. Guess a mapping  : G  Gk
+6. If  is a homomorphism G  Gk return yes,
+otherwise return no
+
+To see that this algorithm indeed runs in polynomial time, observe the following: Step (2) can be easily solved by a P
+2 -oracle, see [10, Proposition 5.5,
+(1)]. The remaining steps obviously fit into polynomial time. In (1),(4a),(4b),(5) a polynomial size subgraph respectively mapping is guessed. Finally, testing
+in steps (3),(4c),(5) if those mappings guessed are homomorphisms is obviously in polynomial time. This
+concludes the proof for MINI-RDF|=(G,R,C).
+For MINI-RDF(G,R,C), in steps (4) and (5), instead of testing ClR(G) |= G, one needs to test
+whether G  ClR(G), which is obviously not harder.
+
+Hardness is shown in Lemma 3.5 below by reduction from Q-3COL,3. Recall the algorithm sketched
+in the P
+3 -membership proof. Then the intuition of the
+reduction can be described according to the steps in
+this algorithm. Guessing a subgraph corresponds to
+fixing a coloring on the first set of nodes, while testing
+if all constraints are satisfied on this subgraph corresponds to testing if for all colorings on the second set
+of nodes (encoded in the  universally quantified  antecedent of a tgd) there exists a coloring on the third
+set of nodes such that the combined coloring gives a
+valid 3-coloring of the graph (both encoded in the 
+existentially quanitfied  consequent of a tgd). Hence
+there exists one tgd whose size is linear in the size of
+the input graph.
+Lemma 3.5. The problems MINI-RDF|=(G,R,C)
+and MINI-RDF(G,R,C), for fixed R and arbitrary
+C, are P
+Proof. Consider the MINI-RDF problem first. The
+hardness is shown by reduction from Q-3COL,3.
+Hence let G = ((V, E), (V1, V2, V3)) be an arbitrary
+instance of Q-3COL,3 with V = {v1, . . . , vn}. Define an instance (G,R,C) of MINI-RDF as follows.
+Let G = GcolsGv1Gcol1Gcol2Ge1Ge2Gneg
+where
+Gcols = {0 iscol 0 . 1 iscol 1 . 2 iscol 2}
+Gv1 = {vi v vi | vi  V1},
+Gcol1 = {vi a 0 . vi a 1 . vi a 2 | vi  V1},
+
+3 -hard.
+
+by a mapping G2  G. Further, a mapping from G3
+into G encodes a 3-coloring on V3. Now G4 can be
+mapped into G if the assignment on C1, . . . , Cn reflects a valid 3-coloring for (V, E).
+
+To conclude, the alternating quantifiers in the instance of the Q-3COL,3 problem are encoded in the
+above instance of MINI-RDF as follows: the existential quantification over colorings of V1 is encoded by
+the selection of the proper subgraph G of G. The universal quantification over colorings of V2 corresponds
+to the evaluation of the tgd CG; indeed, checking if a
+tgd holds requires to inspect all possible homomorphisms from the antecedent to the graph G. Finally,
+also the existential quantification over colorings of V3
+is contained in the evaluation of the tgd CG; indeed, for
+each homomorphism of the antecedent into the RDF
+graph G it must be checked if there exists a homomorphism from the conclusion into G. Note that the
+colorings of V2 (referred to by G2) occur in the antecedent of CG while the colorings of V3 (referred to by
+G3) occur in the conclusion. Actually, also the colorings of V1 (referred to by G1) occur in the antecedent.
+However, here no universal quantification takes place
+since G only contains one possible color (i.e., one
+triple with subject vi and predicate a) for each vertex
+in V1.
+
+The proof of the correctness of the reduction is given
+
+Gcol2 = {vi c 0 . vi c 1 . vi c 2 | vi  V2  V3},
+Ge1 = {0 e 0 . 1 e 1 . 2 e 2},
+Ge2 = {0 e 2 . 0 e 1 . 2 e 0 . 2 e 1 . 1 e 2 . 1 e 0},
+Gneq = {0 neq 2 . 0 neq 1 . 2 neq 0 . 2 neq 1 .
+
+1 neq 2 . 1 neq 0},
+
+and each vi is a new URI for every vi  V (by slight
+abuse of notation, vi is used to denote both, nodes in V
+and URIs in G). Next, let the set R of rules be defined
+as R = Rcol1  Re1, with
+Rcol1 = {{X a C . Y iscol Y }  {X a Y }},
+Re1 = {{Y iscol Y }  {Y e Y }}.
+Finally, the set C of constraints is defined as C =
+Ccol1  C0  CG, where
+Ccol1 = {{X a C . X a D . C neq D}  {0 e 0}}
+C0 = {{X e X . Y iscol Y }  {Y e Y };
+{X e X . Y v Y . Z iscol Z}  {Y a Z}}
+CG = {G1  G2  G3  G4} where
+G1 = {vi a Ci | vi  V1},
+G2 = {vi c Ci | vi  V2},
+G3 = {vi c Ci | vi  V3}, and
+G4 = {Ci e Cj | (vi, vj)  E}.
+
+Obviously, the reduction is feasible in LOGSPACE.
+Before showing its correctness, a short sketch of its
+intuition is given: Gcols encodes the three colors, and
+Gv1 the vertices contained in V1. Further, Gcol1 encodes for each vi  V1 all possible colorings, and
+Gcol2 does so for all vertices in V2  V3. Finally Ge2
+contains all valid edge colorings while Ge1 stores the
+invalid ones, and Gneq mimics the = predicate for
+the three colors. Now the idea of the reduction can
+be summarized as follows. Every subgraph G  G
+that satisfies C, and for which ClR(G) = ClR(G)
+holds, does not contain a triple from Ge1, that is the
+encoding of an invalid edge coloring. Further it encodes a single coloring on V1 by containing exactly
+one triple from Gcol1 for every vi  V , and finally
+Gcols  Gv1  Gcol2  Ge2  Gneq  G. This is
+achieved on the one hand by the set of rules R that
+only allow to derive triples from Gcol1 and Ge1, and
+on the other hand by the constraints in C0 and Ccol1
+that require G = G if Ge1  G =  or G contains
+more than one triple from Gcol1 for a single vi  V1.
+Finally, CG is satisfied over G exactly if the coloring
+1 on V1 encoded by G is such that for every coloring 2 on V2 there exists a coloring 3 on V3 such that
+123 is a valid 3-coloring of (V, E). To see this,
+just note that there exists exactly one way to map G1
+into G while every possible coloring on V2 is reflected
+
+in the appendix.
+
+3.2.2. NP-complete settings
+
+As already pointed out above, the main reason why
+in settings without arbitrary tgds the complexity drops
+by two levels in the polynomial hierarchy is that testing
+if some subgraph G  G satisfies C is now possible in
+polynomial time, and no longer requires a P
+2 oracle.
+Lemma 3.6. Both, MINI-RDF|=(G,R,C) and MINI-
+RDF(G,R,C), for arbitrary sets of rules R and sets
+C of b-bounded tgds, are in NP.
+
+Proof. The problems can be decided by the algorithms depicted in the proof of Lemma 3.4, but (by
+[19]/Proposition 3) step (2) now requires only polynomial time, hence no call to an oracle is needed.
+
+Hence it remains to show the NP-hardness for three
+cases. For the first case MINI-RDF(G,R,C) with
+fixed sets R and C, the proof is by reduction from
+3 -hardness proof, the idea of
+3COL. Similarly to the P
+this reduction is to follow the steps from the algorithm
+sketched in the membership proof. Guessing a subset of the RDF triples corresponds to defining a color-
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+ing on the given graph. On the other hand, the (now
+tractable) steps of testing if this subset satisfies C and
+if it allows one to derive all removed RDF triples via
+R correspond to checking if this coloring is indeed a
+valid 3-coloring. Note that because C is fixed, it is no
+longer possible to encode the graph structure into it,
+but only tests like if two nodes are connected by an
+edge, then they must be assigned different colors.
+Lemma 3.7. The problem MINI-RDF(G,R,C) where
+both, R and C are considered to be fixed, is NP-hard.
+
+Proof. MINI-RDF(G,R,C). For this problem, the
+NP-hardness is proven by reduction from the problem
+3COL. First, consider the following fixed set of rules
+and constraints, R and C, respectively.
+R = {{X a C . D iscol D}  {X a D};
+C = {{X a C . X a D . C neq D}  {0 neq 0};
+
+{D iscol D}  {D neq D}}
+{C neq C . X a D . F iscol F}  {X a F};
+{C neq C . F iscol F}  {F neq F};
+{X e Y . X a C . Y a D}  {C neq D}}
+
+Now let an arbitrary instance of 3COL be given by
+the graph G = (V, E) with V = {v1, . . . , vn}. Define
+an instance (G,R,C) of MINI-RDF as follows. Let
+G = Gcols  Gv  Ge  Geq  Gneq where
+Gcols = {0 iscol 0 . 1 iscol 1 . 2 iscol 2}
+Gv = {vi a 0 . vi a 1 . vi a 2 | vi  V },
+Ge = {vi e vj | {vi, vj}  E}, and
+Geq = {0 neq 0 . 1 neq 1 . 2 neq 2},
+Gneq = {0 neq 1 . 0 neq 2 . 2 neq 0 . 2 neq 1 .
+
+1 neq 2 . 1 neq 0},
+
+and a new URI vi is introduces for every node vi  V
+(by slight abuse of notation, vi is used to denote both,
+nodes in V and URIs in G). This reduction is obviously feasible in LOGSPACE. The idea of the reduction is as follows. First of all, the only purpose of Geq
+is to guarantee that G satisfies C. On the other hand,
+G  Geq =  holds for every valid (in the sense
+of MINI-RDF) subgraph G  G. This is achieved
+by the second and third tgd, that informally state that
+either G  Geq =  or G = G. Further, the idea
+is that G contains for every vi  V exactly one of
+the three triples vi a 0, vi a 1, and vi a 2: At least
+one of the three triples must be in G since otherwise
+Gv  ClR(G), and if G contains more than one of
+these triples, then G = G must hold in order to satisfy
+the first three tgds. Therefore G encodes a 3-coloring
+
+of V , which is a valid 3-coloring of G iff G satisfies
+the last tgds.
+
+The proof of the correctness of this reduction can be
+
+found in the appendix.
+
+The remaining two cases for follow immediately
+
+from well-known complexity results.
+Lemma 3.8. The problem MINI-RDF(G,R,C), for
+arbitrary sets R and no constraints (i.e. C = ) is NP-
+hard.
+
+Proof. The hardness can be immediately shown by
+exploiting that
+testing whether some Datalog rule
+ri : Gi  {ti} is applicable (i.e. whether there exists
+a homomorphism Gi  G) is already NP-complete
+[12].
+Lemma 3.9. The problem MINI-RDF|=(G,R,C) for
+a fixed set R and no constraints (i.e. C = ) is NP-
+hard.
+Proof. The NP-hardness, even for R = C = , follows
+easily from the coNP-hardness of testing if G is lean
+[12]: (G,,) is a positive instance of MINI-RDF|= iff
+there exists some G  G such that G |= G, which is
+exactly the case if G is not lean.
+
+3.2.3. Tractable cases
+
+Note that one reason for the settings considered so
+far being intractable was that because of the constraints
+it was necessary to in fact check for every possible
+subgraph of the input G, if it satisfies C and allows to
+derive the original information via R. The reason for
+this is that it might well be the case that some subgraph G  G does not satisfy C, while some subgraph G  G satisfies C. This occurs if in G there
+exists some homomorphism from the antecedent of a
+tgd into G that cannot be extended to the consequent
+of the tgd. However, by removing further triples from
+G, for some G  G there no longer exists the homomorphism from the antecedent into G, hence G
+now satisfies this tgd.
+
+However, if there are no constraints at all, such
+a case cannot occur, and therefore it suffices just to
+check all subgraphs G  G missing exactly one triple
+of G. If in addition R is such that the closure can be
+computed efficiently, MINI-RDF becomes tractable.
+Lemma 3.10. The problem MINI-RDF(G,R,C)
+can be decided in PTIME if all rules in R are b-
+bounded and there are no constraints (i.e. C = ).
+
+Proof. The problem can be decided by testing for every triple t  G, whether it can be removed from G:
+For every t  G, test whether t  ClR(G)\{t}. If this
+is the case for some triple t, then there obviously exists some smaller graph, hence the answer is Yes. Oth-
+erwise, as no triple in G can be derived via the rules
+in R from the remaining triples, the answer is No. By
+[19]/Proposition 9, the check requires only polynomial
+time.
+
+4. Rule minimisation
+
+Given the general setting considered so far, another
+natural question is if the set of rules contains some re-
+dundancies. Note that unlike the traditional problems
+like query containment or several implication prob-
+lems, the question is not if some rules are redundant (or
+implied by the other rules) over all possible datasets.
+Instead the question is posed with a specific dataset in
+mind. One situation where this may be of interest is
+to decide if over some dataset indeed all rules must be
+considered for deriving data. Knowing that some rules
+can be omitted without losing information may speed
+up query answering.
+
+Note that rules for RDF, when written as Datalog rules, have a fixed predicate arity of three, which
+makes reasoning problems computationally easier than
+in the general Datalog setting (see, e.g. [8]). Although
+there is a huge amount of literature in the Datalog
+world addressing related problems (as query contain-
+ment), the particular nature of the problems studied
+in this paper requires a distinguished complexity anal-
+ysis. Depending on whether the Datalog rules are
+considered as b-bounded or not, the complexity of
+the problems studied in this section ranges between
+tractability and P
+
+2 [log n]-completeness.
+
+The rule minimisation problem is formally defined
+as follows. Note that since the RDF graph remains un-
+changed, constraints are irrelevant here.
+Definition 4.1. Let RDF-RULEMIN|=(G,R) be the
+following decision problem:
+INPUT: An RDF graph G and a set R of RDF rules.
+QUESTION: Does there exist R  R such that
+ClR(G) |= ClR(G)?
+Definition 4.2. Let RDF-RULEMIN(G,R) be the
+following decision problem:
+INPUT: An RDF graph G and a set R of RDF rules.
+QUESTION: Does there exist R  R such that
+ClR(G) = ClR(G)?
+
+4.1. Overview of results
+
+The following theorem summarises the complexity results for the two problems of interest. Thereby
+two settings are considered, namely R containing b-
+bounded or arbitrary rules.
+Theorem 4.1. For RDF-RULEMIN|=(G,R) and RDF-
+RULEMIN(G,R), the complexity with respect to the
+rules in R being b-bounded or not is as depicted in
+Table 2.
+
+Before these results are formally proved in Section 4.2, the intuition behind these results is sketched.
+First of all, consider the case that all rules in R are
+b-bounded. Then, given some RDF graph G, the closure of G under R can be computed efficiently. In order to check if some rules are redundant, it suffices to
+check for each r  R if it is redundant. That is, it suffices to compare the closure of G under R with the
+closure of G under every subset of R missing exactly
+one rule. This gives PTIME-membership for RDF-
+RULEMIN, since checking if one closure is contained in another one is easy. For RDF-RULEMIN|=,
+comparing two closures means to check if one closure entails the other closure. Since checking entailment is NP-complete, this only gives membership for
+NP. In fact, it will be shown that the full complexity of
+testing entailment cannot be avoided, and thus RDF-
+RULEMIN|= is NP-complete as well.
+
+Allowing for arbitrary rules, note that computing the
+closure of an RDF graph with respect to a given set of
+rules is neither in NP nor in coNP: Deciding if certain
+triples can be derived by the rules is an NP-hard prob-
+lem. On the other hand, checking if some set of triple
+patterns is indeed the closure (that is, if no more rule
+can be applied) is coNP-hard. However, the problem
+can be easily solved in polynomial time by a deterministic Turing machine having access to an NP-oracle. In
+fact, a short reflection on the algorithm reveals that the
+necessary oracle calls are non-adaptive, i.e. completely
+independent of each other. For RDF-RULEMIN, this
+immediately shows that the problem is in PNP(cid:107) , hence
+2 [log n]. RDF-RULEMIN|= on the other hand still
+
+requires an entailment test, which obviously is not independent of the closures. However, the problem remains in P
+In order to reduce the complexity of the problems
+RDF-RULEMIN and RDF-RULEMIN|=, one could
+seek for approximations of those problems. In fact, one
+option is to check for redundant rules in the set R
+of given Datalog rules; or whether some rule is sub-
+
+2 [log n] nevertheless.
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+RDF-RULEMIN|=
+
+NP-complete
+
+RDF-RULEMIN
+
+in P
+
+(1) R bb.
+(2) R arb. P
+
+2 [O(log(n))]-complete P
+
+2 [O(log(n))]-complete
+
+The complexity of RDF-RULEMIN|= and RDF-RULEMIN depending on whether the rules in R are b-bounded (bb) or not (arb.)
+
+Table 2
+
+sumed by another rule from R. The first problem is
+known to be tractable while the test for rule subsumption is NP-complete (see [9]). The latter result can be
+shown to hold also for rules of bounded arity (which
+we deal with here), but becomes tractable in the case of
+b-bounded rules. Further methods (for example, folding and unfolding of rules) are well understood for
+logic programs (see [25]), and could also apply to the
+present domain. An in-depth analysis how to use those
+results in the setting considered in this paper is left for
+future work.
+
+As mentioned earlier, the rules dealt with in this paper can be seen as Datalog rules using a ternary pred-
+icate. Note that the complexity of evaluating Datalog
+programs which have their (intensional) predicates arity bounded by a constant has been carefully investigated in [8]. In particular, it is shown there that the
+general EXPTIME-complexity for reasoning in Datalog programs drops down to complexity classes NP
+(resp. DP ), thus mirroring the results discussed here
+and by Meier [19].
+
+4.2. Complexity of rule minimisation
+
+The first lemma formally shows the complexity results in the case of R containing only b-bounded rules.
+Thereby the membership is shown using the algorithm
+sketched before. The hardness proof is again by reduction from 3COL. Its idea is to use a single rule whose
+application adds an encoding of the edge relation to
+the RDF data set. Now the RDF triples are defined in
+such a way that every homomorphism mapping these
+additional triples into the original set of triples (and
+therefore witnessing the entailment) defines a valid 3-
+coloring on the graph. Hence the only rule is redundant
+iff the graph is 3-colorable.
+Lemma 4.2. For a set R of b-bounded rules (for
+the problem RDF-RULEMIN|=(G,R) is
+fixed b),
+NP-complete while RDF-RULEMIN(G,R) is in
+PTIME.
+Proof. RDF-RULEMIN(G,R). Consider the following algorithm to test whether R contains redundant
+rules:
+
+1. Compute Gclos = ClR(G)
+2. For every r  R
+
+(a) Set R = R \ {r}
+(b) Compute G = ClR(G)
+(c) If G = Gclos then return Yes
+
+3. Return No
+
+The algorithm is obviously correct. To see that it also
+runs in polynomial time, just note that since R is b-
+bounded, the closure of G under (a subset of) R can
+be computed in polynomial time. Hence, the entire algorithm obviously works in polynomial time.
+RDF-RULEMIN|=(G,R). For the membership, consider the following changes on the above algorithm.
+|= Gclos
+Step (2c) is replaced by the check if G
+holds. Moreover, in order to avoid multiple entailment
+checks, the loop in step (2) over all r  R is replaced
+by guessing an appropriate rule r  R. Hence the witness guessed consists of a rule r  R and a homomorphism Gclos  G. This obviously gives a correct
+NP-algorithm.
+
+The hardness is shown by reduction from 3COL.
+Hence let an arbitrary instance of 3COL be given by
+the graph (V, E) with V = {v1, . . . , vn}. Further let
+d, e be URIs and (cid:126)X = {X1, . . . , Xn} a set of blank
+nodes. Then the RDF graph G and rule set R are defined as follows:
+G = {0 d 1 . 0 d 2 . 1 d 2 . 1 d 0 . 2 d 0 . 2 d 1 .
+0 e 1 . 0 e 2 . 1 e 2 . 1 e 0 . 2 e 0 . 2 e 1} 
+{X d X | (v, v)  E}
+R = {{Z1 d Z2}  {Z1 e Z2}}
+Clearly,
+this reduction is feasible in LOGSPACE.
+For its correctness, observe that ClR(G) = G 
+{X e X | (v, v)  E}. It remains to show that
+G |= ClR(G) holds (that is r is redundant) iff (V, E)
+is 3-colorable:
+First suppose that G |= ClR(G) holds, this means
+there exists a homomorphism h : ClR(G)  G.
+Clearly, this homomorphism must map every triple
+X e X to one of the triples 0 e 1 . 0 e 2 . 1 e 2 . 1 e 0
+. 2 e 0 . 2 e 1. This immediately gives a valid 3-
+
+coloring  of (V, E) by defining (vi) = h(Xi) for
+every i  [n].
+
+Conversely, suppose that there exists a valid 3-
+coloring  of (V, E). Then consider the mapping h
+defined on the blank nodes in (cid:126)X by setting h(Xi) =
+(vi). It is easy to check that h is indeed a homomorphism from ClR(G) to G.
+
+The following lemma shows the P
+
+2 [log n]-com-
+pleteness for RDF-RULEMIN in the presence of arbitrary rules. As already indicated before, the idea of
+the membership proof is to first provide an algorithm
+for solving the problem that runs in polynomial time
+on a deterministic Turing machine using polynomially
+many calls to an NP-oracle. In a second step it is then
+shown that these calls are in fact non-adaptive. The
+corresponding hardness proof, which is by reduction
+from ODD CLIQUE, follows precisely this intuition.
+Its idea is  given a graph with n nodes  to define for
+every i  {1 . . . n} a nonredundant rule that creates
+a unique triple iff the graph contains a clique of size
+i. Intuitively, evaluating these rules requires the NP-
+oracle. In addition, there exists another rule that creates this unique triple for each odd size i iff the corresponding triple for i  1 exists. Hence this rule is
+redundant iff the size of the biggest clique is odd.
+Lemma 4.3. For a set R of arbitrary rules, RDF-
+RULEMIN(G,R) is P
+
+2 [log n]-complete.
+
+Proof. For the membership, consider the following no-
+tation: Let G be an arbitrary RDF graph and R =
+{r1, . . . , rn}. Then define Ri for each i  [n] as
+Ri = R \ {ri}. Finally recall the definition of the active domain AD. The following (deterministic) algo-
+rithm, using an NP-oracle, solves the problem in polynomial time:
+
+1. For every R  {R,R1, . . . ,Rn}
+
+(a) Set GR = G
+(b) For every t  AD 3
+
+ Check (by an NP-oracle) if t  ClR(G)
+ If t  ClR(G), set GR = GR  {t}
+
+2. Check if GR = GRi for some i  [n].
+
+To see that this algorithm indeed runs in polynomial
+time, just note that ClRi(G)  ClR(G)  AD 
+AD  AD. This bounds the total number of iterations of the loop in step (1b) by (n + 1)  |AD|3,
+hence by O(pol (n)). Finally, note that t  ClR(G)
+(step (1a)) can be indeed decided in NP: Just consider
+
+step (4) from the algorithm presented in the proof of
+Lemma 3.4. The oracle computes this step and returns
+yes if t  Gk, and no otherwise. It is easy to
+see that such an oracle returns yes iff t  ClR(G).
+Hence the presented algorithm indeed runs in polynomial time. Its correctness follows immediately.
+
+To see that
+the above algorithm indeed shows
+2 [log n]-membership, just note that the calls to the
+
+oracle are independent of each other. Hence the algorithm uses a polynomial number of non-adaptive
+NP oracle calls. This proves the membership for PNP(cid:107) ,
+which is equivalent to P
+
+2 [log n].
+
+The hardness is shown by reduction from the problem ODD CLIQUE. Hence let an arbitrary instance of
+this problem be given by a graph G = (V, E) with
+V = {v1, . . . , vn}, and assume without loss of generality that E = . Define an instance (G,R) of RDF-
+RULEMIN(G,R) as follows. Let G = Ge1  Ge2 
+Geh  Gc where
+Ge1 = {v e v | (vi, vj)  E,
+Ge2 = {vi e vj | 1  i < j  n},
+Geh = {e s e . e s e},
+Gc = {ei c oi+1 | 2  i  n and i mod 2 = 0},
+and vi is a new URI for each vi  V (by slight abuse
+of notation, vi will be used to denote both, vertices in
+V and URIs in G). Next, for i  {2, . . . , n}, consider
+the following rules. If i mod 2 = 1, then
+ri = {E s E} 
+
+ = min(i, j),  = max(i, j)},
+
+{Xr E Xs | 1  r < s  i}  {E oi E}
+
+and if i mod 2 = 0 then
+ri = {E s E} 
+
+{Xr E Xs | 1  r < s  i}  {E ei E}
+
+Using these rules, define
+R = {ri | 1  i  n} 
+
+{{E c O . e E e}  {e O e}}
+
+The following property, which is shown in the ap-
+pendix, is crucial for both, the correctness and the understanding of the reduction:
+Claim 1: Let G be an arbitrary instance of ODD
+CLIQUE and (G,R) be defined as above. Then none
+of the rules ri  R for i  [n] is redundant.
+
+The intuition of the reduction is now as follows: Ge1
+encodes the edge relation E, while Ge2 encodes a complete graph with n nodes. The idea is that there exists
+a homomorphism from Gi into Ge1 if G indeed contains a clique of size i. On the other hand, there always
+
+exists a homomorphism from Gi into Ge2 for i  n.
+Now denote with m the size of the biggest clique in
+G. Then obviously there also exist cliques of all sizes
+1  i  m. Hence all rules ri for (1  i  m) can
+be applied to G. Now if m is odd, then for every triple
+e ei e in ClR(G) derived via ri there also exists a
+triple e oi+1 e in ClR(G) derived via ri+1. Hence the
+additional rule in R is redundant. On the other hand,
+if m is even, then there exists some triple e ei e in
+ClR(G) s.t. e oi+1 e cannot be derived by rule ri+1.
+Hence the only possibility to derive this triple is by the
+additional rule in R. Therefore no rule in R is redun-
+dant.
+
+The correctness of the reduction is shown in the ap-
+
+mial time using O(log(|G|+|R|) adaptive oracle calls.
+It follows immediately that this machine can be modified such that it also performs the check in step (2),
+and that this modification does not change the bound
+of O(log(|G| + |R|) oracle calls.
+For the hardness, note that the hardness proof in
+Lemma 4.3 also shows hardness for MINI-RDF|=.
+Both,
+the graph G defined by the reduction and
+ClR(G) do not contain any blank node. Hence
+ClR(G) |= ClR(G) iff ClR(G)  ClR(G), which
+concludes the proof.
+
+5. Minimisation in the presence of queries
+
+So far, the aim of the problems was always to minimise the given RDF graph only in such a way that no
+information is lost. However, in practice, this might be
+more restrictive than necessary. For example, if data is
+transferred into some RDF store that can only be accessed through some narrow query interface. In such
+situations, it might be the case that some information
+cannot be accessed anyway. Hence it would be save to
+remove all this information. Obviously, this increases
+the potential for minimisation.
+
+Therefore the variant of the RDF graph and rule
+minimisation problems considered in this section guarantees completeness only with respect to a given set of
+queries. Thereby the focus lies on (unions of) conjunctive queries (CQs resp. UCQs). Formally, the following two problems are studied:
+Definition 5.1. MINI-RDF,CQ (G,R,C,Q) is the
+following decision problem:
+INPUT: An RDF graph G, a set R of RDF rules, a set
+C of tgds such that G satisfies C, and a set Q of CQs.
+QUESTION: Is there a G  G such that (1) for every
+q  Q, the answers to q over ClR(G) coincide with
+the answers to q over ClR(G) and (2) G satisfies C?
+Definition 5.2. RDF-RULEMIN,CQ (G,R,Q) is the
+following decision problem:
+INPUT: An RDF graph G, a set R of RDF rules, and
+a set Q of CQs.
+QUESTION: Is there a R  R s.t. for every q  Q,
+the answers to q over ClR(G) coincide with the answers to q over ClR(G)?
+
+Note that the result of a CQ not necessarily represents a valid RDF graph  for instance, take a
+CQ with answer predicate of arity bigger than 3.
+Hence the notion of RDF-entailment is not applica-
+
+pendix.
+
+To conclude the proof of Theorem 4.1, the next
+lemma shows that the computational complexity remains unchanged for RDF-RULEMIN|= compared to
+RDF-RULEMIN. For the hardness it is rather easy
+to see that the proof from Lemma 4.3 also applies in
+this case. Extending the membership proof from the
+previous lemma however no longer leads to only nonadaptive calls to an NP oracle. Nevertheless, the problem can still be shown to be in P
+Lemma 4.4. For a set R of arbitrary rules, RDF-
+RULEMIN|=(G,R) is P
+
+2 [log n]-complete.
+
+2 [log n].
+
+Proof. In order to show the membership, recall the
+algorithm presented in the proof of Lemma 4.3. For
+RDF-RULEMIN|=, instead of checking in step (2) if
+GR = GRi for some i  [n], it is now necessary to
+check if GRi |= GR for some i  [n], which cannot be
+done in polynomial time. In order to solve the problem
+it is necessary to replace step (2) by
+
+2. Check (by an NP-oracle) if GRi |= GR for some
+
+i  [n]
+
+In order to decide the problem, the oracle just guesses
+GRi and a homomorphism h : GR  GRi. Hence the
+correctness of this modification follows immediately.
+Therefore it only remains to show that the problem can
+still be solved in polynomial time by a deterministic
+Turing machine using at most O(log(|G|+|R|)) oracle
+calls.
+
+This is trivially still true for step (1). Step (2) requires a single oracle call only, but this call depends
+on the result of the calls in step (1). Hence not all oracle calls are non-adaptive. However, by the equivalence of PNP(cid:107) and P
+2 [log n], there exists a deterministic Turing machine on which step (1) runs in polyno-
+
+ble to the answers of a CQ. This is the reason why
+only the extended variants of MINI-RDF and RDFRULEMIN are studied here, but not of MINI-RDF|=
+and RDF-RULEMIN|=.
+
+As already pointed out, there is hope that maintaining only those information actually contributing to the
+result of the queries allows to further reduce the size
+of the stored RDF graph. However, it turns out that
+for most of the settings considered in the previous sec-
+tions, this additional optimisation potential does not
+come for free. In many cases, the computational complexity of determining if some RDF graph can be further reduced or not increases compared to the problems
+in Section 3 and Section 4. To be able to better understand how queries influence the computational complexity of the problem, queries are considered to be
+either body-b-bounded, head-b-bounded, or arbitrary
+(see Section 2 for the definition of these concepts).
+However, it turns out that in some cases already body-
+b-bounded queries are enough to increase the complexity of the problem.
+
+5.1. Overview of results
+
+A simple observation reveals that
+
+the problems
+RDF-RULEMIN and MINI-RDF are special cases
+of the problems RDF-RULEMIN,CQ and MINI-
+RDF,CQ, respectively. Just consider the simple query
+{S P O}  ans(S, P, O). Then, given some RDF
+graph G, in order to return over some subgraph G 
+G all answers from q over G it must be possible to
+derive G from G. Hence, all hardness results from the
+previous sections carry over. Thus adding the CQ Q to
+the input of the problem does not make the problem
+easier.
+
+In addition to the various settings studied in the previous sections resulting from different restrictions on
+C and R, three different settings of each CQ-variant
+of these problems are studied by considering Q to be
+body-b-bounded, head-b-bounded, or unrestricted, re-
+spectively. This gives the following complexity results.
+Theorem 5.1. For MINI-RDF,CQ, the complexity
+w.r.t. different assumptions on the input (arbitrary,
+b-bounded or fixed rule set; arbitrary, b-bounded,
+fixed, or no constraints; body-b-bounded, head b-
+bounded, or arbitrary CQs) is as depicted in Table 3,
+rows (1)  (12). Likewise, the complexity of RDF-
+RULEMIN,CQ is depicted in Table 3, rows (I)  (II).
+All lower bounds hold even if Q consists of a single
+CQ. Likewise, all upper bounds hold even if Q is a set
+of UCQs.
+
+In order to compare the new results with those presented in the previous sections, the last column in Table 3 recalls the corresponding results for MINI-RDF
+and RDF-RULEMIN. Note that for body-b-bounded
+queries the complexity changes slightly only in the
+cases where arbitrary rules are allowed, while for head-
+b-bounded queries no case is below P
+2 [log n]. Hence
+in this setting, also the previously tractable cases become hard. Finally, in case of arbitrary queries, the
+complexity heavily increases in most of the settings.
+
+Similar to the case in Section 3, it is not necessary to show each of the results separately. Instead,
+the proof plan for Theorem 5.1 is composed as fol-
+lows: Obviously, body-b-bounded (U)CQs are a special case of head-b-bounded (U)CQs, which in turn
+are a special case of arbitrary (U)CQs. By combining this observation with Lemma 3.2, to prove Theorem 5.1, it suffices to show membership for the entries
+(8a) (covering the two tractable cases), (6a) (covering
+all cases in NP), (2b) (covering all cases in P
+2 [log n]),
+(1c) (covering the P
+2 -complete cases), (4c) (cover-
+3 ) as well as (Ic) (for the settings
+ing all cases in P
+of RDF-RULEMIN,CQ in P
+2 ), (I.b) (for the set-
+2 [log n]), and (II.b) (for the tractable case of
+tings in P
+RDF-RULEMIN,CQ) in Table 3. On the other hand,
+for the hardness results it suffices to show hardness
+3 where Q is
+for (9a) (covering all cases hard for P
+body-b-bounded or head-b-bounded, (11c) (covering
+3 -hard cases with arbitrary Q), (12c) (covering
+all P
+all P
+2 -complete cases), (12b) (covering all P
+2 [log n]-
+complete cases for head-b-bounded Q), (4a) (covering
+2 [log n]-complete cases for body-b-bounded Q),
+all P
+(11a) (covering all NP-complete settings), as well as
+(II.c) (covering also (Ic)), (I.a) (covering also (Ib)), and
+(II.b) (covering (Ib) as well).
+
+The proofs of these results are given in Section 5.2
+for the graph minimisation problem, and Section 5.3
+for the rule minimisation problem. Before, in the remainder of this subsection, an intuitive explanation of
+the above results is given.
+
+Starting with the membership results, note that for
+the most general setting (1c), the algorithm used to
+solve MINI-RDF can be adapted to compare the
+results of the queries instead of the closures of the
+graphs, without increasing its complexity: It suffices
+to guess a subset G  G and check with P
+2 -
+oracles if G satisfies C and if q( G) = q( G), where
+G = ClR(G), and G = ClR(G) (note that since
+ClR(G)  AD 3 , its size is polynomially bounded in
+the input size).
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+R arb., C arb.
+(1)
+R arb., C bb
+(2)
+R arb., C fixed
+(3)
+R arb., C = 
+(4)
+R bb., C arb.
+(5)
+R bb, C bb
+(6)
+R bb, C fixed
+(7)
+R bb, C = 
+(8)
+R fixed, C arb.
+(9)
+(10) R fixed, C bb
+(11) R fixed, C fixed
+(12) R fixed, C = 
+R arb.
+(I.)
+(II.) R bb.
+
+
+Q body-bb (a)
+3 -complete
+
+2 [log n]-complete P
+2 [log n]-complete P
+2 [log n]-complete P
+3 -complete
+
+NP-complete
+NP-complete
+
+
+in P
+
+3 -complete
+
+NP-complete
+NP-complete
+
+
+2 [log n]-complete P
+
+in P
+
+in P
+
+3 -complete
+
+Q head-bb (b)
+3 -complete
+
+2 [log n]-complete
+2 [log n]-complete
+2 [log n]-complete
+
+2 [log n]-complete
+2 [log n]-complete
+2 [log n]-complete
+
+2 [log n]-complete
+2 [log n]-complete
+2 [log n]-complete
+2 [log n]-complete
+2 [log n]-complete
+Table 3
+
+3 -complete
+
+Q arb. (c)
+3 -complete
+
+3 -complete
+
+3 -complete
+
+2 -complete
+
+3 -complete
+
+3 -complete
+
+3 -complete
+
+2 -complete
+
+3 -complete
+
+3 -complete
+
+3 -complete
+
+2 -complete
+
+2 -complete
+2 -complete
+
+
+MINI-RDF
+3 -complete
+
+NP-complete
+NP-complete
+NP-complete
+3 -complete
+
+NP-complete [19]
+
+NP-complete
+
+in P
+
+3 -complete
+
+NP-complete
+NP-complete
+
+in P
+
+2 [log n]-complete
+
+in P
+
+The complexity of MINI-RDF,CQ (1-12) and RDF-RULEMIN,CQ (I. - II.) w.r.t. input parameters (bb stands for b-bounded, and arb.
+for arbitrary). The last column contains the results for MINI-RDF and RDF-RULEMIN from the previous sections for comparison.
+
+The other columns contain potentially easier settings because of the restrictions on the queries. In par-
+ticular, when restricting Q to head-b-bounded CQs,
+then there are at most polynomially many candidates
+for answer-tuples for each query. Hence computing the
+answers to a given query is now feasible in P
+2 [log n]
+(note that it is still necessary to test an exponential
+number of homomorphisms to decide for each candidate if it is indeed a solution). When Q is restricted to
+body-b-bounded queries, all answers to a query over a
+given RDF dataset can be computed efficiently.
+On the other hand, the other rows contain potentially
+easier settings because of restrictions on R and C. In
+particular, already restricting R to b-bounded rules allows to compute the closure of a given graph in polynomial time. Similarly, restricting C to b-bounded tgds
+allow to test efficiently if C is satisfied by some RDF
+graph. Further, if no constraints are present at all, it
+suffices to check the direct subsets G = G \ {t}
+for each t  G. Thus the non-deterministic guess of
+G  G is no longer needed. By the same token, rule
+2 , since it suffices to
+minimisation is not harder than P
+check the direct subsets R = R \ {r}.
+
+Turning to the lower bounds, the NP-hardness for
+(11a) follows immediately from the above remark
+that the hardness results of MINI-RDF carry over.
+2 [log n]-complete settings, note that
+Concerning the P
+in order to solve MINI-RDF,CQ, one must make
+sure to take indeed all answers to a query into ac-
+count, and that these answers are indeed computed
+
+over the closure of the current RDF dataset (com-
+pared to MINI-RDF, where it was sufficient to show
+G  G where G  ClR(G), but not necessarily
+G = ClR(G)). This introduces two different reasons
+2 [log n]-hardness. For arbitrary rules R the
+for the P
+problem is that testing if some triple is contained in the
+closure is NP-hard, while testing if the closure does
+not contain any more triples is coNP-hard (4a). Simi-
+larly, for head-b-bounded queries it is NP-hard to decide if a tuple belongs to the answers of a query, while
+it is coNP-hard to decide if the set of answers is indeed
+complete (12b). Combined with the other parameters
+of the problem, one of these two reasons suffices for
+MINI-RDF,CQ to become P
+The key observation for the hardness results for
+(12c) and (11c) is that in these settings Q is capable
+of defining quite powerful constraints on valid subgraphs of G. Seen from the perspective of the hardness proof, this allows to compensate some of the
+restrictions considered on C, such that (11c) still con-
+3 -hardness. An important aspect of ustains the full P
+ing Q to express constraints that cannot be defined
+by b-bounded C is the possibility to use projection.
+However, one big difference between C and Q seen as
+constraints is that Q can only express monotone con-
+straints: Whenever some subgraph G  G does not
+return a certain answer, then it is ensured that also no
+subgraph of G returns this answers. This is the reason
+why (12c) becomes easier to solve.
+
+2 [log n]-hard.
+
+For the rule minimisation, the reasons for the hardness results are very similar to those for the corresponding results of the graph minimisation problem.
+
+Note that all of the membership results still hold
+when allowing UCQs instead of CQs, and some of
+them even hold for UCQs. Whenever this is easy to
+see, the corresponding result is stated. However, a detailed analysis of how the complexity is influenced by
+replacing (U)CQs by (U)CQs is left to future work.
+
+5.2. Graph minimisation
+
+the observation that
+
+This section in detail treats the results for the graph
+minimisation problem with respect to a given set of
+queries. For convenience,
+the
+hardness results from Section 3 carry over, which was
+already mentioned before, is stated formally.
+Proposition 5.2. Let (G,R,C) be an arbitrary instance of MINI-RDF. Further consider the set Q = {
+{S P O}  ans(S, P, O)} containing a single
+query. Then (G,R,C) is a positive instance of MINI-
+RDF, iff (G,R,C,Q) is a positive instance of MINI-
+RDF,CQ.
+5.2.1. Settings complete for P
+
+The first result shows that for the those settings of
+MINI-RDF considered in Section 3 that are already
+3 -complete, the additional optimisation potential in-
+
+troduced by MINI-RDF,CQ does not further increase
+the (already high) complexity of the problem. Even
+when allowing for arbitrary conjunctive queries in addition to arbitrary rules and constraints, the problem
+can still be solved in P
+3 . The reason for this is that on
+the one hand, deciding if some answers are lost over
+some smaller graph is not harder than checking if this
+smaller graph still satisfies all constraints. On the other
+hand, these two problems do not introduce orthogonal sources of complexity, but can be decided independently of each other.
+Lemma 5.3. MINI-RDF,CQ (G,R,C,Q), for arbitrary sets R and C, where Q may contain arbitrary
+3 . The problem remains in P
+CQs can be solved in P
+even if Q is a set of arbitrary UCQs.
+
+Proof. The problem can be decided by the following
+algorithm using a P
+
+2 -oracle:
+1. Compute G = ClR(G)
+2. Guess a G  G
+3. Check if G satisfies C (otherwise return no)
+4. Compute G = ClR(G)
+
+5. For every q  Q, check by a call to the oracle
+whether for every homomorphism  : body(q) 
+G there exists an extension of  h to  (where
+ h is  restricted to head (q) and  : body(q) 
+G) (i.e. whether every result in q( G) can be also
+derived over G)
+
+The correctness of this algorithm follows immediately.
+To see that this algorithm indeed runs in (nondetermin-
+istic) polynomial time, note the following: Step (1) and
+2 [log n] (cf. proof of Lemma 4.3).
+step (4) fit into P
+Step (3) can be decided by a P
+2 -oracle ([10]), and also
+step (5) can be obviously decided by a P
+It remains to show that the result still holds even if
+Q is a set of UCQs. Towards this goal, first of all note
+that the above algorithm can be extended to also work
+for UCQs by replacing step (5) with
+
+2 -oracle.
+
+5. For every Q  Q, check by a call to the oracle,
+whether for every q  Q and every homomorphism  : body(q)  G there exists a q  Q and
+an extension  of  h (where  h is defined as be-
+fore) s.t.  : body(q)  G, (i.e. whether every
+result in q( G) can be also derived over G)
+
+Obviously this step can still be decided by a P
+2 -
+oracle: It suffices to just guess q  Q together with the
+homomorphism.
+The extension to UCQs requires two additional
+steps. On the one hand, to decide step (5), for every
+guessed homomorphism  (resp. ), it is now necessary to check if  (pos(q))  G (resp. (pos(q)) 
+G) and  (neg(q))  G =  (resp. (neg(q))  G =
+). Finally, in an additional step, it must be checked
+(analogously to step (5)) if all results in q( G) can also
+be derived over G.
+
+It remains to show P
+
+3 -hardness for two settings.
+The first one follows immediately from Lemma 3.5
+and Proposition 5.2.
+Lemma 5.4. MINI-RDF,CQ (G,R,C,Q), when R
+is fixed, Q contains only body-b-bounded CQs but C
+3 -hard, already if Q
+may contain arbitrary tgds is P
+contains a single CQ only.
+
+The second case  (11c) in Table 3  requires a more
+involved proof, done by reduction from Q-3COL,3.
+Informally, for an instance G = ((V, E), (V1, V2, V3))
+of Q-3COL,3, the reduction defines an instance of
+MINI-RDF,CQ (G,R,C,Q) where Q contains a single CQ q that returns over G an encoding of all possible 3-colorings of the vertices in V2. Further, the
+rules, constraints, and q are defined in such a way that
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+guessing a subset of G has two effects. On the one
+hand, it fixes a coloring on V1. On the other hand, q
+only returns encodings of those colorings on V2 that
+can be extended to V3 in such a way that the combination of the colorings on V1, V2, and V3 gives a valid 3-
+coloring of V . Hence over every such subset of G, the
+CQ q returns all possible colorings on V2 (and therefore the same answers as over G) iff there exists some
+coloring on V1 (encoded by the selected subgraph of
+G) such that for all colorings on V2 there exists a coloring on V3 (encoded by the fact that q still returns the
+same answers) such that the combination of these colorings gives a valid 3-coloring of V .
+Lemma 5.5. MINI-RDF,CQ (G,R,C,Q), when both,
+R and C are fixed but Q may contain arbitrary CQs
+3 -hard, already if Q contains a single CQ only. It
+is P
+even remains P
+
+3 -hard for the case where R = .
+
+Proof. The proof is by reduction from Q-3COL,3.
+Hence let G = ((V, E), (V1, V2, V3)) be an arbitrary
+instance of Q-3COL,3 with V = {v1, . . . , vn} and
+|V2| = p. Define an instance (G,R,C,Q) of MINI-
+RDF,CQ (G,R,C,Q) as follows. Let G = Gcols 
+Gv1  Cc1  Ge1  Ge2  Gneq where
+Gcols = {0 iscol 0 . 1 iscol 1 . 2 iscol 2}
+Gv1 = {vi v a | vi  V1},
+Gc1 = {vi c 0 . vi c 1 . vi c 2 | vi  V1},
+Ge1 = {0 e 0 . 1 e 1 . 2 e 2},
+Ge2 = {0 e 2 . 0 e 1 . 1 e 2 . 1 e 0 . 2 e 0 . 2 e 1},
+Gneq = {0 neq 2 . 0 neq 1 . 2 neq 0 . 2 neq 1 .
+
+1 neq 2 . 1 neq 0},
+
+and a new URI vi is introduced for every vi  V (by
+slight abuse of notation, let vi denote both, nodes in V
+and URIs G). As claimed in the lemma, R = , and C
+contains three fixed tgds
+C = { {X e X . C iscol C}  {C e C};
+
+{X e X . Y v a . Z iscol Z}  {Y c Z}
+{X v a . X c C1 . X c C2 . C1 neq C2}
+
+ {0 e 0}}.
+
+Finally, define Q containing a single query q as
+Q = { {vi c Ci | vi  V1} 
+
+{Ci iscol Ci | vi  V2  V3} 
+{C e C | (v, v)  E} 
+{X v a . C iscol C . D1 neq D2}
+
+ ans(C, X, D1, D2, Ci1, . . . , Cip )}
+
+where {C1, . . . , Cn} contains a new blank node Ci
+for each vertex vi  V and {Ci1, . . . , Cip} 
+{C1, . . . , Cn} are those variables Ci  {C1, . . . , Cn}
+such that vi  V2.
+
+The reduction is obviously feasible in LOGSPACE.
+Before showing its correctness, first its intuition is de-
+scribed. The following three claims will prove useful
+for both, sketching the intuition of the reduction as
+well as proving its correctness.
+Claim 1: Let G, G, and q as defined above. Consider
+the following sets: C1 = {0, 1, 2}, X = {vi | vi 
+V1}, D = {(D1, D2) | D1, D2  {0, 1, 2}, D1 =
+D2}, and C2 = {0, 1, 2}p. Then q(G) = C1  X 
+D  C2.
+
+Since the above claim follows immediately from the
+definition of G and q the proof is omitted.
+Claim 2: Consider G and C as defined by the reduc-
+tion, and for vi  V let Gi
+v = {vi c 0 . vi c 0 . vi c 0}.
+Then for every G  G that satisfies C, the following
+two properties hold:
+1. Ge1  G = ,
+2. |Gi
+Proof of Claim 2: The proof is analogous to the
+proofs of properties (iii) and (iv) in the proof of
+Lemma 3.7.
+Claim 3: Consider G and C as defined by the reduc-
+v be as defined in Claim 2. Then for ev-
+tion, and let Gi
+ery G  G that satisfies q(G) = q(G), the following
+properties hold:
+
+v  G|  1 for every vi  V
+
+v  G|  1 for every vi  V1
+
+1. Gcols  Gv1  Gneq  G
+2. |Gi
+Proof of Claim 3: Both properties follow immediately from Claim 1 and the assumption that q(G) =
+q(G).
+The intuition of this reduction can be sketched as
+follows: |Gi
+v  G| = 1 holds for every subgraph G 
+G that satisfies C and such that q(G) = q(G). Then
+the triples Gc1  G encode the required coloring on
+V1. The idea is that every mapping  : {C1, . . . , Cn}
+that can be extended to  on C, X, D1, D2 such that
+ is a homomorphism body(q)  G encodes a valid
+3-coloring on V (since Ge1  G = , every triple
+C e C representing an edge in E must be mapped
+to a valid edge coloring in Ge2). Now G leaves only a
+single possible mapping on the Cis encoding V1 and
+every possible mapping on the Cis representing V2
+must give a valid solution. Hence G encodes a coloring on V1 s.t. for every coloring of V2 there exists
+
+a coloring on V3 such that these three colorings are a
+valid 3-coloring of (V, E).
+
+To conclude, the quantifier alternation of Q-3COL,3
+is encoded via the single CQ as follows. Omitting
+C, X, D1, D2 for the moment, the requirement that
+{0, 1, 2}p  q(G) can be read as for all mappings
+ : {Ci1 , . . . , Cip}  {0, 1, 2} there exists an extension  : {Ci | vi  V }  {0, 1, 2} of  that is a
+homomorphism from body(q) into G (which corresponds to for all colorings on V2, there exists a coloring on V1  V3). The correct alternation is expressed
+by the selection of G: This selection provides only
+a single possibility for  to map {Ci
+| vi  V1}
+into {0, 1, 2}. Hence the requirement of q to return
+{0, 1, 2}p over G can be read as there exists a single
+mapping on {Ci
+| vi  V1} such that for all mappings on {Ci | vi  V2} there exists a mapping on
+{Ci | vi  V3}.
+
+The proof of the correctness of this reduction is
+
+given in the appendix.
+
+As already discussed in the previous subsection,
+queries in Q can be seen as additional constraints that
+must be satisfied by subgraphs of G of the input graph
+G, if they were already satisfied over G (note that unlike the constraints in C, the constraints expressed by
+Q need not be satisfied over G, i.e. the queries may return empty results). Intuitively, this shows that the introduction of Q in combination with b-bounded constraints adds at least some of the expressibility that is
+lost when restricting C to contain b-bounded tgds only.
+The results in the next section show that this combination of C and Q is indeed necessary to obtain the
+full hardness. Note that in the above reduction, Q is
+used to express positive constraints, that is Q defines which triples from G must still be contained in
+every reduced subgraph. On the other hand, the tgds
+in C were used to express negative constraints, that
+is which triples from G must not be contained in valid
+subgraphs G  G. To be a little bit more precise, tgds
+in C allow to state constraints like either all triples of
+a certain kind are in G, or none of them. This is pos-
+sible, since tgds may be violated by some RDF graph,
+but satisfied by some proper RDF subgraph (that is either if all triples of a certain set are in G or none).
+However, this is not the case with queries in Q. If a
+query does not return a certain answer over some RDF
+graph, then this answer is also not returned over every
+(proper) subgraph. This is going to be the key observation for the lower complexity discussed next.
+
+5.2.2. Settings complete for P
+
+The reason for the settings with C =  being easier than those with explicit constraints is the same that
+was already observed in Section 3 for the cases with
+b-bounded R and C =  being tractable. Instead of
+having to test every subset of a given RDF graph, it
+suffices to just test every subset missing exactly one
+triple.
+Lemma 5.6. MINI-RDF,CQ (G,R,C,Q), for arbitrary R, C =  and where Q may contain arbitrary
+CQs can be solved in P
+2 . The problem remains in P
+even if Q is a set of arbitrary UCQs.
+
+Proof. The lemma is proven by devising a nondeterministic algorithm that decides the co-problem (that is,
+whether G is already minimal with respect to R, C and
+Q), using a coNP-oracle, in polynomial time. In the
+following, let G = {t1, . . . , tn}, and for each i  [n],
+let Gi = G \ {ti}.
+
+1. Compute G = ClR(G)
+2. Compute Gi = ClR(Gi ) for every i  [n]
+3. Guess n (not necessarily distinct) queries qi  Q
+4. Guess n homomorphisms
+1, . . . , n with
+5. Check for all i  [n] by a coNP-oracle (i.e. using
+
+i : body(qi )  G
+n calls): i(head (qi))  qi( Gi).
+I.e. check that for all homomorphisms
+i : body(qi)  Gi with 
+
+also 
+
+i (head (qi)) =  (head (qi))
+
+i (body(qi))  Gi,
+
+6. G is minimal, iff all n oracle calls return yes
+
+The intuition of this is as follows. After computing the
+closure of G and all candidates Gi, guess for every
+Gi some query qi and an answer over G to this query,
+such that the answer cannot be created by qi over Gi.
+If this is the case, G cannot be further minimised.
+
+The correctness of this nondeterministic algorithm
+follows immediately. Its polynomial runtime follows
+from the facts that G and Gi can be computed in
+2 [log n], and that the size of G (thus also of each Gi)
+
+is at most polynomial in the size of the input (cf. proof
+of Lemma 4.3).
+
+Concerning an extension of this algorithm to UCQs,
+
+it suffices to replace step (3) by
+3. Guess Qi  Q and qi  Qi
+
+and in step (5) to check that i(head (qi))  qi( G),
+which means that in the coNP oracle one checks for
+all q  Q that q( G) does not contain i(head (qi)).
+Again, this can either be done sequentially, for each
+
+q  Q after the other, or in parallel by first guessing
+q  Q and then the corresponding homomorphism.
+Towards the extension to UCQs, first note that
+there exist two possibilities why Qi( G) = Qi( G): Either because of some s  Qi( G) but s / Qi( G), or
+because of some s  Qi( G) but s / Qi( G). This
+can be taken care of by guessing in step (3) which of
+the two cases applies, together with Qi and qi. Obvi-
+ously, the verification of the guess in steps (4) and (5)
+needs to be adapted accordingly. Besides considering
+the additional guess on the kind of violation, step (5)
+must be further adapted to also treat UCQs correctly.
+That is, for every guessed homomorphism  from the
+body of some query q into some graph  G, instead of
+just checking whether  (pos(q))   G, it is also necessary to test that  (neg(q))   G = . However, this additional check, just as the previous one, obviously fits
+into polynomial time.
+
+The corresponding hardness, presented in the next
+lemma, is based on the possibility to require homomorphisms of unrestricted size that give rise to solutions over the original graph to remain valid homomorphisms from the body of the query into the minimised
+graph. In the special case of the reduction presented,
+this will be used to enforce certain 3-colorings of a set
+of nodes to be preserved. Exploiting projection, this
+allows us to restrict the set of triples that may be removed from the graph. The basic idea of the reduction
+is the same as in the proof of Lemma 5.5. However,
+without constraints it is now no longer possible to enforce that allowed subsets of the RDF graph encode 3-
+colorings of some node set. Therefore the corresponding existential quantifier can no longer be expressed,
+which only allows for a reduction from Q-3COL,2.
+Lemma 5.7. MINI-RDF,CQ (G,R,C,Q), when R
+is fixed, C = , and Q may contain arbitrary CQs is
+2 -hard, already if Q contains a single CQ only. The
+
+2 -hard, even if R =  and G is a
+problem remains P
+fixed RDF graph.
+
+Proof. The proof is by reduction from Q-3COL,2.
+Hence let G = ((V, E), (V1, V2)) be an arbitrary instance of Q-3COL,2 with V = {v1, . . . , vn} and
+|V1| = p. Define an instance (G,R,C,Q) of MINI-
+RDF,CQ with R = C =  as follows. Let G =
+Gcols  Ge1  Ge2  Gr be an RDF graph where
+Gcols = {0 iscol 0 . 1 iscol 1 . 2 iscol 2},
+Ge1 = {0 e 0 . 1 e 1 . 2 e 2 . 0 e 1 .
+
+0 e 2 . 1 e 2 . 1 e 0 . 2 e 0 . 2 e 1},
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+Ge2 = {0 e 2 . 0 e 1 . 1 e 2 . 1 e 0 . 2 e 0 . 2 e 1}, and
+Gr = {e s e . e s e}.
+Further, define Q containing a single query q as
+Q = { {Ci iscol Ci | vi  V } 
+2} 
+ ans(X1, X2, X
+
+{C E C | (v, v)  E} 
+{X1 e X2 . X
+{E s E . e s e}
+
+1 e X
+
+1 , X
+
+2 , Ci1 , . . . , Cip )}
+where C1, . . . , Cn are new blank nodes for every vi 
+V , and Ci1, . . . , Cip are those Ci  {C1, . . . , Cn}
+such that vi  V1. This reduction is obviously feasible
+in LOGSPACE. To emphasize the main ideas of the re-
+duction, it is convenient to consider the following two
+claims (the corresponding proofs are given in the ap-
+pendix):
+Claim 1: Consider G, and q as defined above together with the following sets: (cid:126)X = {(x1, x2) |
+x1, x2  {0, 1, 2}, x1 = x2}, (cid:126)X = {(x
+2) |
+2  {0, 1, 2}}, and C = {0, 1, 2}p. Then q(G) =
+
+1, x
+(cid:126)X  (cid:126)X  C.
+Claim 2: Let G  G such that q(G) = q(G). Then
+G = G \ {e s e}.
+
+1, x
+
+Hence the intuition of the reduction is as follows:
+There exists a one-to-one correspondence between values on C1, . . . , Cn and colorings of V . If an answer
+can be retrieved by mappings E to e, then the values of
+C1, . . . , Cn encode a valid 3-coloring of (V, E). Hence
+if the triple e s e is redundant, this means that for
+every possible coloring on V1, there exists an extension
+to a valid 3-coloring of (V, E). In principle, the quantifier alternation is expressed exactly as in the proof of
+Lemma 5.5 except for the leading existential quantifi-
+cation, which cannot be expressed here. Hence, it only
+remains the possibility to say that for all mappings that
+return a required result tuple, there exists an extension
+to a homomorphism from the body of the query into
+the RDF graph. The remaining proof that the reduction indeed satisfies this intution can be found in the
+appendix.
+
+5.2.3. Settings complete for P
+
+2 [log n]
+
+The main reason why (most of) the settings with
+head-b-bounded queries are computationally easier
+than the corresponding settings with arbitrary queries
+is that now the number of results of a query is polynomially bounded in the size of the active domain. In
+fact, note that for some query q, the set of possible results is AD|head(q)|. This allows us, given some RDF
+graph G, a set of rules R, and query q, to compute
+
+q(ClR(G)) in P
+2 [log n]. However, note that as long
+as C = , it is still necessary to check an exponential
+number of subgraphs G  G. Hence computing for
+each of these subsets G the result of q(ClR(G)) is
+not feasible in P
+2 [log n]. However, it turns out that
+for monotone queries Q, it suffices to only compute
+ClR(G) explicitly, while this is not necessary for every subgraph G  G. This is the main idea behind the
+proof of the following lemma. Since it only works for
+monotone queries, this is one of the results where there
+is no obvious way to extend the membership proof
+to UCQs. A complexity analysis of this setting for
+CQs and UCQs is left to future work.
+Lemma 5.8. MINI-RDF,CQ (G,R,C,Q), for arbitrary R, b-bounded C, and where all CQs in Q have
+bounded head arity can be solved in P
+
+2 [log n].
+
+Proof. The proof of the lemma is by showing that the
+following algorithm decides the problem in deterministic polynomial time with O(log n) calls to an NP-
+oracle:
+
+1. For every q  Q, compute (and store) q( G) =
+2. Test if there exists G  G that satisfies C and s.t.
+
+q(ClR(G))
+q(ClR(G)) = q( G).
+
+Since the correctness of the algorithm follows imme-
+diately, it only remains to show that it indeed fits into
+the given time bound.
+The first step can be computed as follows: For every
+q  Q, test for every tuple s  AD|head(q)| by a call to
+the NP-oracle if s  q( G). If this is the case, add s to
+q( G). If s is in q( G) can be decided in NP as follows:
+
+1. Set G0 = G
+2. For j = 1, . . . , k = |AD|3:
+
+(a) Guess a rule r : Gi  {ti} from R  {r0}
+(b) Guess a mapping  : Gi  Gj1
+(c) Check if  is a homomorphism Gi  Gj1
+(d) If it is, set Gj = Gj1  {(ti)}, otherwise
+
+Gj = Gj1
+
+ (head (q)) = s to body(q)  Gk
+
+3. Guess an extension of the mapping defined as
+4. If  (body(q))  Gk, return yes, otherwise re-
+
+turn no.
+
+where r0 mimics some do nothing rule   . The
+algorithm is obviously correct (just note that for some
+sequence of rule applications Gk = G holds), and
+decides the problem in nondeterministic polynomial
+time.
+
+Also the second step can be solved by a single call to
+an NP-oracle, namely by the following NP-algorithm:
+
+1. Guess G  G
+2. Test if G satisfies C, if not return no.
+3. Guess G = ClR(G)
+4. For every pair (q, s) where q  Q and s  q( G)
+
+(a) For the homomorphism defined as
+ (head (q)) = s, guess an extension
+ : body(q)  G
+
+(b) Test if (body(q))  G. If not, return no
+
+5. Return yes
+
+Towards the P
+
+Step (3) summarises the steps that are laid out in more
+detail as step (2) in the previous algorithm. Again, the
+correctness of the algorithm is immediate.
+2 [log n]-membership, just note that
+since Q is assumed to be head-b-bounded, the size
+of AD|head(q)| is polynomial in the input. Since trivially |Q| is polynomially bounded in the input size,
+overall there is only a polynomial number of oracle
+calls of the first kind. Further, note that all these calls
+are non-adaptive. Hence the computation of q( G) is in
+2 [log n], that is it can be done in deterministic poly-
+
+nomial time with O(log n) adaptive oracle calls. The
+second step consists of a single oracle call, which depends on the previous oracle calls. Now by the same
+arguments as in Lemma 4.3, this shows P
+2 [log n]-
+membership.
+
+It remains to show that the result still holds for
+UCQs. This is achieved analogously to the extensions
+presented previously: Treating Q  Q instead of CQs
+q is done by computing Q( G) instead of q( G) in the
+first step. This can be done by altering the first NP algorithm to guess q  Q together with . Also the NP
+algorithm for the second step can be easily altered by
+either guessing q  Q together with , or by iterating
+over all q  Q.
+
+It is now easy to see why the algorithm presented
+above does not work for CQs or UCQs. The guess
+of ClR(G) for G  G is not guaranteed to indeed return ClR(G), but might only find a subset of the clo-
+sure. This is no problem for monotone queries, since
+every result retrieved over some subset of the closure
+will also be an answer over the closure. Obviously, this
+is not the case for nonmonotone queries. Finally, note
+that testing if such a guess indeed returns the closure
+would require a coNP-test.
+
+Next, the two P
+
+2 [log n]-hardness results are pre-
+sented. As already pointed out before, the reason for
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+the need of the NP-oracle (instead of just a single
+NP algorithm), is that all answers to a query must be
+found, in order to be sure that the sets of answers indeed coincide. Now there are two reasons why this
+cannot be solved by a single NP algorithm. First, one
+must be sure that for some query q and RDF graph G,
+indeed all homomorphisms body(q)  G are found.
+Second, one must be sure that G is indeed the closure
+under some set of rules, that is that no more rule is
+applicable.
+
+Hence the problem remains P
+
+2 [log n]-hard, as long
+as either deciding if some triple is a solution to a
+query or if some triple can be derived via some rule is
+NP-hard. This is shown next by reduction from ODD
+CLIQUE. The idea of both proofs is to define an instance of MINI-RDF,CQ (G,R,C,Q) where the answers to some query q  Q contain a special tuple if
+there exists a clique of even size i and one of size i + 1.
+The test for the existence of such cliques is encoded either in the bodies of the queries or rules, depending on
+which of those are allowed to be unbounded. In the first
+case, the answer tuple is created directly while in the
+second case a rule application creates an intermediate
+triple which is then output by a simple query. Further,
+G is defined in such a way that it contains a certain
+triple that allows the corresponding rules or queries to
+fire whenever there exists a clique of even size i, independent of the existence of a clique of size i + 1. Fi-
+nally, it is made sure that if any other triple except for
+this special triple is removed from G, then Q cannot
+return the same answers over the corresponding subgraph as over G. Hence there exists a subgraph of G
+that allows one to derive the same answers to Q as over
+G iff this tuple is redundant which in turn is the case
+iff the size of the biggest clique is odd.
+
+The first hardness proof exploits the case that the
+NP-hard test for the existence of a clique of a certain
+size can be encoded in the bodies of the queries.
+Lemma 5.9. MINI-RDF,CQ (G,R,C,Q), when R
+is fixed, C = , and the CQs in Q may have arbitrary
+BGPs in their bodies but have bounded head arity, is
+2 [log n]-hard
+2 [log n]-hard. The problem remains P
+
+even if R = .
+
+Proof. The proof is by reduction from ODD CLIQUE.
+Let (V, E) be an arbitrary instance of ODD CLIQUE
+with V = {v1, . . . , vn}. Define an instance (G,R,C,
+Q) of MINI-RDF,CQ (G,R,C,Q) with C = R = 
+as follows. Let G = Ge1  Ge2 where
+
+Ge1 = {v e v | (vi, vj)  E,
+Ge2 = {v e v | (vi, vj)  E,
+
+ = min(i, j),  = max(i, j)},
+ = min(i, j),  = max(i, j)} 
+
+{0 e 0},
+
+and a new URI vi is introduced for every node vi 
+V (by slight abuse of notation, vi is used to denote
+both, URIs in G and nodes in V ). Further, Q contains
+the following queries: For every i  {2, . . . , n}, if i
+mod 2 = 0 then
+qi = {Xr e Xs | 1  r < s  i} 
+r e X
+Then Q is defined as
+Q = {qi | 1  i  n}  {{Y1 e Y2 . Y1 e Y2}
+
+s | 1  r < s  i + 1}  ans(oi+1).
+
+{X
+
+ ans(Y1, Y2)}
+
+The reduction is obviously feasible in LOGSPACE. It
+is convenient to summarise the main properties of the
+instance of MINI-RDF,CQ defined above in the following claims. Their correctness is shown in the ap-
+pendix:
+Claim 1: Let G  G such that q(G) = q(G) for
+every q  Q. Then G = G \ {0 e 0}.
+Claim 2: Let m be the size of the biggest clique in
+(V, E). If m is odd, then qi(G) = {(oi+1)} for i 
+{2, 4, . . . , m 1} and qi(G) =  for i  {m + 1, m +
+3, . . . , n}. If m is even, then qi(G) = {(oi+1)} for
+i  {2, 4, . . . , m} and qi(G) =  for i  {m + 2, m +
+4, . . . , n}.
+
+From these claims, it is easy to see that the intuition
+of the reduction is as described above: If the size of the
+biggest clique in (V, E) is odd, then there still exists a
+homomorphism from the body of the query qm1 into
+G = G \ {0 e 0}, hence qm1(G) = {om}. On
+the other hand, if m, the size of the biggest clique, is
+even, then there does no longer exist a homomorphism
+from the body of qm into G, and therefore qm(G) =
+, while qm(G) = {om+1}. A formal proof of this
+property is given in the appendix.
+
+The next hardness result exploits the second reason
+2 [log n]-hardness mentioned above. In the setfor P
+ting considered in the next lemma, the set of answers
+can be computed efficiently, but testing if some rule is
+applicable is hard. Hence in the proof of the lemma,
+the test for the existence of a clique of a certain size is
+encoded in the bodies of the rules, instead of the bodies
+of the queries.
+
+Lemma 5.10. MINI-RDF,CQ (G,R,C,Q), when
+C = , Q contains only body-b-bounded CQs but R
+may contain arbitrary rules is P
+2 [log n]-hard. It re-
+2 [log n]-hard even if Q contains a single CQ
+mains P
+only.
+
+ = min(i, j),  = max(i, j)},
+
+Proof. The proof is by reduction from ODD CLIQUE,
+hence let (V, E) be an arbitrary instance of ODD
+CLIQUE with V = {v1, . . . , vn} and assume without loss of generality that E = . Define an instance
+(G,R,C,Q) of MINI-RDF,CQ (G,R,C,Q) as fol-
+lows. Let G = Gord  Ge  Gc where
+Gord = {i succ i + 1 | 1  i  n, i mod 2 = 0},
+Ge = {v e v | (vi, vj)  E,
+Gc = {c c c},
+and a new URI vi is introduced for every node vi  V
+(by slight abuse of notation, vi is used to denote both,
+nodes in V and URIs in G). Next, for i  {2, . . . , n}
+consider the following rules ri. If i mod 2 = 1, then
+ri = {Xr e Xs | 1  r < s  i}  {i clique i}
+and if i mod 2 = 0 then
+ri = {Xr e Xs | 1  r < s  i}  {c c c}
+Using these rules, define R as
+R = {ri | 1  i  n} 
+
+ {i clique i}
+
+{{X succ Y . Y clique Y }  {X clique X}}
+and finally, containing a single query q let Q be defined
+as
+Q = {{X succ Y . V1 e V2 . C clique C}
+
+ ans(X, Y, V1, V2, C)}
+
+This reduction is obviously feasible in LOGSPACE. It
+is again convenient to explicitly state two major properties of this reduction in the following claims, which
+are proven in the appendix.
+Claim 1: Let m be the size of the biggest clique in
+(V, E). Then ClR(G) = G  {i clique i | 2  i 
+m}.
+Claim 2: Assume G  G such that q(ClR(G)) =
+q(ClR(G)). Then G \ G = ClR(G) \ ClR(G) =
+{c c c}.
+
+Concerning the intuition of the reduction, it follows
+from Claim 1 that over G for every clique in (V, E)
+of size i a triple i clique i is created by rule ri. How-
+ever, over G = G \ {c c c} (by Claim 2 the subgraph
+of G of interest), the triple i clique i can only be derived from rule ri for odd values i. Now the additional
+rule in R creates a triple j clique j only if there ex-
+
+ists a triple j + 1 clique j + 1. Hence if the size of
+the biggest clique in (V, E) is odd, then still all triples
+i clique i can be derived. However, if the size m of
+the biggest clique is even, then the triple m clique m
+cannot be derived. A formal proof of this property (and
+hence of the correctness of the reduction) is given in
+the appendix.
+
+Note that in the above case, the hardness is due to the
+fact that the closure of the given graph must be com-
+puted. To see that in the last setting, this was indeed the
+source for the P
+2 [log n]-hardness, consider a slight
+variation of the MINI-RDF,CQ (G,R,C,Q) prob-
+lem: Assume that it is guaranteed that G = ClR(G).
+Then it is easy to see that the problem remains in NP,
+even if R is allowed to contain arbitrary rules, C is
+restricted to b-bounded constraints and Q to body-b-
+bounded UCQs.
+
+5.2.4. Settings complete for NP and tractable cases
+
+It was already discussed above that only in settings where both problems, computing the closure and
+computing the set of answers to a query over some
+RDF graph are tractable, MINI-RDF,CQ is no longer
+2 [log n]-hard. In fact, it can be quite easily seen that
+
+in this case, the problem is in NP.
+Lemma 5.11. MINI-RDF,CQ (G,R,C,Q), where R
+and C are b-bounded and Q is body-b-bounded can be
+solved in NP. The problem remains in NP even if Q is
+a set of body-b-bounded UCQs.
+
+Proof. The problem can be decided by the following
+nondeterministic algorithm:
+1. Compute G = ClR(G)
+2. Guess a subset G  G
+3. Check if G satisfies C (if not, return no)
+4. Compute G = ClR(G)
+5. For every q  Q, test if q( G) = q( G)
+
+The correctness of the algorithm follows immediately.
+Its polynomial runtime stems from the following facts:
+By [19, Proposition 9], ClR(G) (and therefore also
+ClR(G)) can be computed in polynomial time, and
+step (3) according to [19, Proposition 3]. Step (2) introduces the nondeterminism, and step (5) can be solved
+even for UCQs by performing the following steps for
+each Q  Q:
+
+1. Set A = A = 
+2. For every q  Q and every homomorphism
+ : pos(q)  G
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+(a) If for every t   (neg(q)) : t  G :
+
+A = A  { (head (q))}
+
+then set
+
+3. For every q  Q and every homomorphism
+
+ : pos(q)  G
+(a) If for every t   (neg(q)) : t  G : then set
+
+A = A  { (head (q))}
+
+4. If A = A return no
+5. Test next Q. If none is left, return yes
+
+The correctness follows immediately from the semantics of UCQs. To see that this is indeed feasible in
+polynomial time, note that the maximal number of homomorphisms to be checked in steps (2) and (3) for
+every q  Q is |AD|3b, since the number of triples in
+body(q) is bounded by some constant b.
+
+Note that since in the above setting both, the closure
+under R and the answers to Q can be computed effi-
+ciently, membership even holds for UCQs. That is,
+monotone queries are no longer necessary.
+Since for these settings the complexity is not higher
+than for MINI-RDF, the hardness follows immediately from Proposition 5.2.
+Corollary 5.12. MINI-RDF,CQ (G,R,C,Q), when
+both, R and C are fixed and Q contains only body-
+b-bounded CQs is NP-hard, already if Q contains a
+single CQ only.
+
+The treatment of MINI-RDF(G,R,C) is concluded with a tractable case. Just as in Section 3, if
+C =  it suffices to check only a polynomial number
+of subgraphs G  G, namely all those graphs missing
+exactly one triple from G.
+Lemma 5.13. MINI-RDF,CQ (G,R,C,Q), for b-
+bounded R, C = , and body-b-bounded Q can be
+solved in PTIME. The problem remains in PTIME even
+if Q is a set of body-b-bounded UCQs.
+
+Proof. The lemma follows immediately from the proof
+of Lemma 5.11. The problem can be solved by almost
+the same algorithm that was presented there, only that
+it is not necessary in step (2) to guess a subset, but
+instead it suffices to check all subsets of G missing
+exactly one triple from G.
+
+5.3. Rule minimisation
+
+Like for the problem of graph minimisation, also
+for the problem RDF-RULEMIN,CQ the hardness results from Section 4 carry over. The reason is again that
+
+RDF-RULEMIN(G,R) is a special case of RDF-
+RULEMIN,CQ (G,R,Q). However, this can be used
+in a single proof in this section only. All other results
+have to be shown explicitly.
+Lemma 5.14. RDF-RULEMIN,CQ (G,R,Q),
+for
+arbitrary R and where Q may contain arbitrary CQs
+can be solved in P
+2 even
+if Q is a set of arbitrary UCQs.
+
+2 . The problem remains in P
+
+Proof. This result is proven by devising a nondeterministic algorithm that, using a coNP-oracle, decides
+the co-problem in polynomial time. That is, it shows
+that the co-problem, hence deciding if R is already
+minimal, is in P
+2 .
+
+1. Compute G = ClR(G)
+2. For every r  R:
+
+(a) Let R = R \ {r}
+(b) Compute G = ClR(G)
+(c) Guess q  Q and homomorphism
+(d) Test if  (head (q)) / q( G)
+(e) If  (head (q))  q( G), return no
+
+ : body(q)  G
+
+3. Return yes
+
+Hence the algorithm proceeds as follows: First it computes the closure of G under R. Then it verifies
+that whatever rule r  R is dropped, there exists
+some query q  Q such that at least one triple from
+q(ClR(G)) is not in the answer of q over the closure of
+G under R\{r}. It follows immediately that the algorithm is indeed correct. Further, it is easy to see that it
+runs in polynomial time on a nondeterministic Turing
+machine with access to a coNP oracle. The only step
+for which this is not trivial is step (2d). However, this
+can be solved by a coNP oracle as follows:
+
+1. Test for every mapping  : body(q)  G with
+(body(q))  G, if (head (q)) =  (head (q))
+2 [log n]),
+Finally, the extension to UCQs is analogous to the
+
+For how to compute the closure in P
+see for example the proof of Lemma 4.3.
+
+2 (even P
+
+extension presented in the proof of Lemma 5.6.
+
+The corresponding hardness proof, given next, is
+very similar to the proof of Lemma 5.7. Recall that
+the proof of Lemma 5.7 was by reduction from Q-
+3COL,2. Given an instance ((V, E), (V1, V2)), the basic idea of the reduction was to define an RDF graph
+G and a query q, such that q(G) contained an encoding for every possible coloring of V1. The remaining
+
+instance was defined in such a way that q(G) (for
+valid G  G) was able to return the same answer
+only if each such coloring can be extended to a valid
+3-coloring of (V, E). The idea of the following proof
+is the same. The only difference is that now q(G) returns only encodings of those colorings of V1 that can
+be extended to valid 3-colorings of (V, E). In addition,
+R contains a single rule such that q(ClR(G)) contains
+encodings of all possible colorings of V1. Hence this
+rule is only redundant iff all possible colorings V1 can
+be extended to valid 3-colorings of (V, E). The formal
+proof is given in the appendix.
+Lemma 5.15. RDF-RULEMIN,CQ (G,R,Q), where
+R may contain arbitrary rules and Q may contain arbitrary CQs, is P
+2 -hard. The problem remains P
+2 -
+hard, even if R and Q each contain a single element
+only.
+
+Note that the following membership result even
+holds in the presence of nonmonotone queries. The
+reason for this is that to solve the rule minimisation
+problem, it suffices to check only a polynomial number
+of subsets. Hence it is feasible to first compute the closures under all these sets of rules, and then to explicitly
+compute the set of answers over these closures (since
+the queries are head-b-bounded, there are at most polynomially many answers to each query).
+Lemma 5.16. RDF-RULEMIN,CQ (G,R,Q),
+for
+arbitrary rules R and head-b-bounded CQs Q, can
+be solved in P
+2 [log n]. The problem remains in
+2 [log n] even if Q contains UCQs.
+
+Proof. The proof is by devising a deterministic algorithm that solves the problem in polynomial time with
+at most O(log n) calls to an NP oracle. In the fol-
+lowing, let R = {r1, . . . , rn}, and for i  [n] let
+Ri = R \ {ri}.
+
+1. For every pair (q,R) of q  Q and R  {R,
+R1, . . . ,Rn}, compute (and store) q(ClR(G))
+2. Check if there exists Ri for i  [n] s.t. for all
+q  Q : q(Cl Ri(G)) = q(ClR(G))
+
+The correctness of the algorithm follows immediately.
+Further, given the result of step (1), step (2) can be
+decided in deterministic polynomial time. Hence it remains to show that step (1) can be solved in polynomial time with at most O(log n) calls to an NP or-
+acle. To see that this is indeed the case, divide the
+step into two sub-steps: First, compute ClR(G) for
+every R  {R,R1, . . . ,Rn}. This is feasible in
+PNP(cid:107) (cf. proof of Lemma 4.3). Next, given all these
+
+closures, q(ClR(G)) can be computed by deciding
+for each s  AD|head(q)| by a call to an NP oracle
+if s  q(ClR(G)) (this can be decided by a simple
+guess and check algorithm). This again requires only
+a polynomial number of non-adaptive oracle calls (al-
+though they depend on the oracle calls from the first
+sub-step). Hence, both sub-steps of step (1) can be
+solved in deterministic polynomial time with at most
+O(log n) calls to an NP oracle. Therefore also the complete step (1) can be solved within this time bound.
+
+Note that the same arguments used in the above
+proof also allow one to show that MINI-RDF,CQ can
+2 [log n] if R contains arbitrary rules,
+be solved in P
+C =  and Q is a set of body-b-bounded UCQs.
+
+Similarly to the graph minimisation problem, there
+are again two sources for the P
+2 [log n]-hardness: On
+the one hand it must be made sure that given some
+RDF graph and a query, indeed all answers to a query
+over this graph are computed. On the other hand, given
+some RDF graph and a set of rules, it must be assured that all rules were applied exhaustively before
+the query answers are computed. The next hardness result considers the case where computing the answers
+to the queries is hard.
+Lemma 5.17. RDF-RULEMIN,CQ (G,R,Q)
+is
+2 [log n]-hard if all rules in R are b-bounded and Q
+
+contains head-b-bounded CQs. The problem remains
+2 [log n]-hard, even if R contains a single, fixed rule.
+
+Proof. The proof, done by reduction from the problem ODD CLIQUE, is a slight variation of the proof
+of Lemma 5.9. Given an arbitrary instance of ODD
+CLIQUE, denote with (G,,,Q) the instance of
+MINI-RDF,CQ defined by the reduction presented
+there. Recall the basic idea of the reduction, which was
+that the only triple t  G that might be redundant
+was t = 0 e 0. Hence define an instance (G,R,Q)
+of RDF-RULEMIN,CQ (G,R,Q) as G = G \ {t},
+R = {{S P O}  {0 e 0}}, and Q = Q. I.e.
+instead of the triple t, now the only existing rule is redundant iff the size of the biggest clique in the instance
+of ODD CLIQUE is odd. The correctness follows immediately from the correctness of the reduction in the
+proof of Lemma 5.9.
+
+The following hardness result, which follows immediately from Lemma 4.3, considers the case where the
+set of answers over an RDF graph can be computed ef-
+ficiently, but it is intractable to compute the closure of
+a graph with respect to a set of rules.
+
+Lemma 5.18. RDF-RULEMIN,CQ (G,R,Q)
+is
+2 [log n]-hard if R contains arbitrary rules and Q
+
+is restricted to body-b-bounded CQs. The problem re-
+2 [log n]-hard, even if Q contains a single CQ
+mains P
+only.
+Proof. To prove this result, note that (G,R,C) is a
+positive instance of RDF-RULEMIN(G,R) if and
+only if (G,R,C,Q) is a positive instance of RDF-
+RULEMIN,CQ (G,R,Q), where Q = {q} with q =
+{S P O}  ans(S, P, O). To see that this is indeed
+the case, just note that q(ClR(G)) = q(ClR(G)) iff
+ClR(G) = ClR(G), for every R  R.
+
+The lemma thus follows from Lemma 4.3.
+
+reason as in Lemma 5.13 and Lemma 5.11, respec-
+tively.
+
+5.4. Beyond conjunctive queries  SPARQL
+
+RDF minimization w.r.t. (unions of) conjunctive
+queries can be extended to more expressive query lan-
+guages. For example, some of the results above were
+shown to hold even if the (U)CQs are allowed to
+contain negation in the body. However, this was not
+the case in all of the settings considered. Although a
+deeper study of settings with UCQs is left to future
+work, it is to be expected that allowing for negation increases the complexity of the problem (but not exceeding P
+
+In general, it is to be expected that more expressive query languages also increase the computational
+complexity of the problems under consideration. For
+example, when allowing non-recursive datalog queries
+with negation (a query language which covers all of
+SPARQL [2]), then it can be easily seen that the complexity of the problems considered here will be dominated by the complexity of query evaluation, which is
+PSPACE-complete in this case.
+
+3 ).
+
+The goal of this section is to initiate the study of
+RDF minimisation w.r.t. SPARQL. Note das UCQs as
+studied so far, but without projection (i.e. if adding
+the requirement that all variables in the body of a
+CQ also occur in its head) correspond to SPARQL
+graph patterns consisting only of SPARQL triple pat-
+terns, AND, and UNION. Further, CQs (again without projection) correspond to the fragment of SPARQL
+graph patterns built from SPARQL triple patterns using AND only. Note however that projection was an
+important tool in most of the hardness proofs that made
+use of the set of queries. Hence, the results presented
+in this paper so far carry over to SPARQL queries built
+from those kind of SPARQL graph patterns and pro-
+jection. In addition, in Section 2 the body of CQs was
+defined to be a FBGP. Hence those types of CQs also
+cover certain SPARQL filter expressions, namely those
+testing if a variable is bound to an uri, a literal or a
+blank node, respectively. Hence the results immediately extend to settings allowing for SPARQL queries
+built from those SPARQL graph patterns. Further, the
+results can be easily shown to hold also when allowing
+for equality as a filter expression.
+
+However, when allowing in addition for the OPT-
+operator, recall that given a SPARQL graph pattern
+
+P and a mapping , deciding if   PG holds
+
+is PSPACE-complete [24]. The previous results there-
+
+The two results above show that for the problem RDF-RULEMIN,CQ, the situation is very similar to MINI-RDF,CQ: As long as either computing the closure or the set of query answers is hard,
+the problem is P
+2 [log n]-hard. The next result shows
+yet another similarity between these two problems: If
+both, the closure and the query answers can be computed efficiently, and if it suffices to check a polynomial number of subsets (which is always the case
+for RDF-RULEMIN,CQ), then the problem becomes
+tractable.
+Lemma 5.19. RDF-RULEMIN,CQ (G,R,Q) where
+R is a set of b-bounded rules and Q is a set of body-b-
+bounded CQs can be decided in PTIME. The problem
+even remains in PTIME if Q is a set of body-b-bounded
+UCQs.
+
+Proof. The problem can be decided by the following
+deterministic adaption of the nondeterministic algorithm presented in the proof of Lemma 5.14.
+
+1. Compute G = ClR(G)
+2. For every r  R:
+
+(a) Let R = R \ {r}
+(b) Compute G = ClR(G)
+(c) For every q  Q, compute q( G) and q( G),
+(d) If this holds for all q  Q, return yes, oth-
+
+and check if they are the same
+erwise try next r  R
+
+3. Return no
+
+The correctness of the algorithm follows immedi-
+ately. Just note that unlike the proof of Lemma 5.14,
+the above algorithm solves RDF-RULEMIN,CQ di-
+rectly, and not the co-problem. Its polynomial runtime,
+and also the extension to UCQs follows for the same
+
+fore do not extend to arbitrary SPARQL graph pat-
+terns. However, the OPT-operator implements a main
+feature of SPARQL, namely to derive useful results
+even in the case that not all parts of the query can be
+answered. This is of great importance when querying
+the web where incomplete data sources are common.
+Hence, arbitrary SPARQL graph patterns are considered next. This gives the following result.
+Theorem 5.20. Let G be an RDF graph, C a set of
+tgds, and P a set of SPARQL graph patterns. Further,
+assume that G satisfies C. Then deciding if there exists
+holds for all P  P is PSPACE-complete.
+The problem remains PSPACE-hard, even if all patterns in P are constructed using AND, UNION, and
+OPT only.
+
+G  G such that G satisfies C andPG = PG
+
+Proof. Membership is shown by the following algo-
+rithm:
+
+1. Guess a subgraph G  G
+2. Check if G satisfies C
+3. For every P  P:
+
+(a) For every  PG, test if  PG
+(b) For every  PG, test if  PG
+
+The correctness of this algorithm follows immediately.
+To see that it indeed solves the problem in PSPACE,
+just note that both, G and each  is of polynomial size.
+For the hardness, consider the proof of [24, Theorem 3.4]. This proof is by reduction from QSAT, that
+is the problem of deciding if an arbitrary quantified
+Boolean formula is valid, to the following problem:
+
+ Given an RDF graph G, a graph pattern P and a
+
+mapping , decide if  PG.
+
+P such that   PG iff  is valid. Thereby G =
+
+Given an arbitrary quantified Boolean formula , the
+reduction in [24] shows how to define a graph pattern
+{a tv 0 . a tv 1 . a false 0 . a true 1}, and  is defined
+on a variable B0 only, with (B0) = 1. Further, P
+consists of AND, UNION, and OPT only.
+
+Now define a reduction from this problem to the
+problem mentioned in the theorem as follows: Define
+an RDF graph G as
+G = G  {1 x 1 . c c c}.
+Further, define the set C of constraints as
+C = {{c c c}  G;
+
+{1 x 1}  {c c c};
+{S P O}  G}
+
+Finally, define a SPARQL graph pattern Q as
+
+Q = (B0 x B0 AND c c c) UNION P.
+
+an inspection of the reduction in [24] shows that the
+additional two triples do not have any effect on the answers of P. Further, the only subgraph G  G that
+
+It can now be easily checked that  Q G. Also,
+satisfies C is G. Since(B0 x B0 AND c c c)G = 
+and PG = PG, it follows that QG=G =
+Q G iff  QG, which concludes the proof.
+
+Note that the previous result does not mention any
+rules, in order to keep the discussion short. However,
+it is easy to see that the algorithm can be adapted to
+additionally compute the closures of G and G under a
+given set of rules without changing its complexity.
+
+In [24], it was shown that the high complexity of
+evaluating SPARQL graph patterns arises from an unrestricted use of the OPT-operator. In addition, the
+same reason may lead to unintuitive results. As a so-
+lution, the fragment of well-designed SPARQL patterns was defiend in [24], that are defined as fol-
+lows. First of all, note that every SPARQL graph
+pattern P is equivalent to some pattern of the form
+(P1 UNION P2 UNION . . . UNION Pn) where
+each Pi (i  [n]) is UNION-free [24, Proposition
+3.8]. Patterns of this form are said to be in UNIONnormal form. Further, a UNION-free pattern P is
+well-designed if on the one hand for every subpattern
+(Q FILTER R) of P it holds that all variables occuring in R occur also in Q, and on the other hand
+for every subpattern P  = (P1 OPT P2) of P it
+holds that every variable X that occurs both inside P2
+and outside P  also occurs in P1. Finally a pattern in
+UNION-normal form is well-designed if each of the
+UNION-free patterns P1, . . . , Pn is well-designed. It
+was shown that for a well-designed SPARQL graph
+
+pattern P and a mapping , testing if   PG is
+
+coNP-complete [24], hence significantly lower than for
+arbitrary SPARQL graph patterns. The following result
+shows that also the complexity of RDF minimisation
+decreases in the presence of well-designed SPARQL
+graph patterns.
+Theorem 5.21. Let G be an RDF graph, C a set of b-
+bounded tgds, and P a set of well-designed SPARQL
+graph patterns in UNION normal form. Further, assume that G satisfies C. Then deciding if there exists
+holds for all P  P is in P
+
+G  G such that G satisfies C andPG = PG
+
+3 and P
+
+2 -hard.
+
+Pichler et al. / Complexity of redundancy detection on RDF graphs in the presence of rules, constraints, and queries
+
+Proof. The P
+gorithm:
+
+3 -membership is due to the following al-
+
+1. Guess a subgraph G  G
+2. Test if G satisfies C
+
+The correctness of the algorithm is immediate. To see
+that it indeed decides the problem in P
+3 , note that
+2 -oracle, i.e., testing if
+step (3) can be decided by a P
+2 : by [24, Theorem 4.9], for
+this class of SPARQL graph patterns, deciding if some
+
+3. Test ifPG =PG
+PG = PG is in P
+mapping   PG is coNP-complete. Hence to test
+PG = PG, we first guess , and then decide by
+two calls to an NP oracle if  is contained inPG but
+not inPG.
+
+For the hardness, consider the following reduction from Q-3COL,2. Let G = ((V, E), (V1, V2))
+be an arbitrary instance of Q-3COL,2 with V =
+{v1, . . . , vn}. Then define an RDF graph G as G =
+Gcols  Ge  Gv1  Gcol1  Gb where
+Gcols = {0 iscol 0 . 1 iscol 1 . 1 iscol 1},
+Ge = {0 e 1 . 0 e 2 . 1 e 0 . 1 e 2 . 2 e 0 . 2 e 1},
+Gv1 = {vi v vi | vi  V1},
+Gcol1 = {vi a 0 . vi a 1 . vi a 2 . | vi  V1},
+Gb = {b b b},
+and each vi is a new URI for each vi  V1 (where
+by slight abuse of notation, vi is used to denote both,
+URIs in G and nodes in V ). Further, define C as C =
+Cbasic  Ccol1  C0  C1 where
+Cbasic = {{S P O}  Gcols  Ge  Gv1},
+Ccol1 = {{b b b}  Gcol1},
+C0
+C1
+Note that Cbasic and Ccol1 are not written as b-bounded
+sets in order to increase their readability. However,
+they could be easily by sets of b-bounded tgds. Finally,
+let P contain a single SPARQL graph pattern P defined as
+P = (and ({Ci iscol Ci | vi  V2}  {b b b})) UNION
+
+= {{X v X}  {X a Y }},
+= {{X a Y . X a Z . Y e Z}  {b b b}}.
+
+(and ({Ci iscol Ci | vi  V })) UNION
+(and ({Ci iscol Ci | vi  V2}) OPT
+and ({Ci iscol Ci | vi  V1}
+{Ci e Cj | (vi, vj)  E}))
+
+LOGSPACE. A detailed correctness proof is omitted,
+but a few important properties are noted:
+
+ Obviously, PG contains exactly all possible
+
+mappings  : {Ci | vi  V2}  {0, 1, 2} (be-
+cause of the part before the first UNION), and all
+possible mappings  : {Ci | vi  V }  {0, 1, 2}
+(because of the middle part).
+ Every G  G that satisfies C contains Gcols 
+Ge  Gv1, and for each vi  V1 exactly one triple
+from Gcol1. Further, it does not contain b b b.
+vi  V }  {0, 1, 2} due to the second UNION
+part. However, the first part does not contribute
+any mappings over G.
+
+ HencePG still contains all mappings  : {Ci |
+ It can be easily checked that thereforePG =
+PG if the coloring on V1 encoded by those
+
+triples from Gcol1 that are contained in G cannot be extended to a valid 3-coloring on V : In
+this case, every possible mapping  : {Ci | vi 
+V2}  {0, 1, 2} cannot be extended to a mapping
+that also maps the OPT part of the last part of the
+query.
+
+A complete and more fine-grained analysis of dif-
+
+ferent fragments of SPARQL is left to future work.
+
+6. Problem variations
+
+The goal of this section is twofold. First, a variation of the graph minimisation problem is considered
+that might be able to give more information about the
+amount of redundancy in an RDF graph than the problems considered so far. Second, note that throughout
+the paper the goal was not only to just classify the
+problems according to their computational complex-
+ity, but also to identify the reasons and sources of their
+complexity. The remaining problems studied in this
+section are thus thought to further pinpoint the source
+of complexity of some of the settings studied previ-
+ously.
+
+6.1. Minimisation under size bounds
+
+where and (T ) for a set T = {t1, . . . , tn} of triple patterns t1, . . . , tn denotes the graph pattern t1 AND . . .
+AND tn, and a new variable Ci
+is introduced for
+each vi  V . The reduction is obviously feasible in
+
+For the graph minimisation problems, the question
+considered so far was if an RDF graph G contains at
+least one redundant triple, with respect to the given set
+of rules, constraints, and possibly queries. However,
+this does not give much information about the amount
+
+of redundancy in the data. An alternative question of
+interest is thus if a graph can be reduced below some
+predefined size, without losing any information. This
+question is formalised as follows.
+Definition 6.1. Let MINI-RDFcard(G,R,C, k) be the
+following decision problem:
+INPUT: An RDF graph G, a set R of RDF rules, a set
+C of tgds (s.t. G satisfies C) and an integer k.
+QUESTION: Does there exist a subgraph G  G with
+|G|  k, s.t. G satisfies C and G  ClR(G)?
+
+It can be easily verified that for all settings in Table 1 that are at least NP-hard, the complexity of
+MINI-RDFcard is the same as for MINI-RDF. Intu-
+itively, this is because the nondeterministic algorithms
+(resp. the deterministic algorithms using NP oracles)
+for solving these problems at some point all contain a
+statement
+
+ Guess a subgraph G  G.
+
+Replacing this statement by
+
+ Guess a subgraph G  G with |G|  k
+
+immediately solves MINI-RDFcard. Therefore,
+the
+only two interesting cases remaining are MINI-RDF
+with a b-bounded or fixed set R and no constraints,
+as they can be decided in PTIME. The next theorem
+shows that the tractability for deciding if G contains at
+least one redundant triple does not carry over to checking if there is a certain amount of triples redundant.
+Intuitively, the reason for this is that it is no longer
+sufficient to check a polynomial number of subgraphs.
+Theorem 6.1. The problem MINI-RDFcard(G,R,C, k)
+is NP-complete if C =  and R is either considered as
+fixed or a set of b-bounded rules (for fixed b).
+
+Proof. Membership carries over from the NP membership of MINI-RDFcard(G,R,C, k) discussed above
+where C is a set of b-bounded tgds and R is a set of
+arbitrary rules.
+
+Hardness is shown by reduction from the wellknown NP-complete problem Vertex Cover on graphs.
+Hence consider a fixed set R of rules:
+
+R = {V neighbour E . V v V }  {E e E};
+
+{E e E . X in X . X succ E}  {E in E};
+{E last E . E in E . V backupv V }
+
+ {V v V }.
+
+Now let an arbitrary instance of Vertex Cover be given
+by a graph G = (V, E) and an integer k, where
+V = {v1, . . . , vn} and E = {e1, . . . , em}. Without loss of generality, assume G to contain no self-
+
+loops, this means edges (vi, vi). Then define an instance of MINI-RDFcard (Grdf ,R,C, k) as follows:
+R is as defined above and C = . For defining G,
+assume an arbitrary order on the edges in E (i.e. let
+E = (e1, . . . , em)). Then Grdf = Gv  Gnghb  Gord,
+where
+Gnghb = {vi neighbour e | vi  V, e  E,
+Gord = {ei succ ei+1 | i  {1, . . . , m  1}} 
+{em last em . e0 in e0 . e0 succ e1}, and
+
+e = (vi, vj)},
+
+= {vi v vi . vi backupv vi | vi  V }.
+
+Gv
+Thereby introduce a new URI vi for ever vi  V , a
+new URI e for every e  E (by slight abuse of no-
+tation, let vi and e denote both, the vertex or edge
+in the input graph and the URI in G). Note that Gord
+is defined according to the arbitrary order assumed on
+E and e0 is some fresh URI, representing a dummy
+edge. Finally, set k = 3  m + 2 + k + |V |.
+
+The reduction is obviously feasible in LOGSPACE.
+Before showing that it is indeed correct, its intuition is
+sketched. Note that the only triples from Grdf that can
+be derived by R are such of the from vi v vi. Therefore the idea is that those triples with v on predicate
+position remaining in some valid subgraph G encode
+a valid vertex cover. To ensure this, the first rule in R
+adds a triple ej e ej for every edge covered by G.
+The second rule adds ej in ej to G if all predecessors of ej according to the assumed arbitrary order are
+covered by G. Hence if em in em can be derived for
+the last edge em in this order, then all edges are indeed
+covered. If this is the case, the last rule allows us to
+re-insert again the triples vi v vi for all vertices not being part of the vertex cover, hence the complete graph
+Grdf .
+
+The proof of the correctness of this reduction can be
+
+found in the appendix.
+
+6.2. Minimising without rules
+
+In the previous sections, for the settings where C
+may contain arbitrary tgds, the complexity of MINI-
+RDF|= and MINI-RDF was significantly higher than
+for all other settings. Hence a natural question is
+whether this higher complexity is due to the missing
+restrictions on C only, or whether it arises from the interplay of all components of the setting. The next theorem gives an answer to this question by showing that
+already the question whether there exists some nonempty subgraph that satisfies all constraints contains
+the full hardness.
+
+Theorem 6.2. Let G be an RDF graph and C a set
+of tgds. Deciding whether there exists some subgraph
+G  G (G
+= ) such that G satisfies C is P
+3 -
+complete.
+
+The proof, which is provided in the appendix, is an
+appropriate adaption of the proof of Lemma 3.5. Recall
+that there certain triples must not be removed from G
+since no rule was provided in order to recover them.
+In contrast, all these triples are now explicitly required
+to remain in any valid subgraph of G. This is done
+by tgds of the form {S P O}  {t} that are satisfied
+over any nonempty RDF graph iff t is contained in this
+graph.
+
+Next, recall that tgds generalise (safe) Datalog rules
+by allowing existential quantification and conjunctions
+in the head. In other words, Datalog rules are an important special case of tgds  referred to as full tgds in the
+information integration literature. While being less expressive than tgds, many reasoning tasks become easier (or decidable) in the presence of full tgds, compared to arbitrary tgds. The next theorem shows that
+this holds also true for the problems considered in this
+paper. Restricting the constraints to full tgds pushes
+the P
+3 -completeness results from Theorems 3.1 and
+Theorem 6.2 down to P
+2 .
+Theorem 6.3. The problems MINI-RDF|=(G,R,C)
+and MINI-RDF(G,R,C) are P
+2 -complete if C is a
+set of full tgds and R is a set of arbitrary rules. The
+problem remains P
+Likewise, let G be an RDF graph and C a set of
+full tgds. Deciding whether there exists some subgraph
+G  G with G =  such that G satisfies C is P
+2 -
+complete.
+
+2 -complete even if R is fixed.
+
+Recall from the P
+
+3 -hardness proofs from Lemma 3.5
+and Theorem 6.2 how the quantifier alternation was
+encoded. The first existential quantifier block was encoded in the selection of the subgraph. The following
+block of universal quantifiers was encoded in the antecedent of one big tgd, and the last block of existential quantifier was encoded on its consequent. The reduction remains basically the same, only that because
+of the missing existential quantifier in the consequent
+of full tgds, the last quantifier block can no longer be
+encoded. Hence instead a reduction from Q-3COL,3,
+only a reduction from Q-3COL,2 is possible.
+
+To conclude this subsection, note that just like Theorem 6.2, a similar point can also be made for the NPcomplete settings in Theorem 3.1. From the proof of
+Lemma 3.7, it already follows that for MINI-RDF|=,
+
+one source of the NP-hardness is just to decide en-
+tailment. However, there exists yet another source for
+the NP-hardness of the settings allowing for at least b-
+bounded tgds. In those cases, already testing for the existence of some subgraph that satisfies all constraints
+is NP-hard. This is formalised in the next theorem.
+Theorem 6.4. Let G be an RDF graph and C a set
+of b-bounded tgds. Deciding whether there exists some
+subgraph G  G such that G =  and G satisfies C
+is NP-complete.
+
+Again, this theorem can be proved by a similar reduction as Lemma 3.7. Basically, all that needs to be
+changed is instead of not providing rules to derive
+triples that must not be removed from the RDF graph
+to explicitly enforce them via tgds. The concrete reduction is given in the appendix.
+Note that as a result, the set C is no longer fixed
+(as it was in the reduction presented in the proof of
+Lemma 3.7), but depends on (V, E).
+
+6.3. General RDF rules vs. Datalog rules
+
+This section is concluded by showing that
+
+the
+complexity of the investigated problems remains unchanged by allowing additional predicates uri (.),
+blank (.), lit(.) to restrict the type of a value in a Datalog rule, that is, allowing general RDF rules as defined
+in Section 2. Note that for every x  U  B  L occurring in some RDF-graph G (i.e. for every element of
+the active domain) it can be easily recognised whether
+it belongs to U, B or L: This could be either decided
+using syntactic criteria, or by a lookup in U, B and
+L (although those sets are supposed to be countably
+infinite, one can assume that UG, BG and LG, i.e. the
+elements of the active domain, are the first elements
+of these sets). Therefore, determining the type of some
+element requires at most polynomial time in the size
+of G. Therefore, for every element x of the active domain of G, we create a ground atom Bt(x), Ut(x) or
+Lt(x), depending on the type of x. By encoding an
+atom blank (X) as triple {X blank X} in G, we can
+make this information available for rule application
+without increasing the complexity of the problem.
+The same argument allows us to overcome the problem that the closure with respect to a rule set R contains invalid RDF triples (containing e.g. a blank node
+in a predicate position). Depending on whether invalid
+triples are allowed in intermediate results or not, we
+can pursue one of the following two strategies: (i) in
+a post-processing step, we can check for every triple
+
+in R(G) whether it is valid or not. In the latter case,
+it is removed; (ii) if invalid triples should also be excluded from any intermediate results, then the rules can
+be (automatically) augmented by at most 2 additional
+predicates in the rule body, urib(A) and uri (B), assuming that the rule head is {A B C}. The predicate
+urib(.) can be easily defined from uri (.) and blank (.)
+by e.g. {uri (X)}  {urib(X)} and {blank (X)} 
+{urib(X)}. This is similar to variations of rules (2)
+(4) in Section 1, where the filter conditions guaranteed
+valid intermediate triples.
+
+7. Conclusion and future work
+
+In this paper, a collection of complexity results for
+minimisation problems over RDF graphs was proved,
+considering various restrictions on the rules and tgds.
+One such restriction was b-boundedness [19]. Note
+that this restriction can be relaxed by bounding not
+necessarily the size of the rules (or tgds) but only the
+maximal number of blank nodes occurring in the rules
+(or tgds)  in the Datalog world, Vardi [30] showed
+that such a restriction decreases complexity. Further, it
+was discussed how the complexity of the problem increases if one requires completeness only with respect
+to a given set of conjunctive queries (CQs). Notably,
+if the CQs are restricted to have bounded head arity,
+while providing additional minimisation potential, the
+problem becomes only mildly harder.
+
+The minimisation problems considered here are
+driven by practical needs to represent RDF data compactly or tailor them to engines supporting different
+rule sets. The results also provide a basis for eliminating redundancies in existing practically relevant rule
+sets, such as OWL2RL [20]. We believe that our results will gain even more relevance with the advent of
+novel standards such as the W3C rule interchange format (RIF) which will allow one to enrich RDFS and
+OWL with Web-publishable custom rule sets [6].
+
+Although in practice the interest lies rather on the
+construction problem (i.e. computing a redundancy
+free subgraph of a given RDF graph), this paper concentrates on the decision problem. The point of this
+work is to provide foundational research towards redundancy elimination in RDF graphs, aiming at a
+deeper understanding of the different sources of complexity of redundancy detection. For these tasks, the
+decision problem is the more appropriate problem to
+study. However, note that the complexity results for
+the decision problems naturally carry over to the corre-
+
+sponding construction problems. For example, the algorithms presented in the membership proofs all work
+by looking for a counter-example that witnesses the
+non-minimality of the current instance. Hence a naive
+algorithm for solving the construction problem would
+be to just iteratively apply the decision algorithms on
+these counter-examples until a minimal RDF graph is
+found.
+
+As future work, our investigations should be further extended in several directions such as a more
+fine-grained analysis of SPARQL fragments when redundancy with respect to queries is considered. A
+first step towards this direction was done by proving first bounds for the fragment of well-designed
+SPARQL queries [24]. As a further step of future
+work, the investigation of new query features in the upcoming SPARQL1.1 version [13] such as aggregates,
+path queries, and subqueries is on our agenda. It also
+should be noted that our current observations based
+on Datalog apply a set-based semantics, whereas the
+SPARQL specification applies a bag (multiset) seman-
+tics: as another direction of future work it would be
+interesting to investigate redundancies under the point
+of view whether they affect duplicate solutions under
+SPARQLs bag semantics.
+
+Last, but not least, we plan to cast the obtained
+results into practical algorithms to compress RDF
+graphs and rule sets, investigate related relevant problems such as trading triples for rules, or vice versa,
+and experimentally evaluating effects of such transformations on query answering with dynamic inference
+such as sketched in [17].
+
+Acknowledgements
+
+The research was funded by the Austrian Science
+Fund (FWF): P20704-N18, by the Vienna Science and
+Technology Fund (WWTF): ICT08-032, and by Science foundation Ireland (SFI) under grant SFI/08/-
+CE/I1380 (Lion-2). We thank the anonymous reviewers of the conference version and the reviewers of this
+paper for their helpful comments.

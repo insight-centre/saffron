@@ -1,0 +1,1094 @@
+User-driven Semantic Mapping of Tabular Data
+
+Ivan Ermilov
+
+AKSW/BIS, Universitat Leipzig
+
+PO Box 100920, 04009
+
+Leipzig, Germany
+
+iermilov@informatik.uni-
+
+leipzig.de
+
+Soren Auer
+
+CS/EIS, Universitat Bonn
+Romerstrae 164, 53117
+
+Bonn, Germany
+
+auer@cs.uni-bonn.de
+
+Claus Stadler
+
+AKSW/BIS, Universitat Leipzig
+
+PO Box 100920, 04009
+
+Leipzig, Germany
+
+cstadler@informatik.uni-
+
+leipzig.de
+
+ABSTRACT
+Governments and public administrations started recently to publish
+large amounts of structured data on the Web, mostly in the form of
+tabular data such as CSV files or Excel sheets. Various tools and
+projects have been launched aiming at facilitating the lifting of tabular data to reach semantically structured and linked data. However,
+none of these tools supported a truly incremental, pay-as-you-go
+data publication and mapping strategy, which enables effort sharing between data owners, community experts and consumers. In
+this article, we present an approach for enabling the user-driven
+semantic mapping of large amounts tabular data. We devise a simple
+mapping language for tabular data, which is easy to understand even
+for casual users, but expressive enough to cover the vast majority of
+potential tabular mappings use cases. We outline a formal approach
+for mapping tabular data to RDF. Default mappings are automatically created and can be revised by the community using a semantic
+wiki. The mappings are executed using a sophisticated streaming
+RDB2RDF conversion. We report about the deployment of our
+approach at the Pan-European data portal PublicData.eu, where we
+transformed and enriched almost 10,000 datasets accounting for 7.3
+billion triples.
+
+Keywords
+Tabular data, RDF, mapping, crowd-sourcing
+
+Categories and Subject Descriptors
+D.2.12 [Interoperability]: Data mapping; H.3.5 [Online Information Services]: Data sharing
+
+INTRODUCTION
+
+1.
+Integrating and analyzing large amounts of data plays an increasingly important role in todays society. Often, however, new discoveries and insights can only be attained by integrating information
+from dispersed sources. Despite recent advances in structured data
+publishing on the Web (such as RDFa and the schema.org initiative)
+the question arises how larger datasets can be published, described in
+order to make them easily discoverable and facilitate the integration
+as well as analysis.
+Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not
+made or distributed for profit or commercial advantage and that copies bear
+this notice and the full citation on the first page. Copyrights for components
+of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on
+servers or to redistribute to lists, requires prior specific permission and/or a
+fee. Request permissions from Permissions@acm.org.
+ISEM 13, September 04 - 06 2013, Graz, Austria Copyright is held by the
+owner/author(s). Publication rights licensed to ACM. ACM 978-1-4503-
+1972-0/13/09. . . $15.00. http://dx.doi.org/10.1145/2506182.2506196
+
+One approach for addressing this problem are data portals, which
+enable organizations to upload and describe datasets using comprehensive metadata schemes. Similar to digital libraries, networks
+of such data catalogs can support the description, archiving and
+discovery of datasets on the Web. Recently, we have seen a rapid
+growth of data catalogs being made available on the Web. The data
+catalog registry datacatalogs.org, for example, lists already 314
+data catalogs worldwide. Examples for the increasing popularity
+of data catalogs are Open Government Data portals, data portals
+of international organizations and NGOs as well as scientific data
+portals.
+
+Governments and public administrations started to publish large
+amounts of structured data on the Web, mostly in the form of tabular
+data such as CSV files or Excel sheets. Examples are the data
+portals of the US1, the UK2 or the European Commission3 as well
+as numerous other local, regional and national data portal initiatives.
+
+The Semantic Web and Linked Data communities are advocating
+the use of RDF and Linked Data as a standardized data publication
+format facilitating data integration and visualization. Despite its unquestioned advantages, only a tiny fraction of open data is currently
+available as RDF. At the Pan-European data portal PublicData.eu,
+which aggregates dataset descriptions from numerous other European data portals, for example, only 459 out of more than 17.000
+datasets (i.e. just 3%) are available as RDF. This can be mostly
+attributed to the fact, that publishing data as RDF requires additional
+effort in particular with regard to identifier creation, vocabulary
+design, reuse and mapping.
+
+Various tools and projects have been launched aiming at facilitating
+the lifting of tabular data to reach semantically structured and interlinked data. Examples are Any234, Triplify/Sparqlify [1], Tabels5,
+RDF Refine6. However, none of these tools supported a truly in-
+cremental, pay-as-you-go data publication and mapping strategy,
+which enabled effort sharing between data owners and consumers.
+The lack of such an architecture of participation with regard to the
+mapping and transformation of tabular data to semantically richer
+representations hampers the creation of an ecosystem for open data
+publishing and reuse. In order to realize such an ecosystem, we
+have to enable a large number of potential stakeholders to effectively and efficiently collaborate in the data lifting process. Small
+
+1http://www.data.gov/
+2http://data.gov.uk/
+3http://open-data.europa.eu/
+4http://any23.apache.org/
+5http://idi.fundacionctic.org/tabels
+6http://refine.deri.ie/
+
+105contributions (such as fine-tuning of a mapping configuration or the
+mapping of an individual column) should be possible and render
+an instant benefit for the respective stakeholder. The sum of many
+such small contributions should result in a comprehensive Open
+Data knowledge space, where datasets are increasingly semantically
+structured and interlinked.
+
+In this article, we formalize the canonical form of tabular data and
+survey possible deviations from this canonical form. We outline a
+formal approach for mapping tabular data to RDF. We devise a mapping language for that purpose, which is able to cope with typical
+deviations (e.g. repeated headers, empty rows, columns) and easy to
+understand even for casual users, but expressive enough to cover the
+vast majority of potential tabular mappings use cases. We deployed
+and integrated our approach into PublicData.eu  one of the largest
+data portals. Our approach involves automatically creating default
+mappings for all datasets registered at PublicData.eu, which can
+be revised using a semantic wiki thus facilitating user involvement
+and crowd-sourcing. The mappings are interactively executed after mapping changes using our sophisticated Sparqlify streaming
+RDB2RDF conversion technique, which is able to transform large
+datasets with minimal resources. We report about the deployment of
+our approach at the Pan-European data portal PublicData.eu, where
+we transformed and enriched almost 10,000 datasets accounting for
+7.3 billion triples.
+
+The paper is structured as follows: In section 2 we perform an inventory of the datasets being made available through local, regional
+and national data portals and being aggregated at PublicData.eu.
+In section 3 we define a canonical model of tabular data and possible survey deviations from this model. Section 4 describes our
+transformation approach from tabular data to RDF. In section 5 we
+describe the deployment at PublicData.eu and the crowd-sourcing
+of mappings. Section 6 summarizes the results of mapping and
+transforming almost 10,000 tabular datasets at PublicData.eu. We
+survey related work in section 7 and conclude with an outlook on
+future work in section 8.
+
+2. PUBLICDATA.EU INVENTORY
+PublicData.eu is a data catalog aiming to become a one stop shop
+for open-data in Europe. The rationale is to increase public access to
+high-value, machine-readable datasets generated by the European,
+national, regional as well as local governments and public admin-
+istrations. This is achieved by harvesting and exposing datasets
+from various European data catalogs (currently 19 catalogs are har-
+vested7). The communication with other data catalogs is performed
+by employing the DCAT vocabulary [8], an RDF vocabulary wellsuited to represent information in data catalogs. PublicData.eu is, as
+well as many other data catalogs, based on the open-source platform
+CKAN8.
+
+CKAN exposes metadata about datasets in a catalog and allows to
+publish, share, find and use the registered datasets. Figure 3 shows a
+CKAN entry of a dataset at PublicData.eu. CKAN provides means
+for users and developers to easily access the published datasets.
+The registered datasets can be explored by end-users through freetext and faceted search based on various attributes, dataset groups
+and tagging. The CKAN API provides programmatic access to the
+metadata stored about datasets in a CKAN instance.
+
+7http://www.datacatalogs.org/dataset?groups=
+publicdata-eu
+8http://ckan.org/
+
+# Format
+
+Format
+
+N/A
+
+
+Other tabular data
+
+
+Table 2: Distribution of file formats at PublicData.eu.
+
+23,772 TXT
+12,255 ZIP
+8,330 RDF
+6,271 Geographical data
+1,270 DOC
+1,132 Other
+
+At PublicData.eu, dataset metadata is only available in read-only
+mode, not allowing users to modify the metadata (since it is harvested from other data catalogs). At the time of writing Public-
+Data.eu comprises 17,027 datasets. These are categorized by cate-
+gories, groups, license, geographical coverage and format. Comprehensive statistics gathered from the PublicData.eu are summarized
+in Table 1.
+
+The information in Table 1 does not reflect all 17,027 datasets, because metadata is not available for all datasets. The good coverage
+of the UK with 7,798 datasets (45.80%) can be attributed to the
+comprehensive data.gov.uk Open Data portal, which contributed together with smaller UK data portals overall 9,099 datasets (53.44%)
+published under the UK OGL license. Metadata about categories
+(2,332 datasets  13.70%) and groups (2,049 datasets  12.03%) is
+much more sparse and insufficient to obtain a comprehensive picture
+of Open Data at the European scale.
+
+Each dataset can comprise several data resources and there are overall 55,849 data resources available at PublicData.eu. Data resources
+can represent the same data in various formats, contain example
+data, schemata or linksets. Statistics on formats are summarized in
+Table 2.
+
+A large part of the datasets at PublicData.eu are in tabular format,
+such as, for example, CSV, TSV, XLS, XLSX. These formats do not
+preserve much of the domain semantics and structure. Also, tabular
+data represented in the above mentioned formats can be syntactically quite heterogeneous9 and leaves many semantic ambiguities
+open, which make interpreting, integrating and visualizing the data
+difficult. In order to support the exploitation of tabular data, it is
+necessary to transform the data to standardized formats facilitating
+the semantic description, linking and integration, such as RDF. To
+guide an automatic transformation to RDF, we define in the following section a canonical format for tabular data and categorize any
+possible deviations. By analysing a set of 100 dataset resources we
+compile a comprehensive list of such issues.
+
+3. A CANONICAL MODEL OF TABULAR
+
+The following definitions formalize our concept of canonical tabular
+data.
+
+DEFINITION 1. A table T = (H, D) is a tuple consisting of a
+
+header H and data D, where:
+
+ the header H = {h1, h2, . . . , hn} is an n-tuple of header
+
+elements hi.
+
+9Informational RFC for CSV: http://www.ietf.org/rfc/
+rfc4180.txt
+
+106Categories
+Health and Social Care
+
+Economy
+
+People and Places
+
+Children, Education, Skills
+Population
+Agriculture, Environment
+
+Business and Energy
+Crime and Justice
+Travel and Transport
+Government
+Labour Market
+
+# Groups
+
+# License
+
+# Coverage
+
+Social
+Health
+Finance
+Economy
+
+258 Geography
+
+Culture
+
+220 Education
+
+Population
+162 Environment
+Agriculture
+Services
+
+
+135 Transport
+
+97 Employment
+
+Politics
+
+229 OGL
+83 N/A
+436 CC-BY
+118 Other (Attribution)
+15 CC-Zero
+10 Other (Not Open)
+194 Other (Public Domain)
+145 ODbL
+227 CC BY-SA
+181 Other (Open)
+66 Other (Non-Commercial)
+
+CC NC (Any)
+
+69 GNU FDL
+
+9,099 UK
+6,489 N/A
+
+541 UK Global (overseas)
+349 Wiener Gemeindebezirk
+200 Wien
+128 Wiener Gemeindebezirke
+
+
+Table 1: PublicData.eu categories, groups, licenses and geographical coverage.
+
+
+
+ the data D =
+
+c1,n
+c2,n
+...
+cm,n
+trix consisting of n columns and m rows.
+
+c1,1
+c2,1
+...
+cm,1
+
+c1,2
+c2,2
+...
+cm,2
+
+
+
+...
+
+
+ is a (m, n) ma-
+
+Note, that the number of elements in the header and each row has
+to be the same. Given this definition of a tabular data table, we can
+describe deviations from this canonical model in three categories:
+(1) table level, (2) header level and (3) data level.
+
+On the table level possible deviations are:
+
+ T-Metadata. Metadata is embedded above or below the table.
+Publishers tend to append information about geographical
+location, time range, license etc. beside the table.
+ T-Whitespace. The table has preceding or succeeding empty
+ T-Multiple. Several semantically distinct tables are repre-
+
+rows or columns.
+
+ H-Missing. The header is empty or missing: H = {}
+ H-Duplicate. The header is repeated:
+
+sented as one syntactic table.
+
+The header level problems are:
+
+
+
+...
+
+...
+
+
+
+ hn
+...
+...
+ hn
+...
+...
+
+...
+
+...
+
+h1 h2
+
+H =
+
+h1 h2
+
+ H-Multiple-column-cell. One or several header cells occupy
+ H-Incomplete. One or several header cells are empty: H =
+ H-Multiple-header-rows. The header is spread across several
+
+multiple columns: H = {h1, h2, h2, h2, h3  hn}
+{h1, h2, empty, h4  hn}
+
+h11 h11
+
+h21 h22
+
+rows:
+H =
+
+
+ h1n
+ h2n
+
+ H-Cardinality. The header cardinality does not match the
+
+cardinality of the rows: |H| = |R|
+
+On the data level encountered deviations are:
+ D-Duplicate. The data row is repeated:
+
+Deviation
+No deviations
+D-Missing
+T-Metadata
+T-Whitespace
+T-Multiple
+H-Cardinality
+H-Multiple-header-rows
+D-Multiple-row-cell
+
+in # of CSV files
+
+
+Table 3: Deviations from the canonical tabular model in 100 randomly selected CSV files.
+
+ D-Incomplete. One or several data cells are empty:
+
+ D-Missing. The data row is empty or missing. Special case of
+ D-Multiple-column-cell. One or several data cells occupy
+
+D-Incomplete.
+
+
+
+c1n
+c1n
+
+...
+
+
+
+c1n
+c2n
+
+...
+
+
+
+...
+
+c12
+c12
+
+...
+
+c12
+
+empty
+
+...
+
+
+
+...
+
+D =
+
+D =
+
+...
+
+...
+
+c11
+
+c21
+
+c11
+c11
+c11
+
+
+...
+
+
+
+c1n
+c2n
+
+...
+
+multiple columns:
+c11
+c22
+
+c21
+
+D =
+
+
+
+...
+
+...
+
+or column:
+
+D =
+
+c11
+
+empty
+empty
+
+...
+
+
+
+
+...
+
+c12
+c22
+c32
+
+...
+
+c1n
+c2n
+c3n
+
+...
+
+
+
+ D-Multiple-row-cell. Omitting duplicate value in the next row
+
+We have chosen 100 random CSV resources from PublicData.eu and
+checked them manually for these issues. Most of these resources
+(i.e. 62) contain no deviations from our canonical format and can
+be processed as is. 26 resources have table level problems. 23
+have header and data level problems. Only 4 out of those 23 have
+problems other than empty rows or embedded metadata. Therefore,
+the main challenge is to identify the borders of the tabular data. The
+complete results of our survey are summarized in Table 3.
+
+1074. TABULAR DATA TO RDF TRANSFOR-
+
+MATION
+
+In this section we outline a formal approach for mapping tabular data
+to RDF. For this purpose, we first briefly summarize fundamental
+concepts of the RDF data model.
+
+Preliminaries. The RDF primitives are:
+
+ U is the set of URIs
+ B is the set of all blank nodes
+ L is the set of all literals
+ V is the set of all variables
+ T is the set of all RDF terms, defined as U  B  L.
+
+Furthermore, we make use of the following notions:
+
+T  V.
+
+denoted by P(Q)
+
+ J is the joint set of RDF terms and variables, defined as
+ Q is the set of all quads, defined as J  J  J  J .
+ A quad pattern Q is defined as Q  Q
+ R is the set of all quad patterns, thus the powerset of Q,
+ A quad q is defined as q  Q.
+ vars(Q) is the set of variables appearing in Q
+ A concrete quad (pattern) is a variable free quad (pattern).
+Finally, for ease of discussion, we introduce the function  that
+transforms all rows of a canonical table C into a logical table L,
+which is a set of corresponding partial functions from headings to
+data, i.e. a table
+
+((id, name),{(1, Anne), (2, John)})
+
+is transformed to:
+
+{{(id, 1), (name, Anne)},{(id, 2), (name, John)}}
+
+Let C and L be the set of all canonical and logical tables, respec-
+tively.
+
+ : C  L
+
+ 
+
+1i|C.H|
+
+(C) :=
+
+{(C.Hi, di)}
+
+d  C.D
+
+
+
+Generating RDF from logical tables. Based on the previously introduced primitives, we are now able to formally capture
+the nature of RDF mapping approaches for tabular data.
+
+A relational data to RDF (R2R) mapping m is a three-tuple (P, L, f ):
+ P is quad pattern which acts as the template for the construction of triples and relating them to named graphs. The
+template is instantiated once for each row of the logical table.
+We use the notation VP for referring to the set of SPARQL
+variables used in the template.
+
+ L is the logical table to be converted to RDF.
+ f is mapping of signature L  (V  T ): f yields for each
+element of the logical table L a partial function that binds the
+variables of the template P to RDF terms in T . Note that we
+do not require all variables of P to be bound, which enables
+us to support NULL values in the source data.
+
+An R2R mapping is valid, if its evaluation yields a concrete quad
+pattern that conforms to an RDF dataset10.
+Given a quad pattern Q  Q and a partial function a : V  T , we
+define the substitution operator
+
+[a] : R  R
+
+[a](Q) yields a new concrete quad pattern Q with all variables
+replaced in accordance with a. Any quads of Q with unbound
+variables in a are omitted in Q.
+
+An evaluation of a mapping m proceeds by passing each row of L
+as an argument to f, thereby obtaining the bindings for vars(P ),
+which are used to instanciate the template P for finally creating
+concrete quads. Let M be the set of all mappings, then function
+eval can then be defined as:
+
+
+eval : M  R
+
+[m.f (l)](m.P )
+
+eval(m) =
+
+lm.L
+
+Implementation. The RDF generation approach is implemented
+in the Sparqlify-CSV tool which is part of the Sparqlify project.
+This project also features a novel mapping language for expressing
+mappings between tabular and RDF representations, namely Sparq-
+lify-ML. An example Sparqlify-ML view definition is shown in
+Listing 1.
+
+Listing 1: A simple view definition that creates URIs and plain
+literals from the first and second column of a table respectively.
+
+Construct {
+
+1 Prefix ex: <http://example.org/>
+2 Create View Template person-mapping As
+
+
+?s = uri(concat(ex:, ?1))
+?n = plainLiteral(?2)
+
+ex:Person ;
+?n
+
+ex:name
+
+?s
+
+With
+
+It is noteworthy, that this syntax closely follows the previously introduced formal model: the Construct part corresponds to Q, the
+With part to f, and the logical table L is constructed from a tabular
+data source, such as a CSV file, that is specified as a command
+line argument for Sparqlify-CSV. Additionally, the Sparqlify-ML
+grammar re-uses many production rules of the original SPARQL
+1.0 grammar11 as building blocks, which significantly simplified the
+implementation of the language.
+
+In general, the mapping f can be arbitrarily implemented. However,
+Sparqlify was originally designed for SPARQL to SQL rewriting and
+thus, at present, only allows f to be defined in terms of expressions
+making use of a limited number of operator symbols and function
+names. In general, each canonical table can be seen as an SQL
+table. Expressions specifies the RDF term type to generate from the
+underlying SQL expression.
+
+Listing 2: Excerpt of valid expressions for the Sparqlify-ML WITH
+part. Note that the same notion is used for column references and
+SPARQL variables
+10http://www.w3.org/TR/sparql11-query/
+11http://www.w3.org/TR/rdf-sparql-query/
+
+108: (var = rdfTermCtorExpr)* ;
+
+: BNODE ( sqlExpr )
+| URI ( sqlExpr )
+| PLAINLITERAL ( sqlExpr (, sqlExpr)? )
+| TYPEDLITERAL ( sqlExpr , sqlExpr ) ;
+
+1 withPart
+
+
+4 // plainLiteral: (value, optional languageTag)
+5 // typedLiteral: (value, datatype)
+6 rdfTermCtorExpr
+
+
+12 sqlExpr
+
+
+19 columnRef
+
+: sqlLiteral
+| columnRef
+| CONCAT ( sqlExpr )
+| URLENCODE ( sqlExpr )
+| URLDECODE ( sqlExpr ) ;
+
+: ? NAME ;
+
+These expressions, as the name suggest, are used for constructing
+RDF terms from literals, function symbols and column references
+to a logical table.
+
+In the future we could distinguish between ETL and SPARQL-SQL
+rewriting profiles, and allow more powerful expressions and transformations in the former case.
+
+5. USER-DRIVEN CONVERSION FRAME-
+
+The completely automatic RDF transformation as well as the detection and correction of tabular data deviations is not feasible.
+Therefore, we devise an approach where the effort is shared between
+machines and human users. Our mapping authoring environment is
+based on the popular MediaWiki12 system. The resulting mapping
+wiki located at wiki.publicdata.eu operates together with Public-
+Data.eu and helps users to map and convert tabular data to RDF in a
+meaningful way.
+
+To leverage the wisdom of the crowd, mappings are created automatically first and can then be revised by human users. Thus, users
+improve mappings by correcting errors of the automatic conversion
+and the cumbersome process of creating mappings from scratch can
+be avoided in most cases. In order to realize the automatic conver-
+sion, our implementation downloads and cleans resources available
+on PublicData.eu. In a next step it extracts the header of the tabular data file, creates a default mapping automatically and converts
+the data based on this mapping to RDF using Sparqlify-CSV as described in the previous section. Finally, a page on wiki.publicdata.eu
+is created for each resource containing the mappings, links to rerun
+the transformation routine and download links for the resulting RDF
+files. An overview of the entire application is depicted in Figure 1.
+
+At the time of writing PublicData.eu contains 12,255 CSV resources.
+Our automatic transformation crawls these CSV resources (we work
+on extending our implementation to be able to deal with other tabular
+data formats such as XLS). 2,060 (16.8%) of the CSV resources
+were not available due to response time-outs, server errors or missing
+files. 218 (1.78%) resources have invalid URIs (e.g. URLs starting
+with "ttp" or "hhttp", containing typos or trailing whitespace). 609
+(4.97%) resources do not contain tabular data in the CSV format.
+81 (0.66%) resources contain several tables inside one archive file,
+
+12http://www.mediawiki.org/
+
+CSV resources
+HTTP status code 200
+HTTP status code 4xx or 5xx
+Broken links
+HTML / XML pages
+Archives containing one file
+Archives with more than one file
+XLS / XLSX files
+Torrent files
+Other problems
+CSV resources after validation
+Amount of data
+
+
+33 GB
+
+Table 4: CSV data collection and cleaning summary.
+
+which makes it difficult to create an explicit identifier for the given
+resource. The crawl run statistics are summarized in Table 4.
+
+The second step after validation is the automatic creation of the
+default mapping and conversion to RDF. In order to obtain an
+RDF graph from a table T we essentially use the table as class
+approach [2] (as formally described in the last section), which generates triples as follows: subjects are generated by prefixing each
+rows id (in the case of CSV files this by default is the line number)
+with the corresponding CSV resource URL. The headings become
+properties in the ontology name space. The cell values then become
+the objects. Note that we avoid inferring classes from the CSV file
+names, as the file names too often turned out to be simply labels
+rather than meaningful type names. Listing 3 shows the default
+mapping expressed in Sparqlify-ML syntax.
+
+Listing 3: Sparqlify-ML default mapping. Note that ?rowId and
+?headingName{index} are special variable names that get assigned appropriate values by the Sparqlify-CSV engine.
+
+Construct {
+
+?s
+
+1 Prefix pdd: <http://data.publicdata.eu/>
+2 Prefix pdo: <http://wiki.publicdata.eu/ontology/>
+3 Create View Template DefaultMapping As
+
+
+?s = uri(concat(pdd:,csv-path/,?rowId))
+?p1 = uri(concat(pdo:, ?headingName1))
+?o1 = plainLiteral(?1)
+?p2 = ...
+
+?p1 ?o1 ;
+?p2 ?o2 ...
+
+} With
+
+Conversion to RDF is performed by the Sparqlify-CSV. Although
+the Sparqlify-ML syntax should not pose any problems to users familiar with SPARQL, it is yet too complicated for novice users and
+therefore less suitable for being crowd-sourced. To even lower the
+barrier, we define a simplified mapping format, which releases users
+from dealing with the Sparqlify-ML syntax. Our format is based
+on MediaWiki templates and thus seamlessly integrates with Medi-
+aWiki. We created a template called RelCSV2RDF, which defines
+the following parameters (line numbers correspond to Figure 2):
+
+mines the position of header row(s);
+
+must be unique within the scope of one resource;
+
+ (line 13) name: a string, which identifies the mapping and
+ (line 14) header: an integer or an integer range, which deter-
+ (line 15) omitRows and omitCols: integer ranges, which determine rows and columns to be omitted from the conversion;
+ (line 17) delimiter: a symbol, defining the column delimiter
+ (lines 18-26) col1, col2, col3 etc.: strings, which specify RDF
+properties to be used for the conversion of each table column.
+
+for the tabular data file;
+
+109Figure 1: Overall architecture of our CSV2RDF extension for PublicData.eu.
+
+= default-mapping
+
+1 {{CSV2RDFHeader}}
+
+3 ...
+
+5 {{RelCSV2RDF
+
+
+20 }}
+
+| name
+| header
+
+| omitRows = -1
+| omitCols = -1
+| delimiter =
+| col1 = Department Family
+| col2 = Entity
+| col3 = Payment Date
+| col4 = Expense Type
+| col5 = Cost Centre Name
+| col6 = Supplier
+| col7 = Transaction No.
+| col8 = Line Amount
+| col9 = Invoice Total
+
+Figure 2: Dataset resource page on wiki.publicdata.eu with the mapping definition (left) and the wiki text mark up for the mapping (right).
+
+CSV files using the same column header will produce RDF containing the same properties. We argue, that in the majority of the
+cases this behavior is desirable, especially, if multiple datasets were
+exported to CSV from the same backend system and have the same
+structure and headers. However, this automatic mapping can also
+result in incorrect property identification in cases, where columns in
+CSV files have the same header label, but different meaning. Our
+crowd-sourcing approach enables to quickly resolve such problems
+once identified.
+
+At the end of the transformation a page is created for each resource
+on the mappings wiki at wiki.publicdata.eu (e.g. Figure 2). The
+resource page comprises links to the corresponding resource and
+dataset on PublicData.eu as well as one or several mappings. Each
+mapping is rendered using the RelCSV2RDF template into a humanreadable description of the parameters including links for transformation rerun and RDF download.
+
+The mapping wiki uses the Semantic MediaWiki [6] (SMW) exten-
+sion, which enables semantic annotations and embedding of search
+queries over these annotation within wiki pages. The RelCSV2RDF
+template utilizes SMW and automatically attaches semantic links
+(using has_property) from mappings to respective property
+pages. This allows users to navigate between dataset resources
+which use the same properties, that is dataset resources are connected through the properties used in their mappings. For each
+property we created a page in the mapping wiki with the list of
+dataset resources, that utilize the corresponding property. In order
+to navigate to the wiki page every dataset and resource page on
+PublicData.eu has an RDF link as depicted on Figure 3.
+
+6. RESULTS
+We downloaded and cleaned 9,370 CSV files, that consume in total
+33 GB of disk space. The distribution of the file sizes in Figure 4
+shows, that the vast majority (i.e. 85%) of the published datasets
+are less than 100 kB in the size. A small amount of the resources at
+PublicData.eu (i.e. 14.5%) are between 100 kB and 50 MB. Only
+44 resources (i.e. 0.5%) are large and very large files above 50 MB,
+with the largest file comprising 3.3 GB. As a result, the largest 41 out
+of the 9,370 converted RDF resources account for 7.2 (i.e. 98.5%)
+out of overall 7.3 billion triples.
+
+During the automatic conversion our framework created 9,370 wiki
+pages on the mappings wiki. The has_property property is used
+80,676 times and maps to 13,490 distinct properties. The 10 most
+used properties are:
+
+Property
+Entity
+Supplier
+Amount
+Date
+Expense Type
+Expense Area
+Department Family
+Transaction Number
+Transaction number
+Expense type
+
+Occurrences
+
+
+The results of the transformation process are summarized in Table 5.
+Our efficient Sparqlify RDB2RDF transformation engine is capable
+to process CSV files and generate approx. 4.000 triples per second
+on a quad core 2.2 GHz machine. As a result, we can process CSV
+
+ckanAggregated EU Open Data Cataloguedownloads and cleans up resourcesMappings WikiCSVRDFCSV2RDF ServerSparqlify, Sparqlify-MLcreates default mappingsedit mappingscreate mappingsretransform dataexploit dataCrowd-sourcingLinkedCTReactomeTaxonomyKEGGPubMedGeneIDPfamUniProtOMIMPDBSymbolChEBIDailyMedDisea-someCASHGNCInterProDrugBankUniParcUniRefProDomPROSITEGeneOntologyHomoloGenePubChemMGIUniSTSGEOSpeciesJamendoBBCProgrammesMusic-brainzMagna-tuneBBCLater +TOTPSurgeRadioMySpaceWrapperAudio-ScrobblerLinkedMDBBBCJohnPeelBBCPlaycountDataGov-TrackUSCensusDatarieseGeo-nameslingvojWorldFact-bookEuro-statflickrwrapprOpenCalaisRevyuSIOCSitesDoap-spaceFlickrexporterFOAFprofilesCrunchBaseSem-Web-CentralOpen-GuidesWiki-companyQDOSPubGuideRDFohlohW3CWordNetOpenCycUMBELYagoDBpediaFreebaseVirtuosoSpongerDBLPHannoverIRITToulouseSWConferenceCorpusRDF BookMashupProjectGuten-bergDBLPBerlinLAAS-CNRSBuda-pestBMEIEEEIBMResexPisaNew-castleRAE2001CiteSeerACMDBLPRKBExplorereprintsLIBRISSemanticWeb.orgEurecomRKBECSSouth-amptonCORDISReSISTProjectWikiNationalScienceFoundationECSSouth-amptonLinkedGeoDataBBC MusicPublicData.eu Usersreads RelCSV2RDFData.gov.ukOffeneDatenaggregation with dcat......Data Publica......110Figure 3: Dataset description page at PublicData.eu showing the integration with the mapping wiki (highlighted red).
+
+maintains a github wiki page13 listing as many as 37 tools for this
+purpose. These tools differ in supported input formats (CSV, Excel,
+XML), mapping language (syntax, expressivity) and implementation programming language (e.g. Java, XSLT, PHP). Specifically
+for tabular data, one of the most advanced tools in this area is Ta-
+bles14, which offers the Tables Language. This language is similar
+to Sparqlify-ML in the sense that it re-uses syntactic constructs
+already known from SPARQL. However, it introduces additional
+features specifically for CSV-RDF transformations, such as loops for
+iterating over CSV files in ZIP archives and workbooks and pages in
+Excel spreadsheets. An effort to standardize a mapping language for
+expressing the conversion of data stored in relational databases (of
+which CSV files can be seen as a special case) to RDF is R2RML15
+which recently became a W3C recommendation. A closely related
+recommendation is the Direct Mapping16, which standardizes rules
+for obtaining default RDF graphs from relational data in absence
+of a user defined mapping. In regard to the generation of RDF
+terms for tables, there is strong evidence for Sparqlify-ML to feature
+the same expressivity as R2RML: For every R2RML test case17 it
+was possible to manually create corresponding Sparqlify-ML view
+definitions yielding the expected output.
+
+Lifting and linking Open Government Data. The DataGov Wiki project18 is the one of the largest initiatives with regard
+to the publishing of Linked Open Government Data (LOGD). At
+the time of writing the Data-Gov Wiki hosts 417 RDF datasets,
+covering the content of 703 out of the 5,762 datasets released at
+data.gov and contributing 6.46 billion RDF triples to the LOD
+cloud [3, 4]. The conversion process is described in [7] and divided
+into two steps: (1) row-based raw conversion to RDF and (2) RDF
+enhancement. In the first step well-formed CSV files with headers
+are automatically converted to RDF without linking entities to the
+existing ontologies. The second step is supervised by experts and
+results in an enrichment of the converted RDF without deleting the
+automatically converted triples. Our approach differs from the one
+followed by the Data-Gov Wiki in that we base our conversion on a
+formalized canonical tabular data model and employ a deliberately
+simple mapping language embedded in Semantic Wiki pages in
+
+13https://github.com/timrdf/csv2rdf4lod-automation/wiki/
+Alternative-Tabular-to-RDF-converters
+14http://idi.fundacionctic.org/tabels/
+15http://www.w3.org/TR/r2rml/
+16http://www.w3.org/TR/rdb-direct-mapping
+17http://www.w3.org/2001/sw/rdb2rdf/test-cases/
+18http://data-gov.tw.rpi.edu/
+
+Figure 4: File size distribution of CSV files available at Public-
+Data.eu.
+
+CSV resources converted
+CSV resources volume
+Number of generated triples
+Number of entity descriptions
+Avg. number of properties per entity
+Generated default mappings
+Overall properties
+Distinct properties
+
+33 GB
+7.3 billions
+154 millions
+
+
+Table 5: Transformation results summary.
+
+files up to a file size of 50MB within a minute. This enables us to
+re-transform the vast majority of CSV files on demand, once a user
+revised a mapping. For files larger than 50MB, the transformation
+is currently queued and processed in batch mode.
+
+7. RELATED WORK
+We can roughly classify related work into approaches for tabular
+data to RDF conversion, lifting and linking open governmental data
+as well as tabular data extraction.
+
+Tabular data to RDF conversion. There is a plethora of
+work on tools for converting various data formats to RDF. Tim Lebo
+
+Navigates to the mapping wiki111order to facilitate the crowd-sourcing of mappings.
+In [10] the
+authors criticize the naive automatic conversion used by the DataGov Wiki. They propose an approach for automatic mapping of
+column headers to classes from an appropriate ontology, linking
+cell values to entities and discovering or identifying relationships
+between columns. However, the work is restricted only to wellformed CSV, while our mapping language aims to also deal with
+deviations from canonical tabular data. In [9] the authors represent
+a Government Linked Data publishing pipeline, based on Google
+Refine. However, Google Refine is not a collaborative platform
+and thus the publishing process described in the paper can not be
+crowd-sourced easily.
+
+Tabular data extraction. A methodology for automatic transformation and generation of semantic (F-Logic) frames from tablelike structures is presented in [11]. The authors implement the
+TARTAR (Transforming ARbitrary TAbles into fRames) system,
+which processes HTML tables. The methodology is based upon the
+table model described by Hurst in [5] and distinguish three types of
+the tables: (1) 1-dimensional tables, (2) 2-dimensional tables and (3)
+complex tables. The authors point out some deviations (H-Duplicate,
+H-Multiple-column-cell, D-Multiple-column-cell, T-Multiple) of
+the tabular data as features of complex tables, but do not provide
+a formalization. Some of the deviations are also described on the
+Data-Gov Wiki.19
+
+8. CONCLUSIONS AND FUTURE WORK
+In this article we presented a formalization of tabular data as well
+as its mapping and transformation to RDF. We implemented our
+approach in such a way, that the mapping creation can be easily
+crowd-sourced in order to make the large-scale transformation of
+tabular data registered at Open Data catalogs such as PublicData.eu
+possible.
+
+Our approach is currently only capable to deal with one dimensional
+tabular data for which RDF entities are generated per row. However,
+statistical data is represented in tables with a region comprising
+additional dimensions on the left-hand side. For such tables RDF
+entities have to be created for every cell. Also, an additional dimension in a table results in additional possible deviations, which have
+to be identified and classified. The automatic header recognition in
+the CSV files is one of the most important problems. According
+to our analysis 20% of the CSV files have T-Metadata deviations,
+where metadata is embedded before the table. In such cases, the
+location of the header is currently not properly determined. Also,
+3% of the CSV files have T-Multiple deviation, which aggravates
+the identification of the header and data.
+
+The work on crowdsourcing the semantification of data portals described in this article is only the first step in a larger research and
+development agenda. Ultimately, we envision to semantically enrich
+and interlink and integrate data portals into a distributed human
+development data warehouse. Just as data warehouses and business
+intelligence are now integral parts of every larger enterprise, data
+portals can be the nucleus for a human development data warehouse.
+In such a human development data warehouse, a large number of
+statistical data and indicators are published by different organizations that could be integrated automatically or semi-automatically
+in order to obtain a more interactive picture of the development in a
+certain region, country or even on the globe. Currently, the indica-
+
+19http://data-gov.tw.rpi.edu/wiki/Category:Issue_Report
+
+tors (e.g. the Human Development Index) are very coarse-grained,
+mainly referring to countries. By integrating semantified groundtruth data made available through data portals, such indicators can
+be computed on a much more fine-grained level, such as for cities
+and regions as well as with regard to different groups of people (e.g.
+per gender, ethnicity, education level). Policy making would be
+based on more rational, transparent and observable decisions as it is
+advocated by evidence-based policy.
+
+Acknowledgment
+We would like to thank Open Knowledge Foundations Andreea
+Bonea, Sean Hammond and John Martin for their help with the
+PublicData.eu integration. This work was supported by a grant from
+the European Unions 7th Framework Programme provided for the
+project LOD2 (GA no. 257943).

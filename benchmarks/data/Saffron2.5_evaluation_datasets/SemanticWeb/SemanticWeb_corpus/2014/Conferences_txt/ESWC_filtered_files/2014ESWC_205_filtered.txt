@@ -1,0 +1,1403 @@
+HiBISCuS: Hypergraph-Based Source Selection
+
+for SPARQL Endpoint Federation
+
+Muhammad Saleem and Axel-Cyrille Ngonga Ngomo
+
+Universit at Leipzig, IFI/AKSW, P.O. 100920, 04009 Leipzig, Germany
+
+{lastname}informatik.uni-leipzig.de
+
+Abstract. Efficient federated query processing is of significant importance to
+tame the large amount of data available on the Web of Data. Previous works have
+focused on generating optimized query execution plans for fast result retrieval.
+However, devising source selection approaches beyond triple pattern-wise source
+selection has not received much attention. This work presents HiBISCuS, a novel
+hypergraph-based source selection approach to federated SPARQL querying. Our
+approach can be directly combined with existing SPARQL query federation engines to achieve the same recall while querying fewer data sources. We extend
+three well-known SPARQL query federation engines with HiBISCus and compare our extensions with the original approaches on FedBench. Our evaluation
+shows that HiBISCuS can efficiently reduce the total number of sources selected
+without losing recall. Moreover, our approach significantly reduces the execution
+time of the selected engines on most of the benchmark queries.
+
+Keywords: #eswc2014Saleem.
+
+1 Introduction
+
+The Web of Data is now a large compendium of interlinked data sets from multiple
+domains with large datasets [12] being added frequently [3]. Given the complexity of
+information needs on the Web, certain queries can only be answered by retrieving results contained across different data sources (short: sources). Thus, the optimization
+of engines that support this type of queries, called federated query engines, is of central importance to ensure the usability of the Web of Data in real-world applications.
+One of the important optimization steps in federated SPARQL query processing is the
+efficient selection of relevant sources for a query. To ensure that a recall of 100% is
+achieved, most SPARQL query federation approaches [4,8,10,14,15,11] perform triple
+pattern-wise source selection (TPWSS). The goal of the TPWSS is to identify the set of
+relevant (also called capable, formally defined in section 3) sources against individual
+triple patterns of a query [11]. However, it is possible that a relevant source does not
+contribute to the final result set of the complete query. This is because the results from
+a particular data source can be excluded after performing joins with the results of other
+triple patterns contained in the same query. An overestimation of such sources increases
+the network traffic and can significantly affect the overall query processing time.
+
+An example for such a query is SSQ1 in Figure 1. A TPWSS that retrieves all relevant sources for each individual triple pattern would lead to all sources in the example
+being queried. Yet, the complete result set of SSQ1 can be computed without querying
+
+V. Presutti et al. (Eds.): ESWC 2014, LNCS 8465, pp. 176191, 2014.
+c Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+@prefix ns1:<http://auth1/scma/>.
+@prefix ns2:<http://auth2/scma/>.
+@prefix ns1 2:<http://auth12/scma/>.
+@prefix ns1 3:<http://auth13/scma/>.
+@prefix cp:<http://common/scma/>.
+ns1 3:s1 cp:p1 ns1 3:o11.
+ns1:s2 cp:p3 o12.
+ns1 2:s3 cp:p4 cp:o13.
+ns1 2:s3 cp:p5 o14.
+ns2:o21 cp:p2 o15.
+ns1:p3 cp:p6 cp:p8 .
+
+@prefix ns2:<http://auth2/scma/>.
+@prefix ns3:<http://auth3/scma/>.
+@prefix ns1 3:<http://auth13/scma/>.
+@prefix ns1 2:<http://auth12/scma/>.
+@prefix cp:<http://common/scma/>.
+ns1 2:s1 cp:p1 ns2:o21 .
+ns1 2:s3 cp:p3 o22 .
+ns2:s4 cp:p5 o23 .
+cp:p2 cp:p6 cp:p7 .
+ns1 2:s1 cp:p0 ns1 3:o25 .
+ns3:s3 cp:p9 ns3:o26.
+
+@prefix ns2:<http://auth2/scma/>.
+@prefix ns3:<http://auth3/scma/>.
+@prefix ns1 3:<http://auth13/scma/>.
+@prefix cp:<http://common/scma/>.
+ns1 3:s1 cp:p2 o31 .
+ns3:s1 cp:p3 o32 .
+ns3:s2 cp:p4 cp:o13 .
+ns1 3:s5 cp:p5 o34.
+ns2:o21 cp:p3 o35.
+ns3:s3 cp:p9 ns1 3:o25 .
+ns3:s4 cp:p0 ns2:o25 .
+
+(a) Dataset d1
+
+(b) Dataset d2
+
+(c) Dataset d3
+
+PREFIX cp: <http://common/schema/>
+SELECT * WHERE {
+?s cp:p1 ?v1.
+?s cp:p2 ?v2.}
+# TP. sources = 4
+# Optimal TP. sources = 2
+# Results = 1
+
+d1 d2
+d1 d3
+
+PREFIX cp: <http://common/schema/>
+SELECT * WHERE {
+?s cp:p1 ?v1 .
+?v1 cp:p3 ?v2 .}
+# TP. sources = 5
+# Optimal TP. sources = 2
+# Results = 1
+
+d1 d2
+d1 d2 d3
+
+PREFIX cp: <http://common/schema/>
+PREFIX ns3:<http://auth3/schema/>
+SELECT * WHERE {
+ns3:s3 cp:p9 ?v0.
+?s1 cp:p0 ?v0.
+?s1 cp:p1 ?v1 .
+?v1 cp:p2 ?v2 .
+?v1 cp:p3 o35}
+# TP. sources = 9
+# Optimal TP. sources = 5
+# Results = 1
+
+d2 d3
+d2 d3
+d1 d2
+d1 d3
+d3
+
+(d) Star-shaped query SSQ1
+
+(e) Path-shaped query PSQ2
+
+(f) Hybrid query HSQ3
+
+Fig. 1. Motivating Examples. #TP is the total number of triple pattern-wise sources selected.
+The relevant sources for each are shown next to each triple pattern. The sources marked in red
+contribute to the final query result set.
+
+d2 due to the type of join used in the query. We thus propose a novel join-aware approach to TPWSS dubbed HiBISCuS. Our approach goes beyond the state of the art by
+aiming to compute the sources that actually contribute to the final result set of an input
+query and that for each triple pattern. To the best of our knowledge, this join-aware approach to TPWSS has only been tackled by an extension of the ANAPSID framework
+presented in [9]. Yet, this extension is based on evaluating namespaces and sending
+ASK queries to data sources at runtime. In contrast, HiBISCuS relies on an index that
+stores the authorities of the resource URIs1 contained in the data sources at hand. Our
+approach proves to be more time-efficient than the ANAPSID extension as shown by
+our evaluation in Section 5.
+
+HiBISCuS addresses the problem of source selection by several innovations. Our
+first innovation consists of modelling SPARQL queries as a sets of directed labelled
+hypergraphs (DLH). Moreover, we rely on a novel type of summaries which exploits the
+fact that the resources in SPARQL endpoints are Uniform Resource Identifiers (URIs).
+Our source selection algorithm is also novel and consists of two steps. In a first step, our
+approach labels the hyperedges of the DLH representation of an input SPARQL query
+q with relevant data sources. In the second step, the summaries and the type of joins
+in q are used to prune the edge labels. By these means, HiBISCuS can discard sources
+(without losing recall) that are not pertinent to the computation of the final result set of
+the query. Overall, our contributions are thus as follows:
+
+1. We present a formal framework for modelling SPARQL queries as directed labelled
+
+hypergraphs.
+
+2. We present a novel type of data summaries for SPARQL endpoints which relies on
+
+the authority fragment of URIs.
+
+1 http://tools.ietf.org/html/rfc3986
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+3. We devise a pruning algorithm for edge labels that enables us to discard irrelevant
+
+sources based on the types of joins used in a query.
+
+4. We evaluate our approach by extending three state-of-the-art federate query engines
+(FedX, SPLENDID and DARQ) with HiBISCuS and comparing these extensions
+to the original systems. In addition, we compare our most time-efficient extension
+with the extension of ANAPSID presented in [9]. Our results show that we can reduce the number of source selected, the source selection time as well as the overall
+query runtime of each of these systems.
+
+The structure of the rest of this paper is as follows: we first give a brief overview of
+federated query engines. Then, we present our formalization of SPARQL queries as
+directed labelled hypergraphs. The algorithms underlying HiBISCuS are then explained
+in detail. Finally, we evaluate HiBISCuS against the state-of-the-art and show that we
+achieve both better source selection and runtimes on the FedBench [13] SPARQL query
+federation benchmark.
+
+2 Related Work
+
+The approaches related to query federation over the Web of Data can be divided into
+three main categories (see Table 1 obtained from our public survey results2).
+
+(1) Query federation approaches over multiple SPARQL endpoints make use of the
+SPARQL endpoints due to which they provide a time-efficient solution to SPARQL
+query federation. However, the RDF data needs to be exposed as SPARQL endpoints.
+Due to which they are unable to deal with whole LOD. (2) Query federation over
+Linked Data do not require the data to be exposed via SPARQL endpoints. The only
+requirement is that it should follow the Linked Data principles.3 Due to URI lookups at
+runtime, these type of approaches are commonly slower than the previous type of ap-
+proaches. (3) Query federation approaches on top of Distributed Hash Tables store the
+RDF data on top of Distributed Hash Tables (DHTs). This is a space-efficient solution
+and can reduce the network cost as well. However, an important fraction of the LOD
+datasets is not stored using DHTs.
+
+The source selection approaches used in each of the categories can further divided
+into three sub-categories(see Table 1). (1)Catalog/index-assisted source selection only
+makes use of an index/data catalog (also called data summaries) to perform TPWSS.
+The result completeness (100% recall) must be ensured by keeping the index up-to-
+date. (2)Catalog/index-free source selection approaches do not make use of any prestored index and can thus always compute complete and up-to-date records. However,
+they commonly have a longer query execution time due to the extra processing required
+for collecting on-the-fly statistics (e.g. SPARQL ASK operations). (3) Hybrid source
+selection approaches are a combination of the previous approaches.
+
+In this paper, we propose a novel hybrid source selection approach for SPARQL
+endpoint federation systems dubbed HiBISCuS. In contrast to the state of the art, HiBISCuS uses hypergraphs to detect sources that will not generate any relevant results
+
+2 Survey: http://goo.gl/iXvKVT, Results: http://goo.gl/CNW5UC
+3 http://www.w3.org/DesignIssues/LinkedData.html
+?
+
+?
+
+?
+Table 1. Classification of SPARQL federation engines. (SEF = SPARQL Endpoints Federation,
+DHT = DHT Federation, LDF = Linked Data Federation, Ctg. = Federation Type, FdX = FedX,
+SPL =SPLENDID, ADE = ADERIS, I.F = Index-free, I.O = Index-only, HB = Hybrid, C.A. =
+Code Availability, S.S.T. = Source Selection Type, I.U. = Index Update, NA = Not Applicable,
+(A+I) = SPARQL ASK and Index, (C+L) = Catalog and online discovery via Link-traversal,
+*only source selection approaches.).
+
+DAW* ANAPSID ADE DARQ LDQP WoDQA Atlas QTree* HiBISCus*
+[11]
+
+[1]
+
+[8]
+[10]
+SEF SEF
+
+[7]
+
+[2]
+[6]
+LDF DHT
+
+[5]
+-
+
+FedX LHD
+[15]
+[14]
+?
+
+?
+
+?
+[4]
+
+Ctg.
+C.A
+S.S.T I.F HB(A+I) HB(A+I) HB(A+I) HB(A+I)
+Cache
+I.U
+
+-
+
+I.O I.O HB(C+L) HB(A+I)
+
+I.O
+
+I.O
+
+HB(A+I)
+
+-
+
+both at triple-pattern level and at query level. By these means, HiBISCuS can generate
+better approximations of the sources that should be queried to return complete results
+for a given query.
+
+3 Preliminaries
+
+In the following, we present some of the concepts and notation that are used throughout this paper. RDF resources are identified by using a Unified Resource Identifier
+(URI). Each URI has a generic syntax consists of a hierarchical sequence of components namely the scheme, authority, path, query, and fragment4. For example, the prefix
+ns1 = <http : //auth1/scma/> used in Figure 1 consist of scheme http, authority
+auth1, and path scma. The details of the remaining two components are out of the
+scope of this paper. In the rest of the paper, we jointly refer to the first two components
+(path, authority) as authority of a URI.
+
+The standard for querying RDF is SPARQL.5 The result of a SPARQL query is called
+its result set. Each element of the result set of a query is a set of variable bindings. Federated SPARQL queries are defined as queries that are carried out over a set of sources
+D = {d1, . . . , dn}. Given a SPARQL query q, a source d  D is said to contribute to q
+if at least one of the variable bindings belonging to an element of qs result set can be
+found in d.
+Definition 1 (Relevant source Set). A source d  D is relevant (also called capable)
+for a triple pattern tpi  T P if at least one triple contained in d matches tpi.6 The
+relevant source set Ri  D for tpi is the set that contains all sources that are relevant
+for that particular triple pattern.
+
+For example, the set of relevant sources for the triple pattern <?s, cp:p1, ?v1> of
+SSQ1 is {d1, d2}. It is possible that a relevant source for a triple pattern does not con-
+4 URI syntax: http://tools.ietf.org/html/rfc3986
+5 http://www.w3.org/TR/rdf-sparql-query/
+6 The concept of matching a triple pattern is defined formally in the SPARQL specification
+
+found at http://www.w3.org/TR/rdf-sparql-query/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+tribute to the final result set of the complete query q. This is because the results computed from a particular source d for a triple pattern tpi might excluded while performing
+joins with the results of other triple patterns contained in the query q. For example, consider SSQ1. The results from d2 for <?s, cp:p1, ?v1> and d3 for <?s, cp:p2, ?v1>
+are excluded after performing the join between the results of the two triple patterns.
+Definition 2 (Optimal source Set). The optimal source set Oi  Ri for a triple pattern
+tpi  T P contains the relevant sources d  Ri that actually contribute to computing
+the complete result set of the query.
+
+For example, the set of optimal sources for the triple pattern <?s, cp:p2, ?v2> of
+SSQ1 is {d3}, while the set of relevant sources for the same triple pattern is {d1, d3}.
+Formally, the problem of TPWSS can then be defined as follows:
+
+Definition 3 (Problem Statement). Given a set D of sources and a query q, find the
+optimal set of sources Oi  D for each triple pattern tpi of q.
+Most of the source selection approaches [4,8,10,14,15] used in SPARQL endpoint federation systems only perform TPWSS, i.e., they find the set of relevant sources Ri for
+individual triple patterns of a query and do not consider computing the optimal source
+sets Oi. In this paper, we present an index-assisted approach for (1) the time-efficient
+computation of relevant source set Ri for individual triple patterns of the query and (2)
+the approximation of Oi out of Ri. HiBISCuS approximates Oi by determining and removing irrelevant sources from each of the Ri. We denote our approximation of Oi by
+RSi. HiBISCuS relies on directed labelled hypergraphs (DLH) to achieve this goal. In
+the following, we present our formalization of SPARQL queries as DLH. Subsequently,
+we show how we make use of this formalization to approximate Oi for each tpi.
+
+4 HiBISCuS
+
+In this section we present our approach to the source selection problem in details. We
+begin by presenting our approach to representing BGPs7 of a SPARQL query as DLHs.
+Then, we present our approach to computing lightweight data summaries. Finally, we
+explain our approach to source selection.
+
+4.1 Queries as Directed Labelled Hypergraphs
+
+An important intuition behind our approach is that each of the BGP in a query can be
+executed separately. Thus, in the following, we will mainly focus on how the execution of a single BGP can be optimized. The representation of a query as DLH is the
+union of the representations of its BGPs. Note that the representations of BGPs are
+kept disjoint even if they contain the same nodes to ensure that the BGPs are processed
+independently. The DLH representation of a BGP is formally defined as follows:
+
+Definition 4. Each basic graph patterns BGPi of a SPARQL query can be represented
+as a DLH HGi = (V, E, e, vt), where
+
+7 http://www.w3.org/TR/sparql11-query/#BasicGraphPatterns
+?
+
+?
+
+?
+{d1, d2}
+
+{d1, d3}
+
+?s
+
+cp:p1
+
+cp:p2
+
+?v1
+
+?v2
+
+Vs = {?s}, Vp = {cp:p1, cp:p2}, Vo = {?v1, ?v2},
+V = Vs  Vp  Vo = {?s, cp:p1, cp:p2, ?v1, ?v2},
+E = {e1, e2}, e1 = (?s, cp:p1, ?v1), e2 = (?s, cp:p2, ?v2),
+e(e1) = {d1, d2}, e(e2) = {d1, d3}.
+
+(a) SSQ1
+
+{d2, d3}
+
+ns3:s3
+
+{d2, d3}
+
+{d1, d2}
+
+?s1
+
+cp:p1
+
+?v1
+
+cp:p0
+{d1, d3}
+
+{d3}
+
+o35
+
+cp:p3
+
+cp:p9
+
+?v0
+
+cp:p2
+
+?v2
+
+Vs = {ns3:n3, ?s1, ?v1}, Vo = {?v0, ?v1, ?v2, o35}
+Vp = {cp:p9, cp:po, cp:p1, cp:p2, cp:p3}
+V = Vs  Vp  Vo} = {ns3:n3, ?s1, ?v1, cp:p9, cp:po,
+cp:p1, cp:p2, cp:p3, ?v0, v2, o35}
+E = {e1, e2, e3, e4, e5}
+e1 = (ns3:s3, cp:p9, ?v0), e2 = (?s1, cp:p0, ?v0),
+e3 = (?s1, cp:p1, ?v1), e4 = (?v1, cp:p2, ?v2)
+e5 = (?v1, cp:p3, o35), e(e1) = {d2, d3}, e(e2) =
+{d2, d3}, e(e3) = {d1, d2}, e(e4) = {d1, d3}, e(e5) = {d3}
+
+(b) HSQ3
+
+star
+
+simple
+
+hybrid
+
+sink
+
+Tail of hyperedge
+
+Fig. 2. Labelled hypergraph of query SSQ1 and query HSQ3 of Figure 1
+
+Vp the set of all predicates in HGi and Vo the set of all objects in HGi;
+
+1. V = Vs  Vp  Vo is the set of vertices of HGi, Vs is the set of all subjects in HGi,
+2. E ={e1,. . . , et} V 3 is a set of directed hyperedges (short: edge). Each edge e=
+(vs,vp,vo) emanates from the triple pattern <vs, vp, vo> in BGPi. We represent
+these edges by connecting the head vertex vs with the tail hypervertex (vp, vo). In
+addition, we use Ein(v)  E and Eout(v)  E to denote the set of incoming and
+outgoing edges of a vertex v;
+3. e : E  2D is a hyperedge-labelling function. Given a hyperedge e  E, its
+edge label is a set of sources Ri  D. We use this label to the sources that
+should be queried to retrieve the answer set for the triple pattern represented by the
+hyperedge e;
+4. vt is a vertex-type-assignment function. Given an vertex v  V , its vertex type can
+be star, path, hybrid, or sink if this vertex participates in at least one join. A
+star vertex has more than one outgoing edge and no incoming edge. path vertex
+has exactly one incoming and one outgoing edge. A hybrid vertex has either more
+than one incoming and at least one outgoing edge or more than one outgoing and
+at least one incoming edge. A sink vertex has more than one incoming edge and
+no outgoing edge. A vertex that does not participate in any join is of type simple.
+
+Figure 2a shows the hypergraph of SSQ1 and Figure 2b represents the hypergraph of
+HSQ3 of motivating example given in Figure 1. We can now reformulate our problem
+statement as follows:
+
+Definition 5 (Problem Reformulation). Given a query q represented as a set of hypergraphs {HG1, . . . , HGx}, find the labelling of the hyperedges of each hypergraph
+HGi that leads to an optimal source selection.
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+Listing 1.1. HiBISCuS example. Prefixes are ignored for simplicity
+
+[ ] a ds : S e r v i c e
+
+;
+
+ds : e n d p o i n t U r l <h t t p : / / d b p ed i a . o r g / s p a r q l> ;
+ds : c a p a b i l i t y
+
+[ ds : p r e d i c a t e
+
+d b p ed i a : kingdom ;
+
+ds : s b j A u t h o r i t y <h t t p : / / d b p ed i a . o r g/> ;
+ds : o b j A u t h o r i t y <h t t p : / / d b p ed i a . o r g/> ;
+]
+
+;
+
+ds : c a p a b i l i t y
+
+[ ds : p r e d i c a t e
+
+r d f : t y p e ;
+
+ds : s b j A u t h o r i t y <h t t p : / / d b p ed i a . o r g/> ;
+ds : o b j A u t h o r i t y
+]
+
+;
+
+owl : Thing , d b p ed i a : S t a t i o n ; #we s t o r e
+
+a l l
+
+d i s t i n c t
+
+c l a s s e s
+
+ds : c a p a b i l i t y
+
+d b p ed i a : p o s t a l C o d e ;
+
+[ ds : p r e d i c a t e
+ds : s b j A u t h o r i t y <h t t p : / / d b p ed i a . o r g/> ;
+#No o b j A u t h o r i t y as
+]
+
+;
+
+t h e o b j e c t v a l u e f o r d b p ed i a : p o s t a l C o d e i s
+
+s t r i n g
+
+4.2 Data Summaries
+
+HiBISCuS relies on capabilities to compute data summaries. Given a source d, we
+define a capability as a triple (p, SA(d, p), OA(d, p)) which contains (1) a predicate
+p in d, (2) the set SA(d, p) of all distinct subject authorities (ref. section 3) of p in
+d and (3) the set OA(d, p) of all distinct object authorities of p in d. In HiBISCuS, a
+data summary for a source d  D is the set CA(d) of all capabilities of that source.
+Consequently, the total number of capabilities of a source is equal to the number of
+distinct predicates in it.
+
+The predicate rdf:type is given a special treatment: Instead of storing the set of
+all distinct object authorities for a capability having this predicate, we store the set of
+all distinct class URIs in d, i.e., the set of all resources that match ?x in the query
+?y rdf:type ?x. The reason behind this choice is that the set of distinct classes used
+in a source d is usually a small fraction of the set of all resources in d. Moreover, triple
+patterns with predicate rdf:type are commonly used in SPARQL queries. Thus, by
+storing the complete class URI instead of the object authorities, we might perform more
+accurate source selection. Listing 1.1 shows an example of a data summary. In the next
+section, we will make use of these data summaries to optimize the TPWSS.
+
+4.3 Source Selection Algorithm
+
+Our source selection comprise two steps: given a query q, we first label all hyperedges
+in each of the hypergraphs which results from the BGPs of q, i.e., we compute e(ei) for
+each ei  Ei in all HGi  DHG. We present two variations of this step and compare
+them in the evaluation section. In a second step, we prune the labels of the hyperedges
+assigned in the first step and compute RSi  Ri for each ei. The pseudo-code of our
+approaches is shown in Algorithms 1, 2 (labelling) as well as 3 (pruning).
+
+Labelling Approaches. We devised two versions of our approach to the hyperedge
+labelling problem, i.e., an ASK-dominant and an index-dominant version. Both take the
+set of all sources D, the set of all disjunctive hypergraphs DHG of the input query q and
+the data summaries HiBISCuSD of all sources in D as input (see Algorithms 1,2).
+?
+
+?
+
+?
+hypergraphs of a query, HiBISCuSmaries of sources
+
+s = subjvertex(ei); p = predvertex(ei); o = objvertex(ei);
+sa = subjauth(s); oa = objauth(o); //can be null i.e. for unbound s, o
+if !bound(s)  !bound(p)  !bound(o) then
+else if bound(p) then
+
+Algorithm 1. ASK-dominant hybrid algorithm for labelling all hyperedges of each
+disjunctive hypergraph of a SPARQL query
+Require: D= {d1, . . . , dn}; DHG = {HG1, . . . , HGx}; HiBISCuSD //sources, disjunctive
+1: for each HGi  DHG do
+E = hyperedges (HGi)
+2:
+for each ei  E do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23:
+24: end for
+25: return DHG //Set of labelled disjunctive hypergraphs
+
+e(ei) = D
+if p = rdf : type  bound(o) then
+else if !commonpredicate(p)  (!bound(s)  !bound(o)) then
+else
+
+if cachehit(s, p, o) then
+
+e(ei) = cachelookup(s, p, o)
+
+e(ei) = HiBISCuSDlookup(sa, p, oa)
+
+e(ei) = HiBISCuSDlookup(p, o)
+
+e(ei) = ASK(s, p, o, D)
+
+else
+
+end if
+
+end if
+
+else
+
+end if
+end for
+
+Repeat Lines 14-18
+
+They return a set of labelled disjunctive hypergraphs as output. For each hypergraph and
+each hyperedge, the subject, predicate, object, subject authority, and object authority are
+collected (Lines 2-5 of Algorithms 1,2). Edges with unbound subject, predicate, and
+object vertices (e.g e = (?s, ?p, ?o)) are labelled with the set of all possible sources D
+(Lines 6-7 of Algorithms 1,2). A data summary lookup is performed for edges with the
+predicate vertex rdf:type that have a bound object vertex. All sources with matching
+capabilities are selected as label of the hyperedge (Lines 9-10 of Algorithms 1,2).
+
+The ASK-dominant version of our approach (see Algorithm 1, Line 11) makes use of
+the notion of common predicates. A common predicate is a predicate that is used in a
+number of sources above a specific threshold value  specified by the user. A predicate
+is then considered a common predicate if it occurs in at least |D| sources. We make use
+of the ASK queries for triple patterns with common predicates. Here, an ASK query is
+sent to all of the available sources to check whether they contain the common predicate
+cp. Those sources which return true are selected as elements of the set of sources
+used to label that triple pattern. The results of the ASK operations are stored in a cache.
+Therefore, every time we perform a cache lookup before SPARQL ASK operations
+(Lines 14-18). In contrast, in the index-dominant version of our algorithm, an index
+lookup is performed if any of the subject or predicate is bound in a triple pattern.We
+will see later that the index-dominant approach requires less ASK queries than the ASKdominant algorithm. However, this can lead to an overestimation of the set of relevant
+sources (see section 5.2).
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+hypergraphs of a query, HiBISCuSmaries of sources
+
+s = subjvertex(ei); p = predvertex(ei); o = objvertex(ei);
+sa = subjauth(s); oa = objauth(o); //can be null i.e. for unbound s, o
+if !bound(s)  !bound(p)  !bound(o) then
+else if bound(s)  bound(p) then
+
+Algorithm 2. Index-dominant hybrid algorithm for labelling all hyperedges of each
+disjunctive hypergraph of a SPARQL query
+Require: D= {d1, . . . , dn}; DHG = {HG1, . . . , HGx}; HiBISCuSD //sources, disjunctive
+1: for each HGi  DHG do
+E = hyperedges (HGi)
+2:
+for each ei  E do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22: end for
+23: return DHG //Set of labelled disjunctive hypergraphs
+
+e(ei) = D
+if bound(p)  p = rdf : type  bound(o) then
+else
+
+e(ei) = HiBISCuSDlookup(p, o)
+
+e(ei) = HiBISCuSDlookup(sa, p, oa)
+
+e(ei) = cachelookup(s, p, o)
+
+e(ei) = ASK(s, p, o, D)
+
+if cachehit(s, p, o) then
+
+end if
+end for
+
+end if
+
+else
+
+else
+
+end if
+
+4.4 Pruning Approach
+
+The intuition behind our pruning approach is that knowing which authorities are relevant to answer a query can be used to discard triple pattern-wise (TPW) selected sources
+that will not contribute to the final result set of the query. Our source pruning algorithm
+(ref. Algorithm 3) takes the set of all labelled disjunctive hypergraphs as input and prune
+labels of all hyperedges which either incoming or outgoing edges of a star,hybrid,
+path, or sink node. Note that our approach deals with each BGP of the query separately (Line 1 of Algorithm 3).
+
+For each node v of a DLH that is not of type simple, we first retrieve the sets (1)
+SAuth of the subject authorities contained in the elements of the label of each outgoing edge of v (Lines 5-7 of Algorithm 3) and (2) OAuth of the object authorities
+contained in the elements of the label of each ingoing edge of v (Lines 8-10 of Algorithm 3). Note that these are sets of sets of authorities. For the node ?v1 of HSQ3
+in our running example (see Figure 3), we get SAuth = {auth13, auth2} for
+the ingoing edge and OAuth = {{auth13, auth2}, {auth2}} for the outgoing edges. Now we merge these two sets to the set A of all authorities. For node ?v1
+in HSQ3, A = {{auth13, auth2},{auth13, auth2},{auth2}}. The intersection I =
+of these elements sets is then computed. In our example,
+this results in I = {auth2}. Finally, we recompute the label of each hyperedge
+e that is connected to v. To this end, we compute the subset of the previous label
+
+aiA
+
+ai
+?
+
+?
+
+?
+SAuth = SAuth  {subjectauthories(e)}
+
+for each v  vertices(HGi) do
+if vt(v) = simple then
+SAuth = ; OAuth = ;
+for each e  Eout(v) do
+end for
+for each e  Ein(v) do
+OAuth = OAuth  {objectauthories(e)}
+end for
+A = SAuth  OAuth // set of all authorities
+I = A.get(1) //get first element of authorities
+for each a  A do
+I = I  a //intersection of all elements of A
+end for
+for each e  Ein(v)  Eout(v) do
+
+Algorithm 3. Hyperedge label pruning algorithm for removing irrelevant sources
+Require: DHG //disjunctive hypergraphs
+1: for each HGi  DHG do
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23:
+24:
+25:
+26:
+27: end for
+
+label =  //variable for final label of e
+for di  e(e) do
+
+label = label  di
+
+if authorities(di)  I =  then
+end if
+end for
+e(e) = label
+
+end for
+
+end if
+end for
+
+of e which is such that the set of authorities of each of its elements is not disjoint with I
+(see Lines 16-23 of Algorithm 3). These are the only sources that will really contribute
+to the final result set of the query.
+
+We are sure not to lose any recall by this operation because joins act in a conjunctive
+manner. Consequently, if the results of a data source di used to label a hyperedge cannot
+be joined to the results of at least one source of each of the other hyperedges, it is
+guaranteed that di will not contribute to the final result set of the query. In our example,
+this leads to d1 being discarded from the label of the ingoing edge, while d3 is discarded
+from the label of one outgoing hyperedge of node ?v1 as shown in Figure 3. This step
+concludes our source selection.
+
+5 Evaluation
+
+In this section we describe the experimental evaluation of our approach. We first describe our experimental setup in detail. Then, we present our evaluation results. All
+data used in this evaluation is either publicly available or can be found at the project
+web page.8
+
+8 https://code.google.com/p/hibiscusfederation/
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+Subject auths
+auth3
+auth12
+d2
+
+d3
+
+?s1
+
+{d2, d3}
+
+{d1, d2}
+
+d1
+
+d2
+auth12
+
+auth13
+Subject auths
+
+Object auths
+auth13
+d2
+
+d3
+
+auth2
+
+Object auths
+auth3
+d2
+
+auth13
+d3
+
+cp:p0
+
+?v0
+
+cp:p9
+
+{d2, d3}
+
+ns3:s3
+
+Object auths
+auth13
+auth2
+
+d1
+
+d2
+
+cp:p1
+
+Subject auths
+auth13
+auth2
+
+d3
+d1
+{d1, d3}
+{d3}
+
+?v1
+
+d3
+
+auth2
+
+cp:p2
+
+?v2
+
+cp:p3
+
+o35
+
+Subject auths
+
+Fig. 3. Source pruning of Labeled hypergraph HSQ3 of Figure 1. All the sources highlighted in
+red are finally selected.
+
+5.1 Experimental Setup
+Benchmarking Environment: We used FedBench [13] for our evaluation. It is the only
+(to the best of our knowledge) benchmark that encompasses real-world datasets and
+commonly used queries within a distributed data environment. Furthermore, it is commonly used in the evaluation of SPARQL query federation systems [14,4,9,11]. Each of
+FedBenchs nine datasets was loaded into a separate physical virtuoso server. The exact
+specifications of the servers can be found on the project website. All experiments were
+ran on a machine with a 2.70GHz i5 processor, 8 GB RAM and 300 GB hard disk. The
+experiments were carried out in a local network, so the network costs were negligible.
+Each query was executed 10 times and results were averaged. The query timeout was
+set to 30min (1800s). The threshold for the ASK-dominant approach was best selected
+to 0.33 after analysing results of different threshold values.
+
+Federated Query Engines: We extended three SPARQL endpoint federation engines
+with HiBISCuS: DARQ [10] (index-only), FedX [14] (index-free), and SPLENDID [4]
+(hybrid). In each of the extensions, we only replaced the source selection with HiBIS-
+CuS. The query execution mechanisms remained unchanged. We compared our best
+extension (i.e., SPLENDID+HiBISCuS) with ANAPSID as this engine showed competitive results w.r.t. its index compression and number of TPW sources selected.
+
+Metrics: We compared the three engines against their HiBISCuS extension. For each
+query we measured (1) the total number of TPW sources selected, (2) the total number
+of SPARQL ASK requests submitted during the source selection, (3) the average source
+selection time and (4) the average query execution time. We also compare the source
+index/data summaries generation time and index compression ratio of various state-of-
+the art source selection approaches.
+
+5.2 Experimental Results
+Index Construction Time and Compression Ratio. Table 2 shows a comparison of
+the index/data summaries construction time and the compression ratio9 of various state-
+9 The compression ratio is given by (1 - index size/total data dump size).
+?
+
+?
+
+?
+Table 2. Comparison of index construction time and compression ratio. QTrees compression
+ratio is taken from [5]. (NA = Not Applicable).
+
+Index Generation Time (min) NA
+
+Compression Ratio (%)
+
+99.998
+
+99.998 99.997
+
+99.999
+
+-
+
+99.997
+
+FedX SPLENDID LHD DARQ ANAPSID Qtree HiBISCuS
+
+of-the art approaches. A high compression ratio is essential for fast index lookup during
+source selection. HiBISCuS has an index size of 458KB for the complete FedBench data
+dump (19.7 GB), leading to a high compression ratio of 99.99%. The other approaches
+achieve similar compression ratios. HiBISCuSs index construction time is second only
+to ANAPSIDs. This is due to ANAPSID storing only the distinct predicates in its index.
+Our results yet suggest that our index containing more information is beneficial to the
+query execution time on FedBench.
+
+Efficient Source Selection. We define efficient source selection in terms of: (1) the
+total number of TPW sources selected, (2) total number of SPARQL ASK requests
+used to obtain (1), and (3) the TPW source selection time. Table 3 shows a comparison
+of the source selection approaches of FedX, SPLENDID, ANAPSID and HiBISCuS
+based on these three metrics. Note that FedX (100% cached) means that we gave FedX
+enough memory to use only its cache to perform the complete source selection. This
+is the best-case scenario for FedX. Overall, HiBISCuS (ASK-dominant) is the most
+efficient approach in terms of total TPW sources selected, HiBISCuS (Index-dominant)
+is the most efficient hybrid approach in terms of total number of ASK request used,
+and FedX (100% cached) is most efficient in terms of source selection time. However,
+FedX (100% cached) clearly overestimates the set of sources that actually contributes
+to the final result set of query. In the next section, we will see that this overestimation
+of sources greatly leads to a slightly higher overall query runtime. For ANAPSID, the
+results are based on Star-Shaped Group Multiple endpoint selection (SSGM) heuristics
+presented in its extension [9]. Further, the source selection time represents the query
+decomposition time as both of these steps are intermingled.
+
+Query Execution Time. The most important criterion when optimizing federated
+query execution engines is the query execution time. Figures 4, 5, and 6 show the results of our query execution time experiments. Our main results can be summarized as
+follows:
+
+(1) Overall, the ASK-dominant (AD) version of our approach performs best. AD is
+on average (over all 25 queries and 3 extensions) 27.82% faster than the index-dominant
+(ID) version. The reason for this improvement is due to ID overestimating sources in
+some queries. For example, in CD1, AD selects the optimal number of sources (i.e., 4)
+while ID selects 12 sources. In some cases, the overestimation of sources by ID also
+slows down the source pruning (e.g. CD2),
+
+(2) A comparison of our extensions with AD shows that all extensions are more
+time-efficient than the original systems. In particular, FedXs (100% cached) runtime is
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+Table 3. Comparison of the source selection in terms of total TPW sources selected #T, total
+number of SPARQL ASK requests #A, and source selection time ST in msec. ST* represents
+the source selection time for FedX(100% cached i.e. #A =0 for all queries) which is very rare in
+practical. ST** represents the source selection time for HiBISCuS (AD,warm) with #A =0 for all
+queries. (AD = ASK-dominant, ID = index-dominant, ZR = Zero results, NS = Not supported,
+T/A = Total/Avg., where Total is for #T, #A, and Avg. is ST, ST*, and ST**).
+
+FedX
+
+SPLENDID DARQ
+
+ANAPSID HiBISCuS(AD) HiBISCuS(ID)
+?
+
+?
+
+?
+18 294 10 0
+
+Qry
+CD1 11 27 285 6
+27 200 6
+CD2
+CD3 12 45 367 8
+CD4 19 45 359 8
+CD5 11 36 374 7
+36 316 8
+CD6
+CD7 13 36 324 9
+
+LS1
+18 248 9
+11 27 264 8
+LS2
+9 310 20 0
+
+12 45 413 8
+LS3
+18 287 15 0 15 7
+
+63 445 7
+LS4
+9 308 18 0 13 7
+10 54 440 8
+LS5
+
+18 347 17 0
+45 430 8
+
+LS6
+?
+
+?
+
+?
+9 292 6
+45 389 8
+LS7
+9 295 11 0
+?
+
+?
+
+?
+LD1
+27 297 8
+?
+
+?
+
+?
+27 320 7
+9 268 3
+LD2
+9 324 16 0 11 4
+16 36 330 9
+LD3
+0 17 5
+
+18 290 5
+45 326 7
+LD4
+18 236 13 0
+?
+
+?
+
+?
+27 280 8
+LD5
+9 331 14 0
+14 45 385 8
+LD6
+
+9 235 4
+
+18 258 7
+LD7
+9 333 15 0
+15 45 337 8
+LD8
+?
+
+?
+
+?
+18 188 6
+27 228 12
+LD9
+9 309 11 0
+LD10 10 27 274 8
+LD11 15 45 351 7
+9 260 15 0
+T/A 231 918 330 8 231 315 299 274 0
+
+#T #A ST ST* #T #A ST #T #A ST #T #A ST #T #A ST ST** #T #A ST
+?
+
+?
+
+?
+11 27 392 NS NS NS 3
+20 667
+?
+
+?
+
+?
+12 18 304 20 0 12 5
+?
+
+?
+
+?
+9 310 20 0 12 5
+?
+
+?
+
+?
+9 313 11 0
+?
+
+?
+
+?
+9 298 10 0 11 10 11 140
+
+9 335 13 0
+?
+
+?
+
+?
+0 217 1
+?
+
+?
+
+?
+11 27 390 NS NS NS 12 30 548
+0 31
+13 808
+?
+
+?
+
+?
+0 20
+?
+
+?
+
+?
+0 23
+13 559
+
+0 18
+?
+
+?
+
+?
+0 24
+?
+
+?
+
+?
+0 31
+?
+
+?
+
+?
+0 32
+8 14 12 589
+?
+
+?
+
+?
+0 23
+?
+
+?
+
+?
+9 50
+
+0 19
+?
+
+?
+
+?
+0 23
+?
+
+?
+
+?
+8 134 143 554 123 54 36
+?
+
+?
+
+?
+0 77
+0 54
+0 25
+0 36
+0 30
+?
+
+?
+
+?
+12 0
+4 18 215 36
+?
+
+?
+
+?
+5 ZR 6
+?
+
+?
+
+?
+7 18 118 60
+?
+
+?
+
+?
+7 1226 5
+?
+
+?
+
+?
+3 1052 3
+?
+
+?
+
+?
+4 2010 3
+?
+
+?
+
+?
+2 2904 7
+22 131 0
+?
+
+?
+
+?
+improved in 20/25 queries (net query runtime improvement of 24.61%), FedXs (cold)
+is improved in 25/25 queries (net improvement: 53.05%), SPLENDID s is improved
+in 25/25 queries (net improvement: 82.72%) and DARQs is improved in 23/23 (2
+queries are not supported) queries (net improvement: 92.22%). Note that these values
+were computed only on those queries that did not time-out. Thus, the net improvement
+brought about by AD is actually even better than the reported values. The reason for
+our slight (less than 5 msec) greater runtime for 5/25 queries in FedX (100% cached)
+is due to FedX (100% cached) already selecting the optimal sources for these queries.
+Thus, the overhead due to our pruning of the already optimal list of sources affects the
+overall query runtime.
+
+(3) Our extensions allow some queries that timed out to be carried out before the
+time-out. This is especially the case for our DARQ extension, where LD6 and LD10 are
+?
+
+?
+
+?
+HiBISCuS
+?
+
+?
+
+?
+ 
+?
+
+?
+
+?
+Fig. 4. Query runtime of DARQ and its HiBISCuS extensions. CD1, LS2 not supported, CD6
+runtime error, CD7 time out for both. LD6, LD10 timeout and CD3 runtime error for DARQ.
+?
+
+?
+
+?
+Fig. 5. Query runtime of ANAPSID, SPLENDID and its HiBISCuS extensions. We have zero
+results for ANAPSID CD7.
+?
+
+?
+
+?
+      
+?
+
+?
+
+?
+   
+
+Fig. 6. Query runtime of FedX and its HiBISCuS extensions
+
+carried out in 1123 msec and 377 msec respectively by DARD+AD, while they did not
+terminate within the time-out limit of 30 minutes on the original system.
+
+(4) Our SPLENDID (AD) extension is 98.91% faster than ANAPSID on 24 of the
+
+25 queries. For CD7, ANAPSID returned zero results.
+
+M. Saleem and A.-C. Ngonga Ngomo
+
+An interesting observation is that FedX(100%) is better than SPLENDID in 25/25
+queries and 58.17% faster on average query runtime. However, our AD extension of
+SPLENDID is better than AD extension of FedX(100%) in 20/25 queries and 45.20%
+faster on average query runtime. This means that SPLENDID is better than FedX in
+term of pure query execution time (excluding source selection time). A deeper investigation of the runtimes of both systems shows that SPLENDID spends on average
+56.10% of total query execution on source selection. Thus, our extension showcase
+clearly that an efficient source selection is one of key factors in the overall optimization
+of federated SPARQL query processing.
+
+6 Conclusion and Future Work
+
+In this paper we presented HiBISCus, a labelled hypergraph based approach for efficient
+source selection for SPARQL endpoint federation. We evaluated our approach against
+DARQ, SPLENDID, FedX and ANAPSID. The evaluation shows that the query runtime
+of the first three systems is improved significantly on average.
+
+In future, we will investigate the impact of the threshold  on our approach. We
+will also study the effect of our source pruning algorithm on SPARQL 1.1 queries with
+SPARQL service clause, where the TPW sources are already specified by the user.
+Furthermore, we will evaluate our approach on big data as the query execution time for
+majority of the FedBench queries is less than 1s, which make it difficult to select the
+best SPARQL federation engine and have have a deeper look into the behaviour of these
+engines in different data environments.
+
+Acknowledgments. This work was partially financed by the FP7 project GeoKnow
+(GA no. 318159).

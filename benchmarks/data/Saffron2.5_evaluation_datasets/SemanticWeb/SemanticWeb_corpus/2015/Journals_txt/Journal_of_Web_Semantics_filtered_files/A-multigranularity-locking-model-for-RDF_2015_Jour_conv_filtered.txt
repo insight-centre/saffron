@@ -1,0 +1,2080 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+A multigranularity locking model for RDF
+Mark Douglas Jacyntho,1, Daniel Schwabe
+
+Departamento de Informatica, PUC-Rio, Av. Marques de Sao Vicente, 225, Gavea, Rio de Janeiro - RJ, Brazil
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+The advent of Linked Data is spurring the deployment of applications that use the RDF data model at
+the information tier. In addition to querying RDF data, there is also the requirement for online updates
+with suitable concurrency control. Client sessions in Web applications are organized as transactions
+involving requests that read and write shared data. Executing concurrently, these sessions may invalidate
+each others data. This paper presents a locking model, which is a variant of multigranularity locking
+protocol (MGL), to address isolation between transactions that manipulate RDF data. Four hierarchically
+related granules are defined, as well as new read/write operations and their corresponding lock modes,
+specifically created for the RDF data model. These new operations allow greater concurrency than the
+classical read/write operations in relational databases. We assessed the performance of the proposed
+locking model through model simulation.
+
+ 2016 Elsevier B.V. All rights reserved.
+
+Article history:
+Received 20 September 2015
+Received in revised form
+29 March 2016
+Accepted 30 May 2016
+Available online 11 June 2016
+
+Keywords:
+Semantic web
+
+Transaction
+Transaction isolation
+Concurrency control
+Lock
+
+1. Introduction
+
+In the last few years, there has been an increasing interest in
+semantic Web applications using the RDF data model as a persistent domain layer. Moreover, there are cross-references between
+widely spread applications, spurred in good part by the Linking
+Open Data (LOD) initiative [1].
+
+The availability of large RDF stores opens up a big opportunity
+for exploration on how to use this new data model in large scale,
+specially, how to deal with concurrent read/write accesses.
+
+1.1. Motivation
+
+In essence, a data model is just a way to view the data. The
+established relational model views the data through relations
+and tuples. The RDF graph model, based on triples, is a natural
+representation for various types of applications (e.g., Facebook,
+Twitter, recommender systems, etc.), where entities are strongly
+connected with each other. In contrast with legacy RDBMS, these
+
+ Corresponding author.
+
+E-mail addresses: markjacyntho@gmail.com, mjacyntho@inf.puc-rio.br
+
+(M.D. Jacyntho), dschwabe@inf.puc-rio.br (D. Schwabe).
+1 Present addresses: Universidade Candido Mendes, Nucleo de Pesquisa e
+Desenvolvimento, Rua Anita Pecanha, 100, Parque Sao Caetano, Campos dos
+Goytacazes - RJ, Brazil; Instituto Federal de Educacao, Ciencia e Tecnologia
+Fluminense Campus Campos-Centro, Rua Dr. Siqueira, 237, Parque Dom Bosco,
+Campos dos Goytacazes - RJ, Brazil.
+
+http://dx.doi.org/10.1016/j.websem.2016.05.002
+1570-8268/ 2016 Elsevier B.V. All rights reserved.
+
+applications consider multi-valued properties to be so desirable in
+modeling real-life data that they support multi-valued properties
+by default. Querying for multi-valued and single-valued properties
+is done in exactly the same way, without concerns about the
+need to join with a third table to model an n-to-n relationship.
+Furthermore, the RDF model is more convenient if the application
+has high heterogeneity in its schema or frequent need for schema
+adaptation. RDF stores simplify the development of linked data
+applications, and also align very well with numerous algorithms
+and statistical techniques developed for graphs.
+
+This raises the issue of the writability of RDF and Linked Data, as
+corroborated by the creation of SPARQL 1.1 update standard. In [2],
+Tim Berners-Lee pointed out:
+When the Web was created, the idea was for a readwrite Web.[...] If
+the Web is genuinely to be a readwrite Web, and if we are to pursue
+a Web of Data, then it is essential that the Data Web should not be
+read-only.
+
+The problem to be tackled is the lack of a concurrency control
+mechanism that properly isolates transactions that read and write
+shared triples. The new questions addressed here are, can the
+traditional locking model used in relational databases [3], be
+reused? Are new locking models necessary? Is the optimistic
+locking approach the only choice? Is there a feasible pessimistic
+locking approach for RDF? Is there an opportunity to improve the
+classical locking models?
+
+There are several studies that address the performance issue
+of complex queries over large amount of triples, proposing
+improvements in indexing and query optimization [48]. The
+vast majority of initiatives only address querying; only a small
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+number supports online updates; and are all based on versioning
+(optimistic protocol or snapshot isolation). When using snapshot
+isolation (SI) [9] the transaction sees a committed consistent state
+of the data as it existed at the start of the transaction, and does
+not see any concurrent updates. Since SI was formalized in [9]
+it is known that it allows non-serializable executions that could
+destroy the databases consistency, in particular through the write
+skew anomaly. In addition, SI uses an optimistic approach too, and
+to prevent lost updates, a writewrite conflict will be raised causing
+the latter transaction to abort at the end.
+
+We observe that, in general, the approach for concurrency
+control used in Web applications is optimistic locking, with
+verification of conflicts at the end of the user interaction. Indeed,
+as presented in detail in Section 8, the current state of the
+art for locking in RDF stores are the optimistic and snapshot
+mechanisms. No doubt these are simpler approaches, suitable
+for the stateless behavior of the Web. Certainly in cases where
+short write transactions conflict minimally and long-running
+transactions are likely to be read-only, the optimistic approach
+should present better results. But it probably is not good for longrunning write transactions competing with high-contention short
+transactions, since the long-running transactions are unlikely to be
+the first writer of everything they write, and so will probably be
+aborted. So, there are also many circumstances where the use of
+optimistic locking is improper, for example: when there are the socalled hotspotsa small subset of the data which is updated very
+frequently; in reservation systems with limited inventory items
+(car reservations, tickets to events, plane seats, etc.); or for complex
+data entry forms that consume a long time to be filled in.
+
+From the end users perspective, it is unacceptable to make
+him/her spend significant effort entering complex or extensive
+information, only to discover at the end of the submission process
+that the desired item is no longer available or that the underlying
+database was significantly changed by a concurrent session, while
+editing was being carried out (the so-called user thinking time).
+This occurs because another faster competing user gets ahold of the
+referenced item (loading, editing and submitting it), while the user
+in question is still inputting his/her information. Moreover, there
+are critical use cases when the user needs to work with the last
+committed state of the database, thus making the use of snapshots
+impracticable.
+
+We highlight three scenarios that require a pessimistic locking
+approach for RDF, inspired by the realistic examples that motivate
+the readwrite Linked Data Platform architecture [10]:
+1. Healthcare
+
+For physicians to analyze, diagnose, and propose treatment
+for patients requires a vast amount of complex, changing and
+growing knowledge. This knowledge needs to come from a
+number of sources, including physicians own subject knowl-
+edge, consultation with their network of other healthcare pro-
+fessionals, public health sources, food and drug regulators, and
+other repositories of medical research and recommendations.
+To diagnose a patients condition requires current data on the
+patients medications and medical history [10]. Current data
+means up-to-date committed data.
+
+2. Collaborative Model Driven Engineering (MDE)
+
+In MDE, models, in their vast majority, are essentially graphs
+of properties and values. The version control approaches
+do not work well with models under concurrent access
+(collaborative development). The version control systems
+are geared to traditional textual artifacts (e.g. source code),
+managing them line by line. But for models, line by line
+management is not appropriate, but structural management,
+properties and relationships. In general, creating/modifying a
+model (e.g. business process workflow) demands considerable
+effort and complex data entry. It would be unacceptable to use
+the optimistic approach and detect conflicts at end and have to
+redo the edition.
+
+3. Knowledge in emergency management systems
+
+In [11], an architecture is described that uses Linked Open Data
+(LOD) in the design of an Emergency Management System,
+where different types and sources of information are combined
+to be used by the command team, designated to manage
+an emergency, for decision making and for directing field
+team operations. Three types of knowledge are combined:
+the previous personal knowledge (teams experience), formal
+knowledge (general information originated from government
+agencies) and the current contextual knowledge. Current
+contextual knowledge is information generated during the
+emergency evolution process. Situation assessment done by
+field agents, including information about victims and damages,
+orders issued by the command and their effects are examples
+that help the command decision-making. This knowledge is
+very dynamic and must to be up-to-date. It changes all the
+time and thus it has to be constantly updated. In this case, few
+data items (hotspots) are frequently updated and conflicts are
+so likely that optimistic concurrency control wastes effort in
+rolling back conflicting transactions.
+
+From this discussion, it is clear that there is a need for pessimistic
+locking model (where the user acquires the exclusive rights to
+access a resource before changing it) for RDF. Todays native RDF
+stores do not support a fully pessimistic protocol. This pessimistic
+model should explore the RDF data model to improve concurrency,
+when compared to the traditional read and write locking model.
+Improvement here means to find, for RDF, the adequate definition
+of: lockable granules, possible operations (lock modes) on those
+granules and, finally, the protocol for transactions to acquire and
+release locks.
+
+Selecting the right granule to lock requires a non-trivial balance
+between locking overhead and the level of concurrency allowed.
+Using coarse (i.e., large) granules incurs in low lock management
+overhead, but may decrease concurrency, since larger portions
+of the data may be locked. Conversely,
+finer (i.e., smaller)
+granules improve concurrency, but require higher overhead for
+lock management, since more locks are typically requested. It is
+possible to benefit from both sides of this trade-off by means of
+the multigranularity locking protocol (MGL), introduced by Gray
+et al. [12]. MGL allows each transaction to use the granule size
+most appropriate for its access profile. For example, if a transaction
+accesses many records of a file, it simply locks the whole file
+rather than locking only required records. Long transactions can
+lock coarse granules. Short transactions can lock fine granules. In
+this fashion, long transactions do not waste time setting up too
+many locks, and short transactions do not artificially interfere with
+others by locking portions of the dataset that they do not access.
+
+1.2. Contribution
+
+In this paper, we propose a novel pessimistic concurrency
+control model for RDF, defined by:
+ four hierarchically interrelated granules;
+ six new lock modes inspired by the basic principle of removal
+and insertion of RDF triples, and
+ a protocol to set and release locks for transactions that is an
+adaptation of the MGL protocol.
+
+It is important to clarify that the goal is to isolate updates in a
+centralized dataset, under a single control. At this stage, we are
+not addressing updates on multiples geographically distributed,
+independent datasets, such as in the Web of Linked Data [1].
+Due to its open nature, RDF data is often treated as incomplete,
+following the Open World Assumption (OWA). On the other hand,
+the SPARQL language interprets RDF data under Closed-World
+Assumption (CWA). This semantic distance opens up an avenue for
+
+modes) is shown in Table 1. Two distinct lock modes L1 and L2 are
+said compatible if a transaction T1 may acquire a L1 mode lock on
+a data granule x while another transaction T2 holds a L2 mode lock
+on x.
+
+ir or iw lock on xs parent.
+
+Summing up, for given lock instance graph G that is a tree, for
+each transaction T, the lock manager sets and releases locks on a
+data granule x, according to the following MGL protocol [14]:
+1. If x is not the root of G, then to set r[x] or ir[x], T must have an
+2. If x is not the root of G, then to set w[x] or iw[x], T must have an
+3. To read (or write) x, Tmust own an r or w (or w) lock on some
+ancestor2 of x. A lock on x itself is an explicit lock for x; a lock
+on a proper ancestor of x is an implicit lock for x.
+
+iw lock on xs parent.
+
+4. A transaction may not release an intention lock on x, if it is
+
+currently holding a lock on any child of x.
+
+3. Multigranularity locking for RDF
+
+The basic structure of the RDF data model
+
+is the triple
+resourcepropertyvalue (or subjectpredicateobject) used
+to describe resources (instances) and their properties (attributes
+and relationships with other resources). To achieve a higher
+degree of concurrency and low overhead, this basic structure can
+be exploited to define a hierarchy (actually a DAGDirected
+Acyclic Graph) of granules to be used in a multigranularity locking
+approach. We propose a pessimistic multigranularity locking
+model for RDF which consists of the following components:
+ a new hierarchy of granules derived from the RDF triple
+structure;
+ a set of new read and write operations (and corresponding lock
+modes) that improves parallelism;
+ a compatibility matrix to indicate when two lock modes are
+compatible or not;
+ a conversion table to drive the upgrading of a lock mode to
+a stronger one to cover both the old lock mode and a new
+requested lock mode;
+ a complete protocol to guide how the lock manager sets and
+releases locks on a data granule.
+
+To define a lock protocol, five basic questions must be answered:
+1. What to lock?
+2. How to lock?,
+3. When to acquire a lock?
+4. When to release a lock?
+5. How to act when a lock cannot be acquired?
+In our model these questions are answered as follows.
+
+What to lock means defining the granule to lock. How to lock
+means defining the lock mode (read/write operations) and the
+protocol (rules) to lock the granules.
+
+When to acquire a lock, according to the pessimistic approach
+of conflict prevention, it means locking the data before using it. To
+ensure serializability, the two-phase locking protocol (2PL)3 [15]
+must be used. To avoid cascading aborts, the strict 2PL must be
+used, which means releasing the locks only when the transaction
+completes.
+
+There are two possible policies to adopt when a transaction
+does not obtain a lock: the wait case and the no-wait case. The
+former means to block the transaction until the lock can be
+established. The latter means to abort the transaction and to try
+again later. In the no-wait case, to alleviate the consequences
+of aborting, the transaction should request the locks as early as
+possible. Ideally, the locks should be acquired before the user
+begins his/her work (e.g., data input).
+
+2 In a Directed Acyclic Graph (DAG), if there is a path from a to b, then a is an
+ancestor of b. a is a proper ancestor of b if it is an ancestor of b and a = b.)
+3 The 2PL protocol prescribes that a transaction T must acquire all its locks
+(growing phase) before releasing any of them (shrinking phase).
+
+Fig. 1. Lock instance graph [14].
+
+Table 1
+Compatibility matrix for MGL [14].
+
+discussions and investigations, such as the work presented in [13],
+that are outside the scope of this work. Under the perspective of
+online updates in a fully controlled centralized dataset, which is
+our focus, it is reasonable to assume that data is complete and
+hence one may apply closed-world semantics and unique name
+assumption. The examples presented along the explanation are
+based on this premise.
+
+1.3. Document structure
+
+The remainder of the paper is organized as follows. Section 2
+briefly describes the MGL protocol. Section 3 presents the proposed
+multigranularity locking model. Section 4 discusses the policies for
+using pessimistic locks. A corroborating case study is presented in
+Section 5, and a comprehensive analysis is discussed in Section 6.
+In Section 7 we present an optimistic version of the proposal
+and directives for combining both pessimistic and optimistic
+approaches at the same time, to complement the proposed
+pessimistic model. Section 8 summarizes related work. Finally,
+Section 9 concludes the paper and discusses some future work.
+
+2. Multigranularity locking (MGL)
+
+For completeness, we give a brief overview of multigranularity
+locking (MGL), given that our approach is a variant. Interested
+readers may consult [12,14] for a more in-depth discussion.
+The MGL protocol aims to balance locking overhead and the
+level of multiprogramming by exploiting the natural whole-part
+hierarchical relationship between coarser and finer granules. This
+hierarchy can be represented by a lock instance graph (Fig. 1).
+
+In Fig. 1, a lock on a coarser granule explicitly locks it, as well
+as all of its descendants, which are finer granules. For example, a
+read lock (r) on an area implicitly read locks the files and records
+within that area.
+
+It is also necessary to propagate the effects of locking a fine
+granule to the coarse granules that contain it. To achieve this, each
+lock mode has a corresponding intention (or planned) lock mode.
+Before it locks a finer granule, the lock manager must ensure that
+there are no locks on ancestors of the granule that implicitly lock
+the desired granule in a conflicting mode. To accomplish this, the
+lock manager sets intention locks on those ancestors (in root-to-
+leaf order). For example, before setting a read lock (r) on a record,
+the lock manager sets intention read locks (ir) on the records
+database, area, and file ancestors (in that order). The compatibility
+matrix of read/write lock modes (and corresponding intention lock
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Table 2
+RDF granules definition.
+
+Fig. 2. RDF rooted DAG lock type graph.
+
+Table 3
+Triple configurations (candidate granules).
+
+3.1. Granules
+
+From the logical point of view, RDF is a schema-free data
+model, based on the notion of triple. As a first step towards
+the creation of a pessimistic locking model for RDF, this paper
+proposes a hierarchy of logical granules based purely on the
+fundamental structure of triple (resource, property, value). The
+goal is to create logical granules that are independent of the
+physical structure of the underlying database. For now, we are not
+concerned with the physical structure. Our proposal can be used on
+top of several physical layouts, by performing the mapping of these
+logical granules. This is no different to what occurs for relational
+databases, based on the idea that applications request locks on
+these logical granules, without worrying about physical details like
+areas (i.e. regions of disks), files, indexes, etc.
+
+Essentially, a transaction manipulates resources or properties of
+resources. In RDF, the natural correspondence is to lock resources
+and properties of resources. For the cases where the transaction
+accesses many properties of a resource, it is simpler to lock
+the resource and its direct properties, instead of locking each
+individual property. For the cases where the same property of
+many resources is accessed, it is simpler to lock the property and,
+finally, for the cases where many properties of several resources
+are accessed, the entire graph could be locked. In this way,
+long transactions do not waste time setting too many locks, and
+short transactions do not lock large portions of the data space
+unnecessarily. These granules are summarized in Table 2, with
+the corresponding triple patterns that define them. The contains
+hierarchical relationship between them in the rooted DAG4 lock
+type graph is presented in Fig. 2. To implicitly write lock x, a
+transaction must explicitly or implicitly write lock all parents of
+x, since it is a rooted DAG. So, to implicitly write lock a property
+p of a resource r, it is not enough to set a write lock on resource r.
+One must also write lock the property p (or explicitly write lock the
+specific granule pr). This prevents two distinct transactions T1 and
+T2 to implicitly lock x in a conflicting mode, using different paths
+from the root to x. But, to implicitly read lock x, it is enough to
+explicitly or implicitly read lock some parent of x, since read locks
+may conflict only with another write lock (never with another read
+lock). This is explored in greater depth in Section 3.3.
+
+In short, we have four hierarchically related granules: Graph,
+Property, Resource and PropertyOfResource. Apart from Graph, each
+of the other granules is defined by their respective URI(s):
+(Property URI), (Resource URI) and (Property URI, Resource URI). The
+Graph granule has no URI, since it represents the entire dataset.
+Anonymous resources (or blanks nodes) are considered to be
+skolemized,5 i.e., also globally identifiable.
+
+4 Rooted DAGa DAG with only one Source called Root. Source is a node without
+incoming edges.
+5 http://www.w3.org/TR/rdf11-concepts/#section-skolemization.
+
+Fig. 3. A lock instance graph.
+
+It should be noted that we do not propose locking triples
+directly, but to lock properties of resources, resources, properties
+or the whole graph. Each one of these granules corresponds to a
+triple pattern (see Table 2), i.e., a logical set of triples, both existing
+and those yet to be inserted. An instantiation of a Lock Type Graph
+is called a Lock Instance Graph. To illustrate, Fig. 3 shows the Lock
+Instance Graph for: resource exstaff:jacyntho, property foaf:knows
+and property of resource foaf:knows of exstaff:jacyntho.
+
+In order to uncover these granules we carried out a systematic
+analysis of the triad (resource, property, value). The analysis
+consisted of enumerating all possible triple configurations that
+could be locked, ranging from the entire graph to a single triple, and
+analyzing each one of them following the pessimistic approach.
+Table 3 presents all possible triple configurations.
+
+The goal of pessimistic locking is conflict prevention. Since
+prevention means to guarantee that the user will not lose his/her
+work, the lock must be acquired before the user starts working.
+Therefore, for the triad resourcepropertyvalue we cannot
+lock values (either literals or other resources), because values are
+supplied by the user, after the user thinking time. Therefore,
+they are known only after the users work, which goes against
+the pessimist approach. Thus, to obtain the actual granules, we
+
+Fig. 4. A simple professorcourse ontology.
+
+have to eliminate the rows where there is a specific value (X or
+Y ) for column Value in Table 3, resulting in the granules defined in
+Table 2.
+
+Conceptually, there is no ordering in RDF. The subject ordering
+used here for the granules Resource and PropertyOfResource follows
+the common practice ordering of RDF serializations that suits
+the user. However, the same rationale could be done using the
+object ordering. But only one of these two possible orderings
+must be chosen. To be a strict pessimistic locking approach, we
+cannot permit locking subjects and objects in the same system, as
+explained in the following example.
+
+To further clarify the notion that we cannot lock values (or
+objects); consider the small ontology represented by the class
+diagram in Fig. 4, and the Web transaction Allocate Professor to a
+Course. If we allow establishing locks on values (objects) of triples,
+a transaction would have to acquire a write lock on all Professors
+(values of triples Course-hasProfessor-Professor) chosen by the user,
+leading to:
+1. Risk of failing to establish the lock on the Professor after the user
+has allocated him to the course. This is an optimistic behavior.
+This is analogous to conflict detection when using optimistic
+lock, because the user has no guarantee that s/he will achieve
+his/her goal.
+
+2. Unnecessary locks on the property hasProfessor of the
+chosen Professor (granule: *-hasProfessor-Professor) because
+there is no restriction on allocation of Courses to Professors.
+Said differently, Professors can have an unlimited number of
+Courses allocated to them, so locking the property would limit
+parallelism without reason. In other words, two transactions
+Allocate Professor to Course, involving the same Professor
+could not occur at the same time. Based on item 1, note that
+because of this unnecessary lock, the user may have to wait (the
+wait policy) or throw away his/her work (the no-wait policy).
+
+3. Suppose there is the following business rule (invariant): a
+Professor can have a maximum of 3 Courses allocated to
+him/her. The user, after choosing the Professor, could still not
+succeed because s/he already had 3 Courses allocated in the
+meantime. Even if the user could obtain the lock successfully,
+a competing transaction, that had just released the lock, could
+have allocated the one more course to the Professor, reaching
+the maximum of 3 Courses of that Professor. Again, this is an
+optimistic lock behavior.
+
+To avoid these three issues, we must use either subject or object,
+but not both. Regarding the last point, someone might argue: what
+if a Professor (so the object is given) wants to assign the Courses
+(subject) s/he teaches to the system? The answer is simple: we
+must reverse the lock, i.e., lock the Courses, not the Professor. To
+guarantee the success of the transaction, a fully pessimistic policy
+requires that we must acquire the lock before choosing the Course.
+This means to acquire a write lock on the property hasProfessor of
+all Courses, since we do not know in advance what Courses will be
+chosen. Given the definitions of granules, to implicitly write lock
+the property hasProfessor of selected Courses in the future, it is not
+enough to set a write lock on granule property hasProfessor. It also
+necessary to write lock all unknown Courses (because a new Course
+could be created and assigned), which translates to a write lock on
+the whole graph. Obviously, it is too restrictive to write lock the
+whole graph in this case. It is more common for the applications to
+relax this criteria locking only the Courses returned by the query
+
+(partially pessimistic policy) or locking only the selected Courses by
+the user (hybrid policy). But it is important that the locking system
+supports all of these policies, letting the application designer select
+the most appropriate. These policies are detailed in Section 4.
+
+It should be emphasized that our locking model is meant to be
+used at the logical level, similarly as occurs in traditional DBMSs.
+For a complete implementation, the granule definitions must be
+mapped to the physical level characteristics. Whereas this is not
+addressed in this work, we briefly discuss this in Section 9.
+
+3.2. New read/write operations
+
+SPARQL 1.1 updates are considered as an ordered set of deleted
+and/or inserted triples. The basic idea is to explore the multi-value
+aspect of RDF properties to improve parallelism. In other words,
+to explore the notion of insertion and removal of the RDF property
+values to define new operations beyond classical reads and writes.
+When updating a property of a resource, we have in mind one
+of three cases: inserting new triples, removing triples or both.
+Following this principle, a granule may be accessed by an operation
+O in a transaction T using one of the following new six operations:
+ rRead (rR)removal read
+Maximal read. O reads the current committed state6 and the
+result set must not shrink, but can grow.
+In the scope of T, two subsequent executions of O, on the same
+granule A, rR(A)1 and rR(A)2 must guarantee that result set1 
+result set2 is true.
+The goal is to ensure that the granules triples are not removed
+by a concurrent transaction. But new triples can be concurrently
+inserted into the granule without problems.
+ iRead (iR)insertion read
+Minimal read. O reads the current committed state and the
+result set must not grow, but can shrink.
+In the scope of T, two subsequent executions of O, on the same
+granule A, rR(A)1 and rR(A)2 must guarantee that result set1 
+result set2 is true.
+The goal is to ensure that no new triples are inserted into the
+granule by a concurrent transaction. But the granules triples
+can be removed concurrently without problems.
+ riRead (riR)removal/insertion read
+Classical read. O reads the current committed state and the
+result set must neither shrink nor grow. I.e., the result set must
+be exactly the same.
+In the scope of T, two subsequent executions of O, on the same
+granule A, rR(A)1 and rR(A)2 must guarantee that result set1 =
+result set is true.
+The goal is to ensure repeatable reads, without phantom triples
+disappearing/appearing.
+ rWrite (rW)removal write
+Removal. O only removes an existing value.
+The goal is only to remove a triple.
+ iWrite (iW)insertion write
+Insertion. O only inserts a new value.
+The goal is only to insert a new triple.
+ riWrite (riW)removal/insertion write
+Classical write. O can insert or remove a value.
+The goal is to remove and insert triples.
+
+6 Current committed state means only the current committed values. Values
+inserted/removed, but not yet committed, are ignored because they can become
+stale if a future abort occurs.
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+ History H1 (non-serializable schedule)
+
+It is important to clarify that, the notion of serializability
+remains unchanged, as explained next, based on the following
+definitions [14].
+Serialization Graph (SG): Let H be an execution history over a
+set of transactions T = {T1, T2, . . . , TN}. The dependency graph
+or serialization graph for H, denoted SG(H), is a directed graph
+whose nodes are the transactions in T that are committed in H
+and whose edges are all Ti  Tj (i = j) such that, at least one of
+Tis operations precedes and conflicts with one of Tjs operations
+in H. A single edge in SG(H) can represent more than one pair of
+conflicting operations.
+The Serializability Theorem: An execution history H over a set
+of transactions T = {T1, T2, . . . , TN} is serializable iff SG(H) is
+acyclic.
+
+Equivalent Serial Histories: Since SG(H) is acyclic it may be
+topologically sorted. Thus, a serializable history H is equivalent to
+any serial history that is a topological sort of SG(H).
+
+We have defined new operations beyond the classical reads and
+writes, but the definition of SG remains unchanged. Moreover, the
+proof of the Serializability Theorem still holds since it only depends
+on the notion of conflict and not on the nature of the operations.
+Consequently we can say that a history is serializable iff its SG is
+acyclic.
+
+Therefore, all locking protocols to ensure serializability also
+remain valid, including the Two Phase Locking Protocol7 [14]. In
+addition, to avoid cascading aborts we can employ the Strict Two
+Phase Locking Protocol [14].
+
+Thus, to add new operations in addition to Read and Write,
+the only task needed is to extend the definition of conflict. For
+each of the six operations, corresponding lock modes were defined,
+as summarized in Table 4. Before executing an operation on
+any database item (granule), a transaction T must request the
+operations corresponding lock on it. The lock allows T to execute
+the operation arbitrarily often, as long as T holds the lock. The
+extended definition of conflict is the new compatibility matrix
+presented in Table 5.
+
+Differently from traditional locking, where the write lock mode
+is totally exclusive with respect to the other modes, in our proposal,
+there are cases where it is possible to have read and write locks on
+the same data item, at the same time, by distinct transactions. This
+is because one lock mode may be for insertion and the other for
+removal cf. iR and rW. This is where we have improved parallelism.
+Still, write locks, in all modes, remain mutually exclusive, since
+updates are always made based on the original state.
+
+One of the major sources of concurrency bottlenecks are
+queries, that is, read-only requests for data to be used for decision
+support and reporting. Queries typically run much longer than
+update transactions and they potentially access a large amount of
+data. So, if they run using 2PL protocol, they often set many locks
+and hold those locks for a long time. This creates long delays of
+update transactions, often intolerable [3].
+
+To exemplify the new operations and possible conflicts, some
+execution histories Hi with two interleaving transactions T1 and
+T2, where A and B are disjoint granules, are shown:
+
+7 Any schedule generated according to the 2-Phase Locking Mechanism is
+serializable. The resulting serialization graph is always acyclic [3].
+
+T2
+
+riW(A)
+riW(B)
+
+T1
+riR(A)
+
+riW(B)
+Commit
+
+Commit
+SG(H1): T1  T2 (cyclic graph)
+
+t1: T1 executes a classical read on A [riR(A)].
+t2: T2 executes a classical write on A[riW(A)],
+which conflicts with the preceding riR(A) of T1.
+So there is an edge from T1 to T2 in SG(H1).
+t3: T2 executes a classical write on B [riW(B)].
+t4: T1 executes a classical write on B [riW(B)],
+which conflicts with the preceding riW(B) of T2.
+So there is an edge from T2 to T1 in SG(H1),
+configuring a cycle, and therefore H1 is non-
+serializable.
+
+ History H2 (serializable schedule)
+
+Time
+t1
+t2
+t3
+t4
+t5
+t6
+
+Time
+t1
+t2
+t3
+t4
+t5
+t6
+
+T2
+
+rW(A)
+riW(B)
+
+T1
+iR(A)
+
+riW(B)
+Commit
+
+Commit
+SG(H2): T1  T2 (acyclic graph);
+
+Equivalent to the serial schedule: T2, T1.
+t1: T1 executes an insertion read on A [iR(A)].
+t2: T2 executes a removal write on A[rW(A)],
+which is compatible with the preceding iR(A) of
+T1. So there is no edge from T1 to T2 in SG(H2).
+t3: T2 executes a classical write on B [riW(B)].
+t4: T1 executes a classical write on B [riW(B)],
+which conflicts with the preceding riW(B) of T2.
+So there is an edge from T2 to T1 in SG(H2). Since
+there are no cycles in SG(H2), H2 is serializable.
+
+ History H3 (non-serializable schedule)
+
+Time
+t1
+t2
+t3
+t4
+t5
+t6
+
+T2
+
+rW(A)
+riW(B)
+
+T1
+rR(A)
+
+riW(B)
+Commit
+
+Commit
+SG(H4): T1  T2 (cyclic graph)
+
+t1: T1 executes a removal read on A [rR(A)].
+t2: T2 executes a removal write on A [rW(A)],
+which conflicts with the preceding rR(A) of T1. So
+there is an edge from T1 to T2 in SG(H3).
+t3: T2 executes a classical write on B [riW(B)].
+t4: T1 executes a classical write on B [riW(B)],
+which conflicts with the preceding riW(B) of T2.
+So there is an edge from T2 to T1 in SG(H3),
+configuring a cycle, and therefore H3 is non-
+serializable.
+
+Table 4
+RDF lock modes.
+
+Fig. 5. A documents reviewers.
+
+Table 5
+RDF lock modes compatibility.
+
+Fig. 6. Successful lock iW for insertion of a new reviewer.
+
+(as explained in Section 3.1, to implicitly write lock all authors
+properties, it is not enough to lock only the granule resource
+Author). Throughout the editing process, all properties of the
+author may have values inserted and/or removed.
+
+To further illustrate the applicability of the different lock modes,
+in a realistic scenario, consider the example of a CMS (Confer-
+ence Management System),8 where authors submit documents, reviewed by reviewers and accepted/rejected by PC-chairs. For each
+locking mode, we show an example situation where it could be
+used:
+ rRremoval read lock
+Review Submission (Editing)granule property conf:hasReviewer
+of Document. While the review is being edited, the reviewer
+must not be removed from the document
+(i.e., his/her
+assignment to the document) by a second transaction.
+ iRinsertion read lock
+Reviewer Assignmentgranule property conf:hasAuthor of Docu-
+ment. During the addition of new reviewers to the document,
+due to conflict of interest reasons, a second transaction must not
+insert new authors to the document, because the determination
+of conflict for the document is based on its current authors.
+ riRremoval/insertion read lock
+Document Acceptance Decisiongranule resource Document.
+While the PC-chair is deciding if the document will be accepted
+or rejected, all properties of the document must remain
+unchanged.
+ rWremoval write lock
+Reviewer Deallocationgranule property conf:hasReviewer of
+Document. This transaction only removes reviewers, so the
+transaction wants to ensure no other transaction is accessing
+that assignment information.
+ iWinsertion write lock
+Reviewer Assignmentgranule property conf:hasReviewer of
+Document. This transaction only inserts new reviewers.
+ riWremoval/insertion write lock
+Author Registration (Editing)granules are all Authors proper-
+ties, each one locked as a separated PropertyOfResource granule
+
+8 A more extensive case study is presented in Section 5.
+
+To see how concurrency is potentially increased, consider how
+transactions Review Submission and Reviewer Assignment can
+obtain, at the same time, a read lock and a write lock, respectively,
+on the granule property conf:hasReviewer of the same Document.
+This is possible because the former locks only for removal
+(rRremoval read lock) and the latter locks only for insertion
+(iWinsertion write lock).
+Indeed, adding a new reviewer to
+a Document should not influence the contents of a review
+being entered concurrently. Another example are the transactions
+Reviewer Assignment and Document Submission (Editing) that
+acquire insertion read lock (iR) and removal write lock (rW) on the
+property conf:hasAuthor of the Document, respectively. The first
+lock prevents the insertion of a new author to the document, due
+to potential conflict of interest, and the second lock grants the right
+only to remove an author.
+
+To be more concrete, suppose the RDF graph snapshot shown
+in Fig. 5, when the reviewer exstaff:schwabe starts a Review Submission transaction TA, acquiring a removal read lock (rR) on property conf:hasReviewer of resource exdocuments:1517, to block other
+transactions regarding reviewers removal from exdocuments:1517.
+In parallel with TA, the PC-Chair starts a Reviewer Assignment
+transaction TB, establishing successfully an insertion write lock
+(iW) on property conf:hasReviewer of the same resource exdocu-
+ments:1517, to allocate the new reviewer exstaff:romano, generating the snapshot in Fig. 6. Notice that TA and TB established,
+concomitantly, read and write locks on the same data item without
+problems.
+
+After TB, still in parallel with TA, the PC-Chair starts a Reviewer
+Deallocation transaction TC, trying to acquire an removal write
+lock (rW) on property conf:hasReviewer of the same resource
+exdocuments:1517, to remove the reviewer exstaff:schwabe. Since
+the requested lock rW conflicts with the rR lock acquired by
+TA earlier, TC fails to obtain the lock, and, thus, the reviewer
+exstaff:schwabe cannot be removed.
+
+These examples illustrate how the refinement on the lock
+modes allows the programmer to indicate the intention (inser-
+tion/removal) of the transaction occurrence in finer detail, and allows augmenting the level of multiprogramming.
+
+Finally, if a transaction already owns a lock on a data item and
+later requests a new lock on the same data item, the Lock Manager
+must convert (upgrade) the current lock mode to a new lock mode
+that covers the current lock and the new requested lock, according
+to Table 6. For example, if a transaction Ti owns a lock rR (line 0)
+on data item x, and subsequently requests the lock iR (column 1)
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Table 6
+RDF lock modes conversion.
+
+on the same data item x. According to Table 5, if there is no other
+concurrent transaction locking the data item x in a conflicting
+mode with iR, then the transaction Tis lock mode on x will be
+upgraded to riR (cell [0][1]), which covers both lock modes rR and
+iR. Notice that the conversion from any read lock to any write lock
+results in requesting a write lock.
+
+It is noteworthy that although these new lock modes have been
+motivated by insertion/removal of RDF triples, strictly speaking,
+they make sense for any data model. In general, what differentiates
+a data model from another one is how the information is organized,
+i.e., the granules, not the operations over the granules (lock modes).
+Thus, these new lock modes can and should be evaluated in other
+data models, including the relational, as pointed out as future work
+in Section 9.
+
+3.3. The extended MGL protocol
+
+To define our MGL protocol for RDF, we need to define new
+planned (intention) lock modes, one for each of the six new
+read/write lock modes and to extend the classical MGL protocol
+rules to address these new lock modes and the lock type graph
+presented in Fig. 2.
+
+To simplify notation, we use the letter p (as in planned)
+in place of the letter i to represent planned (intention) locks.
+The new compatibility matrix, including the six basic lock modes
+and the respective planned lock modes, is shown in Table 7.
+The lock modes supported are removal read (rR), insertion read
+(iR), removal/insertion read (riR), removal write (rW),
+insertion
+write (iW), removal/insertion write (riW), and the corresponding
+planned removal read (prR), planned insertion read (piR), planned
+removal/insertion read (priR), planned removal write (prW), planned
+insertion write (piW) and planned removal/insertion write (priW).
+
+As explained in Section 2, before locking a finer granule, the
+MGL protocol must set planned locks on the granules ancestors (in
+root-to-leaf order), to avoid implicit locking in a conflicting mode
+with a second transaction. For example, to set rR[x], a transaction T
+must first set the appropriate planned locks on ancestors y of x, that
+is, prR[y]. As presented in Table 5, rR[x] is incompatible with rW[y]
+and riW[y]. Establishing prR[y], transaction T ensures that no other
+second transaction will set rW[y] or riW[y], since both of these are
+incompatible with prR[y], as shown in Table 7. A similar rationale
+can be done for the other five basic lock modes (iR[x], riR[x], rW[x],
+iW[x] and riW[x]) and corresponding planned lock modes. Notice
+that like the original MGL protocol, planned lock modes are all
+compatible each other. Conflicts exist only between two real lock
+modes or between one real lock mode and one planned lock mode.
+Since the lock type graph is a rooted DAG, there may be more
+than one path from the root to some data item, which means
+that the data item can have more than one parent that blocks it
+implicitly. To prevent this, the write locks must be propagated to
+all parents. But, for read locks, it is enough to propagate to only
+one parent, since read lock may conflict only with another write
+
+block (never with another read lock). In this way it is not possible to
+configure two implicit conflicting locks on the data item. Therefore,
+applying the new lock modes, for a given lock instance graph G that
+is a rooted DAG, for each transaction T, the lock manager sets and
+releases locks on a data granule x, according to following protocol:
+1. If x is not the root of G, then to set rR[x] or prR[x], T must have a
+
+prR or priR or prW or piW or priW lock on some parent of x.
+
+2. If x is not the root of G, then to set iR[x] or piR[x], T must have a
+
+piR or priR or prW or piW or priW lock on some parent of x.
+
+3. If x is not the root of G, then to set riR[x] or priR[x], T must have
+
+a priR or prW or piW or priW lock on some parent of x.
+
+4. If x is not the root of G, then to set rW[x] or prW[x], T must have
+
+a prW or priW lock on all of xs parents.
+
+5. If x is not the root of G, then to set iW[x] or piW[x], Tmust have
+
+a piW or priW lock on all of xs parents.
+
+6. If x is not the root of G, then to set riW[x] or priW[x], T must have
+
+a priW lock on all of xs parents.
+
+7. To read x, T must own a read or write lock on some ancestor9 of
+x. To write x, T must own, for every path from the root of G to x,
+a write lock for some ancestor of x along that path. A lock on x
+itself is an explicit lock for x; locks on proper ancestors of x are
+an implicit lock for x.
+
+8. A transaction may not release a planned lock on an item x if it
+
+is currently holding a lock on any child of x.
+
+Since our proposal is an extension of the classical MGL protocol,
+they have the same essential rules. Therefore, we argue the
+correctness of our extended MGL protocol based on the proof of
+the classical MGL [14].
+Goal: The goal of the protocol is to ensure that transactions
+never hold conflicting (explicit or implicit) locks on the same item
+(instance of a node of the lock graph).
+Theorem: Suppose all transactions obey the locking protocol with
+respect to a given lock type graph, G, which is a rooted DAG. If a
+transaction owns an explicit or implicit lock on a node of G, then no
+other transactions owns a conflicting explicit or implicit lock on that
+node.
+Proof. It is enough to prove the theorem for leaf nodes. If two
+transactions held conflicting (explicit or implicit) locks on a nonleaf node x, they would be holding conflicting implicit locks on all
+descendants and, in particular, all leaf descendants of x. Suppose
+then that transactions Ti and Tj own conflicting locks on leaf x.
+There are 49 possible cases. For reasons of space, we show only
+six recurrent cases. The other cases, which are detailed in [16], all
+follow the same reasoning of one of these six cases. These six cases
+are:
+1. Ti implicit rR lock; Tj explicit rW lock
+
+By rule (7), Ti owns rRi[y] in some ancestor y of x. By rule (4)
+and induction, Tj owns a prW or priW lock on every ancestor of
+x. In particular, Tj owns prW j[y] or priW j[y], which is impossible
+because it conflicts with rRi[y].
+By rule (7), Ti owns rRi[y] in some ancestor y of x, and Tj owns, for
+every path from root of G to x, a rW lock on some ancestor of x
+along each path. In particular, Tj owns rW j[y] for some ancestor
+y along the path that contains y. There are three subcases: (a)
+y = y; (b) y is an ancestor of y; (c) y is an ancestor of y.
+Case (a) is impossible because Ti and Tj own conflicting read
+and write locks, respectively. Case (b) is impossible because,
+by rule (4) and induction, Tj owns prW j[y] or priW j[y], which
+conflicts with rRi[y]. And case (c) is impossible because, by rule
+(1) and induction, Ti owns prRi[y] or priRi[y], which conflicts
+with rW j[y].
+
+2. Ti implicit rR lock; Tj implicit rW lock
+
+9 In a DAG, if there is a path from a to b, then a is an ancestor of b. a is a proper
+ancestor of b if it is an ancestor of b and a ? b.
+
+Table 7
+RDF extended compatibility matrix.
+
+Table 8
+RDF extended lock conversion table.
+
+Table 9
+Complete RDF compatibility matrix.
+
+3. Ti explicit rR lock; Tj explicit rW lock
+
+Not allowed by construction.
+
+4. Ti explicit rR lock; Tj implicit rW lock
+
+By rule (1) and induction, Ti owns prR or priR lock on every
+ancestor of x, along some path c from root of G to x. By rule
+
+(7), Tj owns, along every path from root of G to x, a rW lock on
+some ancestor of x along each path. In particular, Tj owns rW j[y]
+on some ancestor y of x along the path c, which conflicts with
+prRi[y] and priRi[y].
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+5. Ti implicit rW lock; Tj explicit rW lock
+
+By rule (7), Ti owns, along every path from root of G to x, a rW
+lock on some ancestor of x along each path.
+By rule (4) and induction, Tj owns a prW or priW lock on every
+ancestor of x, which conflicts with the rW lock on some ancestor
+of x along each path from root of G to x.
+6. Ti implicit rW lock; Tj implicit rW lock
+
+By rule (7), Ti owns, along every path from root of G to x, a rW
+lock on some ancestor of x along each path.
+By rule (7), Tj owns, along every path from root of G to x, a rW
+lock on some ancestor of x along each path.
+Along each path from root of G to x, Ti owns rWi[y] on some
+ancestor y of x and Tj owns rWj[y] on some ancestor y of x.
+There are three subcases: (a) y = y; (b) y is an ancestor of y;
+(c) y is an ancestor of y. Case (a) is impossible because Ti and
+Tj own conflicting write and write locks. Case (b) is impossible
+because, by rule (4) and induction, Tj owns prW j[y] or priW j[y],
+which conflicts with rW i[y]. And case (c) is impossible because,
+by rule (4) and induction, Ti owns prW i[y] or priW i[y], which
+conflicts with rW j[y].
+To conclude the definition, we need an extended version of the
+Lock Conversion Table, to govern the upgrade (escalation) of locks.
+For example, suppose that a transaction T holds a rR[x]. If T requests rW or prW lock mode on x, the lock manager must convert
+rR[x] to rW[x] or rRprW[x], respectively. Note the appearance of a
+compound lock mode, rRprW[x], which is the result of the composition of two primitives, rR and prW, lock modes. This is due to
+the lack of a primitive lock mode strong enough to cover both lock
+requests. Table 8 summarizes the possible conversions (between
+primitive lock modes). In blue are the resultant compound lock
+modes.
+
+For the purposes of implementation, a final version of the compatibility (Table 9) and conversion (Table 10) matrices still needs
+to be defined, including primitive and compound lock modes. Although these two tables are large, they are shown here to expose
+the actual version used inside the implementation of a production
+lock manager. At first glance one may feel that the tables are difficult to interpret. However, these tables are nothing more than
+an extension of the previous Tables 7 and 8, respectively, with
+the resulting compound lock modes. The idea is simply to derive
+compatibility/conversion of compound lock modes from its primitive constituents. Two compound locks modes are compatible iff
+all pairs resulting from the Cartesian product of its constituents are
+pairs of compatible lock modes. For example, rRpiR and iRpiW are
+compatible because (rR, iR), (rR, piW), (piR, iR) and (piR, piW) are
+all compatible pairs. But rRpiR and iRprW are incompatible, since
+(rR, iR), (piR, iR), (piR, prW) are compatible, but the pair (rR, prW) is
+not compatible. Similarly, the lock conversion (upgrade) is done by
+recursively converting the resultant pairs from the Cartesian product of the compound lock modes constituents. For instance, say
+the transaction Tholds iRprR[x] and requests the lock mode rRpiR
+on x, the new lock resulting from the conversion is riR[x], because
+converting the pairs (iR, rR), (iR, piR), (prR, rR), (prR, piR), we have,
+respectively, (riR), (iR), (rR), (priR). Continuing converting two by
+two, from left to right, we have (riR), (rR) and (priR), then (riR) and
+(priR), and finally (riR).
+
+In addition, there is one more conversion table that converts
+real lock into the corresponding planned lock (Table 11). In accordance with rule 8 of the Protocol to acquire/release locks, a transaction cannot release a planned lock on an item x, if the transaction
+currently holds a lock on at least one child of x. Therefore, when
+releasing a real lock on an item that has locked children, we cannot simply release the lock. We need to convert (downgrade) it
+into a planned lock that will be released later. In case of compound
+locks, the corresponding planned lock is obtained by combining,
+the constituents planned locks according to Table 8. For instance,
+the real lock rRpiR generates the planned lock priR, because the
+constituents (rR) and (piR) generate (prR) and (piR), respectively,
+which combine generating (priR).
+
+Fig. 7. A stricter ontology for the professorcourse example.
+
+4. Policies for pessimistic locking
+
+Throughout this research, three possible policies for using
+pessimistic locks were identified. These policies will be explained
+below by means of a simple example.
+
+Consider the Web transaction Allocate Professor to a Course
+over the ontology presented in Fig. 7, which includes the restriction
+that at most 3 Courses may be allocated to a Professor. We have the
+following policies to employ the pessimistic approach.
+Hybrid: Lock only the Professor(s) selected by the user. This policy
+increases the parallelism, because it uses smaller granules. How-
+ever, the user does not have assurance that the Professor chosen
+will have Courses successfully allocated (optimistic behavior). In
+this case, the following steps must be followed, in this order:
+1. Establish a write lock for insertion (iW) on granule property
+
+hasProfessor of the Course in question.
+
+2. Run the query for available Professors, i.e. those that have
+less than three Courses. No lock is established,10 thus, nonrepeatable reads can occur.
+
+3. Let the user choose the Professor(s).
+4. To ensure maximum of three Courses, the same kind of
+write lock (iW) must be acquired on each Professor chosen
+(granule resource) and, after obtaining the lock, the Professors
+availability must be rechecked because of absence of lock in step
+2. Each Professor acts as a single point of contention, thus a read
+lock for insertion (iR) on each Professor would not be enough to
+prevent a second transaction from allocating other Courses to
+him/her, since read locks are not mutually exclusive.
+
+Note that after choosing the Professor, the user will attempt to
+establish the lock, at the risk of not being able to do so. This is an
+optimistic behavior, hence the name hybrid.
+Partially pessimistic: Lock all the Professors returned by the query.
+This corresponds to SELECT... FOR UPDATE / SELECT...
+LOCK IN SHARE MODE in relational databases, which sets a
+write/read lock on any rows that are read. In this case, the following
+steps must be followed, in this order:
+1. Establish a write lock for insertion (iW) on granule property
+
+hasProfessor of the Course in question.
+
+2. Run the query for available Professors, i.e. those that have
+less than three Courses. During the query execution a write
+lock (iW) is established on each Professor (granule resource)
+returned by the query. The setting of locks and the query must
+occur atomically. Again each Professor acts as a single point of
+contention, and, as explained earlier, the same kind of write lock
+is necessary.
+
+3. Let the user choose the Professor(s).
+Note that since the locks were established before the user chooses
+the Professor(s), certainly the allocation will succeed (pessimistic
+behavior). However,
+in
+the same transaction, it may fail to acquire locks on (eventual)
+new phantom Professors, possibly inserted in the meantime by a
+second transaction. For this reason, this policy is named partially
+pessimistic.
+
+if the same query is executed again,
+
+10 Strictly speaking, if you want to avoid dirty (uncommitted) reads, a read lock
+must be established, but only for the duration of the query, being immediately
+released afterwards.
+
+Table 10
+Complete RDF lock conversion table.
+
+Table 11
+RDF lock conversion (downgrade) from real lock to planned lock table.
+
+Fig. 8. A theater event ontology.
+
+Totally Pessimistic: Locks all eligible Professors. This policy is the
+most restrictive in terms of concurrency. However, it provides
+the user with complete assurance that any Professor chosen by
+him/her will be allocated successfully. The following steps must be
+followed, in this order:
+1. Establish a write lock for insertion (iW) on granule property
+
+hasProfessor of the Course in question.
+
+2. To ensure a maximum of three Courses, a read lock for
+insertion (iR) is established on granule property hasProfessor.
+This prevents other transactions from allocating Courses to a
+Professor who may be chosen later. In this case, the read lock
+is enough because the coarser granule hasProfessorimplicitly
+read locks its descendants granules property hasProfessor of
+all Courses, thus preventing, any write locks to be set on them.
+3. Run the query for available Professors, i.e. those that have less
+
+than three Courses.
+
+4. Let the user choose the Professor(s).
+This is the strict pessimistic behavior, where the user can rerun the
+query, as many times as s/he wants and select the professor(s) returned with full assurance of success, including (eventual) phantom
+Professors inserted in the meantime by a second transaction.
+
+5. Theater seat reservation case study
+
+For a more complete example, we present some realistic
+workflows for Web transactions of a theater seat reservation
+
+Fig. 9. Partially pessimisticmake reservation.
+
+system. Basically, the goal is to control the reservation of seats for
+an event, i.e., a show at a certain date and time. This scenario was
+chosen because it is well known, facilitating its comprehension.
+The domain ontology is presented in Fig. 8.
+
+The Web transaction workflows are self-explanatory and will be
+described for the partial (Figs. 911) and full pessimistic (Figs. 12
+14) policies for pessimistic lock exposed earlier. Basically, the
+differences between these two policies are that in partially pessimistic workflows the locks are acquired along query execution,
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Make backup transaction:
+
+The system establishes a read lock for removal and insertion (riR)
+
+on its whole graph (graph granule) and carries out the backup.
+Materialize inferences transaction:
+
+The system sets a write lock for insertion (iW) on its whole graph
+(graph granule). Then, the system carries out the reasoning and
+inserts the inferred triples into its graph.
+
+6. Evaluation
+
+The Lock Managers responsibility is to manage the acquisi-
+tion/release of locks, keeping a record of all granules (also called
+data items) currently locked by the transactions. Since it is not
+viable for us to change the Lock Manager in existing RDF stores,
+we implemented a full Lock Manager in JRuby12 from scratch in
+order to evaluate the proposed mechanism. This Lock Manager
+implements our proposed model: protocol, logical granules, new
+lock modes, compatibility matrix (Table 9), conversion matrix (Ta-
+ble 10) and downgrade table (Table 11). For best performance, the
+Ruby code was translated into Java bytecode, and then run on the
+Java Virtual Machine (JVM).
+
+The Lock Manager offers three operations:
+
+1. lock (transaction id, granule type, lock mode, URIs)to lock a
+
+2. unlock (transaction id, granule type, URIs)to unlock a specified
+
+specified granule;
+
+granule;
+
+3. unlock all (transaction id)to unlock all granules.
+According to the type of granule, URIs are specified as follows: for
+Graph, there is no URIs; for Property, the URI of the property; for
+Resource, the URI of the resource; and for PropertyOfResource their
+respective URIs should be provided.
+
+The Lock Managers internals are defined by the following data
+structures (see Fig. 15), which are based on the Lock Manager
+presented in [15]:
+ Data Item Lock Tablehash table that maps the data item
+(specific granule) to its Lock Cell;
+ Lock Celldata items doubly linked list of Lock Items;
+ Lock Itemlocked item containing the id of
+the owner
+transaction and the lock mode;
+ Transaction Tablehash table that maps the transaction id to its
+list of Lock Items (Transaction Lock List);
+ Transaction Lock Listtransactions doubly linked list of Lock
+Items.
+
+To avoid race conditions, access to each hash table/list is protected
+by its corresponding mutex (binary semaphore).
+
+Using this Lock Manager, our locking model was evaluated by
+executing simulated loads13 in order to obtain evidence that:
+ The four proposed granules (Graph, Property, Resource and
+PropertyOfResource) allow better performance, according to
+the sizes of transactions, compared with the granule Resource
+(which is the closest granule to a tuple in the relational
+schema);
+ The proposed multigranularity protocol
+indeed improves
+performance, in contrast to the monogranularity protocol, in
+the presence of transactions of various sizes;
+ The new compatible read/write operations (and the corresponding new lock modes), for insertion and removal, improve
+the multiprogramming level when compared to the classical incompatible read/write operations.
+
+Fig. 10. Partially pessimisticissue tickets.
+
+and in totally pessimistic workflows the locks are acquired before
+query execution. The hybrid strategy would be a slight variation of
+the partial.11 The steps that contain lock handling are highlighted
+in gray.
+
+Clearly, it is necessary to limit the user thinking time (so that
+a single user does not block a seat for an indeterminate length of
+time). As consequence, a timeout mechanism for the locks should
+be employed, but for the sake of simplicity it was omitted within
+the presented workflows.
+
+Moreover, as in any information system, some housekeeping
+transactions may be required, such as: Archiving, Make Backup,
+and Materialize Inferences. For the sake of space, these workflows
+were omitted, and their fully pessimistic approaches are briefly
+described below.
+Archiving transaction:
+
+First, the system establishes a write lock for removal (rW) on
+the whole systems graph (graph granule). Second, the system
+establishes a write lock for insertion (iW) on the whole archives
+graph (graph granule). After successfully acquiring both locks, the
+system moves all of the Events (as well as their Reservations) whose
+realization date is earlier than five years (for example) from the
+systems graph to the archives graph.
+
+11 Basically, the variation is that only the event chosen by the user would be locked
+and, immediately after obtaining the lock, the availability of the event would have
+to be verified again (an optimistic behavior).
+
+12 http://jruby.org.
+13 To be clear, in this section when we refer to simulation, we mean running the
+real Lock Manager with the particular simulated parameters.
+
+Fig. 11. Partially pessimisticchange reservations event.
+
+The smallest granule that can be locked is the PropertyOfResource
+granule, i.e. the (property, resource) pair. An abstract database
+(Fig. 16) was used. This is a matrix of m properties by n resources,
+making up m x n lockable (property, resource) pairs xi,j. For
+simulations, were used 500 resources and 50 properties, which
+results in a set of 25,000 (property, resource) pairs xi,j to lock.
+
+All simulations were performed in three scenarios of read/write
+transaction mixes: 20%, 50% and 80% of writers. Each transaction
+was either a writer or a reader, containing only write operations
+or read operations, but not both. An access profile was randomly
+assigned to each transaction. A profile is the set of (property,
+resource) pairs xi,j to be accessed (or locked). Among these, the
+pairs to be written and read were selected at random, following
+the readers/writers distribution of the scenario.
+
+A no-wait (abortrestart) locking policy was used, in case of
+failing to obtain a lock, with zero wait for restart. We used static
+locking [17], i.e., locks required by a transaction are predeclared.
+
+Thus, a transaction is not actually started until all needed locks
+are acquired. If a lock is denied, the transaction aborts, releases
+all previously acquired locks and tries again later, repeating
+these steps until success. While this locking scheme avoids
+deadlock, it does not preclude starvation, that is, a transaction
+may be repeatedly denied its predeclared locks and, therefore, not
+progress. To avoid starvation, a FIFO mutex was used, ensuring that
+at most one transaction at a time attempts to get its predeclared
+locks. The mutex remains busy only during the lock acquisition
+attempt phase, being released immediately after that (in case of
+success or not) and before the transaction starts running (in case
+of success). To ensure serializability, the Strict Two Phase Locking
+Protocol (2PL) was employed.
+
+It is worth observing that predeclared locking is not a
+It is only a convenient choice to alleviate the
+In other words, there is no need
+
+requirement.
+consequences of aborting.
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Fig. 12. Totally pessimisticmake reservation.
+
+for rollback simulation. Any other lock acquisition policy (see
+Section 4) could be used, without affecting the conclusions.
+
+The performance was evaluated using the average response
+time, also known as average turnaround, measured in seconds
+(wall time). This includes the real-time elapsed between the
+arrival of the transaction up to obtaining the desired response,
+therefore considering any aborts and restarts. The overhead of time
+measurement was not discounted, being incorporated into the
+turnaround of all transactions. As all transactions equally received
+this little extra time, there was no influence on the results of the
+comparisons.
+
+All simulations (evaluation of the four granules, evaluation of
+the new multigranularity protocol, and evaluation of the new lock
+modes) were carried out as follows. Four I/O times required to
+access a (property, resource) pair xi,j were used: 1, 2, 3 and 5 ms.
+For each I/O time, all simulations were executed twice: with a
+set of 100 transactions, and another set of 1000 transactions. All
+transactions arrive at the same time. All simulation cases showed
+the expected evidences of improvement, but, for the sake of space,
+only the intermediary 2 ms I/O time, with 1000 transactions results
+will be presented in next sections. Finally, the I/O time required to
+set a lock is considered zero, since our Lock Manager keeps all locks
+in main memory.
+
+It is worth reiterating that the performance of any lock model is
+influenced, among other factors, by two prevailing and antagonistic components: conflict rate and locking overhead. When the former increases, the latter decreases, and vice-versa. In other words,
+
+Fig. 13. Totally pessimisticissue tickets.
+
+the greater the number of conflicts, the smaller the amount of locks
+that the lock manager has to deal with, and vice-versa.
+
+The computational environment for the experiments was a
+PC with: processor Intel Core i7 920 @ 2.67 GHz; 6 GB of RAM;
+Microsoft Windows Vista Ultimate 64-bit Service Pack 214; Java
+Runtime Environment (JRE) 64-bit 1.8.0_45; JRuby 64-Bit 1.7.20.1.
+During the simulations, the priority of the Java process, within
+which the simulated transaction threads executed, was set to
+High.
+
+Since for this work we are not concerned with the physical
+structure of the underlying database, but only with our four logical
+granules, a real world dataset was not needed for the evaluation.
+The abstract database matrix of m  n lockable (property,
+resource) pairs was enough and more convenient because our
+
+14 We also conducted tests on Ubuntu Linux 14.04, but the Windows native
+threads environment performed better.
+
+Fig. 14. Totally pessimisticchange reservations event.
+
+most elementary logical granule is a pair (property, resource), not
+a triple. We do not lock triples directly, but (property, resource)
+pairs, where all processing is carried out. The triples exist merely
+virtually. To simulate access to the virtual triples of a (property,
+resource) pair, we simply used the I/O times (1, 2, 3 and 5 ms)
+mentioned early. Another reason not to use real data is that the
+number of (property, resource) pairs must be limited. Otherwise
+the time to prepare the access profile of the 100 and 1000
+transactions, in all simulation cases, would make the completion
+and analysis of the various experiments and parameter tuning
+
+that have been made impractical due to the extremely long time
+required for each case.
+
+6.1. Evaluation of the four granules
+
+We used the monogranularity protocol to assess the performance of each of the four granules individually. Three sets of transactions of same access size: 0.1%, 1% and 10% of the databases
+(property, resource) pairs xi,j were simulated, mixing the six new
+read/write lock modes, for each readers/writers scenario (20%, 50%,
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Fig. 19. Monogranularity protocol, 2 ms I/O time, 1000 transactions, size 10% of
+database.
+
+Fig. 15. Lock managers data structures.
+
+Fig. 16. Database: matrix of m properties by n resourcesm  n lockable items.
+
+Fig. 20. Monogranularity vs multigranularity, 2 ms I/O time, 1000 transactions, size
+from 0.1% to 10% of database, 20% of writers.
+
+Fig. 17. Monogranularity protocol, 2 ms I/O time, 1000 transactions, size 0.1% of
+database.
+
+for large transactions (10% of database), the coarser granule Graph
+exhibited the shortest turnaround.
+
+In all three readers/writers scenarios (20%, 50%, and 80% of
+writers), the performance classification of the four granules was
+(sorted from shortest turnaround to the longest):
+
+0.1% of database
+PropertyOfResource, Resource, Graph, Property
+1% of database
+PropertyOfResource, Graph, Property, Resource
+10% of database
+Graph, Property, Resource, PropertyOfResource
+Choosing a granularity for locking requires striking a balance
+between locking cost and amount of concurrency. When the size of
+transactions increases, the performance of the finer granules PropertyOfResource and Resource started to degrade due to the locking overhead, and the coarser granules performed better. For 1%
+of database, the smallest granule PropertyOfResource still remained
+the best because it was able to maintain a sufficient level of concurrency to offset the locking cost, but for the Resourcegranule it did
+not and, thus, became the worst. In 10% of database, the locking
+overhead was too high, causing PropertyOfResource to become the
+worst case, followed by Resource. In all cases, the Graph granule was
+followed closely by the Property granule, being slightly better. This
+occurred because in our experiments, the amount of properties
+was kept low because of the long time required by the simulations.
+
+Fig. 18. Monogranularity protocol, 2 ms I/O time, 1000 transactions, size 1% of
+database.
+
+and 80% of writers). Each of these sets was run for each of the
+four granules, separately. Figs. 1719 show the resulting average
+turnarounds for 2 ms I/O time1000 transactions.
+
+Not surprisingly, the finer granule PropertyOfResourceshowed
+the best result for short transactions (0.1% and 1% of database), and
+
+6.2. Evaluation of the new multigranularity protocol
+
+To compare the multigranularity and the monogranularity pro-
+tocols, using the six new read/write lock modes, for each read-
+ers/writers scenario (20%, 50% and 80% of writers), we ran a
+simulation with mixed transactions with access size uniformly distributed over the range 0.1% to 10% of the databases amount of
+(property, resource) pairs xi,j (according to algorithm in Table 12).
+First the granules were simulated separately, using the monogranularity protocol, and then the same transactions were simulated
+
+Fig. 21. Monogranularity vs multigranularity, 2 ms I/O time, 1000 transactions, size
+from 0.1% to 10% of database, 50% of writers.
+
+Fig. 22. Monogranularity vs multigranularity, 2 ms I/O time, 1000 transactions, size
+from 0.1% to 10% of database, 80% of writers.
+
+Table 12
+Transaction sizes distribution algorithm.
+
+Table 13
+Fig. 20s turnaround values.
+
+Table 14
+Fig. 20s average number of locks distribution over the four granules.
+
+with our multigranularity protocol. In the multigranularity simu-
+lation, to decide which granule the transaction must lock, it is necessary to decide when a transaction is considered to be large (or
+comprehensive) enough to lock the entire granule. This is implemented by looking at the percentage of the granule (i.e., of the total
+number of (property, resource) pairs xi,j contained in the granule)
+that the transaction accesses. When this percentage is above a predefined threshold, the transaction must then lock the entire gran-
+ule. Thus, we defined threshold percentages (tp) to lock the entire
+granule, following the experiment conducted in [18]. The simulation tries to lock in succession a granule, ranging from the largest
+granule (Graph) to the smallest (PropertyOfResource), in accordance
+with these thresholds. Figs. 2022 and respective Tables 13, 15 and
+17 present the resulting average turnarounds for 2 ms I/O time
+1000 transactions.
+
+Again, the tp with best performance (shortest turnaround) will
+be one whose distribution of locks over the four granules leads to
+the balance between locking cost and concurrency.
+
+In the 20% of writers scenario (Fig. 20), the tp 1% achieved the
+best performance, followed closely by the Graph granule in second
+place, and tp 5% in third place. Due to the vast majority of readers
+and consequent shorter probability of conflicts, the coarser granule
+Graph stood out, as can be seen in tp 1% row of Table 14.
+
+Note: In Table 14, tp 0.1% and graph rows; tp 35% and prop.
+of res. rows have exactly the same lock distribution over the four
+granules, but the corresponding turnarounds are different. This is
+due to the higher overhead of the multigranularity protocol (tp
+0.1% and tp 35%) against the monogranularity protocol (graph and
+prop. of res.). The same reasoning applies to Tables 16 and 18.
+
+In 50% of writers scenario (Fig. 21), the tp 5% was the best,
+followed by tp 10% and PropertyOfResource granule. As the number
+of writers increases, the chance of conflicts also increases, thus, the
+performance of the finer granules PropertyOfResource and Resource
+started to enhance, as can be seen in tp 5% row of Table 16.
+
+Finally, in 80% of writers scenario (Fig. 22), the tp 10% achieved
+the best result, followed by tp 15% and tp 5%. Due to the prevalence
+of writers and the higher probability of conflicts, the finer granule
+PropertyOfResource stood out, as can be seen in tp 10% row of
+Table 18.
+
+It was noticed that for these best tps, there was a better
+balance of distribution of locks between the four granules, with
+large transactions locking coarse granules and short transactions
+locking at a finer granularity, corroborating the basic principle of
+multigranularity strategy. On the other hand, depending of the
+readers/writers scenario the definition of large can vary. Based
+on our experiments, the average among the best tps of the three
+readers/writers scenarios (20%, 50% and 80% of writers) is tp 5.3%.
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+Table 15
+Fig. 21s turnaround values.
+
+Table 18
+Fig. 22s average number of locks distribution over the four granules.
+
+Table 16
+Fig. 21s average number of locks distribution over the four granules.
+
+Table 17
+Fig. 22s turnaround values.
+
+Fig. 23. Lock modes average turnaround (seconds), 2 ms I/O time, 100 transactions,
+size 0.1% of database.
+
+6.3. Evaluation of the new lock modes
+
+To confirm the increased parallelism enabled by the new
+proposed lock modes, we simulated three sets of transactions of
+same access size: 0.1%, 1% and 10% of the databases (property,
+resource) pairs xi,j, using the monogranularity protocol with only
+the smallest granule PropertyOfResource,for each readers/writers
+scenario (20%, 50%, 80% of writers). Each set of these was
+simulated twice: first using the classical incompatible read/write
+lock modes (riR & riW), and then using our new compatible
+removal read/insertion write lock modes (rR & iW). Exceptionally,
+in this section, in addition to the results for 1000 transactions,
+we also show the remarkable results for 100 transactions. The
+resulting average turnarounds for the 2 ms I/O time, as well as
+the gain (turnaround reduction) are shown in Figs. 2325 for 100
+transactions, and in Figs. 2628 for 1000 transactions.
+
+Fig. 24. Lock modes average turnaround (seconds), 2 ms I/O time, 100 transactions,
+size 1% of database.
+
+These results show that, in fact, the new lock modes reduce the
+turnaround, especially under a predominance of read operations.
+
+Fig. 25. Lock modes average turnaround (seconds), 2 ms I/O time, 100 transactions,
+size 10% of database.
+
+Fig. 28.
+transactions, size 10% of database.
+
+Lock modes average turnaround (seconds), 2 ms I/O time, 1000
+
+(size 0.1% of database) case, the gain was pretty good, but as
+the size of transactions expanded (1% and 10% of database),
+the gain reduced due to the increment of locking overhead, but
+still was present. Obviously, this increment of locking cost could
+be attenuated by using coarser granules instead of the smallest
+granule PropertyOfResource, for these larger transactions.
+
+7. RDF optimistic locking proposal
+
+Fig. 26.
+transactions, size 0.1% of database.
+
+Lock modes average turnaround (seconds), 2 ms I/O time, 1000
+
+Fig. 27.
+transactions, size 1% of database.
+
+Lock modes average turnaround (seconds), 2 ms I/O time, 1000
+
+For the 100 transactions case, due to the small number of
+transactions and consequent low locking overhead, in the 20% of
+writers scenario, the gain augmented as the size of transactions
+increased, reaching the excellent score of 37.566% of reduction,
+for size of 10% of database. For the 1000 short transactions
+
+Whereas the focus of this work is the pessimistic model
+presented previously, this section presents a discussion of how
+an application could still apply the optimistic approach, from the
+point of view of the proposed granules and the new lock modes for
+insertion or removal.
+
+The optimistic locking is an approach of conflict detection.
+Therefore, the virtual lock (a physical lock does not actually exist)
+is acquired after the user finishes his/her work. The goal is not
+to avoid conflicts, but rather to detect conflicts at the end of
+the transaction, prior to persisting the data (durability). The user
+does not have assurance that after performing his/her work and
+confirming it (commit), the resulting effect will be confirmed
+(durability). There is a risk of having to throw away the work, in
+the end, if a conflict is detected. The underlying assumption is that
+this will, in practice, rarely occur, and it is still worthwhile to spend
+the resources to process the items, even if it may fail in the end.
+
+There are two ways to implement optimistic locking: adding
+a version to data and checking this version before modifying the
+data, or a more general 3-phase method described below:
+1. Read phase
+
+Data loadingdefinition of the RS (Read Set). At this stage,
+queries that load the RSinitial are carried out. The RSinitial and the
+code of the executed queries are stored in the users session,
+throughout the transaction.
+
+2. Validation phase (pre-commit)
+
+Obtaining the optimistic locking, indicating that everything is
+OK and the data can be persisted. Acquiring optimistic locks
+means simply to redo the queries stored in the Read phase,
+obtaining a new RScommit, and comparing it with the RSinitial. If
+the result of the comparison is consistent, the optimistic locking
+was acquired successfully, otherwise there was conflict and, in
+general, the transaction must abort.
+There are two possible scenarios:
+i. The system uses the optimistic approach only. In this case, it
+is enough for all transactions acquire their optimistic locks.
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+ii. The system uses both approaches: optimistic and pes-
+simistic. In this case, all transaction must, firstly, acquire
+a pessimistic lock for removal or insertion on appropriate
+granules that cover the triples to be removed or inserted, before persisting them. For example, before removing the triple
+ex:mark foaf:name Mark Douglas Jacyntho, we
+must obtain, a write lock for removal (rW) on the granule
+property foaf:name of resource ex:mark. If we can acquire
+all pessimistic locks, then we attempt to acquire the optimistic locks as usual.
+
+3. Write phase (commit)
+
+If all the locks were acquired with success in the Validation
+phase, the transactions private workspace is effectively persisted into the database, completing the commit.
+
+Important: The Validation and Write phases must occur atomically.
+
+7.1. RDF optimistic read locks modes
+
+In the optimistic transaction control for RDF, we can also
+employ the notion of a read lock for insertion or removal. The
+lock mode defines how the Validation phase will be conducted, as
+described below:
+ rRremoval read optimistic lock
+It should be used when the intention is only to verify that a
+second concurrent transaction did not remove triples. This means
+RSinitial  RScommit  .
+ iRinsertion read optimistic lock
+It should be used when the intention is only to verify that a second
+concurrent transaction did not insert triples. This means RScommit
+RSinitial  .
+ riRremoval/insertion optimistic lock
+It should be used when the intention is to verify that a second
+concurrent transaction did not remove or insert triples. This means
+RScommit  RSinitial.
+
+7.2. RDF optimistic granules
+
+In the optimistic version, a granule means the extent of the
+query to be executed. In theory, any granule can be defined, ranging
+from the entire graph to a single triple.
+
+Considering the four granules proposed in this work, three are
+easily mapped to SPARQL queries. They are:
+ Graph
+The corresponding SPARQL query would be:
+CONSTRUCT {?s ?p ?o}
+WHERE {?s ?p ?o.}
+ Property
+For example, for the property
+dbpedia2:birthPlace, the corresponding SPARQL query
+would be:
+CONSTRUCT {?s dbpedia2:birthPlace ?o}
+WHERE {?s dbpedia2:birthPlace ?o.}
+ Property of Resource
+For example, for the property
+dbpedia2:birthPlace of resource
+:Roger_Federer, the corresponding SPARQL query would
+be:
+CONSTRUCT {:Roger_Federer dbpedia2:birthPlace
+?o}
+WHERE {:Roger_Federer dbpedia2:birthPlace ?o.}.
+
+Nevertheless, in the case of granule Resource, the mapping is
+not so direct. In an RDF store, a resource does not exist by itself.
+A resource exists when there is at least one triple in which the
+resource occurs. Thus, to create a SPARQL query for a resource, it
+is necessary to decide which triples define the resource. In other
+words, which subgraph is considered to be a representation of that
+resource.
+
+To this end, we can employ the notion of CBDConcise Bounded
+Description, proposed by Patrick Stickler [19], for the optimistic
+version of granule Resource. Its definition is:
+
+Given a particular node (the starting node) in a particular RDF
+graph (the source graph), a subgraph of that particular graph, taken
+to comprise a concise bounded description of the resource denoted by
+the starting node, can be identified as follows:
+1. Include in the subgraph all statements in the source graph where
+the subject of the statement is the starting node;
+ Recursively, for all statements identified in the subgraph thus far
+having a blank node object, include in the subgraph all statements
+in the source graph where the subject of the statement is the
+blank node in question and which are not already included in the
+subgraph.
+
+2. Recursively, for all statements included in the subgraph thus far,
+for all reifications of each statement in the source graph, include
+the concise bounded description beginning from the rdf:Statement
+node of each reification.
+
+This results in a subgraph where the object nodes are either URI
+references, literals, or blank nodes not serving as the subject of any
+statement in the graph.
+
+If the system also uses pessimistic approach, an optimistic
+transaction that has changed any property of a blank node or
+a reified statement, must, in the Validation phase, acquire an
+appropriated pessimistic lock on these nodes.
+
+8. Related work
+
+There are several projects that address the performance issue
+of complex queries over large amount of triples, proposing
+improvements in indexing and query optimization [48].
+
+In [20],
+
+incremental bulk loading is presented, based on
+deferred-indexing method, which is not adequate for large-scale
+online updateslimited performance and without transactional
+support.
+
+The work in [21] expands that of [20], proposing an extended
+deferred-indexing method supporting versioning and high updates
+rates. Serializability is achieved using Snapshot Isolation for readonly transactions, and adding conventional readwrite locking
+for readwrite transactions. RDF triples are mapped into integer
+triples by using a dictionary for literalsforming points in N3,
+i.e., granules are boxes in N3 data space. Initially, all updates
+are stored in the per-transaction workspaces. At commit time,
+the transaction must request write locks for all
+its deferred
+updates before merging them into the shared indexes. To improve
+concurrency, a conflict-ordering protocol is used. Since data is
+versioned, there is no need to immediately block a transaction.
+Instead, to ensure that the executed transaction schedule is
+serializable, a serialization graph (SG) is dynamically maintained
+and as conflicts are observed the transactions are reordered
+(commit order), possibly causing some abortions. The idea is valid,
+but, strictly speaking, this is not a pessimistic approach, but an
+optimistic behavior, since it delays the checking for conflicts after
+the work was done. Still, it is worth noting that our new lock modes
+could be applied in this work, reducing the number of abortions,
+given that we have compatible write and read lock modes.
+
+In [22], the ReadCopyUpdate (RCU) is presented, a locking
+mechanism that reduces the readers locking overhead to zero.
+
+As well as our proposal RCU allows simultaneous access between
+a single write transaction and multiple read transactions. RCU
+ensures coherent readings keeping multiple versions of an object
+and ensuring that old versions are kept until readers who use
+them terminate. In other words, read transactions can continue
+reading while write transactions create new copies, hence the
+name ReadCopyUpdate. In fact this approach increases the
+degree of multiprogramming. However, unlike our proposal that
+is strictly pessimist, RCU allows non-serializable histories, since
+readers may see stale data (old versions). For applications that do
+not tolerate stale data, RCU cannot be employed.
+
+Regarding current RDF stores, the Snapshot Isolation Model is
+the most common mechanism used, followed by Read Committed
+Isolation. Todays native RDF stores do not support a fully
+pessimistic protocol. In our research, only Virtuoso Universal
+Server,15 a non-native RDF store, offers conventional readwrite
+pessimistic locks, delegating to its underlying relational databases
+lock system. In the RDF context, the pessimistic approach is still
+virtually unexplored. The Triple Stores we have examined, with
+their corresponding transactions isolation mechanisms are listed
+below:
+ Allegrograph16supports Snapshot Isolation.
+ GraphDB17 (formerly OWLIM)offers the Read Committed
+Isolation slightly modified, since writers do not block readers.
+Pending updates are not visible to other connected users,
+until the complete update transaction has been committed.
+However, for efficiency reasons and unlike typical relational
+database behavior, uncommitted changes are not visible even
+when using the connection that made the updates. It allows
+multiple active write transactions simultaneously. Committed
+write transactions are processed internally in sequence, one
+after another.
+ Jena TDB18uses Snapshot Isolation. But to avoid write conflicts
+(abortions) and write skew anomaly, Jena TDB supports one
+active write transaction (global write lock), and multiple read
+transactions at the same time.
+ Mulgara19supports Snapshot Isolation. Like Jena TDB,
+it
+permits one active write transaction (global write lock), and
+multiple read transactions at the same time. Mulgaras snapshot
+model does not use multiple versions. It uses copy-on-write for
+writers and store sharing between snapshots. A global read lock
+is established on during the obtaining of the snapshot and the
+snapshot is for query, not for the whole transaction.
+ Blazegraph20 (formerly BigData)offers Snapshot Isolation for
+read-only transactions and optimistic approach for readwrite
+transactions.
+ Stardog21runs Read Committed Isolation if it has not started
+an explicit transaction and runs in Snapshot Isolation if it has
+started a transaction. In either mode, uncommitted changes
+will only be visible to the connection that made the changes:
+no other connection can see those values before they are
+committed. Neither mode locks the database; if there are write
+conflicts, the latest commit wins.
+
+15 http://virtuoso.openlinksw.com.
+16 http://franz.com/agraph/allegrograph.
+17 http://www.ontotext.com/products/graphdb.
+18 https://jena.apache.org/documentation/tdb/index.html.
+19 http://www.mulgara.org.
+20 http://blazegraph.com.
+21 http://stardog.com.
+
+four levels of
+
+ Virtuoso Universal Server  uses its underlying relational
+databases lock mechanism  dynamic locking with two gran-
+ules: row (for short transactions) and page (for large trans-
+actions). All
+isolation are supported: Read
+Uncommitted, Read Committed, Repeatable Read and Serializ-
+able. Similar to GraphDB, Virtuoso has a non-locking, versioned
+Read Committed. If a write locked row is read and another
+transaction owns the lock, the reading transaction will see the
+row in the state it had before being modified by the transaction owning the lock. There will be no wait. If a row has been
+inserted but the insert not committed, the row will not be seen
+by the read committed transaction. If a row has been updated or
+deleted, the row will be seen as it was before the uncommitted
+modifying transaction.
+ 4Store22does not support transactions.
+
+9. Conclusions and ongoing work
+
+We have presented a novel multigranularity locking model
+suitable for applications that manipulate RDF data. This model
+exploits the RDF data structure to provide varying granularities of
+locking and new read/write operations beyond the classical ones,
+improving the level of multiprogramming. We have also provided
+indicators for when the new lock modes are most beneficial.
+In [16], this work is described in depth, with a user guide and
+a complementary discussion about an optimistic version of the
+four granules and the new lock modes, and how to apply both
+pessimistic and optimistic approaches together.
+
+This work focused on the definition of granules and corresponding lock modes and protocol at the logical level. A further step
+for actual evaluation is to map and test these logical granules in
+different physical layouts used in DBMSs. Basically, each logical
+granule must be mapped to an index. The challenge is to find
+the indexing arrangement that satisfactorily meets the triad (re-
+source,property,value). For example, many RDF systems store the
+triples in relational tables. Generally speaking, there are three storage layouts for doing this:
+1. Triples tableall triples are stored in a single table with three
+
+generic fields resource, property, value;
+
+2. Property tablestriples are grouped by property, and all triples
+with the same property are stored in the corresponding property
+table;
+
+3. Cluster-property tableseach table contains triples for a small
+
+number of correlated properties.
+
+For instance, in (1), the mapping of the granules would be:
+Graph  table; Resource  index on resource field; Property 
+index on property field; PropertyOfResource compound index on
+property/resource fields. The granule instances (as in Fig. 3) would
+be index entries in the respective granule index. In the future,
+various mappings must be formulated and tested, but the proposed
+lock model and its logical granules will remain unchanged.
+
+Named Graphs are not covered yet, also left as future work.
+Notice that to address Named Graphs, we only need to extend the
+rationale to find the granules (Table 3) from triples (resource, prop-
+erty, value) to quads (graph, resource, property, value), resulting in
+the Lock Type Graph illustrated in Fig. 29. All other considerations
+of our model remain valid.
+
+As future work, we plan to extend the granules hierarchy to
+contemplate named graphs; to map the logical granules to different database layouts and indexes; to carry out a more thorough
+evaluation in realistic applications and in Linked Open Data applications [1]; to enhance the lock manager to automatically change
+
+22 http://www.4store.org.
+
+M.D. Jacyntho, D. Schwabe / Web Semantics: Science, Services and Agents on the World Wide Web 39 (2016) 2546
+
+[6] T. Neumann, G. Weikum, RDF-3X: a RISC-style engine for RDF, in: Proceedings
+of the 34th International Conference on Very Large Databases, VLDB, 2008,
+Auckland, New Zealand, August 2007, pp. 647659.
+
+[7] T. Neumann, G. Weikum, Scalable joing processing on very large RDF graphs,
+in: Proceedings of SIGMOD Conference, Providence, Rhode Island, USA,
+June/July 2009.
+
+[8] C. Weiss, P. Karras, A. Bernstein, Hexastore: sextuple indexing for semantic
+Web data management, in: Proceedings of the 34rd International Conference
+on Very Large Databases, VLDB, 2008, Auckland, New Zealand, August 2007,
+pp. 10081019.
+
+[9] H. Berenson, P. Bernstein, J. Gray, J. Melton, E. ONeil, P. ONeil, A critique of
+ANSI SQL isolation levels, in: Proceedings of 1995 ACM SIGMOD International
+Conference on Management of Data, SIGMOD95, ACM Press, New York, NY,
+USA, ISBN: 0-89791-731-6, 1995.
+
+[10] S. Battle, S. Speicher, Linked data platform use cases and requirements.
+
+W3C working group note 13 March 2014.
+Available at http://www.w3.org/TR/ldp-ucr/, 2015 (accessed 16.09.15).
+
+[11] M.R.S. Borges, K.F. Cordeiro, M.L.M. Campos, T. Marino, Linked open data and
+the design of information infrastructure for emergency management systems,
+in: Proceedings of the 8th International Conference on Information System for
+Crisis Response and Management, ISCRAM, 2011, Lisboa, Portugal, May 2011,
+pp. 16.
+
+[12] J.N. Gray, R.A. Lorie, G.R. Putzolu, I.L. Traiger, Granularity of locks and
+degrees of consistency in a shared data base, in: Proceedings of IFPI Working
+Conference on Modeling Data Base Management Systems, Freudenstadt,
+Germany, January 1976, pp. 695723.
+
+[13] F. Darari, S. Razniewski, W. Nutt, Bridging the semantic gap between
+RDF and SPARQL using completeness statements, in: Proceedings of the
+Posters & Demonstrations Track within the 13th International Semantic Web
+Conference, ISWC 2014, Riva del Garda, Italy, October 21, 2014, pp. 269272.
+[14] P. Bernstein, V. Hadzilacos, N. Goodman, Concurrency Control and Recovery in
+
+[15] G. Weikum, G. Vossen, Transactional
+
+Database System, Addison-Wesley, ISBN: 0-201-10715-5, 1987.
+information systems,
+
+in: Theory,
+Algoritms, and the Practice of Concurrency Control and Recovery, Morgan
+Kaufmann  Academic Press, ISBN: 1-55860-508-8, 2002.
+
+Jacyntho, Multigranularity locking model for RDF (D.Sc. Thesis),
+Departamento de Informatica, PUC-Rio, Rio de Janeiro, 2012, p. 277. February
+(in Portuguese).
+
+[16] M.D.A.
+
+[17] D. Potier, P. Le Blanc, Analysis of Locking Policies in Database Management
+
+Systems, vol. 23, ACM, 1980, pp. 584593. No. 10, October.
+
+[18] D.R. Ries, M.R. Stonebraker, Locking granularity revisited, J. ACM Trans.
+
+Database Syst. 4 (2) (1979) 210227.
+
+[19] P. Stickler, CBDConcise Bounded Description. W3C Member Submission 3
+June 2005. Available at http://www.w3.org/Submission/CBD/, 2015 (accessed
+16.09.15).
+
+[20] T. Neumann, G. Weikum, The RDF-3X engine for scalable management of
+RDF data, in: Proceedings of the 35th International Conference on Very Large
+Databases, VLDB, 2009, Lyon, France, 2009, pp. 91113. August.
+
+[21] T. Neumann, G. Weikum, x-RDF-3X: Fast querying, high update rates, and
+consistency for RDF databases, in: Proceedings of the 36th International
+Conference on Very Large Databases, VLDB, 2010, Singapore, September 2010,
+pp. 256263.
+
+[22] P.E. McKenney, J.D. Slingwine, Read-copy update: Using execution history to
+solve concurrency problems, in: In Parallel and Distributed Computing and
+Systems, 1998, pp. 509518. October.
+
+Fig. 29. Named graph lock type graph.
+
+the granule size depending upon both the transaction requirements and the current system load, and to integrate this model into
+the architecture of a RDF Store.
+
+Another promising line of investigation is to experiment this
+new locking model over the already established relational model
+and other NoSQL database alternatives (graph, keyvalue, doc-
+ument, column-family stores). The basic idea is to adapt the
+granules hierarchy, since the protocol and lock modes for
+insertion/removal remains unchanged.
+
+Acknowledgment
+
+This research was partially supported by CNPq. Mark Jacyntho
+under grant number 142192/2007-4 and Daniel Schwabe under
+grant numbers 302.352/85.6 and 557128/200-9.

@@ -1,0 +1,184 @@
+Proceedings of ACL08: HLT , pages 505?513,
+Columbus , Ohio , USA , June 2008. c?2008 Association for Computational Linguistics
+Randomized Language Models via Perfect Hash Functions
+David Talbot?
+School of Informatics
+University of Edinburgh
+2 Buccleuch Place , Edinburgh , UK
+d.r.talbot@sms.ed.ac.uk
+Thorsten Brants
+Google Inc.
+1600 Amphitheatre Parkway
+Mountain View , CA 94303, USA
+brants@google.com
+Abstract
+We propose a succinct randomized language model which employs a perfect hash function to encode fingerprints of ngrams and their associated probabilities , backoff weights , or other parameters . The scheme can represent any standard ngram model and is easily combined with existing model reduction techniques such as entropy-pruning . We demonstrate the space-savings of the scheme via machine translation experiments within a distributed language modeling framework.
+1 Introduction
+Language models ( LMs ) are a core component in statistical machine translation , speech recognition , optical character recognition and many other areas.
+They distinguish plausible word sequences from a set of candidates . LMs are usually implemented as ngram models parameterized for each distinct sequence of up to n words observed in the training corpus . Using higher-order models and larger amounts of training data can significantly improve performance in applications , however the size of the resulting LM can become prohibitive.
+With large monolingual corpora available in major languages , making use of all the available data is now a fundamental challenge in language modeling . Efficiency is paramount in applications such as machine translation which make huge numbers of LM requests per sentence . To scale LMs to larger corpora with higher-order dependencies , researchers ? Work completed while this author was at Google Inc.
+have considered alternative parameterizations such as classbased models ( Brown et al , 1992), model reduction techniques such as entropy-based pruning ( Stolcke , 1998), novel represention schemes such as suffix arrays ( Emami et al , 2007), Golomb Coding ( Church et al , 2007) and distributed language models that scale more readily ( Brants et al , 2007).
+In this paper we propose a novel randomized language model . Recent work ( Talbot and Osborne , 2007b ) has demonstrated that randomized encodings can be used to represent ngram counts for LMs with signficant space-savings , circumventing information-theoretic constraints on lossless data structures by allowing errors with some small probability . In contrast the representation scheme used by our model encodes parameters directly . It can be combined with any ngram parameter estimation method and existing model reduction techniques such as entropy-based pruning . Parameters that are stored in the model are retrieved without error ; however , false positives may occur whereby ngrams not in the model are incorrectly ? found ? when requested.
+The false positive rate is determined by the space usage of the model.
+Our randomized language model is based on the Bloomier filter ( Chazelle et al , 2004). We encode fingerprints ( random hashes ) of ngrams together with their associated probabilities using a perfect hash function generated at random ( Majewski et al , 1996). Lookup is very efficient : the values of 3 cells in a large array are combined with the fingerprint of an ngram . This paper focuses on machine translation . However , many of our findings should transfer to other applications of language modeling.
+505 2 Scaling Language Models
+In statistical machine translation ( SMT ), LMs are used to score candidate translations in the target language . These are typically ngram models that approximate the probability of a word sequence by assuming each token to be independent of all but n?1 preceding tokens . Parameters are estimated from monolingual corpora with parameters for each distinct word sequence of length l ? [ n ] observed in the corpus . Since the number of parameters grows somewhat exponentially with n and linearly with the size of the training corpus , the resulting models can be unwieldy even for relatively small corpora.
+2.1 Scaling Strategies
+Various strategies have been proposed to scale LMs to larger corpora and higher-order dependencies.
+Model-based techniques seek to parameterize the model more efficiently ( e.g . latent variable models , neural networks ) or to reduce the model size directly by pruning uninformative parameters , e.g . ( Stolcke , 1998), ( Goodman and Gao , 2000). Representation-based techniques attempt to reduce space requirements by representing the model more efficiently or in a form that scales more readily , e.g . ( Emami et al , 2007), ( Brants et al , 2007), ( Church et al , 2007).
+2.2 Lossy Randomized Encodings
+A fundamental result in information theory ( Carter et al , 1978) states that a random set of objects cannot be stored using constant space per object as the universe from which the objects are drawn grows in size : the space required to uniquely identify an object increases as the set of possible objects from which it must be distinguished grows . In language modeling the universe under consideration is the set of all possible ngrams of length n for given vocabulary . Although ngrams observed in natural language corpora are not randomly distributed within this universe no lossless data structure that we are aware of can circumvent this space-dependency on both the ngram order and the vocabulary size.
+Hence as the training corpus and vocabulary grow , a model will require more space per parameter.
+However , if we are willing to accept that occasionally our model will be unable to distinguish between distinct ngrams , then it is possible to store each parameter in constant space independent of both n and the vocabulary size ( Carter et al , 1978), ( Talbot and Osborne , 2007a ). The space required in such a lossy encoding depends only on the range of values associated with the ngrams and the desired error rate , i.e . the probability with which two distinct ngrams are assigned the same fingerprint.
+2.3 Previous Randomized LMs
+Recent work ( Talbot and Osborne , 2007b ) has used lossy encodings based on Bloom filters ( Bloom , 1970) to represent logarithmically quantized corpus statistics for language modeling . While the approach results in significant space savings , working with corpus statistics , rather than ngram probabilities directly , is computationally less efficient ( particularly in a distributed setting ) and introduces a dependency on the smoothing scheme used . It also makes it difficult to leverage existing model reduction strategies such as entropy-based pruning that are applied to final parameter estimates.
+In the next section we describe our randomized LM scheme based on perfect hash functions . This scheme can be used to encode any standard ngram model which may first be processed using any conventional model reduction technique.
+3 Perfect Hash-based Language Models
+Our randomized LM is based on the Bloomier filter ( Chazelle et al , 2004). We assume the ngrams and their associated parameter values have been precomputed and stored on disk . We then encode the model in an array such that each n-gram?s value can be retrieved . Storage for this array is the model?s only significant space requirement once constructed.1 The model uses randomization to map ngrams to fingerprints and to generate a perfect hash function that associates ngrams with their values . The model can erroneously return a value for an ngram that was never actually stored , but will always return the correct value for an ngram that is in the model.
+We will describe the randomized algorithm used to encode ngram parameters in the model , analyze the probability of a false positive , and explain how we construct and query the model in practice.
+1Note that we do not store the ngrams explicitly and therefore that the model?s parameter set cannot easily be enumerated.
+506 3.1 N - gram Fingerprints
+We wish to encode a set of n-gram/value pairs S = {( x1, v(x1)), ( x2, v(x2)), . . . , ( xN , v(xN ))} using an array A of size M and a perfect hash function . Each ngram xi is drawn from some set of possible ngrams U and its associated value v(xi ) from a corresponding set of possible values V .
+We do not store the ngrams and their probabilities directly but rather encode a fingerprint of each ngram f(xi ) together with its associated value v(xi ) in such a way that the value can be retrieved when the model is queried with the ngram xi.
+A fingerprint hash function f : U ? [0, B ? 1] maps ngrams to integers between 0 and B ? 1.2 The array A in which we encode n-gram/value pairs has addresses of size dlog2 Be hence B will determine the amount of space used per ngram . There is a tradeoff between space and error rate since the larger B is , the lower the probability of a false positive . This is analyzed in detail below . For now we assume only that B is at least as large as the range of values stored in the model , i.e . B ? | V|.
+3.2 Composite Perfect Hash Functions
+The function used to associate ngrams with their values ( Eq . (1)) combines a composite perfect hash function ( Majewski et al , 1996) with the fingerprint function . An example is shown in Fig . 1.
+The composite hash function is made up of k independent hash functions h1, h2, . . . , hk where each hi : U ? [0,M ? 1] maps ngrams to locations in the array A . The lookup function is then defined as g : U ? [0, B ? 1] by3 g(xi ) = f(xi )? ( k ? i=1
+A[hi(xi )] ) (1) where f(xi ) is the fingerprint of ngram xi and A[hi(xi )] is the value stored in location hi(xi ) of the array A . Eq . (1) is evaluated to retrieve an n-gram?s parameter during decoding . To encode our model correctly we must ensure that g(xi ) = v(xi ) for all ngrams in our set S . Generating A to encode this 2The analysis assumes that all hash functions are random.
+3We use ? to denote the exclusive bitwise OR operator.
+Figure 1: Encoding an n-gram?s value in the array.
+function for a given set of ngrams is a significant challenge described in the following sections.
+3.3 Encoding ngrams in the model
+All addresses in A are initialized to zero . The procedure we use to ensure g(xi ) = v(xi ) for all xi ? S updates a single , unique location in A for each ngram xi . This location is chosen from among the k locations given by hj(xi ), j ? [ k ]. Since the composite function g(xi ) depends on the values stored at all k locations A[h1(xi )], A[h2(xi )], . . . , A[hk(xi )] in A , we must also ensure that once an ngram xi has been encoded in the model , these k locations are not subsequently changed since this would invalidate the encoding ; however , ngrams encoded later may reference earlier entries and therefore locations in A can effectively be ? shared ? among parameters.
+In the following section we describe a randomized algorithm to find a suitable order in which to enter ngrams in the model and , for each ngram xi , determine which of the k hash functions , say hj , can be used to update A without invalidating previous entries . Given this ordering of the ngrams and the choice of hash function hj for each xi ? S , it is clear that the following update rule will encode xi in the array A so that g(xi ) will return v(xi ) ( cf . Eq.(1))
+A[hj(xi )] = v(xi )? f(xi )? k ? i=1?i6=j
+A[hi(xi )]. (2) 3.4 Finding an Ordered Matching We now describe an algorithm ( Algorithm 1; ( Majewski et al , 1996)) that selects one of the k hash an order in which to apply the update rule Eq . (2) so that g(xi ) maps xi to v(xi ) for all ngrams in S.
+This problem is equivalent to finding an ordered matching in a bipartite graph whose LHS nodes correspond to ngrams in S and RHS nodes correspond to locations in A . The graph initially contains edges from each ngram to each of the k locations in A given by h1(xi ), h2(xi ), . . . , hk(xi ) ( see Fig . (2)).
+The algorithm uses the fact that any RHS node that has degree one ( i.e . a single edge ) can be safely matched with its associated LHS node since no remaining LHS nodes can be dependent on it.
+We first create the graph using the k hash functions hj , j ? [ k ] and store a list ( degree one ) of those RHS nodes ( locations ) with degree one.
+The algorithm proceeds by removing nodes from degree one in turn , pairing each RHS node with the unique LHS node to which it is connected . We then remove both nodes from the graph and push the pair ( xi , hj(xi )) onto a stack ( matched ). We also remove any other edges from the matched LHS node and add any RHS nodes that now have degree one to degree one . The algorithm succeeds if , while there are still ngrams left to match , degree one is never empty . We then encode ngrams in the order given by the stack ( i.e ., first-in-last-out).
+Since we remove each location in A ( RHS node ) from the graph as it is matched to an ngram ( LHS node ), each location will be associated with at most one ngram for updating . Moreover , since we match an ngram to a location only once the location has degree one , we are guaranteed that any other ngrams that depend on this location are already on the stack and will therefore only be encoded once we have updated this location . Hence dependencies in g are respected and g(xi ) = v(xi ) will remain true following the update in Eq . (2) for each xi ? S.
+3.5 Choosing Random Hash Functions
+The algorithm described above is not guaranteed to succeed . Its success depends on the size of the array M , the number of ngrams stored | S | and the choice of random hash functions hj , j ? [ k ]. Clearly we require M ? | S |; in fact , an argument from Majewski et al (1996) implies that if M ? 1.23|S | and k = 3, the algorithm succeeds with high probabil-Figure 2: The ordered matching algorithm : matched = [( a , 1), ( b , 2), ( d , 4), ( c , 5)] ity . We use 2-universal hash functions ( L . Carter and M . Wegman , 1979) defined for a range of size M via a prime P ? M and two random numbers 1 ? aj ? P and 0 ? bj ? P for j ? [ k ] as hj(x ) ? ajx + bj mod P taken modulo M . We generate a set of k hash functions by sampling k pairs of random numbers ( aj , bj ), j ? [ k ]. If the algorithm does not find a matching with the current set of hash functions , we resample these parameters and restart the algorithm . Since the probability of failure on a single attempt is low when M ? 1.23|S |, the probability of failing multiple times is very small.
+3.6 Querying the Model and False Positives The construction we have described above ensures that for any ngram xi ? S we have g(xi ) = v(xi ), i.e ., we retrieve the correct value . To retrieve a value given an ngram xi we simply compute the fingerprint f(xi ), the hash functions hj(xi ), j ? [ k ] and then return g(xi ) using Eq . (1). Note that unlike the constructions in ( Talbot and Osborne , 2007b ) and ( Church et al , 2007) no errors are possible for ngrams stored in the model . Hence we will not make errors for common ngrams that are typically in S.
+508
+Algorithm 1 Ordered Matching
+Input : Set of ngrams S ; k hash functions hj , j ? [ k ]; number of available locations M .
+Output : Ordered matching matched or FAIL.
+matched ? [ ] for all i ? [0,M ? 1] do r2li ? ? end for for all xi ? S do l2ri ? ? for all j ? [ k ] do l2ri ? l2ri ? hj(xi ) r2lhj(xi ) ? r2lhj(xi ) ? xi end for end for degree one ? { i ? [0,M ? 1] | | r2li | = 1} while | degree one | ? 1 do rhs ? POP degree one lhs ? POP r2lrhs
+PUSH ( lhs , rhs ) onto matched for all rhs ? ? l2rlhs do
+POP r2lrhs ? if | r2lrhs ? | = 1 then degree one ? degree one ? rhs ? end if end for end while if | matched | = | S | then return matched else return FAIL end if On the other hand , querying the model with an ngram that was not stored , i.e . with xi ? U \ S we may erroneously return a value v ? V .
+Since the fingerprint f(xi ) is assumed to be distributed uniformly at random ( u.a.r .) in [0, B ? 1], g(xi ) is also u.a.r . in [0, B?1] for xi ? U\S . Hence with | V | values stored in the model , the probability that xi ? U \ S is assigned a value in v ? V is
+Pr{g(xi ) ? V|xi ? U \ S } = | V|/B.
+We refer to this event as a false positive . If V is fixed , we can obtain a false positive rate  by setting B as
+B ? | V|/.
+For example , if | V | is 128 then taking B = 1024 gives an error rate of  = 128/1024 = 0.125 with each entry inA using dlog2 1024e = 10 bits . Clearly B must be at least | V | in order to distinguish each value . We refer to the additional bits allocated to each location ( i.e . dlog2 Be ? log2 | V | or 3 in our example ) as error bits in our experiments below.
+3.7 Constructing the Full Model
+When encoding a large set of n-gram/value pairs S , Algorithm 1 will only be practical if the raw data and graph can be held in memory as the perfect hash function is generated . This makes it difficult to encode an extremely large set S into a single array A.
+The solution we adopt is to split S into t smaller sets S?i , i ? [ t ] that are arranged in lexicographic or-der.4 We can then encode each subset in a separate array A?i , i ? [ t ] in turn in memory . Querying each of these arrays for each ngram requested would be inefficient and inflate the error rate since a false positive could occur on each individual array . Instead we store an index of the final ngram encoded in each array and given a request for an n-gram?s value , perform a binary search for the appropriate array.
+3.8 Sanity Checks
+Our models are consistent in the following sense ( w1, w2, . . . , wn ) ? S =? ( w2, . . . , wn ) ? S.
+Hence we can infer that an ngram can not be present in the model , if the n ? 1gram consisting of the final n ? 1 words has already tested false . Following ( Talbot and Osborne , 2007a ) we can avoid unnecessary false positives by not querying for the longer ngram in such cases.
+Backoff smoothing algorithms typically request the longest ngram supported by the model first , requesting shorter ngrams only if this is not found . In our case , however , if a query is issued for the 5gram ( w1, w2, w3, w4, w5) when only the unigram ( w5) is present in the model , the probability of a false positive using such a backoff procedure would not be  as stated above , but rather the probability that we fail to avoid an error on any of the four queries performed prior to requesting the unigram , i.e . 1?(1?)4 ? 4.
+We therefore query the model first with the unigram working up to the full ngram requested by the decoder only if the preceding queries test positive . The probability of returning a false positive for any ngram requested by the decoder ( but not in the model ) will then be at most .
+4In our system we use subsets of 5 million ngrams which can easily be encoded using less than 2GB of working space.
+509 4 Experimental Setup 4.1 Distributed LM Framework We deploy the randomized LM in a distributed framework which allows it to scale more easily by distributing it across multiple language model servers . We encode the model stored on each lan-guagage model server using the randomized scheme.
+The proposed randomized LM can encode parameters estimated using any smoothing scheme ( e.g.
+Kneser-Ney , Katz etc .). Here we choose to work with stupid backoff smoothing ( Brants et al , 2007) since this is significantly more efficient to train and deploy in a distributed framework than a context-dependent smoothing scheme such as Kneser-Ney.
+Previous work ( Brants et al , 2007) has shown it to be appropriate to largescale language modeling.
+4.2 LM Data Sets
+The language model is trained on four data sets : target : The English side of Arabic-English parallel data provided by LDC (132 million tokens).
+gigaword : The English Gigaword dataset provided by LDC (3.7 billion tokens).
+webnews : Data collected over several years , up to
+January 2006 (34 billion tokens).
+web : The Web 1T 5gram Version 1 corpus provided by LDC (1 trillion tokens).5 An initial experiment will use the Web 1T 5gram corpus only ; all other experiments will use a loglinear combination of models trained on each corpus . The combined model is precompiled with weights trained on development data by our system.
+4.3 Machine Translation
+The SMT system used is based on the framework proposed in ( Och and Ney , 2004) where translation is treated as the following optimization problem e ? = argmax e
+M ? i=1 ? i?i(e , f ). (3)
+Here f is the source sentence that we wish to translate , e is a translation in the target language , ? i , i ? [ M ] are feature functions and ? i , i ? [ M ] are weights . ( Some features may not depend on f .) 5N - grams with count < 40 are not included in this data set.
+Full Set Entropy-Pruned # 1grams 13,588,391 13,588,391 # 2grams 314,843,401 184,541,402 # 3grams 977,069,902 439,430,328 # 4grams 1,313,818,354 407,613,274 # 5grams 1,176,470,663 238,348,867
+Total 3,795,790,711 1,283,522,262
+Table 1: Num . of ngrams in the Web 1T 5gram corpus.
+5 Experiments
+This section describes three sets of experiments : first , we encode the Web 1T 5gram corpus as a randomized language model and compare the resulting size with other representations ; then we measure false positive rates when requesting ngrams for a heldout data set ; finally we compare translation quality when using conventional ( lossless ) languages models and our randomized language model.
+Note that the standard practice of measuring perplexity is not meaningful here since (1) for efficient computation , the language model is not normalized ; and (2) even if this were not the case , quantization and false positives would render it unnormalized.
+5.1 Encoding the Web 1T 5gram corpus
+We build a language model from the Web 1T 5gram corpus . Parameters , corresponding to negative logarithms of relative frequencies , are quantized to 8-bits using a uniform quantizer . More sophisticated quantizers ( e.g . ( S . Lloyd , 1982)) may yield better results but are beyond the scope of this paper.
+Table 1 provides some statistics about the corpus.
+We first encode the full set of ngrams , and then a version that is reduced to approx . 1/3 of its original size using entropy pruning ( Stolcke , 1998).
+Table 2 shows the total space and number of bytes required per ngram to encode the model under different schemes : ? LDC gzip?d ? is the size of the files as delivered by LDC ; ? Trie ? uses a compact trie representation ( e.g ., ( Clarkson et al , 1997; Church et al ., 2007)) with 3 byte word ids , 1 byte values , and 3 byte indices ; ? Block encoding ? is the encoding used in ( Brants et al , 2007); and ? randomized ? uses our novel randomized scheme with 12 error bits . The latter requires around 60% of the space of the next best representation and less than half of the com-
+Full Set
+LDC gzip?d 24.68 6.98
+Trie 21.46 6.07
+Block Encoding 18.00 5.14
+Randomized 10.87 3.08
+Entropy Pruned
+Trie 7.70 6.44
+Block Encoding 6.20 5.08
+Randomized 3.68 3.08
+Table 2: Web 1T 5gram language model sizes with different encodings . ? Randomized ? uses 12 error bits.
+monly used trie encoding . Our method is the only one to use the same amount of space per parameter for both full and entropy-pruned models.
+5.2 False Positive Rates
+All ngrams explicitly inserted into our randomized language model are retrieved without error ; however , ngrams not stored may be incorrectly assigned a value resulting in a false positive . Section (3) analyzed the theoretical error rate ; here , we measure error rates in practice when retrieving ngrams for approx . 11 million tokens of previously unseen text ( news articles published after the training data had been collected ). We measure this separately for all ngrams of order 2 to 5 from the same text.
+The language model is trained on the four data sources listed above and contains 24 billion ngrams . With 8bit parameter values , the model requires 55.2/69.0/82.7 GB storage when using 8/12/16 error bits respectively ( this corresponds to 2.46/3.08/3.69 bytes/n-gram).
+Using such a large language model results in a large fraction of known ngrams in new text . Table 3 shows , e.g ., that almost half of all 5grams from the new text were seen in the training data.
+Column (1) in Table 4 shows the number of false positives that occurred for this test data . Column (2) shows this as a fraction of the number of unseen ngrams in the data . This number should be close to 2?b where b is the number of error bits ( i.e . 0.003906 for 8 bits and 0.000244 for 12 bits ). The error rates for bigrams are close to their expected values . The numbers are much lower for higher ngram orders due to the use of sanity checks ( see Section 3.8).
+total seen unseen 2gms 11,093,093 98.98% 1.02% 3gms 10,652,693 91.08% 8.92% 4gms 10,212,293 68.39% 31.61% 5gms 9,781,777 45.51% 54.49% Table 3: Number of ngrams in test set and percentages of ngrams that were seen/unseen in the training data.
+(1) (2) (3) false pos . false posunseen false pos total 8 error bits 2gms 376 0.003339 0.000034 3gms 2839 0.002988 0.000267 4gms 6659 0.002063 0.000652 5gms 6356 0.001192 0.000650 total 16230 0.001687 0.000388 12 error bits 2gms 25 0.000222 0.000002 3gms 182 0.000192 0.000017 4gms 416 0.000129 0.000041 5gms 407 0.000076 0.000042 total 1030 0.000107 0.000025 Table 4: False positive rates with 8 and 12 error bits.
+The overall fraction of ngrams requested for which an error occurs is of most interest in applications . This is shown in Column (3) and is around a factor of 4 smaller than the values in Column (2). On average , we expect to see 1 error in around 2,500 requests when using 8 error bits , and 1 error in 40,000 requests with 12 error bits ( see ? total ? row).
+5.3 Machine Translation
+We run an improved version of our 2006 NIST MT Evaluation entry for the Arabic-English ? Unlimited ? data track.6 The language model is the same one as in the previous section.
+Table 5 shows baseline translation BLEU scores for a lossless ( non-randomized ) language model with parameter values quantized into 5 to 8 bits . We use MT04 data for system development , with MT05 data and MT06 (? NIST ? subset ) data for blind testing . As expected , results improve when using more bits . There seems to be little benefit in going beyond 6See http://www.nist.gov/speech/tests/mt/2006/doc / bits MT04 MT05 MT06 5 0.5237 0.5608 0.4636 6 0.5280 0.5671 0.4649 7 0.5299 0.5691 0.4672 8 0.5304 0.5697 0.4663 Table 5: Baseline BLEU scores with lossless ngram model and different quantization levels ( bits).
+0.554 0.556 0.558 0.56 0.562 0.564 0.566 0.568 0.57 8 9 10 11 12 13 14 15 16
+MT
+LE
+U
+Number of Error Bits 8 bit values 7 bit values 6 bit values 5 bit values Figure 3: BLEU scores on the MT05 data set.
+8 bits . Overall , our baseline results compare favorably to those reported on the NIST MT06 web site.
+We now replace the language model with a randomized version . Fig . 3 shows BLEU scores for the MT05 evaluation set with parameter values quantized into 5 to 8 bits and 8 to 16 additional ? error ? bits . Figure 4 shows a similar graph for MT06 data . We again see improvements as quantization uses more bits . There is a large drop in performance when reducing the number of error bits from 10 to 8, while increasing it beyond 12 bits offers almost no further gains with scores that are almost identical to the lossless model . Using 8bit quantization and 12 error bits results in an overall requirement of (8+12)?1.23 = 24.6 bits = 3.08 bytes per ngram.
+All runs use the sanity checks described in Section 3.8. Without sanity checks , scores drop , e.g . by 0.002 for 8bit quantization and 12 error bits.
+Randomization and entropy pruning can be combined to achieve further space savings with minimal loss in quality as shown in Table (6). The BLEU score drops by between 0.0007 to 0.0018 while the 0.454 0.456 0.458 0.46 0.462 0.464 0.466 0.468 8 9 10 11 12 13 14 15 16
+MT
+IST ) B
+LE
+U
+Number of Error Bits 8 bit values 7 bit values 6 bit values 5 bit values Figure 4: BLEU scores on MT06 data (? NIST ? subset).
+size dev test test
+LM GB MT04 MT05 MT06 unpruned block 116 0.5304 0.5697 0.4663 unpruned rand 69 0.5299 0.5692 0.4659 pruned block 42 0.5294 0.5683 0.4665 pruned rand 27 0.5289 0.5679 0.4656 Table 6: Combining randomization and entropy pruning.
+All models use 8bit values ; ? rand ? uses 12 error bits.
+model is reduced to approx . 1/4 of its original size.
+6 Conclusions
+We have presented a novel randomized language model based on perfect hashing . It can associate arbitrary parameter types with ngrams . Values explicitly inserted into the model are retrieved without error ; false positives may occur but are controlled by the number of bits used per ngram . The amount of storage needed is independent of the size of the vocabulary and the ngram order . Lookup is very efficient : the values of 3 cells in a large array are combined with the fingerprint of an ngram.
+Experiments have shown that this randomized language model can be combined with entropy pruning to achieve further memory reductions ; that error rates occurring in practice are much lower than those predicted by theoretical analysis due to the use of runtime sanity checks ; and that the same translation quality as a lossless language model representation can be achieved when using 12 ? error ? bits , resulting in approx . 3 bytes per ngram ( this includes one byte to store parameter values).
+512
+References
+B . Bloom . 1970. Space/time tradeoffs in hash coding with allowable errors . CACM , 13:422?426.
+Thorsten Brants , Ashok C . Popat , Peng Xu , Franz J.
+Och , and Jeffrey Dean . 2007. Large language models in machine translation . In Proceedings of EMNLP-
+CoNLL 2007, Prague.
+Peter F . Brown , Vincent J . Della Pietra , Peter V . deSouza , Jennifer C . Lai , and Robert L . Mercer . 1992. Class-based ngram models of natural language . Computational Linguistics , 18(4):467?479.
+Peter Brown , Stephen Della Pietra , Vincent Della Pietra , and Robert Mercer . 1993. The mathematics of machine translation : Parameter estimation . Computational Linguistics , 19(2):263?311.
+Larry Carter , Robert W . Floyd , John Gill , George Markowsky , and Mark N . Wegman . 1978. Exact and approximate membership testers . In STOC , pages 59? 65.
+L . Carter and M . Wegman . 1979. Universal classes of hash functions . Journal of Computer and System Science , 18:143?154.
+Bernard Chazelle , Joe Kilian , Ronitt Rubinfeld , and Ayellet Tal . 2004. The Bloomier Filter : an efficient data structure for static support lookup tables . In Proc.
+15th ACM-SIAM Symposium on Discrete Algoritms , pages 30?39.
+Kenneth Church , Ted Hart , and Jianfeng Gao . 2007.
+Compressing trigram language models with golomb coding . In Proceedings of EMNLPCoNLL 2007,
+Prague , Czech Republic , June.
+P . Clarkson and R . Rosenfeld . 1997. Statistical language modeling using the CMU-Cambridge toolkit . In Proceedings of EUROSPEECH , vol . 1, pages 2707?2710,
+Rhodes , Greece.
+Ahmad Emami , Kishore Papineni , and Jeffrey Sorensen.
+2007. Large-scale distributed language modeling . In Proceedings of the IEEE International Conference on Acoustics , Speech and Signal Processing ( ICASSP ) 2007, Hawaii , USA.
+J . Goodman and J . Gao . 2000. Language model size reduction by pruning and clustering . In ICSLP?00, Beijing , China.
+S . Lloyd . 1982. Least squares quantization in PCM.
+IEEE Transactions on Information Theory , 28(2):129? 137.
+B.S . Majewski , N.C . Wormald , G . Havas , and Z.J . Czech.
+1996. A family of perfect hashing methods . British
+Computer Journal , 39(6):547?554.
+Franz J . Och and Hermann Ney . 2004. The alignment template approach to statistical machine translation.
+Computational Linguistics , 30(4):417?449.
+Andreas Stolcke . 1998. Entropy-based pruning of backoff language models . In Proc . DARPA Broadcast News Transcription and Understanding Workshop , pages 270?274.
+D . Talbot andM . Osborne . 2007a . Randomised language modelling for statistical machine translation . In 45th Annual Meeting of the ACL 2007, Prague.
+D . Talbot and M . Osborne . 2007b . Smoothed Bloom filter language models : Terascale LMs on the cheap.
+In EMNLP/CoNLL 2007, Prague.
+513

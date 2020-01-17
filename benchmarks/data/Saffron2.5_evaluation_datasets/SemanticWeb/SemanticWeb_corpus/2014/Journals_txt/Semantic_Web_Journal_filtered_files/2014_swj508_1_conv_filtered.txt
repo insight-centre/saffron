@@ -1,0 +1,2432 @@
+Semantic Web 0 (2013) 10
+IOS Press
+
+Hybrid Reasoning on OWL RL
+
+Editor(s): Pascal Hitzler, Kno.e.sis Center, Wright State University, USA
+Solicited review(s): Aidan Hogan, Digital Enterprise Research Institute, National University of Ireland, Galway; Matthias Knorr, Universidade
+Nova de Lisboa, Portugal; Raghava Mutharaju, Kno.e.sis Center, Wright State University, USA; Peter F. Patel-Schneider, Nuance
+Communications, USA
+
+Jacopo Urbani a,, Robert Piro b Frank van Harmelen a Henri Bal a
+a Department of Computer Science, Vrije Universiteit Amsterdam, The Netherlands
+Email: {jacopo,frankh,bal}@cs.vu.nl
+b Department of Computer Science, University of Oxford, United Kingdom
+Email: robert.piro@cs.ox.ac.uk
+
+Abstract. Both materialization and backward-chaining as different modes of performing inference have complementary advantages and disadvantages. Materialization enables very efficient responses at query time, but at the cost of an expensive up front
+closure computation, which needs to be redone every time the knowledge base changes. Backward-chaining does not need such
+an expensive and change-sensitive pre-computation, and is therefore suitable for more frequently changing knowledge bases, but
+has to perform more computation at query time.
+
+Materialization has been studied extensively in the recent semantic web literature, and is now available in industrial-strength
+systems. In this work, we focus instead on backward-chaining, and we present a general hybrid algorithm to perform efficient
+backward-chaining reasoning on very large RDF data sets.
+
+To this end, we analyze the correctness of our algorithm by proving its completeness using the theory developed in deductive
+databases and we introduce a number of techniques that exploit the characteristics of our method to execute efficiently (most of)
+the OWL RL rules. These techniques reduce the computation and hence improve the response time by reducing the size of the
+generated proof tree and the number of duplicates produced in the derivation.
+
+We have implemented these techniques in an experimental prototype called QueryPIE and present an evaluation on both
+realistic and artificial data sets of a size that is between five and ten billion of triples. The evaluation was performed using one
+machine with commodity hardware and it shows that (i) with our approach the initial pre-computation takes only a few minutes
+against the hours (or even days) necessary for a full materialization and that (ii) the remaining overhead introduced by reasoning
+still allows atomic queries to be processed with an interactive response time. To the best of our knowledge our method is the
+first that demonstrates complex rule-based reasoning at query time over an input of several billion triples and it takes a step
+forward towards truly large-scale reasoning by showing that complex and large-scale OWL inference can be performed without
+an expensive distributed hardware architecture.
+
+1. Introduction
+
+The amount of RDF data available on the Web calls
+for RDF applications that can process this data in an
+efficient and scalable way.
+
+One of the advantages of publishing RDF data is
+that applications are able to infer implicit information
+
+*Corresponding author
+
+by applying a reasoning algorithm on the input data.
+To this end, a predefined set of inference rules, which
+is complete w.r.t. some underpinning logic, can be applied in order to derive additional data.
+
+Several approaches that perform rule-based inference were presented in the literature [20,11,27] and
+demonstrated reasoning upon several billion of triples.
+These methods apply the rules in a forward-chaining
+fashion, so that all the possible derivations are produced and stored together with the original input.
+
+1570-0844/13/$27.50 c 2013  IOS Press and the authors. All rights reserved
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+While these methods exhibit good scalability because
+they can efficiently exploit computational parallelism,
+they have several disadvantages which compromise
+their use in real-world scenarios. First, they cannot efficiently deal with small incremental updates since they
+have to compute the complete materialization anew.
+Second, they become inefficient if the user is only interested in a small portion of the entire input because
+forward-chaining needs to calculate all derivations.
+
+Unlike forward-chaining, backward-chaining applies only inference rules depending on a given query.
+In this case, the computations required to determine
+the rules that need to be executed often become too expensive for interactive applications. Thus, backwardchaining has until now been limited to either small data
+sets (usually in the context of expressive DL reasoners)
+or weak logics (RDFS inference).
+
+proach proving its correctness w.r.t. the considered rule
+set and presents an improved explanation and evaluation over larger data sets.
+
+The remainder of this paper is organized as follows:
+Section 2 presents notations and notions used throughout the paper. In Section 3 we introduce the reader to
+our problem and provide a high level overview of our
+approach.
+
+Next,
+
+in Section 4, we describe the backwardchaining algorithm that is used in our method to calculate the inference. Section 5 formalizes the precomputation algorithm of hybrid reasoning and proves
+its correctness. Section 6 focuses on the execution of
+most of the OWL 2 RL/RDF rule set (henceforth simply referred to as OWL RL rule set), specifying which
+rules are excluded and presenting a series of optimizations to improve the performance on a large input.1
+
+In Section 7 we present an evaluation of our approach using atomic queries on both realistic and artificial data. In Section 8 we report on related work.
+Finally, Section 9 concludes and gives directions for
+future work.
+
+2. Preliminaries
+
+In this section, we set out notational conventions and
+briefly recall some well-known notions from Database
+theory, where we mainly follow [1, Chapter 12].
+
+The algorithms we present run on Datalog pro-
+grams, since the OWL RL inference rules are formulated in Datalog style; therefore most rules of our selected rule set, with a few exceptions (cf. Section 6,
+On the implementation of RDF lists), can be trivially
+rendered into a Datalog program.
+
+Throughout this paper, we use abbreviations to indicate well-known URIs for reasons of space.2 In our
+notations, we use as a convention fixed-width characters to denote constant terms (e.g SPO) as well as italics for Datalog variables and predicate names (e.g. a
+or T). Note that in SPARQL [16] and the official OWL
+RL documentation variables are indicated with a preceding ? (e.g. ?a).
+For two functions f : A  B and g : B  C
+with B  B we denote with g  f, pronounced g after
+f, the function A  C : x  g(f (x)). For a set of
+
+1Note that by excluding some rules our approach is incomplete
+
+w.r.t. the official OWL RL specification.
+
+2Table 3 reports a list of all the abbreviations used in this paper.
+
+In this paper, we propose a method which materializes a fixed set of selected queries, before query time,
+while applying backward chaining during query time.
+This hybrid approach is a trade-off between a reduction in rule applications at query time and a small,
+query independent computation of data before query
+time. Our backward-chaining algorithm exploits the
+parallel computing power of modern architectures and
+uses at query time a partial materialization of some selected queries to reduce the computation.
+
+We will show that our backward chaining algorithm
+is correct, i.e. it terminates, is sound and complete. We
+shall argue that the correctness is not dependent on a
+particular rule set but holds for any Datalog program.
+For the implementation and evaluation, however, we
+apply our method considering the semantics of the
+OWL RL fragment, which is one of the most recently
+standardized OWL profiles designed to work on a large
+scale.
+
+To this end, we have implemented the backwardchaining algorithm using the results of the pre-materia-
+lized queries in an experimental prototype called
+QueryPIE and tested the performance using artificial
+and realistic data sets of a size between five and ten
+billion triples. The evaluation shows that we are able to
+perform OWL reasoning using one machine equipped
+with commodity hardware which keeps the response
+time often below one second.
+
+This paper is a revised and improved version of our
+initial work that was presented in [19]. More specifi-
+cally, it extends the initial version that targets the pD
+fragment to one that supports most of the OWL RL
+rules, which are officially standardized by W3C. Also,
+this paper provides a theoretical analysis of the ap-
+
+functions G := {g | g : Bg  Cg} with B  Bg,
+for all g  G we define G  f := {g  f | g  G}.
+
+In Datalog, a signature SIG is a finite set of symbols
+which is the disjoint union of the set CONS of constants and the set PRED of predicate symbols. Each
+predicate symbol is associated with its arity, a positive
+natural number. A database I for SIG is a pair consisting of a finite set dom I, the domain, and an interpretation function I whose domain is SIG.
+If R  PRED is an n-ary predicate symbol, then
+RI, where RI  (dom I)n, denotes the n-ary relation
+named R in the database I. If c  CONS then cI 
+dom I. For our purposes, we assume CONS = dom I
+and cI = c for all c  CONS.
+With VAR we denote a countably infinite set of variables where VAR  SIG = . Thus, the set of all terms
+is TERM = VAR  CONS. For every term tuple  t we
+denote with Var( t) the set of all variables in  t.
+If R  PRED is an n-ary predicate symbol and  t
+is an n-ary term tuple, then R( t) is called atom. An
+atom R( t) is called ground atom if  t  CONS. If I is a
+database over SIG and R  PRED we write R( a)  I
+if R( a) is a ground atom and  a  RI. We continue
+Var on atoms by setting Var(R( t)) := Var( t) for every
+atom R( t).
+A substitution is a mapping  : V  TERM
+where V  VAR. The domain V of  is also denoted dom . We call the substitution  assignment,
+if (V )  CONS and  is called variable renaming
+if (V )  VAR and  is injective.  :    is
+the empty substitution. Every substitution  has a continuation   on terms, where  (t) = (t) if t  V
+and  (t) = t if t  TERM \ V . Henceforth, we
+will denote  but always implicitly refer to its continuation  . Similarly we apply substitutions or rather
+their continuations to term tuples (t1, . . . , tn) :=
+((t1), . . . , (tn)) and atoms (R( t)) := R(( t)).
+We allow ourselves to represent a substitution  as
+a set {t0/t1 | t0  dom  and (t0) = t1}. The setrepresentation of  is simply .
+
+Using substitutions as results for database look-ups
+is not unusual and joins (1) over sets of substitutions are particularly used in SPARQL [16]. To define joins in this way, we need the following notions:
+A substitution 0 is compatible with a substitution 1
+if 0(t) = 1(t) for all t  dom 0  dom 1. For
+each pair of compatible substitutions 0, 1 we set
+0  1 to be the substitution which corresponds to
+the union of their set-representations.  is compatible with every substitution  and is neutral in the sense
+that    =    = . For sets 0 and 1 of sub-
+
+stitutions we define 0 1 1 := {0  1 | 0 
+0 compatible with 1  1}.
+
+Example 1. As an example of a join between substitu-
+tions, consider the rule (cax-sco)
+
+T (x, TYPE, z)  T (x, TYPE, y), T (y, SCO, z)
+
+and let J, B, S, P stand for John, Brother, Sister and
+Person. We calculate the join of the two sets of substitutions where the first one can be considered to be the
+result of the query T (x, TYPE, y) and the second one
+to be the result of T (y, SCO, z) respectively:
+
+{{x/J, y/B}} 1 {{y/S, z/P},{y/B, z/P}}
+
+= {{x/J, y/B, z/P}}
+
+If the resulting subsitution is applied to T (x, TYPE, z),
+we obtain from John being a Brother and Brothers and
+Sisters being Persons that John is of type Person. 
+Let R( t0) and R( t1) be two atoms with Var( t0) 
+Var( t1) = . A unifier for R( t0) and R( t1) is a substitution  : (Var( t0)  Var( t1))  ( t0   t1) such that
+(R( t0)) = (R( t1)). A most general unifier (MGU)
+of two atoms R( t0) and R( t1) is a unifier  for R( t0)
+and R( t1) such that for each unifier  of R( t0) and
+R( t1) there is a substitution  with  =   .3 It is
+decidable whether or not a unifier for two given atoms
+exists. If it exists, an MGU exists and can be computed.
+A Datalog query is an expression q( t0)  R1( t1)
+. . .  Rn( tn) where  t0 is a term tuple, Ri( ti) is
+an atom for each i  {1, . . . , n} and Var( t0) 
+1in Var( ti). We omit  t0 from q( t0) if it is clear or
+not of interest. We call q( a) an answer to q( t0) w.r.t.
+I if there is an assignment  with ( t0) =  a and for
+all i  {1, . . . , n} we have ( ti)  RI
+i . The set of all
+answers to q( t0) w.r.t. I is denoted as q( t0)I.
+
+We call a query atomic if n = 1 and will refer to it
+by its sole atom R1( t1). Answers in I to an atom query
+R1( t1) are ground atoms R1( a)  I such that  t1 and
+ a unify.
+Let  t and  t be term tuples of the same length. Then
+ t is an instance of  t,  t (cid:118)  t, if there is a substitution 
+such that ( t) =  t. Additionally, if R( t) and R( t) are
+atoms we define R( t) (cid:118) R( t) and say R( t) is at least
+as general as R( t) iff  t (cid:118)  t. R( t) equals R( t) up to
+variable renaming iff R( t) (cid:118) R( t) and R( t) (cid:118) R( t).
+
+3In literature, substitutions are used in post-fix notation, hence the
+
+condition for being an MGU is denoted there as  = .
+
+Example 2. (x, TYPE, SYM) (cid:118) (x, TYPE, y) where
+x, y are variables and TYPE and SYM are the abbreviation of Table 3. Also (x, TYPE, y) (cid:118) (y, TYPE, x).
+
+is an atom and Var( t0)  
+
+A Datalog rule has the form R0( t0)  R1( t1) 
+. . .  Rn( tn) such that for each i  {0, . . . , n}, Ri( ti)
+1in Var( ti). We call
+R0( t0) head atom and all others body atom. With
+Var(r)  VAR we denote the set of all variables occurring in a Datalog rule r. A Datalog program is a
+finite set of Datalog rules. A predicate symbol occuring in the head of a rule r  P is called intensional
+database predicate (idb) for P , all other predicates are
+called extensional database predicate (edb) for P .
+
+For any concrete given Datalog program P or Datalog query q which is applied to I, we always assume
+that predicate and constant symbols occurring in P ,
+and in the body of q respectively, are elements in SIG.
+We will rarely mention the signature since SIG is for a
+given database and program implicitly determined.
+
+(V V ) where V  is the smallest set such that v  V 
+and whenever v  V  then E(v)  V .
+
+A tree is a graph such that each vertex has exactly
+one predecessor, except for one, the root, which has
+no predecessor. Trees can be considered to be recursively defined, where a tree G is either a single root,
+i.e. V = {v}, or a tree consists of a root v and each of
+its successors v  E(v) is a root of the tree (cid:104)v(cid:105)G. The
+height of a finite tree is recursively derived as follows:
+if the root v is a leaf, then its height is 0, otherwise it
+is the maximal height of all trees (cid:104)v(cid:105) plus 1, where
+v  E(v). For infinite trees, the height might not be
+defined.
+
+Let P be a Datalog program and I a database and
+R( a) a ground atom in P (I). We call the pair (G, ) a
+Datalog proof-tree for R( a) in P (I) if all of the following is satisfied: G = (V, E) is a tree with a finite set V and  : V  Atom is a function, the labeling function, where Atom is the set of all ground
+atoms over SIG. Furthermore the root v0  V is labelled with R( a), i.e. (v0) = R( a), and for every
+leaf v  V we have (v) is a ground atom in I.
+For every vertex v  V which is not a leaf there
+is a rule r := R0( t0)  R1( t1)  . . .  Rn( tn)
+and an assignment  : Var(r)  dom I, such that
+(v) = (R0( t0)) and there is a bijection  : E(v) 
+B between the successors of v and the set of body
+atoms B := {Ri( ti) | 1  i  n} of r such that
+(v) =   (v) for all v  E(v).
+
+A Datalog proof-tree thus represents a certain choice
+of rules whose application leads from atoms in I to
+(possibly) derived atoms in P (I). A proof by induction upon m <  shows that every atom in T m
+P (I) has
+a Datalog proof-tree of height at most m.
+
+Finally, we define the function lookup: For an
+atomic query Q = R( t) and a given database I, or
+rather a given set of atoms I, we define lookup(R( t), I)
+to be the set { : Var( t)  dom I | R(( t))  I} of
+substitutions.
+
+Example 3. For any ground atom R( a) we have
+1. lookup(R( a), I) =  iff R( a) / I
+2. lookup(R( a), I) = {} iff R( a)  I.
+
+Hence lookup(R0( t0), I) 1 lookup(R1( t1), I) is
+the set containing all assignments  : (Var( t0) 
+Var( t1))  dom I which are assignments for both
+atoms so that R0(( t0))  I and R1(( t1))  I.
+
+set T 
+
+rPR qI
+
+(I) := TP  T n
+
+and RH := 
+
+atom is R. We set RTP (I) := RI 
+
+In our formalization, we denote the immediate consequence operator of a Datalog program P as TP . TP
+maps a database I to the database TP (I), where TP (I)
+is I extended by all facts that can be non-recursively,
+i.e. immediately in one step, inferred from facts in
+I under P . More formally, for each rule r  P let
+qr( t0)  R1( t1)  . . .  Rn( tn) where the Ri( ti) are
+the body atoms of r. For each R  PRED let P  R
+be the set of rules whose predicate symbol in the head
+r . We
+P (I) := I and TP (I) to be the database H
+define T 0
+where dom H = dom I and RH := RTP (I) for all
+R  PRED. We set further T n+1
+P (I).
+With  we indicate the first infinite limit ordinal and
+P (I) to be the database H where dom H = dom I
+P (I) for all R  PRED. With
+P (I) we denote the fully materialized database of I
+under the program P . According to [1, Chapter 12],
+we have P (I) = T 
+P (I) and in particular there is
+n <  such that R( a)  T n
+P (I) for every ground atom
+R( a)  P (I).
+Let V be a set of vertices and E  V  V an edge
+relation, then G := (V, E) is called directed graph.
+For vertices v0, v1  V we call v0 predecessor of v1,
+and v1 successor of v0 respectively, iff (v0, v1)  E.
+A vertex that does not have a successor is called leaf.
+We define E(v) := {v  V | (v, v)  E} for each
+v  V . For all v  V we define (cid:104)v(cid:105)G, the v-subgraph
+of G, to be the graph G := (V , E) with E = E 
+
+n< RT n
+
+3. Hybrid reasoning: Overview
+
+List of abbreviations for common URIs used in this paper.
+
+Table 1
+
+In principle, there are two different approaches to
+infer answers in a database with a given rule set: One is
+to compute the complete extension of a database under
+some given rule set before query time and the other is
+to infer only the necessary entries needed to yield a
+complete answer from the rule set on-demand, i.e. at
+query time.
+
+The formers advantage is that querying reduces, after the full materialization, to a mere lookup in the
+database and is therefore faster than the latter ap-
+proach, where for each answer a proof tree has to be
+built.
+
+If, however, the underlying database changes fre-
+quently, then a complete materialization before query
+time has a severe disadvantage as the whole extension
+must be recomputed with each update. In this case, an
+on-demand approach has a clear advantage.
+
+Traditionally, each approach has been associated
+with an algorithmic method to retrieve the results:
+Backward-chaining was specifically aimed at ondemand retrieval of answers, only materializing as little information as necessary to yield a complete set of
+answers, while forward-chaining applies the rules of
+the given rule set until the closure is reached.
+
+The approach presented in this paper positions itself
+in between: the answers for a carefully chosen set of
+queries are materialized before query time and added
+to the database. Answers to queries later posed by the
+user are inferred at query time.
+
+Since we want to avoid complete materialization
+of the database, and therefore are only interested in
+specific answers, we use backward-chaining in both
+instances: we use backward-chaining to materialize
+only the necessary information for the carefully chosen queries which we then add to the database, and we
+use backward-chaining to answer the user queries.
+
+To this end, we introduce a backward-chaining algorithm which exploits parallel computing power, and
+a possible pre-materialization to improve the perfor-
+mance. For example, if one of these pre-materialized
+queries is requested at query-time, then the backwardchaining algorithm does not need to build the proof
+tree, but a lookup suffices. This optimization becomes
+particularly effective if patterns are pre-materialized
+that frequently appear during reasoning at user query
+time.
+
+To give an idea how this works, consider the follow-
+
+ing example.
+
+Abbreviation
+
+Full text
+rdf:type
+rdfs:subClassOf
+rdfs:subPropertyOf
+owl:equivalentClass
+owl:equivalentProperty
+owl:inverseOf
+owl:SymmetricProperty
+owl:TransitiveProperty
+
+Example 4. Consider the two following rules from the
+OWL RL rule set:
+
+T (a, p1, b)  T (p, SPO, p1)  T (a, p, b)
+T (x, SPO, y)  T (x, SPO, w)  T (w, SPO, y)
+
+where a, b, p, p1, x, y, w represent generic variables,
+and SPO is a constant term.
+
+Assume we want to suppress the unfolding of all
+atoms of the form T (x, SPO, y), modulo variable re-
+naming. Using Datalog to implement these rules in a
+program, we can replace each atom by some new atom,
+say S, that never appears in the head of the rules. After
+the substitution, the previous program would become:
+
+T (a, p1, b)  S(p, SPO, p1)  T (a, p, b)
+T (x, SPO, y)  S(x, SPO, w)  S(w, SPO, y)
+
+In general,
+
+the two programs do not yield the
+same answers for T anymore. To restore this equality for a given database I we need to calculate all
+T (x, SPO, y)-triples derivable from I and add them
+to the auxiliary relation named S in I. In our example
+this would mean that S contains the transitive closure
+of all T (x, SPO, y)-triples which are inferable under
+the rule set in I.
+
+Note that T (x, SPO, y)-triples can also be derived with the first rule if p1 = SPO. Furthermore,
+if S indeed contains the transitive closure of all
+T (x, SPO, y)-triples the second rule can be rewritten
+as T (x, SPO, y)  S(x, SPO, y).
+
+In the following, we discuss the backward-chaining
+algorithm used in our approach. Then, we will show
+that our method to replace the original rules with others is, after a small pre-computation, harmless in the
+sense that everything which could be inferred under
+the original program can be inferred under the altered
+program and vice versa.
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+4. Hybrid Reasoning: Backward-chaining
+
+We organize this section as follows. First, we introduce in Section 4.1 the main idea behind backward-
+chaining, and present an overview of existing methods
+from which our algorithm is derived. Then, we provide
+a theoretical description and analysis of our algorithm
+in Section 4.2.
+
+4.1. Backward-Chaining
+
+The purpose of a backward-chaining algorithm is to
+derive for a given database I and a Datalog program
+P all possible ground atoms R( a)  P (I) that are
+answers to a given query atom Q.
+
+Traditionally, users interact with RDF data sets using the SPARQL language [16] where all the triple patterns that constitute the body of the query are joined
+together according to some specific criteria. In this
+paper, we do not consider the problem of efficiently
+joining the RDF data but focus instead on the process
+of retrieving all triples that are needed for the query.
+Therefore, we target our reasoning procedure at atomic
+queries, e.g., T(x,SCO,y).
+
+The algorithm that we present in the following section is a variation of the well-known algorithm QSQ
+(Query-subquery) [23,1,6]. The general idea behind
+the QSQ algorithm is to recursively rewrite the given
+query into many subqueries until no more rewritings
+can be performed and the subqueries can only be evaluated against the knowledge base.
+
+Example 5. To give an idea on how QSQ works, suppose that our initial query is
+
+T (x, TYPE, Person)
+
+and that we have a generic database I and the OWL
+RL rule set as P . Initially, the algorithm will determine which rules can produce a derivation that is part
+of the input query. For example, it could apply the subclass and subproperties inheritance rules (cax-sco
+and prp-spo1 in the OWL RL rule set). After it has
+determined them, it will move to the body of the rules
+and proceed evaluating them. In case these subqueries
+will produce some results, the algorithm will execute
+the rules and return the answers to the upper level.
+
+With this process, the algorithm is creating a tree
+that has the original query as root and the rules and
+subqueries that might contribute to derive some answers as the internal nodes.
+
+Fig. 1. Example of the execution of backward-chaining for the input
+query T (x, TYPE, Person) and the OWL RL rules.
+
+This tree represents all the derivation steps that are
+taken to derive answers of our initial query (the root)
+starting from some existing facts (the leaves). In Figure 1 we report an example of a part of such a tree for
+
+our query.
+
+The original QSQ algorithm was introduced in
+1986 [24]. Unfortunately, the first version of this algorithm was found incomplete, but a fixed-up version
+was presented already the year after [23,6].
+
+In principle, the QSQ algorithm extends the standard SLD resolution technique [22] by applying it to
+a set of tuples instead of single ones [6]. An important problem of backward-chaining algorithms such as
+QSQ concerns the execution of recursive rules. Recursive rules and more in general cycles in the proof tree
+are an important threat to termination since they could
+create infinite loops in the computation.
+
+To solve this problem, QSQ extends the standard
+SLD resolution adding two techniques: an Admissibility test and a Lemma resolution. The resulting method,
+called SLD-AL, rests on the method which QSQ and
+all its variants are derived from. By analyzing the properties of the SLD-AL resolution, the author of QSQ
+has proved in [23] that this algorithm always terminates and is complete (i.e. is able to calculate all the
+answers).
+
+In this paper, we do not re-propose a complete description of SLD-AL, and refer the reader to [23,25]
+for a more complete explanation. Here, we will simply
+sketch some characteristics of the technique which is
+important in our context.
+
+In very general terms, SLD-AL is an abstract technique to construct a computational tree to answer a
+given query. This tree, which is called SLD tree, resem-
+
+T(x,rdf:type,Person)Rule: cax-scoT(x,rdf:type,y)T(y,rdfs:subClassOf,Person)...T(w,rdfs:subPropertyOf,rdf:type)Rule: prp-spo1T(x,w,Person)...Rule: prp-symp...T(Person,w,x)T(w,rdf:type,owl:SymmetricProperty)Urbani et al. / Hybrid Reasoning on OWL RL
+
+bles the tree in Fig. 1, and is explored by an algorithm
+such as QSQ in order to find all the answers (called
+atomic lemmas) that satisfy the input query. It is crucial that the SLD tree is finite and complete, otherwise,
+it would be impossible for an algorithm to terminate
+and compute all the derivations. These properties do
+hold for SLD-AL trees, as shown in [25].
+
+The main idea behind the AL technique is the fol-
+lowing: when the algorithm computes a tree and needs
+to evaluate a new query, it applies an admissibility
+test, to verify whether this query can be resolved using the rules. If the new query is similar to a previous
+one, then the query is evaluated using only the answers
+produced so far (lemma resolution). In this way, the
+program does not get trapped in a loop generating an
+infinite tree.
+
+The SLD tree can be explored in several ways. In
+the general case, the search strategy can determine the
+completeness of the approach, but in Datalog any strategy is equivalent. For example, the tree can be constructed using an iterative depth-first strategy as proposed with the original QSQ algorithm in [24], or
+using a more sophisticated constructive search as in
+QoSaQ (QSQ+glObAloptimization) [25].
+
+In the early research on these methods, much emphasis was put on optimizing the computation to avoid
+redundancy. For example, the original QSQ algorithm
+traverses the tree using a depth-first strategy, and repeats the query execution at every node until it retrieves all answers for that subgoal [6]. In this way,
+it is able to cache the results for that subquery and
+reuse them during the evaluation of the rest of the tree.
+QoSaQ [25] goes further than the original QSQ algorithm proposing one more solution to this problem:
+here, a copy of the tree is maintained in main memory and a waking mechanism is used to feed new answers derived in one node to other equivalent queries
+that appear in other branches of the tree.
+
+These techniques are very efficient in optimizing the
+resolution process, but have the drawback that they
+are very difficult to be implemented in a parallel (and
+possibly distributed) environment. In fact, the original
+depth-first strategy used by QSQ requires a sequential
+search of the tree, otherwise expensive synchronization mechanisms must be used. The waking mechanism proposed by QoSaQ cannot be applied in a distributed environment, since it requires to maintain a
+copy of the tree in main memory and this mechanism
+would be slowed down by a network access.
+
+Therefore, we adapted the original QSQ algorithm
+so that it can be more easily parallelized paying the
+
+price of duplicate derivation and possibly redundant
+computation. We will present the algorithm in the following section and show that the properties of termination soundness, and completeness are still valid.
+
+4.2. Our approach
+
+We introduce two key differences from the original
+QSQ algorithm, which aim is to improve the parallelization of the computation:
+
+ Unlike QSQ, our algorithm does not construct the
+proof-tree sequentially but in parallel by applying the rules on separate threads and in an asynchronous manner. For example, if we look back
+at Fig. 1, the execution of rules cax-sco and
+prp-spo1 is performed concurrently by different threads. This execution strategy makes the implementation and the maintenance of the global
+data structure, used for caching results of previous queries, difficult and inefficient. We hence
+choose to replace this mechanism with one that
+only remembers which queries were already executed along single paths of the tree. While such a
+choice might lead to some duplicate answers because the same queries can be repeated multiple
+times in different parts of the proof tree, it allows
+the computation to be performed in parallel limiting the usage of expensive synchronization mech-
+anisms;
+
+ Because the proof tree is built in parallel, repeating every query until no new results are found is
+an inefficient operation: the same query can appear multiple times in different parts of the tree.
+Therefore, we replace it with a global loop that
+is performed only at the root level of the tree and
+that stores during every iteration all the intermediate derivations.
+
+We report the algorithm using pseudocode in Algorithm 1. The procedure main is the main function used
+to invoke the backward-chaining procedure for a given
+atomic query Q. main returns the derived answers for
+the input query. The procedure consists of a loop in
+which the recursive function infer is invoked with the
+input query. This function returns all the derived answers for Q that were calculated by applying the rules
+using backward-chaining (line 5) and all the intermediate answers that were inferred in the process and saved
+in the global variable Tmp. In each loop pass the latest
+results in Tmp and New are checked against the accu-
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+Algorithm 1 Backward-chaining algorithm:
+I and P are global constants, where I is a finite set
+of facts and P is a Datalog program. Tmp and Mat are
+global variables, where Mat stores results of previous
+materialization rounds and Tmp stores the results of the
+current round. The parameter Q represents an atomic
+query, i.e. an atom. Both functions main and infer return a set of atoms, while the function lookup returns
+a set of substitutions. We say Q  PrevQueries (cf.
+line 15) iff there is Q  PrevQueries s.t. Q (cid:118) Q and
+Q (cid:118) Q.
+
+function main(Q)
+
+New, Tmp, Mat := 
+repeat
+
+Mat := Mat  New  Tmp
+New := infer(Q, )
+
+until New  Tmp  Mat  I
+return New
+end function
+
+function infer(Q, PrevQueries)
+
+//This cycle is executed in parallel
+all_subst := lookup(Q,I  Mat)
+for ( r  P s.t. Q is unifiable
+
+with r.HEAD and Q / PrevQueries)
+
+h := MGU(Q,r.HEAD)
+subst := {}
+for  p  r.BODY
+tuples := infer(h(p),PrevQueries  Q)
+Tmp := Tmp  tuples
+subst := subst 1 lookup(h(p),tuples)
+end for
+all_subst := all_subst  (subst  h)
+end for
+
+return 
+
+end function
+
+all_subst{(Q)}
+
+mulated answers of the previous runs in Mat and I. If
+no new tuple was derived, then the loop terminates.
+
+After this loop has terminated, the algorithm returns
+New (line 7) which contains after the last loop pass all
+answers to the input query (cf. line 13).
+
+The function infer is the core of the backwardchaining algorithm. Using the function lookup, it first
+retrieves for the formal parameter Q all answers which
+are facts in the database or were previously derived
+(line 13). After this, it determines the rules that can be
+applied to derive new answers for Q (lines 1415) and
+calculates the substitution h to unify the head of the
+applicable rule with the query Q (line 16).
+
+It proceeds with evaluating the body of the rule
+(lines 1623) storing in tuples and Tmp the retrieved
+answers (lines 1920), and performing the joins necessary according to the rule body (line 21).
+
+In line 23, each assignment in subst is composed
+with the unifier under which it has been derived in
+the for-loop (line 1822), which renders it into an assignment for Q. All these assignments are eventually
+copied into all_subst from which a set of answers for
+Q is derived (line 26) The answers are then returned to
+the function caller. After the whole recursion tree has
+been explored exhaustively, infer returns control to the
+function main, where the derived answers are copied
+into the variable New. The process is repeated until the
+closure is reached.
+
+To facilitate the understanding of this algorithm and
+more in particular of the function infer, consider the
+following example:
+
+Example 6. Suppose that we have a program P that
+consists of a single rule (notice that x, y, z are vari-
+ables)
+r0 := T (x, TYPE, y)  T (z, SCO, y)T (x, TYPE, z)
+
+the input query is Q := (a, TYPE, u), containing only
+one variable, u, and I contains solely the ground atoms
+T (a, TYPE, c) and T (c, SCO, d).
+The call main(Q) executes infer(Q,) which performs a lookup in line 13, setting all_subst = {{u/c}}.
+It is then checked for all rules r whether the head of r
+is unifiable with Q (lines 1415). In our example, only
+rule r0 satisfies this condition, and the algorithm computes some MGU h (line 16), e.g. h := {x/a, y/u}.
+h is applied to each body atom of r0 and infer is
+recursively invoked. In our example, the first recursive
+call would be infer(T (z, SCO, u),{Q}). We obtain at
+first the substitution {z/c, u/d} in line 13 which is
+stored in the local variable all_subst. Since no rule
+head unifies with T (z, SCO, u) the program jumps to
+line 26 and returns {{z/c, u/d}(T (z, SCO, u))} =
+{T (c, SCO, d)}. Hence the join in line 21 evaluates to
+{{z/c, u/d}} and subst = {{z/c, u/d}} after line
+21.
+
+The inner for-loop (lines 1822) moves to the
+next predicate and launches the second recursive call
+infer(T (a, TYPE, z),{Q}). Line 13 sets all_subst to
+{z/c} and forgoes lines 1424 since T (a, TYPE, z)
+equals Q up to variable renaming and PrevQueries =
+{Q}.
+Returning {T (a, TYPE, c)} to the computation
+one recursion level above,
+the result of the join
+{{z/c, u/d}} 1 {{z/c}} = {{z/c, u/d}} in line
+21 will be stored in subst. Line 23 sets all_subst to
+
+{{u/c},{z/c, u/d, x/a, y/d}} which is the result of
+{{u/c}}  {{z/c, u/d}}  {x/a, y/u}.
+Each substitution in all_subst is applied to Q in line
+26 and Result := {T (a, TYPE, c), T (a, TYPE, d)} is
+returned to the function main where they are stored
+in Mat. The function main will repeat the computation once again to ensure that no more triples can
+be derived. In this last loop-pass infer(Q,) returns
+the atoms in Result which it obtains this time from a
+lookup in line 13. Result is stored in New which is then
+
+returned to the user (line 7).
+
+By definition, unifiers and therefore the MGU rely
+on variable disjoint atoms. We will show for the construction of the MGU in line 16 that we may w.l.o.g.
+assume that every query Q occurring in the computation of infer(Q,) is variable disjoint to every rule
+r  P . In fact, we assume that the for-loop in Algorithm 1 line 14 iterates over variable renamed versions
+of rules r  P which are variable disjoint to the given
+Q.
+
+To this end, we show that for every Datalog program
+P and atomic query Q a finite variable set V suffices
+such that for every query Q occurring in the computation of infer(Q,) and every rule r  P a variable
+renaming  exists such that the variables in Q and the
+renamed variables in r are disjoint, i.e.
+
+Var(Q)    Var(r) =  and   Var(r)  V.
+To this end let A comprise Q and all atoms occurring in P . We set V0 to be the set of all variables in A
+and V := V0V1 where V1 is a disjoint copy of V0. We
+define Q to be the closure of A under all substitutions
+ : V  (V CONS) where CONS are the constants
+occurring in A. Obviously, Q is finite.
+Lemma 1.
+1. For every Q  Q and every r  P there is a
+variable renaming  : Var(r)  V \ Var(Q).
+2. We have Q  Q for every subsequent procedure
+call infer(Q, PrevQueries) of infer(Q,).
+
+Proof.
+1. For a set M we denote with |M| its cardinality.
+Let Q  Q and r  P be arbitrary. For every
+2|V |.
+atom R( t)  A we know |Var(R( t))|  1
+Since Q is the result of a variable substitution
+within an atom in A, we have |Var(Q)|  1
+2|V |
+and hence that |V \ Var(Q)|  1
+2|V |. Similarly
+2|V |. Hence there is an
+we know that |Var(r)|  1
+injective substitution  : Var(r)  V \Var(Q).
+
+2. The proof is carried out via the nesting depth k <
+ of the procedure calls. If k = 0, the procedure
+call is infer(Q,) and since Q  Q the claim is
+true.
+Assume we are in a subsequent procedure call
+infer(Q, PrevQueries) in nesting depth k < .
+The induction hypothesis yields that Q  Q. For
+every rule r  P used in a loop pass (line 1424),
+item 1. yields a variable renaming  : Var(r) 
+V \ Var(Q). Let the variables of r be renamed
+by , then Var(MGU(Q, r.HEAD)(p))  V for
+all body atoms p of r. The argument Q in subsequent procedure calls infer(Q, PrevQueries 
+{Q}) (line 19) which have nesting depth k + 1
+is of the form Q := MGU(Q, r.HEAD)(p) and
+hence Q  Q.
+
+We will now discuss the correctness of our algorithm in three steps, which are termination, soundness
+and completeness. We shall first show termination and
+soundness, for which we will furnish two further lem-
+mas: The first, Lemma 2, conceptualizes the function
+calls executed during infer(Q,) as a tree, where elements are connect by edges of the calls-relation, and
+shows that this tree has finite depth and thus yields an
+argument towards termination. The second, Lemma 3,
+shows that all calls in this tree yield only results in
+P (I), i.e. Lemma 3 provides a soundness argument.
+Consider database I, a Datalog program P and an
+atom Q. Let Q be the set of atoms defined above
+Lemma 1.
+Lemma 2. Each call
+finitely many recursive calls to infer.
+
+infer(Q,) entails at most
+
+Proof. An inductive argument over the nesting depth
+of procedure calls shows that in the n-th nested procedure call, PrevQueries contains n elements. Since
+PrevQueries  Q (cf. Lemma 1 item 2.) and both
+for-loops iterate over finite sets, infer is called at most
+finitely many times.
+
+With  (being a proper super-set) we obtain a wellfounded order on the powerset of Q which we shall use
+for further inductive arguments.
+Lemma 3. Let P (I) be the materialization of I under
+P . If Mat, Tmp  P (I) then for all Q  Q and all
+subsets PrevQueries  Q we have that
+
+infer(Q, PrevQueries)  P (I)
+
+and Tmp  P (I) where Tmp is Tmp after the execution of infer(Q, PrevQueries).
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+Proof. The proof is carried out by induction upon
+PrevQueries in the powerset of Q ordered by . For
+the base case let Q  Q be arbitrary and execute
+infer(Q,Q). Then lookup(Q, I  Mat) in line 13 returns a set of assignments  : V ar(Q)  dom I,
+such that (Q)  (IMat). Since Q  Q, lines 1424
+are skipped and hence
+
+infer(Q,Q)  P (I)
+
+and Tmp = Tmp  P (I).
+
+For the induction step, let PrevQueries  Q be arbitrary and assume as induction hypothesis that for all
+R with PrevQueries  R  Q and for all Q  Q
+we have that if Mat, Tmp  P (I) then infer(Q,R) 
+P (I) and Tmp  P (I) where Tmp is the updated set
+Tmp after the procedure call infer(Q,R).
+
+Execute infer(Q, PrevQueries): As in the induction
+base, all_subst contains after line 13 only assignments
+ such that (Q)  (I  Mat). If Q  PrevQueries up
+to variable renaming, we skip lines 1424 ending up
+with the same outcome as in the induction base.
+Hence assume Q / PrevQueries modulo variable
+renamings. In each loop-pass of the outer-loop and
+inner-loop, the induction hypothesis yields that
+infer(h(p), PrevQueries  {Q})  P (I).
+
+Hence Tmp  P (I).
+Similar to line 13, lookup(h(p), tuples) contains
+exactly those assignments  : V ar(h(p))  dom I
+such that   h(p)  tuples. Hence every   subst,
+after the join 1 has been performed (line 22), satisfies   h(p)  tuples for all p  r.BODY . Datalog requires all variables of the head to be covered
+by some atom in the body, so we know that each
+  subst is an assignment for h(r.HEAD) where
+  h(r.HEAD)  P (I). Additionally, since h is
+the unifier for Q and r.HEAD, we know that every
+  h in all_subst is an assignment for Q. Hence, we
+have (Q)  P (I) for all   all_subst which shows
+infer(Q, PrevQueries)  P (I).
+
+4.2.1. Termination.
+We first concentrate on the termination of the procedure call infer(Q,) in the function main. Let I be
+a database over a finite signature SIG: by definition
+dom I is finite. Lemma 3 yields that in every repeatloop pass (lines 36)
+
+New, Tmp, Mat  P (I) ()
+
+where P (I) is the materialization of I under P . An
+inductive argument over PrevQueries  Q shows that
+under the precondition () for all Q  Q every procedure call infer(Q, PrevQueries) terminates: Lemma 2
+shows that there are only finitely many calls to infer,
+but we can now show that also every call to lookup in
+line 13 and line 21 yields a finite result (via some finite
+computation) and thus 1 in line 21 terminates.
+
+In every repeat-loop pass, Tmp or New grow or the
+loop is terminated. Since Tmp and New are bounded
+by P (I), which is finite, the repeat-loop terminates
+after finitely many passes. This shows that for every
+database I, every Datalog program P and every atomic
+query Q the function main(Q) terminates.
+
+4.2.2. Soundness.
+The return value of main(Q) is the result of the call
+infer(Q,) in the last repeat loop pass (cf. line 5 in
+Algorithm 1). Hence, in order to show soundness, we
+have to show for all repeat-loop passes that the return value of infer(Q,) only contains answers to Q
+from P (I). To this end, assume I is a database, P is
+a Datalog program and Q is an atomic query. In every repeat-loop pass, infer(Q,) contains only ground
+atoms from P (I) that unify with Q: Using Lemma 3,
+we know that Tmp, Mat  P (I) for every repeat-loop
+pass (lines 36). Thus, line 13 only yields assignments
+ such that (Q)  (I  Mat) and hence such that
+(Q)  P (I). Using Lemma 3 again on line 19, we
+know that   h(p)  P (I) for every assignment
+  lookup(h(p), tuples) in line 21 and every body
+atom p of a rule whose head unifies with Q. Hence
+  subst after line 22 is an assignment such that
+  h(Q)  P (I). Hence the returned set in line 26
+only contains ground atoms which are answers to Q
+and are in P (I).
+
+4.2.3. Completeness.
+Let I be a given database, P a given Datalog program and Q := R( t) an atomic query. To show the
+completeness of Algorithm 1, we need to prove that
+every atom in RP (I) which unifies with Q can be derived by main(Q). This claim is shown via Proposition
+1 below, as the latter holds in particular for all answers
+to the input query Q derived under P from I. Proposition 1 however rests on Lemma 4. The lemma states
+that if a ground atom R( a) appears as label in a Datalog proof-tree for some answer R( b) to Q, then R( a)
+is an answer to some query Qn which will occur during a computation of infer(Q,). Note that it does not
+show that infer(Q,) derives R( a).
+
+We call an atomic query Q blocked in the procedure call infer(Q, PrevQueries) if there is Q 
+PrevQueries such that Q (cid:118) Q and Q (cid:118) Q.
+Lemma 4. Let Q := R( t) be an atomic query and
+R( a) a label, which appears in a Datalog proof-tree
+(G, ) for some answer to Q in P (I). Then there is
+a subsequent procedure call infer(Qn,PrevQueries)
+of infer(Q,) such that Qn is a non-blocked atomic
+query and R( a) is an answer to Qn derived under P
+in I.
+Proof. Let R( b) be an answer to Q which has a Datalog proof-tree (G, ) in P (I) containing a label R( a).
+We have to show, that there is a sequence of atomic
+queries Q0, . . . , Qn such that
+
+1. Q = Q0 and R( a) unifies with Qn
+2. for each i  {0, . . . , n} there is a rule r  P and
+ := MGU(Qi, r.HEAD) such that Qi+1 = (p),
+where p is some body-atom of r
+3. no query is blocked, i.e. there is no subsequence
+Qi . . . Qk with 0  i < k  n such that Qi is up
+to variable renaming equal to Qk (Qi (cid:118) Qk and
+Qk (cid:118) Qi).
+
+3. guarantees in particular that the condition Q /
+PrevQueries in line 15 is true when the procedure call
+infer(Qi,{Q0, . . . , Qi1}) is executed. Hence, if 13
+hold, infer(Q,) will, according to lines 1424 of Algorithm 1, call in ascending sequence
+
+infer(Qi,{Q0, . . . , Qi1})
+
+where 0  i  n.
+In a first step we specify a sequence of rules
+r0, . . . , rn which leads from R( b) to the atom R( a)
+and then we determine a sequence of queries Q0, . . . , Qn.
+Let R( b) be the atom which unifies with the input query Q and in whose Datalog proof-tree (G, )
+R( a) appears. Then either (G, ) has height 0 and thus
+R( b) = R( a) and Qn := Q is found, or there is
+a sequence of rule applications r0, . . . , rn such that
+R( b) unifies with the head of r0 via some MGU 0
+and for all i  {0, . . . , n 1} some unified body-atom
+Bi,ki = i(Ri,ki( ti,ki)) of ri unifies via some MGU
+i+1 with the head of ri+1 and finally R( a) unifies
+with some unified body-atom Bn,kn = n(Rn( tn,kn ))
+of rn.
+Fix this sequence of rules r0, . . . , rn. Since R( b)
+is an answer to Q (i.e. a ground atom) and unifies
+with the head atom H0 of r0, Q unifies with H0 yielding 0 := MGU(Q, H0). For all i  {0, . . . , n 
+
+1} the unified body-atom Qi
+:= i(Ri,ki( ti,ki ))
+of ri unifies with the head Hi+1 of ri+1 yielding
+i+1 := MGU(Qi, Hi+1), so that we finally reach
+the body atom Rn,kn ( tn,kn ) of rn where Qn :=
+n(Rn,kn( tn,kn)) is the query which unifies with
+R( a).
+
+0, . . . , Q
+
+m satisfying items 12 and 3:
+
+We hence obtain a sequence Q0, . . . , Qn satisfying items 1 and 2. We shall show that for every sequence satisfying items 1 and 2 there is a sequence
+
+0, . . . , Q
+The claim is clear, if the sequence is of length 1:
+Q0 is never blocked. Let Q0 . . . Qn be a sequence
+of length n + 1 where Qi equals Qk up to variable renaming and 0  i < k  n. Then the
+head of rk+1 unifies with the query Qi. The sequence Q0, . . . , Qi, Qk+1 . . . Qn is properly shorter
+than Q0 . . . Qn and satisfies items 12. The induction
+hypothesis yields a sequence Q
+m which satisfies items 13.
+Proposition 1. Let P , I and Q be fixed and Q as
+defined above Lemma 1. Let R( b) be an answer to
+Q which has a Datalog proof-tree (G, ) in P (I)
+containing a label R( a). Then there is a repeat-loop
+pass in main(Q) from which onward for every atomic
+query Q  Q which unifies with R( a) and for all
+PrevQueries  Q every call infer(Q, PrevQueries)
+returns R( a).
+Proof. Let R( b) be an answer to Q which has a Datalog proof-tree (G, ) in P (I) containing a label R( a).
+We prove by induction upon k < , that the atom R( a)
+is yielded after the k-th repeat-loop pass by every call
+infer(Q, PrevQueries), if Q unifies with R( a) and the
+minimal height of some Datalog proof tree for R( a) is
+equal to k.
+If there is a Datalog proof tree for R( a) of height 0
+and Q unifies with R( a), then infer(Q, PrevQueries)
+will produce R( a) for all PrevQueries  Q in the
+look-up of line 13 which will be returned (cf. line 26)
+for all further repeat-loop passes.
+Assume there is a Datalog proof tree (G, ) for
+R( a) of height k + 1 and we have started the k +
+1 repeat-loop pass. Lemma 4 shows that
+there is
+subsequent procedure call infer(Qn, PrevQueries) of
+infer(Q,) such that Qn is an unblocked atomic query,
+i.e. there is no Q  PrevQueries with Qn (cid:118) Q and
+Q (cid:118) Qn, and R( a) unifies with Qn.
+Since (G, ) is of height k + 1 there is a rule
+r : R( t)  R1( t1)  . . .  Rm( tm) and a variable
+assignment  such that R(( t)) = R( a) and for each
+
+i  {1, . . . , m} the fact Ri(( ti)) has a proof tree of
+height at most k under P in I.
+
+The head H of r and Qn unify with the ground
+atom R( a), so there is  := MGU(Qn, H) and each
+:= Ri(( ti)) with i 
+Ri(( ti)) unifies with Q
+{1, . . . , m}. Since Qn is not blocked, the subsequent
+i, PrevQueries  {Qn}) for all
+procedure call infer(Q
+i  {1, . . . , m} is issued.
+By the induction hypothesis, for all i  {1, . . . , m},
+i, PrevQueries{Q}) yields Ri(( ti)). Hence
+infer(Q
+R( a) is returned by infer(Qn, PrevQueries) at the very
+latest in the n + 1 repeat-loop pass and eventually
+added to Mat (cf. line 4) so that after the n + 1 repeatloop pass for every PrevQueries  Q every subsequent call infer(Q, PrevQueries) that unifies with
+R( a) will return this fact as look-up in line 13.
+
+By proving Proposition 1, we have shown that Algorithm 1 is complete: Every answer to a given query
+Q has a Datalog proof-tree and is the label of the root
+of this proof-tree. Proposition 1 shows that this answer
+is eventually derived by infer(Q,) (line 5) and thus
+returned by main(Q) (line 7). This completes the three
+steps to prove correctness w.r.t. to retrieval of exactly
+those answers to Q under P (I).
+
+5. Hybrid Reasoning: Pre-Materialization
+
+So far, we have made no difference in the description of our backward-chaining algorithm between subqueries that are pre-computed and those which are
+not. However, the pre-materialization of a selection of
+queries allows us to substantially improve the implementation and performance of backward-chaining by
+exploiting the fact that these queries can be retrieved
+with a single lookup.
+
+In our implementation, the results of these queries
+are stored in main memory so that the joins required
+by the rules can be more efficiently executed. Also, the
+availability of the pre-materialized queries in memory
+allows us to implement another efficient information
+passing strategy to reduce the size of the proof tree by
+identifying beforehand whether a rule can contribute
+to deriving answers for a given query.
+
+In fact, the pre-materialization can be used to determine early failures: Emptyness for queries which
+are subsumed by the pre-materialized queries can be
+cheaply derived since a lookup suffices. Therefore,
+when scheduling the derivation of rule body atoms,
+we give priority to those body atoms that potentially
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+match these pre-materialized queries so that if these
+cheap body atoms do not yield any answers, the rule
+will not apply, and we can avoid the computation of
+the more expensive body atoms of the rule for which
+further reasoning would have been required.
+
+To better illustrate this concept, we proceed with an
+example. Suppose we have the proof tree described in
+Fig. 1. In this case, the reasoner can potentially apply
+rule prp-symp (concerning symmetric properties in
+OWL) to derive some triples that are part of the second
+body atom of rule prp-spo1.
+
+However, in this case, rule prp-symp will fire only
+if some of the subjects (i.e. the first component) of
+the triples part of T (w, SPO, TYPE) will also be the
+subject of T (w, TYPE, SYM). If both patterns are pre-
+computed, then we know beforehand all the possible w, and therefore we can immediately perform
+an intersection between the two sets. If the intersection is non-empty, the reasoner proceeds executing rule
+prp-symp, otherwise it can skip its execution since
+the rule will never fire.
+
+It is very unlikely that the same property appears
+in all the terminological patterns, therefore an information passing strategy that is based on the prematerialized triple patterns is very effective in significantly reducing the tree size and hence improving per-
+formance.
+
+Furthermore, our implementation of this algorithm
+applies a sideways information passing strategy [3,2]
+to improve the execution of the joins required by the
+rules. This technique consists of passing admissible
+values to the variables of the following queries in order
+to limit the retrieval to only facts that can contribute to
+the join.
+
+To illustrate this concept, consider Example 6: Here,
+when the algorithm needs to invoke the function infer
+with the atomic query T (a, TYPE, u), even though the
+variable u could in principle assume any value, in practice the implementation knows already that only the
+values of u in subst are admissible (in our case c), because only those can lead to a successful join. Thus, the
+implementation can link these values to the variable u
+so that in a subsequent call of, for example, lookup,
+the computation is limited to retrieve only these values
+and not all possible u. This technique of passing values between the queries is well-known in rule-based
+systems, and applied in nearly all implementations.
+
+The hybrid approach thus consists of materializing
+parts of the knowledge base beforehand and then using on-demand querying techniques to answer user
+queries. To this end we pre-materialize certain atomic
+
+queries and store their results in new edb relations before the user can query the knowledge base. The corresponding atoms in the original rules are replaced accordingly and this new rule set is then used to infer the
+answers to the user query.
+
+In order to prove the correctness of our method for
+hybrid reasoning, we proceed as follows: First, in Section 5.1, we formalize and discuss the completeness of
+the pre-materialization algorithm. Next, in Section 5.2,
+we show that replacing the pre-materialized body
+atoms in the original rules with atoms using the introduced edbs is harmless (after the pre-materialization
+algorithm is computed), since this modified program
+computes the same answers as the original one. This
+last argument finally settles the correctness of our
+entire approach, since it ensures that, after the prematerialization is computed, no derivation will be
+missed at query time.
+
+5.1. Pre-Materialization
+
+Let I be a database and P the program with a
+set L of atomic queries that are selected for pre-
+materialization. The pre-materialization is performed
+by Algorithm 2. The reason why we do not simply
+introduce auxiliary relations named SQ to I for each
+Q  L and populate these by setting SI
+Q := main(Q)
+(for main cf. Algorithm 1) is that the efficiency of
+Algorithm 1 hinges upon the fact that as many body
+atoms as possible are not unfoldable, but are edbs for
+which merely look-ups have to be performed during
+backward chaining.
+Therefore, in order to materialize SQ for each Q 
+L, Algorithm 2 starts main(Q) on the Datalog program
+P , which is P where predicates in body atoms have
+already been replaced by the auxiliary predicates SQ
+whenever possible. The auxiliary relations named SQ
+with Q  L are thus empty at first and are gradually
+filled until SI0
+Q , where I0 is I after Algorithm 2 has terminated. We will, after discussing the al-
+gorithm, prove that Algorithm 2 is correct in the sense
+for all Q  L after Algorithm 2 has
+that SI0
+terminated.
+In a first step (lines 13), the database is extended
+with auxiliary relations named SQ for Q  L. Each
+rule of the program P is rewritten (lines 512) by replacing every body atom Ri( ti) with the atom SQ( ti)
+if Ri( ti) (cid:118) Q (cf. page 3), i.e. if the answers to
+Ri( ti) are also yielded by Q.
+
+Q = SP (I)
+
+Q = SP (I)
+
+Clearly, the result of the rewriting need not to be deterministic in case there are two or more atomic queries
+
+Algorithm 2 Overall algorithm of the pre-computation
+procedure: L is a set containing all queries that were
+selected for pre-materialization, Ruleset is a constant
+containing a program P and Database represents I.
+
+for every Q  L
+
+introduce a new predicate symbol SQ to
+
+Database
+
+end for
+for every rule p : R0( t0)  R1( t1)  . . .  Rn( tn) in
+
+for every Q  L and i  {1, . . . , n}
+
+Ruleset
+if Ri( ti) (cid:118) Q then
+
+replace Ri( ti) in p with SQ( ti)
+
+end for
+add this (altered) rule to N ewRuleset
+
+end if
+
+end for
+
+14 Derivation := 
+
+end for
+
+repeat
+
+Database := Database  Derivation
+for every R( t)  L
+
+Perform SR( t)( t)  R( t) on Database
+
+for every Q in L
+
+Derivation := Derivation  main(Q) using
+
+N ewRuleset as program on Database
+
+end for
+
+until Derivation  Database
+
+Q0, Q1  L with Ri( ti) (cid:118) Q0, Q1. However, we shall
+show that either rewriting is good enough. The new
+rule thus obtained is stored in a new program P . In
+case the rule p contains no body atoms that need to be
+replaced, p is stored in P  as well.
+
+In each repeat-loop pass (cf. lines 1524), I is extended in an external step (lines 1719) with all answers for Q  L, which are copied into the auxiliary relation SI
+Q. Since this is repeated between each
+derivation until no new answers for any Q  L are
+yielded, this is equivalent to adding SQ( t)  R( t) for
+each Q  L with Q = R( t) to P  directly.4 One can
+derive from this argument that Algorithm 2 terminates
+Q  QP (I), where I0
+and is sound in the sense that SI0
+is the database I after Algorithm 2 has terminated. As
+we shall show in Proposition 2, Algorithm 2 is complete in the sense that, after termination of this algo-
+rithm, SI0
+
+Q contains all answers for Q in P (I).
+
+Example 7. Take the altered program from Example
+4 and add the appropriate SQ(x, SPO, y)  Q with
+
+4By definition, this would render SQ( t) into an idb, which we
+
+thus only propose for the sake of explaining correctness.
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+Q = T (x, SPO, y) to it. In this case we obtain
+T (a, p1, b)  SQ(p, SPO, p1)  T (a, p, b)
+T (x, SPO, y)  SQ(x, SPO, w)  SQ(w, SPO, y)
+SQ(x, SPO, y)  T (x, SPO, y)
+
+It is trivially clear, that this program yields for every
+Database exactly the same results for T (x, SPO, y) as
+the original program
+
+T (a, p1, b)  T (p, SPO, p1)  T (a, p, b)
+T (x, SPO, y)  T (x, SPO, w)  T (w, SPO, y)
+
+Proposition 2. Algorithm 2 is complete in the sense
+that for the database I0 which we obtain after Algo-
+Q  QP (I) for all Q  L,
+rithm 2 has terminated, SI0
+i.e. every answer that could be derived from Q under
+P in I is contained in SI0
+Q .
+Proof. Let P  be the rewritten program P , defined as
+NewRuleset in the pseudocode of Algorithm 2. We
+have QP (I)  QP (I0) (monotonicity) and QP (I0) 
+Q (line 18). In order to show QP (I)  SI0
+SI0
+Q we show
+QP (I0)  QP (I0).
+As strategy, we take the Datalog proof tree of an
+answer to a query Q  L in P (I0) and show that we
+can render this proof tree into a Datalog proof tree in
+P (I0).
+Assume no new element could be derived from I0
+using the program P  but for some Q  L, main(Q)
+could derive another yet unknown ground atom from
+I0 using the original program P . Let hence  :=
+QL QP (I0) \ QP (I0) and let R( a)   such that
+it has a Datalog proof-tree (G, ) in P (I0) of height
+m < , where m is for all atoms from  the least
+height of their Datalog proof-trees in P (I0).
+
+We change the tree (G, ) recursively as follows:
+If the root v is a leaf, the tree stays unaltered. Oth-
+erwise, there is a rule r  P and an assignment 
+such that there is a bijection  between the successor set E(v) and the set of body atoms of r such that
+(v) =   (v) for all v  E(v). As we only exchanged predicate names in the rewriting of r  P to
+r  P , there is a bijection  between E(v) and the
+body atoms of r and we set (v) :=   (v). For
+all v  E(v) we have (v) = (v) if the body atom
+was not replaced during rewriting. If for any v  E(v)
+(v) has predicate name SQ for some Q  L, prune
+its subtree but keep v. Otherwise recursively continue
+
+to change the subtree (cid:104)v(cid:105). We thus obtain a new tree
+G with a labelling function .
+Q = QI0 for all Q 
+Line 18 guarantees that SI0
+L and since (G, ) was chosen minimal, every leaf of
+(G, ) is labelled with an atom in I0. Hence (G, ) is
+a Datalog proof-tree in P (I0) for R( a) and so R( a) /
+QL QP (I0) \ QP (I0). A contradiction!
+
+5.2. Reasoning with Pre-Materialized Predicates
+
+We show now that replacing body atoms with auxiliary predicates that contain the full materialization
+of the body atom w.r.t. a given database (i.e. after
+Algorithm 2), yields the same full materialization of
+the database as under the original program. We will
+formally define what conditions must be fulfilled and
+prove that if they hold, then the two programs will produce the same derivation (Proposition 3). Finally, we
+point out that the output of Algorithm 2 satisfies these
+conditions and therefore guarantees the correctness of
+our entire hybrid approach.
+
+We start by taking an arbitrary Datalog program P
+and a database I. We assume that I has already been
+enriched with the results of the pre-materialization and
+that S is the name of one of these pre-materialized relations where S is an edb for P .
+
+As an example, assume that this binary relation SI
+
+contains all tuples (x, y) of the query
+
+query(x, y)  T (x, SPO, y).
+
+under the program P .
+
+Since S is an edb, it does not appear in the head
+of any rule of P and thus cannot be unfolded. So the
+evaluation of S during the backward chaining process
+is reduced to a mere look-up in the database.
+
+Replacing an atom in a rule body with an atom containing S, S( t) say, is harmless only if S( t) yields the
+right answers. Thus, the question arises which abstract conditions must S( t) satisfy to allow such a re-
+placement: The answer is that we want a rule to fire
+under almost the same variable assignment as its re-
+placement, i.e. the rule with the replaced body atom.
+We will formalize this in the following two paragraphs.
+Let R( t0)  R1( t1)  . . .  Rn( tn) be a rule in
+P . We define two queries, one being the body of the
+rule and one being the body of the rule where for some
+i  {1, . . . , n} the body atom Ri( ti) is replaced by
+S( t) where  t is some arbitrary tuple having the arity of
+
+S. Let  z :=  t0   t1   ti1   ti+1   tn, i.e. the concatenation of all tuples except  ti and
+
+q0( z) R1( t1)  . . .  Ri( ti) . . .  Rn( tn)
+q1( z) R1( t1)  . . .  S( t)  . . .  Rn( tn)
+
+(3)
+
+Now, the rule and its replacement fire under almost the same variable assignment iff q0( z)P (I) =
+q1( z)P (I), i.e. q0 and q1 yield the same answers under
+P in I. We see, that it is almost the same variable
+assignment, as we do not require variable assignments
+to coincide on  ti and  t. In this way we do not require,
+e.g., SI = RP (I)
+. S is merely required to contain the
+necessary information. This is important, if we want
+to apply the substitution to RDF triples, where we lack
+distinguished predicate names:
+
+Example 8. Since there is only one generic predicate
+symbol T in RDF, requiring SI = T P (I) would mean
+that S contains the complete materialization of I under
+
+P which would render our approach obsolete.
+
+Also note that it is not sufficient to merely require
+q0( t0)P (I) = q1( t0)P (I), i.e. that both queries yield
+the same answer tuples  t0 under P (I), as the following
+example shows.
+
+Example 9. Let the program P which computes the
+transitive closure of R0 in R1 consist of the two rules:
+
+R1(x, z)  R1(x, y)  R0(y, z)
+R1(x, y)  R0(x, y)
+
+0 := {(a, b), (b, c), (b, b),
+Consider a database I with RI
+(c, c)}. In the materialization P (I) of P we expect
+= {(a, b), (b, c), (a, c), (b, b), (c, c)}. Let S
+RP (I)
+have the interpretation SI = {(b, b), (c, c)}. Since
+RP (I)
+the following two
+queries deliver the same answer tuples under P (I), i.e.
+
+is the transitive closure,
+
+q0(x, z)  R1(x, y)  R0(y, z)
+q1(x, z)  R1(x, y)  S(y, z)
+
+Yet the program P 
+
+R1(x, z)  R1(x, y)  S(y, z)
+R1(x, y)  R0(x, y)
+
+will not compute the transitive closure of R0 in R1, as
+RP (I)
+
+= {(a, b), (b, c), (b, b), (c, c)}.
+
+In Proposition 3, we show that we have chosen the
+correct criterion when requiring that rules must fire
+under almost the same variable assignments to be replacements of each other: We show that substituting
+a body atom Ri( ti) by S( t), under the condition that
+the queries in (3) yield the same answer tuples under
+P (I), generates the same materialization.
+Proposition 3. Let P  be the program P where the
+rule
+R0( t0)  R1( t1)  . . .  Ri( ti)  . . .  Rn( tn)  P
+has, for some tuple  t and edb S, been replaced by
+R0( t0)  R1( t1)  . . .  S( t)  . . .  Rn( tn).
+Let q0 and q1 be defined as in (3).
+
+If q0( z)P (I) = q1( z)P (I) then P (I) = P (I).
+
+P (I) which settles the base case.
+
+Proof. In order to show the implication we assume
+q0( z)P (I) = q1( z)P (I). Let TP and TP  be the immediate consequence operators (mentioned on page 4)
+for each program. We show for all k <  and every
+ground atom R( a) that if R( a)  T k
+P (I), then there
+is an  <  such that R( a)  T 
+P (I) and vice versa.
+Since we start out from the same database I we have
+P (I) = T 0
+T 0
+For the step case, let R( a)  T k+1
+(I). Then either
+R( a)  T k
+P (I) and we are done or there is some rule
+R( t0)  R1( t1)  . . .  Rn( tn) and some variable
+assignment  such that ( t0) =  a and Rj(( tj)) 
+P (I) for all j  {1, . . . , n}.
+T k
+If R( t0)  R1( t1)  . . .  Rn( tn)  P , i.e. none
+of its body atoms where substituted, the induction hypothesis shows for each j  {1, . . . , n} that we can
+find j <  such that Rj(( tj))  T j
+P (I). Let 0 :=
+max({0}  {j | 1  j  n}). Note that we add {0}
+for the case where the rule body is empty. In any case,
+we have Rj(( tj))  T 0
+P (I) for all j  {1, . . . , n}.
+Since all premises of this rule are satisfied, there is
+some  := 0 + 1 such that R0(( t0))  T 
+If R( t0)  R1( t1)  . . .  Rn( tn) / P it is a
+rule where Ri( ti) has been substituted with S( t). For
+the assignment  we now know ( t0   t1   ti1 
+ ti+1   tn)  q0( z)P (I). Since q0( z)P (I) = q1( z)P (I)
+we know that there is some assignment , which coincides with  on ( t0   t1   ti1   ti+1   tn) such that
+( t)  SP (I).
+P (I) for all j  {1, . . . , n} \
+{i} and S(( t))  T 0
+P (I) since S is an edb predicate.
+The induction hypothesis yields some j <  for each
+j  {1, . . . , n} \ {i} such that Rj(( tj))  T j
+P (I).
+Let 0 := max({0}  {j | 1  j  n and j = i}),
+then Rj(( tj))  T 0
+P (I) for all j  {1, . . . , n} \ {i}
+
+Hence Rj(( tj))  T k
+
+P (I).
+
+and S(( t))  T 0
+P (I). Since all premises of this
+rule are satisfied, there is some  := 0 + 1 such
+that R0(( t0))  T 
+P (I). As  coincides with 
+also on  t0, i.e. ( t0) =  a, we have in particular
+R( a)  T 
+This shows RP (I)  RP (I) for all predicate names
+R  PRED. For the converse, we merely show the
+case of the substituted rule: Assume R( a)  T k+1
+(I)
+
+and there is an assignment  such that ( t0) =  a and
+Rj(( tj))  T k
+P (I) for all j  {1, . . . , n} \ {i} as
+well as ( t)  SP (I).
+The induction hypothesis yields for each j 
+{1, . . . , n} \ {i} some j <  with Rj(( tj)) 
+T j
+P (I). Since S is an edb predicate for P , we have
+P (I). Hence for 0 := max({0}  {j |
+S(( t))  T 0
+1  j  n and j = i}) we have Rj(( tj))  T 0
+P (I)
+for all j  {1, . . . , n} \ {i} and S(( t))  T 0
+P (I).
+This implies ( t0   t1   ti1   ti+1   tn) 
+q1( z)P (I) and since q0( z)P (I) = q1( z)P (I) there is an
+assignment  coinciding on ( t0 t1   ti1 ti+1   tn)
+with  such that Ri(( ti))  T j0
+P (I) for some j0 <
+. Let 1 := max{0, j0} then Rj(( tj))  T 1
+P (I)
+for all j  {1, . . . , n}. Since all premises of the rule
+R0( t0)  R1( t1)  . . .  Rn( tn) are satisfied, there
+is some  := 1 + 1 such that R0(( t0))  T 
+P (I),
+which shows, as  coincides on t0 with  that R( a) 
+P (I).
+
+Together with RP (I)  RP (I) this shows RP (I) =
+RP (I) for all predicate names R  PRED and hence
+that P (I) = P (I).
+
+It now becomes clear, how Algorithm 2 and Proposition 3 fit together: For a given database I and a set
+of atomic queries L, Algorithm 2 computes for each
+Q  L the query answers under the program P , which
+are stored in the relation SI0
+Q , where I0 is I after Algorithm 2 has finished. These SQ are edbs for P .
+Let now r : R0( t0)  R1( t1)  . . .  Rn( tn) be
+a rule in this program and Q  L an atomic query
+s.t. Ri( ti) (cid:118) Q, then Q = Ri( t) such that  ti (cid:118)  t
+by definition of (cid:118). Correctness of Algorithm 2 yields
+R( ti)P (I0) = SQ( ti)I0 and hence that q0( z)P (I0) =
+q1( z)P (I0) where  z =  t0   tn and
+
+q0( z)  R1( t1)  . . .  Ri( ti)  . . .  Rn( tn)
+q1( z)  R1( t1)  . . .  SQ( ti)  . . .  Rn( tn)
+
+Proposition 3 guarantees that the substitution of Ri( ti)
+by SQ( ti) in rule r is harmless w.r.t. I. By applying
+this argument iteratively, one eventually obtains a pro-
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+gram P  in which all pre-computed atoms have been
+replaced and which yields the same materialization for
+I0 as P .
+
+In the following section, we apply this rewriting to
+
+the OWL RL rule set.
+
+6. Hybrid reasoning for OWL RL
+
+Table 2
+Triple
+pre-materialized
+OWL RL rules (1 is an abbreviation for
+"1"^^xsd:nonNegativeInteger).
+
+patterns
+
+that
+
+are
+
+considering
+the
+the typed literal
+
+(?X rdfs:subPropertyOf ?Y)
+(?X rdfs:subClassOf ?Y)
+(?X rdfs:domain ?Y)
+(?X rdfs:range ?Y)
+(?P rdf:type owl:FunctionalProperty)
+(?X owl:allValuesFrom ?Y)
+(?P rdf:type
+
+owl:InverseFunctionalProperty)
+
+(?X owl:inverseOf ?Y)
+(?P rdf:type owl:TransitiveProperty)
+(?X rdf:type owl:Class)
+(?P rdf:type owl:SymmetricProperty)
+(?X rdf:type owl:Property)
+(?X owl:equivalentClass ?Y)
+(?X owl:onProperty ?Y)
+(?X owl:hasValue ?Y)
+(?X owl:equivalentProperty ?Y)
+(?X owl:someValuesFrom ?Y)
+(?X owl:propertyChainAxiom ?Y)
+(?X owl:hasKey ?Y)
+(?X owl:intersectionOf ?Y)
+(?X owl:unionOf ?Y)
+(?X owl:oneOf ?Y)
+(?X owl:maxCardinality 1)
+(?X owl:maxQualifiedCardinality 1)
+(?X owl:onClass ?Y)
+(?X rdf:type owl:Class)
+(?X rdf:type owl:DatatypeProperty)
+(?X rdf:type owl:ObjectProperty)
+
+In the previous sections, we described the two
+main components of our method which consist of the
+backward-chaining algorithm used to retrieve inferences as well as the pre-materialization procedure together with the predicate replacement.
+
+We now discuss the implementation of the OWL RL
+rules using our approach. In fact, while our method can
+in principle be applied to any Datalog program, our
+implementation heavily relies on the fact that our program consists of inference rules on RDF data and thus,
+our prototype is unable to execute generic Datalog pro-
+grams.
+
+The official OWL RL rule set contains 78 rules, for
+which the reader is referred to the official document
+overview [13]. With selected examples from [13] we
+illustrate some key features of our algorithm.
+Initial assumptions. First of all, we exclude some
+rules from our discussion and implementation for various reasons. These are:
+
+ All the rules whose purpose is to derive an incon-
+sistency, i.e. rules with predicate false in the head
+of the rule. We do not consider them because our
+objective is to derive new triples rather than identify an inconsistency;
+
+ All the rules which have an empty body. The rules
+cannot be triggered during the unfolding process of backward-chaining. These rules include
+those that encode the semantics of datatypes and
+therefore our implementation does not support
+datatypes;
+
+ The rules that exploit the owl:sameAs transitivity and symmetry.5 These rules require a computation that is too expensive to perform at query
+time since they can be virtually applied to every
+single term of the triples. These rules can be implemented by computing the sameAs closure and
+maintaining a consolidation table.6
+
+This excludes 30 out of 78 rules, leaving 48 rules.
+
+In our approach, we decided to pre-materialize
+all triple patterns that are used to retrieve schema
+triples, also referred to as the terminological triples.
+Table 6 reports the set of the patterns that are prematerialized using our method described in Section 5.
+Singling out exactly those triple patterns from Table 6 is motivated by the fact that these patterns appear
+in many OWL rules, and is grounded on the assumptions that (i) their answer sets are very small compared
+to the entire input, and (ii) they are not as frequently
+updated as the rest of the data.
+
+These characteristics make the set of inferred schema triples the ideal candidate to be pre-materialized.
+All rules which have a pre-materialized pattern among
+their body atoms are substituted replacing the prematerialized pattern with its corresponding auxiliary
+relation as justified by Proposition 3.
+
+After the pre-materialization procedure is com-
+pleted, each rule which has a pre-materialized pattern
+in its head can be reduced to a mere look-up:
+
+5These are all rules reported in Table 4 of [13].
+6This procedure is explained in detail in [20].
+
+Example 10. Consider (scm-sco) from Table 9 in [13]:
+
+T (x, SCO, z)  T (x, SCO, y)  T (y, SCO, z)
+can be replaced according to Proposition 3 by r:
+T (x, SCO, z)  Ssco(x, SCO, y)  Ssco(y, SCO, z)
+where the answers to T (x, SCO, y) under I are contained in SI
+r:
+
+T (x, SCO, z)  Ssco(x, SCO, z)
+
+sco. By adding the rule
+
+every rule whose head atom unifies with T (x, SCO, y)
+can be deleted. Adding r is harmless; we can render
+r into r using Proposition 3: Since Ssco is transitive
+we may replace an imaginary conjunction with  (the
+atom which is always true) in r with Ssco(x, SCO, z).
+By two more applications of Proposition 3, we can successively replace Ssco(x, SCO, y) and Ssco(y, SCO, z)
+each by  obtaining r.
+
+This allows us to remove from unfolding 20 of the
+
+48 rules after the pre-materialization is completed.
+
+On the implementation of RDF lists. Some of the inference rules in the OWL RL rule set use RDF lists to
+allow for an arbitrary number of antecedents. The RDF
+lists cannot be represented in Datalog in a straightforward way since they rely on rdf:first and rdf:rest triples
+to represent the elements of the list. Therefore, they
+need to be processed differently.
+
+In our implementation, at every step of the prematerialization procedure, we launch two additional
+queries to retrieve all the (inferred and explicit) rdf:first
+and rdf:rest triples with the purpose of constructing
+such lists. Once we have collected them, we perform
+a join with the other schema triples, and determine the
+sequence of elements by repeatedly joining the rdf:first
+and rdf:rest triples. After this operation is completed,
+from the point of view of the Datalog program, RDF
+lists appear as simple list of elements and are used according to the various rule logics. For example, if the
+rule requires a matching of all the elements of the list
+with the other antecedents, then the rule executor will
+first use the first element to perform the join, then it
+will use the second, and so on, until all the elements
+are considered.
+
+6.1. Detecting duplicate derivation in OWL RL
+
+Since the OWL RL fragment consists of a large
+number of rules, there is a high possibility that the
+proof tree contains branches that lead to the same
+derivation. Detecting and avoiding the execution of
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+these branches is essential in order to reduce the com-
+putation.
+
+After empirically analyzing some example queries,
+we detected two major duplicate sources in our experiments and devised strategies to avoid them. The
+first comes from the nature of the rule set. The second
+comes from the input data.
+First source of duplicates. The most prominent example of generation of duplicates of the first type is
+represented by the symmetric rules which have the
+same structure but have the variables positioned at different locations. We refer with rule names and tables
+in the following list to the OWL RL rule set in [13]:
+from Table 5
+prp-eqp1 and prp-eqp2
+from Table 7
+cax-eqc1 and cax-eqc2
+prp-inv1 and prp-inv2
+from Table 5.
+
+We analyze each of these three cases below.
+
+Let SI
+
+eqp be the pre-materialization of the atomic
+query T (x, EQP, y). Together, the rules scm-eqp1
+and scm-eqp2 render SI
+eqp symmetric. Hence the
+query
+
+q(x, p2, y)  T (x, p1, y)  Seqp(p1, EQP, p2)
+
+yields the same results under P (I) as
+
+q(x, p2, y)  T (x, p1, y)  Seqp(p2, EQP, p1).
+
+Proposition 3 allows Seqp(p1, EQP, p2) in the rewritten
+rule prp-eqp1:
+
+T (x, p2, y)  T (x, p1, y)  Seqp(p1, EQP, p2)
+
+to be replaced by Seqp(p2, EQP, p1), which is, up to
+variable renaming, the rule prp-eqp2:
+
+T (x, p1, y)  T (x, p2, y)  Seqp(p1, EQP, p2)
+
+and thus effectively deleting prp-eqp1 from the
+rule set.
+
+Similarly, rules scm-eqc1 and scm-eqc2 render
+the results of the pre-materialized query T (x, EQC, y)
+symmetric allowing to delete cax-eqc1 or rather its
+rewriting cax-eqc1 in a similar fashion.
+
+Due to the lack of an appropriate rule, the prematerialized query T (x, INV, y) need not yield a symmetric result, although the intended relation, being
+the inverse of each other, is symmetric. We can first
+observe that Proposition 3 allows us to replace the
+rules prp-inv1 and prp-inv2 by their rewritings
+
+T (y, p, x)  T (x, q, y)  Sinv(p, INV, q)
+T (y, p, x)  T (x, q, y)  Sinv(q, INV, p)
+
+which defuses the idb atom T (q, INV, p) into the
+harmless edb Sinv, for which SI
+inv contains all answers
+to the query T (x, INV, y). Let this new program be
+called P . Further, let P  be the program where both
+rules have been replaced by
+
+T (x, p, y)  T (x, q, y)  S
+inv(p, INV, q)
+inv being the symmetric closure of SI
+
+with SI
+inv. It is
+now not difficult to see, that every model of P  is
+a model of P  and vice versa. In particular the full
+materialization P (I) is equal to the full materialization P (I). Hence we can replace prp-inv1 and
+prp-inv2 by one rule under the condition that we
+pre-materialize the symmetric closure of T(x, INV, y).
+
+Second source of duplicates. The second type of duplicate generation comes from the input data which
+might contain some triples that make the application
+of two different rules perfectly equivalent.
+
+We have identified an example of such a case in the
+Linked Life Dataset, which is a realistic data set that
+we used to evaluate our approach. In this data set there
+is the triple T (SCO, TYPE, TRANS) which states that
+the rdfs:subClassOf predicate is transitive.
+
+In this case, during the pre-computation phase the
+query T (x, SCO, y) will be launched several times, and
+each time the reasoner will trigger the application of
+both the rules scm-sco and prp-trp.
+
+However, since the application of these two rules
+will lead to the same derivation, the computation is redundant and inefficient. To detect such cases, we apply
+a special algorithm when the system is starting up and
+initializing the rule set. A complete description of this
+algorithm is outside the scope of this paper and we will
+simply illustrate the main idea behind it.
+
+Basically, this algorithm compares each rule with
+every other rule in order to identify under which conditions the two will produce the same output to a
+given query. For example, the rules scm-sco and
+prp-trp will produce the same derivation if (i) the
+input contains the triple T (SCO, TYPE, TRANS) and if
+(ii) there is a query with SCO as a predicate.
+
+In order to verify that this is the case, the algorithm
+checks whether the triple T (SCO, TYPE, TRANS) exists in the input and whether there is a matching on the
+position of the variables in the two rules (if one rule
+contains more variables than the other, then the algorithm will substitute the corresponding terms). If such
+a matching exists, then the two rules are equivalent. In
+our example, the algorithm will find out that the rule
+prp-trp is equivalent to scm-sco if we replace ?p
+
+with SCO. Therefore, if there is an input query with
+SCO as predicate, the system will execute only one of
+the two rules, avoiding in this way a duplicated deriva-
+tion.
+
+7. Evaluation
+
+Table 3
+
+Execution time of the pre-materialization algorithm compared to a
+full closure.
+
+Dataset
+
+Reasoning time
+
+Our ap-
+proach
+1.0s
+16m
+
+Full mate-
+rialization
+4d4h16m
+5d10h45m
+
+N. itera-
+tions
+
+N. derived
+triples
+
+10 millions
+
+We have implemented our approach in a Java prototype called QueryPIE7 and we have evaluated the performance using one machine of the DAS-4 cluster,8
+which is equipped with a dual Intel E5620 quad core
+CPU of 2.4 GHz, 24 GB of memory and 2 hard disks
+of 1 TB each, configured in RAID-0 mode.
+
+To the best of our knowledge, there is not (yet) a
+proper benchmark for reasoning over large data sets
+that extensively uses all the new features introduced
+with the OWL RL language. Therefore, we chose
+to evaluate our method using the most common and
+large-scale data sets currently available in order to
+evaluate how hybrid reasoning would perform on current data and realistic queries. Because of this, we use
+two data sets as input: LUBM [9], which is one of
+the most popular benchmarks for OWL reasoning and
+LLD (Linked Life Data),9 which is a curated collection
+of real-world data sets in the bioinformatics domain.
+
+LUBM allows us to generate data sets of different
+sizes. For our experiments, we generated a data set of
+10 billion triples (which corresponds to the generation
+of 80000 LUBM universities). The Linked Life Data
+data set consists of about 5 billion triples. Both data
+sets were compressed using the procedure described
+in [21].
+
+The QueryPIE prototype uses six indices stored
+alongside with the triple permutations on disk using an
+optimized B-Tree data structure. During the reasoning
+process, the inferred triples are stored and cached in
+the main memory. Furthermore, the content of the prematerialization is indexed at every iteration to facilicate the retrieval of the lookup function.
+
+The rest of this section is organized as follows. First,
+in Section 7.1 we report on a set of experiments to evaluate the performance of the pre-materialization phase.
+Next, in Section 7.2 we focus on the performance of
+the backward-chaining approach and analyze its performance on some example queries.
+
+7The experimental code is available at: https://github.
+
+com/jrbn/querypie
+
+8http://www.cs.vu.nl/das4
+9http://www.linkedlifedata.com/
+
+7.1. Performance of the pre-materialization
+
+algorithm
+
+We launch the pre-materialization algorithm on the
+two data sets to measure the reasoning time necessary to perform the partial closure. The results are reported in the second column of Table 3. Our prototype
+performs joins between the pre-materialized patterns
+when it loads the rules in memory, therefore, we also
+include the startup time along with the query runtimes
+to provide a fair estimate of the time requested for the
+reasoning.
+
+From the results, we notice that the prematerialization is about three orders of magnitude faster for the
+LUBM data set than for LLD. The cause for this difference is that the ontology of LUBM requires much
+less reasoning than the one of LLD in order to be
+pre-materialized. In fact, in the first case the prematerialization algorithm derives 390 triples, needing
+four iterations to reach a fix point. In the other case, the
+pre-materialization required 7 iterations and returned
+about 10 million triples.
+
+We compare the cost of performing the partial closure against the cost of a full materialization, which is
+currently considered as state of the art in the field of
+large scale OWL reasoning. To this end, the closest approach we can use for a comparison is WebPIE [20],
+which has demonstrated OWL reasoning up to the pD
+fragment to a hundred billion triples. Since WebPIE
+uses the MapReduce programming model, an execution on a single machine would be suboptimal. There-
+fore, we launched it using eight machines and multiplied the execution time accordingly to estimate the
+runtime on one machine (the estimation is in line with
+the performance of WebPIE which has shown linear
+scalability in [20]).
+
+The runtime of the complete materialization performed with this method is reported in the third column of Table 3. Note that in both cases a complete materialization requires between four and five
+days against the seconds or minutes required for our
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+Table 4
+
+List of example queries
+
+Pattern 1
+Pattern 2
+Pattern 3
+Pattern 4
+Pattern 5
+Pattern 6
+Pattern 7
+Pattern 8
+Pattern 9
+Pattern 10
+Pattern 11
+Pattern 12
+
+Dataset Query
+
+?x ?y <http://www.Department0.University0.edu/GraduateCourse0>
+?x <lubm:subOrganizationOf> <http://www.University0.edu>
+<http://.../GraduateStudent124> <lubm:degreeFrom> <http://www.University114.edu>
+?x ?y <http://www.Department0.University0.edu/AssistantProfessor0>
+?x <lubm:memberOf> <http://www.Department0.University0.edu>
+?x <rdf:type> <lubm:Department>
+?x ?y <lifeskim:mentions>
+?x <lifeskim:mentions> <http://linkedlifedata.com/resource/umls/id/C0439994>
+<http://.../resource/pubmed/id/15964627> ?x ?y
+?x ?y <http://purl.uniprot.org/go/0006952>
+?x ?y <http://linkedlifedata.com/resource/umls/id/C0439994>
+?x <http://www.biopax.org/release/biopax-level2.owl#NAME> ?y
+
+method. This comparison clearly illustrates the advantage of our approach in terms of pre-materialization
+cost. Note, however, that there could be cases where
+our approach becomes particularly inefficient if our
+backward-chaining algorithm needs to re-derive the
+same intermediate triples to answer different schema
+patterns.
+
+In any case, the advantage of performing only a prematerialization comes at a price: while after a complete materialization reasoning is no longer needed,
+our backward-chaining algorithm still has to perform
+some inference at query time. The impact of this operation on the query-time performance is analyzed in the
+next section.
+
+7.2. Performance of the reasoning at query time
+
+In order to analyze the performance of reasoning
+at query time, we launch some example queries after
+computing the closure using our backward-chaining
+algorithm to retrieve the results. For this purpose, we
+select six example queries for both the LUBM and
+LLD data sets reported in Table 4.
+
+While LUBM provides an official set of queries for
+benchmarking, there is unfortunately no official set of
+queries that can be used for benchmarking the performance on the LLD data set. Therefore, we took some
+queries that are reported on the official web page of the
+LLD data set and modified them so that they trigger
+different types of reasoning.
+
+These queries were selected according to the follow-
+
+ing criteria:
+
+Runtime of the queries in Table 4 on the LUBM and LLD data sets
+
+Table 5
+
+Derived Triples
+Total
+
+I/O access
+
+Q.
+
+Runtime (ms)
+Cold
+
+Warm
+
+1599987
+
+1187944
+
+Output
+
+1599987
+
+1187944
+
+ Number of results: We selected queries that return
+a number of results that varies from no results to
+a large set of triples;
+
+ Reasoning complexity: Some queries in our example set require no reasoning to be answered, in
+contrast other queries generate a very large proof-
+tree;
+
+ Amount of data processed: In order to answer a
+query, the system might need to access and process a large set of data. We selected queries that
+read and process a variable amount of data to verify the impact of I/O on the overall performance.
+
+We perform a number of experiments to analyze
+three aspects of the performance of our algorithm during query time: the absolute response time, the reduction of the proof tree, and the overhead induced by rea-
+
+soning during query-time. Each of these aspects is analyzed below.
+
+7.2.1. Absolute response time
+
+We report in Table 7.2 the execution times obtained
+launching the selected example queries in Table 4. In
+the second and third columns we report both the cold
+and warm runtime.10 With cold runtime, we identify
+the runtime that is obtained by launching the query
+right after the system has started. Since the data is
+stored on disk, we also measure with the cold runtime
+the time to read the data from disk. On the other side,
+the warm runtime measures the average response time
+of launching the same query thirty more times. During this execution the data is already cached in memory and the Java VM has already initialized the internal data structures, so the warm runtime is significantly
+faster than the cold one.
+
+The fourth and fifth column, respectively, report the
+total number of derivations that were inferred during
+the execution of the query, and the number of triples
+returned to the user.
+
+The sixth and seventh column report the number
+of data lookups required to answer the query and the
+amount of data that is read from disk. These two numbers are important for estimating the impact of reasoning at query time. While querying without reasoning
+only requires a data lookup, the backward-chaining algorithm might require to access the database multiple
+times. For example, in order to answer query 11 the
+program had to access the data indices about 15000
+times.
+
+Using the results reported in Table 7.2, we make
+several observations: First, we notice that the cold runtime is in general significantly higher than the warm
+runtime between one and two orders of magnitude.
+This is primarily due to the time consuming I/O access to disk especially because reasoning requires to
+read in different locations of the data indices. Therefore the system is required to read several blocks of the
+B-Tree from the disk. For most of the queries, the I/O
+access dominates the execution time. The worst case
+presents query 10 where the program reads from disk
+about 337 MB of data. We conclude from these results
+that the performance of the program is essentially I/O
+bounded, if the data is stored on disk. After the data is
+loaded in memory, the execution time drops in half of
+
+10Please note that the reported runtime does not include the time
+required to compress/decompress the numerical terms to their string
+counterpart.
+
+Table 6
+
+Estimation of the reduction of the proof tree caused by the prematerialization algorithm.
+
+Q.
+
+# Leaves proof tree
+
+W/o pre-comp. Our approach
+
+Reduction
+ratio
+
+the experiments by a factor between 6.5 and 11.6 and
+in the other half of the experiments by a factor between
+1.1 and 3.8.
+
+Another factor that affects the performance is the
+number of inferred triples that are calculated during
+the execution of the query. In fact, we notice that the
+absolute performance is lower in case a large number of triples is either inferred or retrieved from the
+database. This behavior is due to the fact that the algorithm needs to temporarily store these triples as it
+must consider them in each repeat-loop pass until the
+closure is reached. This means that these triples must
+be stored and indexed to be retrieved during the following iterations and the response time consequently
+increases.
+
+Summarizing our analysis, we make the following
+conclusions: (i) the runtime is influenced by several
+factors among which the most prominent is the amount
+of I/O access that is requested to answer the query (this
+number is proportional to the size of the proof tree)
+and the number of derivations produced. (ii) There is
+a large difference in the runtime observed in our ex-
+periments. In the worst case the absolute runtime is in
+the range of a few seconds, while in the best cases the
+performance is in the order of dozens of milliseconds.
+However, even in the worst case the system can be interactively used since few seconds are acceptable in
+most scenarios.
+
+In Section 7.2.3 we compare the response times
+to those without reasoning in order to have a better
+overview of the overall performance and understand
+what the overhead induced by reasoning at query time
+is.
+
+7.2.2. Reduction of the proof tree
+
+Our approach relies on the pre-materialization of
+some selected queries for a variety of purposes such as
+performing efficient sideways information passing, excluding rules that derive duplicates, and to reduce the
+size of the proof tree during query-time.
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+Runtime (in ms.) of the example queries using different sets of rules.
+
+Table 7
+
+Q.
+
+Only Lookup
+Ins.
+
+No Ins.
+
+pD*
+
+OWL RL
+
+No Ins.
+
+Ins.
+
+No Ins.
+
+Ins.
+
+No Ins.
+
+Ins.
+
+In this section, we evaluate the effective reduction
+of proof-tree size obtained by avoiding performing inference on the pre-materialized patterns. However, we
+cannot completely ignore the pre-materialization since
+some optimizations (e.g. the pruning strategy) are necessary to avoid an explosion of the proof-tree. To overcome this problem, we have manually analyzed the execution of the LUBM queries with our prototype on a
+much smaller data set (of about 100 thousand triples)
+and manually constructed the proof trees simulating
+the case without pre-materialization (note that we excluded queries 4 and 6 since in these cases reasoning
+did not contribute to derive new answers).
+
+The results delivered by this method of evaluation
+must be seen as an underestimate, because we did not
+deactivate all the optimizations, and therefore in reality the gain is even higher than the one calculated.
+Nevertheless, this shows that our pre-calculation is indeed effective. For a very small cost in both data space
+and upfront computation time, we substantially reduce
+the proof tree. Apparently, the pre-materialization precisely captures small amounts of inferences that contribute substantially to the reasoning costs because
+they are being used very often.
+
+In principle, we identify for each query those
+rules which produce its answers and for each prematerialized body atom, we add the corresponding
+branch that was generated when that query was calculated during the pre-materialization phase.
+
+We report the results of this analysis in Table 7.2.1.
+The last column reports the obtained reduction ratio
+and shows that the number of leaves shrinks between
+two and four times due to our pre-materialization.
+
+7.2.3. Overhead of reasoning during query-time
+
+While we are able to significantly reduce the size
+of the proof tree and apply other optimizations to further reduce the computation, we still have to perform
+some reasoning during the execution of a query. It is
+important to evaluate what the cost for the remaining reasoning is when we compare our approach to a
+full-materialization approach (which is currently the
+de-facto technique for large scale reasoning), where a
+large pre-materialization is performed so that during
+query time reasoning is avoided altogether.
+
+To this end, we launch a number of experiments activating different types of reasoning at query time and
+report the warm runtime in Table 7.2.1.
+
+We proceed as follows: we first launch the queries,
+deactivating all rules at query time, and state their execution time in the first column of the table (the title No Ins. indicates no insertion). We then reissue
+the queries activating only the RDFS rules (in the third
+column), then the pD rules and finally the OWL RL
+ones.
+
+The results reported under the Ins. columns (Ins.
+means insertion) are calculated differently. In fact, in
+the previous experiments the number of retrieved results for a specific query might differ because we
+changed the rule set and this can influence the general performance. To maintain the number of results
+constant, we repeat the same experiment adding to the
+knowledge base all the possible results so that even if
+reasoning is not activated the same number of results
+is retrieved.
+
+From the results presented in the table, we notice
+that in both cases (Ins and No Ins.) the response
+
+time progressively increases as we include more rules.
+This behavior is expected since more computation
+must be performed as we add new rules. However, in
+some cases (like query 12) there is a significant difference even if the query does not require the application
+of any rule. The difference is due to the cost of storing the results into main memory during the query execution to ensure the completeness of the backwardchaining algorithm. This operation is clearly a nonnegligible contributor to the overall performance.
+
+Furthermore, we notice in our experiments that as
+the size of the proof tree increases, so does the potential derivation of duplicates due to the potential higher
+number of combinations. In Section 6.1, we tackled
+this problem by proposing some initial algorithms to
+limit the number of duplicates. However, our work in
+this respect is still preliminary and further research on
+this particular aspect might become necessary in order
+to scale not only in terms of input size but also in terms
+of reasoning complexity.
+
+Finally, we can compare the response times reported
+in the third column with the ones of the penultimate
+column to compare the performance of the reasoning at query time of our approach against traditional
+full materialization. In fact, because the input data already contains the whole derivation, a single lookup
+can be used to estimate the cost that we would have
+to pay if all the inferences were pre-materialized be-
+forehand. From the results we notice that on average
+the response time is between one and three orders of
+magnitude slower. In case the query needs to process
+and/or return many triples, the difference is certainly
+significant. However, the response time is still in the
+order of the hundreds of milliseconds, from the user
+perspective, the difference is less noticeable and more
+easily tolerated especially considering that a large precomputation phase is no longer needed.
+
+Summarizing, we observe in our evaluation that
+fairly complex reasoning can be performed rather
+quickly (in a matter of few seconds in the worst case)
+on a small set of realistic queries and on large data.
+However, the reader should keep in mind that there
+could be worst-case scenarios (which do not seem to
+appear on current data) where the performance is significantly worse, and this is mainly due to the theoretical high worst-case complexity that is inherently
+present in the reasoning process.
+
+8. Related Work
+
+Applying rules with a top-down method like back-
+ward-chaining is a well-known technique in rule-based
+languages like Datalog [6]. Datalog is a generic and
+powerful language that can handle an arbitrary number of rules using predicates of any arity. In our work,
+we optimized the implementation to exploit the characteristics of RDF data and to execute a standard rule
+set, ignoring features of Datalog that are not necessary
+to execute the OWL rules. Therefore, and since there
+is, to the best of our knowledge, no Datalog engine
+that can load billions of triples, a direct comparison between our work and similar Datalog engines such as
+IRIS [5] or Jena [12] is not possible.
+
+The backward-chaining algorithm that we present in
+Section 4 is inspired by the QSQ and the semi-naive
+evaluation algorithms which are well-known techniques in logic programming. A similar termination
+condition to ours is employed also in the RQA/FQI
+algorithm [14].
+
+In our approach, we exploit the availability of the
+pre-computation using a sideways information passing
+(SIP) technique [3] during the execution of the rules.
+This technique is used in other approaches like in the
+magic set rewriting algorithm [2]. However, while the
+magic set algorithm uses SIP at compile-time to construct rules which are later used in a bottom-up fash-
+ion, we employ this technique at runtime to execute
+queries in a top-down manner. Also, SIP strategies are
+similarly used in generic query processing to prune irrelevant results. In [10] the authors propose two adaptive SIP strategies where information is passed adaptively between operators that are executed in parallel.
+A similar technique to our method is memoing [26].
+Memoing is a technique where queries that are frequently requested are cached to improve the perfor-
+mance. The difference between memoing and our
+work is that in memoing caching is dynamic, while
+in our approach caching is static: we manually select
+which queries that are to be cached.
+
+Some RDF Stores support various types of in-
+ference. 4store [17] applies the RDFS rules with
+backward-chaining. Virtuoso [8] supports the execution of few (but not all) OWL RL rules. BigOWLIM
+[4] is an RDF store that supports the OWL 2 RL rule
+set by performing a full materialization when the data
+is being loaded. Another database system that performs OWL RL reasoning in a similar way is Oracle:
+In [11] the authors describe their approach reporting
+the performance of the inference over up to seven bil-
+
+Urbani et al. / Hybrid Reasoning on OWL RL
+
+lion triples. An approach in which the OWL RL rules
+are used is presented in [18] where the authors have
+encoded OWL RL reasoning in the context of embedded devices, and therefore optimizing the computation
+for devices with limited resources.
+
+Some work has been presented to distribute the reasoning process using supercomputers or clusters of
+machines. In our previous work we used the MapReduce programming model to improve the scalability [20]. In [27], the authors implement RDFS reasoning using the Opteron blade cluster. To the best of our
+knowledge, none of the mentioned approaches supports a similarly large subset of OWL RL rules.
+
+Implicit information can be derived not only with
+rule-based techniques. In [15], the authors focus on ontology based query answering using the OWL 2 QL
+profile [13] and present a series of techniques based on
+query rewriting to improve the performance. While we
+demonstrate inference over a much larger scale, a direct comparison of our technique with this work is difficult since both the language and reasoning techniques
+are substantially different.
+
+A series of work has been done on reasoning using
+the OWL EL profile. This language is targeted to domains in which there are ontologies with a very large
+number of properties and/or classes. [7] presented an
+extensive survey of the performance of OWL EL reasoners analyzing tasks like classification or consistency checking. Again, the different reasoning tasks
+and considered language makes a direct comparison
+difficult for our approach.
+
+9. Conclusions
+
+Until now, all inference engines that can handle reasonably expressive logics over very large triple stores
+(in the orders of billion of triples) have deployed full
+materialization. In the current paper we have broken
+with this mold, showing that it is indeed possible to do
+efficient backward-chaining over large and reasonably
+expressive knowledge bases.
+
+The key to our approach is to pre-compute a small
+number of inferences which appear very frequently
+in the proof tree. This of course re-introduces some
+amount of pre-processing, but this computation is measured in terms of minutes, instead of the hours needed
+for the full closure computation.
+
+By pre-materializing part of the inferences upfront instead of during query-time, we are able to
+introduce a number of optimizations which exploit
+
+the pre-computation to improve the performance during query-time. To this end, we adapted a standard
+backward-chaining algorithm like QSQ to our use case
+exploiting the parallelization of current architectures.
+Since our approach deviates from standard practice
+in the field, we have formalized the computation using the theory of deductive databases and extensively
+analyzed and proved its correctness.
+
+We have implemented our method in a proof-of-
+concept Java prototype and analyzed the performance
+over both real and artificial data sets of five and ten billion triples using most of the OWL RL rules. The performance analysis shows that the query response-time
+for our approach is in the low number of milliseconds
+in the best cases, and increasing up to a few seconds
+as the query increases in its complexity. The loss of response time is offset by the great gain in not having to
+perform a very expensive computation of many hours
+before being able to answer the first query.
+
+Obvious next steps in future work would be to investigate how our approach can further scale in terms
+of data size especially when including those rules from
+OWL 2 RL which we have not considered so far. We
+also need a deeper understanding of which and how
+properties of the knowledge base influence both the
+cost of the limited forward computation and the size
+of the inference tree. It is worth to explore whether related techniques such as ad-hoc query-rewriting like
+the one presented in [15] can be exploited to further
+improve the performance.
+
+To the best of our knowledge, this is the first time
+that complex backward-chaining reasoning over realistic OWL knowledge bases in the order of ten billion
+triples has been realized. Our results show that this approach is feasible, opening the door to reasoning over
+much more dynamically changing data sets than what
+was possible until now.
+Acknowledgments: We would like to thank Stefan
+Schlobach, Barry Bishop, Boris Motik, and Ian Horrocks for providing useful comments and advice. We
+also would like to thank Ceriel Jacobs for the support
+in developing and debugging the prototype used in the
+evaluation.
+
+A sincere thanks for the long and detailed reviews
+goes to the reviewers of this article, Aidan Hogan,
+Matthias Knorr, Raghava Mutharaju, and Peter PatelSchneider who have significantly improved the quality
+of this article with a careful review of the work.
+
+This work was partly supported by the LarKC
+project (EU FP7-215535), the COMMIT project and
