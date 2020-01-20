@@ -2,6 +2,8 @@ package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import java.util.Map;
 
+import org.insightcentre.nlp.saffron.taxonomy.search.TypedLink;
+
 /**
  * Classifier that verifies the probability of multiple relationship
  * types between a source node and a target node.
@@ -22,6 +24,6 @@ public interface MulticlassRelationClassifier<T> {
 	 * relationships between source and target. 
 	 * key: relation label, value: probability
 	 */
-	public Map<String, Double> predict(T source, T target);
+	public Map<TypedLink.Type, Double> predict(T source, T target);
 	
 }

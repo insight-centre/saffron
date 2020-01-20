@@ -5,7 +5,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
+import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySolution;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
@@ -65,7 +65,7 @@ public class TransitiveScoreTest {
     public void testDeltaScore() throws IOException {
         System.out.println("deltaScore");
         TaxoLink tl = new TaxoLink("a", "ab");
-        Solution soln = Solution.empty(new HashSet<String>(Arrays.asList("", "a", "ab", "abc")));
+        TaxonomySolution soln = TaxonomySolution.empty(new HashSet<String>(Arrays.asList("", "a", "ab", "abc")));
         HierarchicalScore instance = new TransitiveScore(new TestSupervisedTaxo());
         instance = instance.next(new TaxoLink("", "a"), soln.add("", "a", 0, 0, 0, false));
         instance = instance.next(new TaxoLink("ab", "abc"), soln.add("ab", "abc", 0, 0, 0, false));
@@ -95,7 +95,7 @@ public class TransitiveScoreTest {
         double expSolution = 0.0; //(1.0/2.0) * 3 + (1.0) * 5 + 6.0/4.0 * 3 + 2.0 * 3 - 34 * 0.5
         for (int i = 0; i < 5; i++) {
             shuffleArray(tls);
-            Solution soln = Solution.empty(new HashSet<String>());
+            TaxonomySolution soln = TaxonomySolution.empty(new HashSet<String>());
             HierarchicalScore instance = new TransitiveScore(new TestSupervisedTaxo());
             double score = 0.0;
             for (TaxoLink tl : tls) {

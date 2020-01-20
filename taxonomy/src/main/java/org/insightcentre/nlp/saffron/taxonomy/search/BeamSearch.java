@@ -30,7 +30,7 @@ public class BeamSearch implements TaxonomySearch {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);
         Score score = emptyScore;
-        Solution soln = Solution.empty(termMap.keySet());
+        TaxonomySolution soln = TaxonomySolution.empty(termMap.keySet());
         double s2 = 0.0;
         Set<String> whiteHeads = new HashSet<>();
 
@@ -60,7 +60,7 @@ public class BeamSearch implements TaxonomySearch {
                         double totalScore = prevSoln.totalScore
                                 + linkScore;
                         if (next.canPush(totalScore)) {
-                            Solution s = prevSoln.soln.add(t2, t1,
+                            TaxonomySolution s = prevSoln.soln.add(t2, t1,
                                     termMap.get(t2).getScore(),
                                     termMap.get(t1).getScore(), linkScore, false);
                             if (s != null) {
@@ -93,12 +93,12 @@ public class BeamSearch implements TaxonomySearch {
 
     private static class Soln implements Comparable<Soln> {
 
-        public final Solution soln;
+        public final TaxonomySolution soln;
         public final Score score;
         public final double totalScore;
         public final boolean rooted;
 
-        public Soln(Solution soln, Score score, double totalScore, boolean rooted) {
+        public Soln(TaxonomySolution soln, Score score, double totalScore, boolean rooted) {
             this.soln = soln;
             this.score = score;
             this.totalScore = totalScore;

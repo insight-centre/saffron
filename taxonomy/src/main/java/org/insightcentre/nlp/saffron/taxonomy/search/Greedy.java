@@ -48,7 +48,7 @@ public class Greedy implements TaxonomySearch {
         candidates.removeAll(blackList);
         candidates.removeAll(whiteList);
 
-        Solution soln = Solution.empty(termMap.keySet());
+        TaxonomySolution soln = TaxonomySolution.empty(termMap.keySet());
         for (TaxoLink sp : whiteList) {
             if (termMap.get(sp.getTop()) != null && termMap.get(sp.getBottom()) != null) {
                 soln = soln.add(sp.getTop(), sp.getBottom(),
@@ -75,7 +75,7 @@ public class Greedy implements TaxonomySearch {
             });
             while (!candidates.isEmpty()) {
                 TaxoLink candidate = candidates.remove(0);
-                Solution soln2 = soln.add(candidate.getTop(), candidate.getBottom(),
+                TaxonomySolution soln2 = soln.add(candidate.getTop(), candidate.getBottom(),
                         termMap.get(candidate.getTop()).getScore(),
                         termMap.get(candidate.getBottom()).getScore(),
                         scores.getDouble(candidate), false);

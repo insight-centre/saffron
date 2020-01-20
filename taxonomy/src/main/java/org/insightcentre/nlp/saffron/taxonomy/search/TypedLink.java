@@ -17,9 +17,18 @@ public class TypedLink extends Link implements Comparable<TypedLink>{
 		super(source, target);
 		this.type = Type.valueOf(type);
 	}
+	
+	public TypedLink(TypedLink toClone) {
+		super(toClone.getSource(), toClone.getTarget());
+		this.type = toClone.getType();
+	}
 
 	public Type getType() {
 		return type;
+	}
+
+	public void setType(Type type) {
+		this.type = type;
 	}
 
 	@Override
@@ -35,6 +44,33 @@ public class TypedLink extends Link implements Comparable<TypedLink>{
         }
         int c2 = this.getTarget().compareTo(o.getTarget());
         return c2;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TypedLink other = (TypedLink) obj;
+		if (type != other.type)
+			return false;
+		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "TypedLink [type=" + type + ", source()=" + getSource() + ", target()=" + getTarget() + "]";
 	}
 	
 }

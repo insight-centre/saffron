@@ -1,13 +1,15 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
+
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 /**
  *
@@ -15,19 +17,19 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
  */
 public class TransitiveScore implements HierarchicalScore {
 
-    private final SupervisedTaxo classifier;
+    private final BinaryRelationClassifier<String> classifier;
     private final Object2DoubleMap<TaxoLink> scores;
     final HashMap<String, Set<String>> parents;
     final HashMap<String, Set<String>> children;
 
-    public TransitiveScore(SupervisedTaxo classifier) {
+    public TransitiveScore(BinaryRelationClassifier<String> classifier) {
         this.classifier = classifier;
         this.parents = new HashMap<>();
         this.children = new HashMap<>();
         this.scores = new Object2DoubleOpenHashMap<>();
     }
 
-    public TransitiveScore(SupervisedTaxo classifier, Object2DoubleMap<TaxoLink> scores, HashMap<String, Set<String>> parents, HashMap<String, Set<String>> children) {
+    public TransitiveScore(BinaryRelationClassifier<String> classifier, Object2DoubleMap<TaxoLink> scores, HashMap<String, Set<String>> parents, HashMap<String, Set<String>> children) {
         this.classifier = classifier;
         this.scores = scores;
         this.parents = parents;

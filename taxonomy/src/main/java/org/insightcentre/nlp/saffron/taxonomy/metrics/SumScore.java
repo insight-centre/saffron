@@ -2,7 +2,7 @@ package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
 import org.insightcentre.nlp.saffron.taxonomy.search.TypedLink;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -13,10 +13,10 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
  */
 public class SumScore implements Score<TypedLink> {
 
-    private final SupervisedTaxo classifier;
+    private final BinaryRelationClassifier<String> classifier;
     private final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
 
-    public SumScore(SupervisedTaxo classifier) {
+    public SumScore(BinaryRelationClassifier<String> classifier) {
         this.classifier = classifier;
     }
 
