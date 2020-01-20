@@ -1,0 +1,1012 @@
+Goal-Directed Tracing of Inferences in EL Ontologies
+
+Yevgeny Kazakov and Pavel Klinov
+
+The University of Ulm, Germany
+
+{yevgeny.kazakov,pavel.klinov}@uni-ulm.de
+
+Abstract. EL is a family of tractable Description Logics (DLs) that is the basis
+of the OWL 2 EL profile. Unlike for many expressive DLs, reasoning in EL can
+be performed by computing a deductively-closed set of logical consequences of
+some specific form. In some ontology-based applications, e.g., for ontology de-
+bugging, knowing the logical consequences of the ontology axioms is often not
+sufficient. The user also needs to know from which axioms and how the consequences were derived. Although it is possible to record all inference steps during
+the application of rules, this is usually not done in practice to avoid the overheads.
+In this paper, we present a goal-directed method that can generate inferences for
+selected consequences in the deductive closure without re-applying all rules from
+scratch. We provide an empirical evaluation demonstrating that the method is fast
+and economical for large EL ontologies. Although the main benefits are demonstrated for EL reasoning, the method can be potentially applied to many other
+procedures based on deductive closure computation using fixed sets of rules.
+
+1 Introduction and Motivation
+
+The majority of existing DL reasoners are based on optimized (hyper)tableau-based
+procedures, which essentially work by trying to construct counter-models for the en-
+tailment. If the reasoner could not find a counter-model by trying all alternatives, it
+declares that the entailment holds. It is not easy to use such procedures to generate an
+explanation for the entailment, or even to determine which axioms are responsible for
+the entailmentthe axioms that were used to construct the models are not necessarily the ones that are causing the clash. Recently another kind of reasoning procedures,
+which work by deriving logical consequences of ontology axioms directly, became pop-
+ular. Such consequence-based procedures were first introduced for the EL family of
+tractable ontology languages [1], and later the same principle has been extended to
+more expressive (non-tractable) languages such as Horn-SHIQ and ALCH [10,19].
+The consequence-based procedures work by computing the closure under the rules by
+forward chaining. The inference rules make sure that the result is completeall entailed
+conclusions of interest are obtained in the closure.
+
+It is easy to extend any consequence-based procedure so that for each derived con-
+clusion, it also records the inferences that have produced it. This way, one can easily
+generate proofs for the entailed conclusions. Unfortunately, saving all applied inferences during reasoning is not practical, as each conclusion could be derived in many
+ways and storing all inferences requires a lot of memory. In practice, one usually does
+not need to retrieve all inferences, but just inferences for some particular (e.g., unex-
+pected) consequences. In this paper, we demonstrate how these inferences can be traced
+
+P. Mika et al. (Eds.) ISWC 2014, Part II, LNCS 8797, pp. 196211, 2014.
+c Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+Table 1. The syntax and semantics of EL+
+
+Roles:
+
+atomic role
+Concepts:
+
+atomic concept
+top
+conjunction
+existential restriction
+
+Axioms:
+
+concept inclusion
+role inclusion
+role composition R1  R2  S RI
+
+Syntax
+
+Semantics
+?
+
+?
+
+?
+C  D
+R.C
+C  D
+R  S
+
+I
+CI  DI
+{x | y  CI : x, y  RI}
+CI  DI
+RI  SI
+1  RI
+
+2  SI
+
+back in a goal-directed way using the pre-computed set of conclusions. The main idea,
+is to split the conclusions on small partitions using the properties of the inference sys-
+tem, such that most inferences are applied within each individual partition. It is then
+possible to re-compute the inferences for conclusions within each partition by forward
+chaining using conclusions from other partitions as set of support. A similar idea has
+been recently used for incremental reasoning in EL+ [11]. We demonstrate empirically
+that only a small fraction of inferences is produced when generating proofs for EL+
+consequences and that the inferences can be computed in just a few milliseconds even
+for ontologies with hundreds thousands of axioms.
+
+2 Tutorial
+
+In this section, we introduce the problem addressed in the paper and present the main
+ideas of our solution. For simplicity, we focus on reasoning in EL+ [2]. Later, in Section 3, we generalize the method to arbitrary (deterministic) inference systems.
+
+2.1 The Description Logic EL+
+The syntax of EL+ is defined using a vocabulary consisting of countably infinite sets
+of (atomic) roles and atomic concepts. Complex concepts and axioms are defined recursively using Table 1. We use letters R, S for roles, C, D, E for concepts, and A, B for
+atomic concepts. An ontology is a finite set of axioms. Given an ontology O, we write
+O for the smallest reflexive transitive binary relation over roles such that R 
+
+O S
+holds for all R  S  O.
+An interpretation I = (
+
+called the domain
+of I and an interpretation function I
+that assigns to each role R a binary relation
+I  
+. This assignment
+
+is extended to complex concepts as shown in Table 1. I satisfies an axiom  (written
+I |= ) if the corresponding condition in Table 1 holds. I is a model of an ontology
+O (written I |= O) if I satisfies all axioms in O. We say that O entails an axiom 
+
+,I) consists of a nonempty set 
+
+I  
+
+, and to each atomic concept A a set A
+
+I  
+
+Y. Kazakov and P. Klinov
+
+R0 C  C
+R
+
+C   :   G(C)
+C  D
+: D  E  O
+C  E
+
+C  D1  D2
+
+C  D1 C  D2
+
+R
+
+R
+?
+
+?
+
+?
+R+
+
+R
+
+R
+
+C  D1 C  D2
+
+C  D1  D2
+
+E  R.C C  D
+
+: D1  D2  G(C)
+S.D  G(E)
+R 
+E  R1.C C  R2.D
+
+E  S.D
+
+:
+
+E  S.D
+
+O S
+R1 
+R2 
+S1  S2  S  O
+
+O S1
+O S2
+
+:
+
+Fig. 1. The inference rules for reasoning in EL+
+
+(written O |= ), if every model of O satisfies . A concept C is subsumed by D w.r.t.
+O if O |= C  D. The ontology classification task requires to compute all entailed
+subsumptions between atomic concepts occurring in O.
+2.2 The Reasoning Procedure for EL+
+The EL+ reasoning procedure works by applying inference rules to derive subsumptions between concepts. In this paper, we use a variant of the rules that does not require
+normalization of the input ontology [14]. The rules for EL+ are given in Figure 1, where
+the premises (if any) are given above the horizontal line, and the conclusions below.
+
+Some inference rules have side conditions given after the colon that restrict the expressions to which the rules are applicable. The side conditions are formulated using the
+given ontology O and a mapping that assigns to every concept X the set of goal subsumers G(X) consisting of concepts Y (not necessarily occurring in O), subsumptions
+which should be checked by the procedure. That is, if we want the procedure to check
+whether the subsumption X  Y is entailed, we need to add Y to G(X). Intuitively,
+the mapping G(X) restricts the concepts that should be constructed by the inference
+rules R, R+ and R. For technical reasons, we need to require that each G(X) also
+contains all concepts occurring in the left-hand sides of concept inclusion axioms of O
+(possibly as a sub-concept). Note that the axioms in the ontology O are only used in
+side conditions of the rules R, R, and R, and never as premises of the rules.
+The rules in Figure 1 are complete for deriving all entailed goal subsumptions. That
+is, if O |= X  Y and Y  G(X) (with X and D not necessarily occurring in O) then
+X  Y can be derived using the rules in Figure 1 [14]. The rules can be also applied
+in a goal-directed way, if the set of concepts X for which subsumptions X  Y should
+be derived (with Y  G(X)) is also known in advance.
+Theorem 1 (Completeness of the rules in Figure 1 [14]). Let O be an EL+ ontology,
+F a set of concepts, G() a mapping such that for each X  F , and each C  D  O,
+G(X) contains all sub-concepts of C, and S a set of subsumptions such that:
+(i) If X  F and X  Y is obtained by a rule in Figure 1 applied to premises in S
+(ii) If X  F and X  R.Y  S for some R and Y , then Y  F .
+Then for every X  F and Y  G(X), we have O |= X  Y iff X  Y  S.
+
+using O and G() then X  Y  S,
+?
+
+?
+
+?
+R0
+
+A  A
+
+R
+
+A  R.B
+
+R
+
+A  H.B
+
+R
+
+A  C
+
+R0
+
+C  C
+
+R
+
+B  B
+
+R0
+C  R.A
+
+B  S.A
+
+B  S.C
+
+B  C
+
+R
+
+R
+
+R
+
+Fig. 2. The inference diagram for the proof in Example 1
+
+Example 1. Consider the EL+ ontology O consisting of the following axioms:
+A  R.B, B  S.A,
+Then the following subsumptions can be derived using the rules in Figure 1 using
+G(X) = {A, B, C, H.B, S.C} for every concept X. We show the premises used
+in the inferences in parentheses and the matching side conditions after the colon:
+
+S.C  C, C  R.A, R  H.
+
+H.B  C,
+
+A  A
+B  B
+C  C
+A  R.B
+B  S.A
+C  R.A
+A  H.B
+A  C
+B  S.C
+B  C
+
+by R0(),
+by R0(),
+by R0(),
+by R(A  A) : A  R.B  O,
+by R(B  B) : B  S.A  O,
+by R(C  C) : C  R.A  O,
+by R(A  R.B, B  B) : H.B  G(A), R 
+by R(A  H.B) : H.B  C  O,
+by R(B  S.A, A  C) : S.C  G(B), R 
+by R(B  S.C) : S.C  C  O.
+
+(1)
+(2)
+(3)
+(4)
+(5)
+(6)
+(7)
+(8)
+(9)
+(10)
+The inferences (1)(10) are shown schematically in Figure 2. Let F = {A, B, C}. It is
+easy to see that no new subsumption of the form X  Y with X  F and Y  G(X)
+can be derived from (1)(10) using the rules in Figure 1. Furthermore, F satisfies the
+condition (ii) of Theorem 1 for the set of subsumptions (1)(10). Hence, by Theorem 1,
+all subsumptions of the form X  Y with X  F and Y  G(X) that are entailed
+by O must occur in (1)(10). In particular, all entailed subsumptions between atomic
+concepts A, B, and C that are required for classification of O are computed.
+
+O H,
+
+O R,
+
+By Theorem 1, in order to classify an ontology O, it is sufficient to (i) initialize set
+F with all atomic concepts of O, (ii) assign to every X  F a set G(X) consisting of
+all atomic concepts and concepts occurring in the left-hand side of concept inclusion
+axioms of O, (iii) repeatedly apply the rules in Figure 1 that derive X  Y with
+X  F , and (iv) whenever a subsumption of the form X  R.Y is derived, extend F
+with Y . By induction, it can be shown that the resulting set S of derived subsumptions
+satisfies the condition of Theorem 1 and contains only X  Y for which both X and
+Y occur in O. Since the number of such subsumptions is at most quadratic in the size
+of O, the classification procedure terminates in polynomial time.
+
+Y. Kazakov and P. Klinov
+
+2.3 Tracing of Inferences
+As discussed in the previous section, reasoning in EL+ is typically performed by computing a set that is closed under (restricted) applications of rules in Figure 1, from which
+all entailed subsumptions of interest (e.g., subsumptions between all atomic concepts
+for classification) can be obtained using Theorem 1. It is not difficult to use the same
+procedure to also keep track of how each derived subsumption was obtained. Essen-
+tially, for every derived subsumptions, the procedure can store the inference information
+like in (1)(10). The inference information specifies by which rules the subsumption
+was obtained, from which premises, and using which side conditions. We refer to a rule
+application procedure that retains this kind of information as tracing.
+
+Tracing of inferences can be used for extracting proofs that represent a sequence of
+inferences producing the given subsumption in the end. Proofs can be reconstructed
+by simply traversing the inferences backwards: first take the inferences for the given
+subsumption, then for the subsumptions used in the premises of such inferences, and
+so on, disregarding cycles. Proofs can be used to automatically check correctness of
+entailments (proof checking), or to explain how the entailments were produced to the
+user. The latter is important for ontology debugging when the axioms responsible for
+erroneous conclusions need to be identified. For example, from Figure 2, one can see
+that the subsumption A  C was proved in 5 inference steps involving intermediate
+subsumptions A  A, A  R.B, A  H.B, and B  B. From the side conditions
+of the inferences (4), (7), and (8) used in this derivation, one can see that only axioms
+A  R.B, R  H, and H.B  C in O are responsible for the conclusion A  C.
+
+2.4 Goal-Directed Tracing of Inferences
+
+Keeping information about all inferences in addition to storing the derived subsumptions can be impractical. First, the number of inferences can be significantly larger than
+the number of the derived conclusions (some conclusions may be derived multiple times
+by different rules). Second, storing each inference requires more memory than storing
+just the conclusion of the inference. Finally, inferences may not be required very of-
+ten. For example, when debugging an ontology, one is usually interested in proofs for
+only few (unexpected) subsumptions. In applications using large ontologies, such as
+SNOMED CT, which involve hundreds of thousands of concepts, avoiding storing unnecessary information can make a significant difference in practice.
+
+In this paper, we propose a method for finding the inferences used in the proofs
+of given subsumptions without performing full tracing, i.e., storing all inferences during rule application. The main idea is (i) to over-estimate a subset of subsumptions in
+the closure from which the given subsumption can be derived (in one inference step),
+(ii) re-apply the inferences for these subsumptions to find from which premises the
+subsumption is actually derived, and (iii) repeat the process for these premises.
+
+To illustrate the method, suppose that we have computed the closure (1)(10) under
+the rules in Figure 1 (without recording the inference information), and our goal is to
+identify how subsumption B  C was derived. By inspecting the conclusions of rules
+in Figure 1, we can see that every subsumption of the form X  Y can be either derived
+by rules R0 or R, or by other rules using at least one premise of the form X  Z,
+?
+
+?
+
+?
+R0
+
+A  A
+
+R
+
+A  R.B
+
+R
+
+A  H.B
+
+R
+
+A  C
+
+B  B
+
+R0
+
+R
+
+B  S.A
+
+R
+
+B  S.C
+
+B  C
+
+R
+
+Fig. 3. The inferences applied for tracing subsumptions of the form B  Y (solid lines) and of
+the form A  Y (dashed lines) in (1)(10)
+
+i.e., with the same concept X on the left-hand side. Thus, B  C must have been
+derived either by R0 or R, or from (2), (5), (9), or (10) using other rules (possibly
+using other premises from (1)(10)). It is easy to re-apply all such inferences, this time,
+with tracing. This way, we reconstruct all inferences producing subsumptions of the
+form B  Y in (1)(10), and, in particular of B  Csee the solid lines in Figure 3.
+After we have recorded all inferences producing conclusions of the form B  Y in
+(1)(10), we traverse the computed inferences backwards to see which other premises
+were involved in the proof for B  C. This way, we arrive at premise A  C, for
+which no inference was recorded so far. This premise has A on the left-hand side, and
+similarly as above, we can now compute all inferences deriving subsumptions of the
+form A  Y in (1)(10): see the dashed lines in Figure 3. After we have done this, all
+inferences used in the proof for B  C are found.
+
+Our tracing procedure does not guarantee to save only inferences that are used in
+the proof of the given subsumption. For example, to find the proof for the subsumption
+B  S.A, we would have similarly saved all inferences for B (solid lines in Figure 3)
+because at that time, we do not know which of these inferences are used in the proof for
+B  S.A. Note that producing inferences for A would not be necessary in this case
+since A  C is not reachable from B  S.A when traversing inferences backwards.
+Similarly, tracing of inferences for B is not necessary when finding proofs for A 
+R.B, and tracing inferences for neither A nor B is necessary when finding proofs for
+C  R.A. In our experiments, we will demonstrate that only few inferences need to be
+re-applied when producing proofs of the entailed subsumptions in existing ontologies.
+
+3 Tracing of Inferences
+
+In this section, we provide a formal description of the goal-directed procedure outlined
+in the previous section and prove its correctness. The procedure is formulated in a general way and can be used with arbitrary rule systems. In the end of the section we discuss
+which properties of the inference system are important for efficiency of the method.
+
+3.1 Inferences, Rules, and Closure under the Rules
+We start by formalizing the basic notions of inferences and inference rules. Let E be a
+fixed countable set of expressions. An inference over E is an object inf which has a finite
+set of premises inf.Prem  E and a conclusion inf.concl  E.1 When inf.Prem = , we
+say that inf is an initialization inference. An inference rule R over E is a countable set
+
+1 We assume that there can be different inferences with the same premises and conclusions.
+
+Y. Kazakov and P. Klinov
+
+Algorithm 1. Computing the inference closure by saturation
+
+: R: a set of inferences
+: S = Clos(R)
+
+saturation(R):
+input
+output
+1 S, Q  ;
+2 for inf  R with inf.Prem =  do
+4 while Q =  do
+
+Q.add(inf.concl);
+exp  Q.takeNext();
+if exp / S then
+S.add(exp);
+for inf  R with exp  inf.Prem  S do
+
+Q.add(inf.concl);
+
+/* initialize */
+
+/* close */
+
+10 return S;
+
+of inferences over E; it is an initialization rule if all these inferences are initialization
+inferences. In this paper, we view an inference system consisting of several rules as one
+inference rule R containing all the inferences.
+
+Intuitively, an inference corresponds to an application of a rule to particular premises.
+For example, the application of R producing (7) in Example 1 corresponds to an inference inf with inf.Prem = {A  R.B, B  B} and inf.concl = (A  H.B). Rule
+R in Figure 1 consists of all such inferences in which the premises and conclusions
+satisfy the side conditions (for the given G() and O). Similarly, R0 is an initialization
+rule consisting of inf with inf.Prem =  and inf.concl = (C  C) for all C.
+We say that a set of expressions Exp  E is closed under an inference inf if
+inf.Prem  Exp implies inf.concl  Exp. Exp is closed under an inference rule R if
+Exp is closed under every inference inf  R. The closure under R is the smallest set of
+expressions Clos(R ) that is closed under R. Note that Clos(R ) is empty if and only if
+R does not contain any initialization inferences.
+
+Using the introduced notation, we can now describe the well-known forward chaining procedure for computing the closure under the inference rules R. The procedure is
+formalized in Algorithm 1. Intuitively, the algorithm computes the (expanding) set of
+expression S, called the saturation, by repeatedly matching premises of the rules to S
+and adding their conclusions back to S until a fixpoint is reached (in contrast, backward chaining procedures match the conclusions of rules to the given goals to find the
+premises). A special care is taken to avoid repeated applications of rules to the same
+premises. For this purpose, the algorithm uses a queue Q to buffer the conclusions of
+the inferences. The queue Q is first initialized with conclusions of the initialization inferences (lines 23), and then in a cycle (lines 49), repeatedly takes the next expression
+exp  Q, and if it does not occur in the saturation S already, inserts it into S and applies
+all inferences having this expression as one of the premises and other premises from
+S (line 8). The conclusions of such inferences are then inserted back into Q. Note that
+every inference inf  R with inf.Prem  S is applied by the algorithm exactly once,
+namely, when the last premise of this inference is added to S.
+?
+
+?
+
+?
+Algorithm 2. Full tracing of inferences
+
+: R: a set of inferences
+: M: a multimap from expressions to inferences such that M.Keys = Clos(R ) and
+M(exp) = {inf  R | inf.Prem  Clos(R) & inf.concl = exp} (exp  M.Keys)
+
+/* initialize */
+
+/* close */
+
+fullTracing(R):
+input
+output
+1 M, Q  ;
+2 for inf  R with inf.Prem =  do
+Q.add(inf );
+4 while Q =  do
+inf  Q.takeNext();
+exp  inf.concl;
+if exp / M.Keys then
+M.add(exp  inf);
+for inf  R with exp  inf.Prem  M.Keys do
+
+Q.add(inf );
+
+else
+
+M.add(exp  inf);
+
+13 return M;
+
+3.2 Proofs, Inference Oracle, and Full Tracing
+
+Given the closure S = Clos(R ) under the rules R, i.e, the output of Algorithm 1, we
+are interested in finding proofs for a given expression exp  S consisting of inferences
+by which exp was derived in S. Formally, a proof (in R) is a sequence of inferences
+p = inf1, . . . , infn (infi  R, 1  i  n) such that infj.Prem  {infi.concl | 1  i < j}
+for each j with 1  j  n. If exp = infn.concl then we say p is a proof for exp. A proof
+p = inf1, . . . , infn for exp is minimal if no strict sub-sequence of inf1, . . . , infn is a proof
+for exp. Note that in this case infi.concl = infj.concl when i = j (1  i, j  n). For
+example, the sequence of inferences (1)(10) in Example 1 is a proof for A  C, but
+not a minimal proof since there exists a sub-sequence (1), (2), (4), (5), (7)(10), which
+is also a proof for A  C (in fact, a minimal proof for A  C, see Figure 2).
+To find minimal proofs, one can use an inference oracle, that given exp  S returns
+inferences inf  R such that inf.Prem  S and inf.concl = exp. Using such an oracle,
+the proofs can be easily found, e.g., by recursively calling the oracle for the premises of
+the returned inferences, avoiding repeated requests to ensure minimality of the proofs
+and termination. If one is interested in retrieving just one proof, it is sufficient to use an
+inference oracle that returns one inference per expression; if all proofs are required, the
+oracle should return all inferences producing the given expression from S.
+
+The inference oracle can be implemented by simply precomputing all inferences
+using a modification of Algorithm 1. This modification is shown in Algorithm 2. We
+refer to this algorithm as full tracing. Instead of collecting the expressions derived by
+the inferences in S, we collect the inferences themselves and store them in a multimap
+M: for each applied inference inf, we add a record exp  inf to M where exp is the
+conclusion of inf (M is a multimap because several inferences can be stored for the same
+conclusion). Thus, the keys M.Keys of M is the set of all conclusions of inferences in S.
+
+Y. Kazakov and P. Klinov
+
+Algorithm 3. Partial tracing of inferences
+
+partialTracing(R, S, Exp):
+input
+
+: R: a set of inferences, S  E: a subset of expressions,
+Exp  S  Clos({inf  R | inf.Prem  S}): the expressions to trace
+: M: a multimap from expressions to inferences such that M.Keys = Exp and
+M(exp) = {inf  R | inf.Prem  S & inf.concl = exp} (exp  M.Keys)
+
+output
+1 M, Q  ;
+2 for inf  R with inf.Prem  S \ Exp & inf.concl  Exp do
+Q.add(inf );
+4 while Q =  do
+inf  Q.takeNext();
+exp  inf.concl;
+if exp / M.Keys then
+M.add(exp  inf);
+for inf  R with exp  inf.Prem  M.Keys  (S \ Exp) & inf.concl  Exp do
+
+/* initialize */
+
+/* close */
+
+Q.add(inf );
+
+else
+
+M.add(exp  inf);
+
+13 return M;
+
+The newly applied inferences are first buffered in the queue Q. When processed, if the
+conclusion of the inference is new (line 7), we add this inference to M for the conclusion
+(line 8) and produce all inferences between this conclusion and the previously derived
+conclusions (lines 9-10). Otherwise, we just store the new inference and do nothing
+else (line 12). Note that it is easy to modify this algorithm so that only one inference
+is stored per conclusion. For this, one can just remove line 12 and make M an ordinary
+map. Similarly to Algorithm 1, Algorithm 2 generates every inference at most once.
+
+Once the multimap is computed, the inference oracle can be easily implemented by
+
+performing a lookup in the multimap M for the given expression exp.
+
+3.3 Partial Tracing of Inferences and Inference Oracle Based on Partitions
+
+The construction in Algorithm 2 can be further extended to perform partial tracing,
+that is, to compute not all inferences inf  R with inf.Prem  S for S = Clos(R),
+but only those that produce conclusion in a given set of expressions Exp. This idea is
+realized in Algorithm 3. This algorithm constructs a multimap M that is a restriction
+of the multimap constructed by Algorithm 2 to the keys from Exp. The only difference
+in this algorithm are lines 2 and 9 where the inferences are applied. First, the algorithm
+considers only inferences with conclusions in Exp (inf.concl  Exp). Second, since the
+algorithm never derives expressions from S\ Exp, all premises in S\ Exp are considered
+in each application of the rule. In other words, if to ignore the premises from S \ Exp
+in rule applications, the algorithm would look exactly like Algorithm 2. Note that Algorithm 2 is just an instance of Algorithm 3 when Exp = S = Clos(R), in which case
+S \ Exp =  and the restriction inf.concl  Exp can be dropped. In the input of Algorithm 3, we require that Exp is a subset of the closure under the inferences inf with
+?
+
+?
+
+?
+. We show that inf.concl  Clos
+?
+
+?
+
+?
+. There are two cases possible:
+?
+
+?
+
+?
+.
+
+Goal-Directed Tracing of Inferences in EL Ontologies
+
+, take an arbitrary inference inf  R
+
+inf.Prem  S. This means that every exp  Exp is derivable by applying inf  R to only
+premises in S. This condition holds trivially if Exp  S = Clos(R).
+Theorem 2 (Correctness of Algorithm 3). Let R = {inf  R | inf.Prem  S} for
+some set of inferences R and a set of expressions S. Let Exp  S  Clos(R), and
+M the output of Algorithm 3 on R, S, and Exp. Then M.Keys = Exp and M(exp) =
+{inf  R | inf.concl = exp} for each exp  M.Keys.
+Proof. First, observe that M.Keys  Exp since only inferences inf  R with inf.concl 
+ = M.Keys 
+Exp are added to Q. Next we show that M.Keys = Exp. Let Clos
+(Clos(R) \ Exp). Note that Clos
+  Clos(R) since M.Keys  Exp  Clos(R). We
+ = Clos(R) since Clos(R)
+is closed under R
+
+claim that Clos
+, which implies that Clos
+is the minimal set closed under R
+. This proves M.Keys = Exp.
+
+To prove that Clos
+inf.Prem  Clos
+
+1. inf.concl / Exp: Since Clos(R) is closed under R
+2. inf.concl  Exp: Since inf.Prem  Clos
+
+such that
+, in particular, inf.concl 
+Clos(R) \ Exp, so inf.concl  Clos
+  S, then inf.Prem  M.Keys (S\ Exp).
+Hence inf will be applied either in line 2 if inf.Prem  (S\ Exp), or in line 9 for the
+last premise exp  inf.Prem M.Keys added to M.Keys. In both cases, inf is added
+to Q, which means that inf.concl  M.Keys  Clos
+
+It remains to prove that M(exp) = {inf  R | inf.concl = exp} for exp  M.Keys:
+(): Take any exp  Exp and any inf  R
+with inf.concl = exp. From Case 2 above,
+it follows that inf  M(exp).
+(): Take any exp  M.Keys and any inf  M(exp). Then from lines 6, 8, and 12
+of Algorithm 3 we have inf.concl = exp and from lines 2 and 9 we have inf.Prem 
+M.Keys  (S \ Exp). Since M.Keys  Exp  S, we obtain that inf  R
+Performance of Algorithm 3 depends on whether it can efficiently enumerate the inferences in lines 2 and 9. Enumerating inferences in line 9 can be simply done by applying
+all inferences with the given premise exp and other premises from S similarly to Algorithm 2, and disregarding all inferences that do not satisfy the additional conditions (it
+is reasonable to assume that the number of inference applicable to a given expression
+exp is already small to start with). Efficient enumeration of inferences in line 2, how-
+ever, is more problematic and may depend on the particular inference system R and set
+Exp. As shown in Section 2.4, if we take R to be the EL+ rules in Figure 1, and Exp
+the set of subsumptions of the form X  Y for a fixed concept X, then the inferences
+inf  R with inf.Prem  S \ Exp and inf.concl  Exp can be only inferences by R0
+and R producing X  X and X   respectivelythe other rules cannot derive a
+subsumption of the form X  Z  Exp without a premise of the form X  Y  Exp.
+If all expressions E can be partitioned on subsets Exp for which the set of inferences
+{inf  R | inf.Prem  S \ Exp & inf.concl  Exp} can be efficiently enumerated, then
+one can implement an inference oracle by (i) identifying the partition Exp to which the
+given expression exp belongs, (ii) computing the inferences for all expressions in Exp
+using Algorithm 3, and (iii) returning the inferences for exp  Exp. This approach is
+more goal-directed compared to the oracle using full tracing, as it only computes and
+stores the inferences producing conclusions in one partition.
+
+.
+
+.
+
+Y. Kazakov and P. Klinov
+
+4 Goal-Directed Tracing of Inferences in EL+
+
+Next we show how to use the approach from Section 3 to implement the tracing procedure for EL+ described in Section 2.4. We assume that the closure S under the rules R
+in Figure 1 is computed (for the given parameters O, F , and G()) and we are given a
+subsumption X  Y  S for which all inferences used in the proofs should be found.
+To partition the closure S, we use the partitioning method used for incremental reasoning in EL+ [11]. Specifically, for a concept X let S[X] be the subset of S consisting
+of all subsumption X  Y  S for all Y . Clearly, S is partitioned on disjoint subsets
+S[X] for different X. By inspecting the rules in Figure 1, it is easy to see that if the
+conclusion of the rule belongs to S[X] then either it has a premise that belongs to S[X]
+as well, or it does not have any premises. Thus, for each Exp = S[X] and each inference
+inf such that inf.Prem  S \ Exp and inf.concl  Exp, we have inf.Prem = . Hence,
+if Algorithm 3 is applied with Exp = S[X], only initialization inferences need to be
+applied in line 2, which can be done very efficiently.
+The inference oracle based on Algorithm 3 can be used to compute the proofs for the
+derived subsumptions exp = (X  Y )  Clos in a goal directed way. For this, we first
+need to apply Algorithm 3 for the partition Exp = S[X], then, retrieve all inferences inf
+with conclusion exp from the set of computed inferences, and finally, repeat the process
+for each premise of the retrieved inferences. This process can be adapted accordingly if
+only one proof should be generated or proofs are to be explored interactively by the user.
+Since most inferences by the rules in Figure 1 are applied within individual partitions,
+this should not result in many calls of Algorithm 3, and since partitions are typically
+quite small, not many inferences should be saved. We will present empirical evidences
+confirming these claims in Section 6.
+
+Example 2. Consider the set S consisting of subsumptions (1)(10) derived in Example 1. These subsumptions are assigned to partitions A, B, and C. To compute the
+inferences with conclusion B  C, it is sufficient to apply Algorithm 3 for Exp = S[B]
+using the precomputed closure S. It is easy to see that only inferences for (2), (5), (9),
+and (10) will be produced by this algorithm (see the solid lines in Figure 3). During initialization (line 2), Algorithm 3 applies only rule R0 deriving B  B. During closure
+(line 4), the algorithm applies only inferences to the derived subsumptions in partition
+S[B], and keeps only inferences that produce subsumptions in the same partition. For
+example, the inference by R producing (7) should be ignored, even though it uses a
+premise B  B from partition S[B].
+Note that knowing S is essential for computing these inferences. E.g., to produce
+B  S.C we need to use the premise A  C from S, which we do not derive during
+tracing. Thus, the precomputed set S is used in our procedure as a set of support2 to
+reach the conclusions of interest as fast as possible.
+Now, if we want to traverse the inferences backwards to obtain full proofs for B  C,
+we need to iterate over the premises that were used to derive B  C and trace their partitions using Algorithm 3. In our case, B  C was derived from B  S.C, for which
+the partition S[B] was already traced, but continuing further to premise A  C will
+2 Analogously to the set of support strategy of resolution, we use premises from S only if at
+
+least one other premise comes from the traced partition.
+?
+
+?
+
+?
+bring us to partition S[A]. When tracing partition S[A] using Algorithm 3, we produce
+the remaining inferences for (1), (4), (7), and (8) used in the proof (see Figure 3). Note
+that it is not necessary to trace partition S[A] to find the proof for, e.g., B  S.A
+because no subsumption in partition S[A] was used to derive B  S.A.
+
+5 Related Work
+
+In the context of ontologies, most research relevant to the issue of explanations has revolved around justifications3the minimal subsets of the ontology which entail the result [3,5,8,9,16]. The fact that justifications are minimal subsets is useful to the user but
+also makes them intractable to compute [16]. Much research has gone into developing
+optimizations to cope with this complexity in practical cases. The known approaches
+usually fall into one of the two categories: black-box and glass-box. The former use the
+underlying reasoning procedure as a black-box and employ generic model-based diagnosis algorithms [17] to find justifications [5,9,8]. Thus, they can work for any (mono-
+tonic) logic for which a black-box implementation of a decision procedure is available.
+On the other hand, such methods cannot use the properties of the reasoning procedure
+for optimizations and recover the steps used to prove the entailment. Thus, it is still up
+to the user to understand how to obtain the result from the justifications.
+
+Glass-box methods do use the properties of the underlying reasoning procedure,
+in particular, for recording how inferences are made. They have been designed for
+tableau [7], automata [3], and consequence-based procedures [4,18]. The latter methods are similar to what we call full tracing. For example, Sebastiani et. al. [18] encodes
+every inference performed during EL classification in propositional Horn logic. E.g.,
+inference (8) in Example 1 would correspond to s[AH.B]  ax[H.BC]  s[AC].
+Once the entire formula O capturing all inferences is built, justifications, e.g., for
+A  C, can be found by pinpointing conflicts in O  s[AC] using the corresponding functionality of SAT solvers.
+
+Any algorithm for computing justifications can be optimized using ontology modularity techniques to obtain a goal-directed behaviour (see, e.g., [5]). The so-called
+locality-based modules [6] are well-defined fragments of the ontology which guarantee to contain all justifications for a given entailment. Modules can be often computed
+efficiently and can limit the search for justifications to a smaller subset of the ontology.
+We conclude this section by briefly discussing the relationship between our tracing
+technique and justifications. From any (minimal) proof obtained by unfolding the inferences computed by Algorithm 3 one can extract the axioms used in the side conditions
+of inferences (R, R, and R in the EL case), which represent a subset of the ontology that entails the proved subsumption. This subset, however, might be not a minimal
+subset for this entailment, but all minimal subsetsthat is, justificationscan be easily
+computed from all such sets. Note that this can be done offline, i.e., the reasoner is not
+needed after tracing the inferences. Instead of computing the justification by enumerating proofs, one can also simply take the set of all axioms used in the proofs and extract all
+justifications from this set using any conventional method [4,9,5,8,18]. Our evaluation
+
+3 Not to be confused with justifications in the context of Truth Maintenance Systems.
+
+Y. Kazakov and P. Klinov
+
+Table 2. Number of axioms, partitions, conclusions and inferences in test ontologies, running
+time (in ms.) and memory consumption (in MB) for classification with and without full tracing
+
+Ontology Num. of Num. of Num. of conclusions
+(max per partition)
+2,450,505
+(395) 5,715,611 1,877
+1,922,549 (1,350) 3,944,921 1,326
+(484) 54,553,961 16,968
+?
+
+?
+
+?
+SNOMED 297,327 371,642 19,963,726
+
+axioms partitions
+46,846
+87,492
+36,547
+25,965
+
+inferences
+
+time mem.
+
+Num. of No tracing Full tracing
+time mem.
+546 5,004 1,102
+722 3,786
+
+924 OOM OOM
+
+shows that these subsets are much smaller than the locality-based modules usually used
+for this purpose, and computation of justifications from them is much faster.
+
+6 Experimental Evaluation
+
+We implemented algorithms 2 and 3 as well as their recursive extension to obtain
+full proofs within the EL+ reasoner ELK4 (which implements Algorithm 1 as its base
+procedure). We used three large OWL EL ontologies commonly used in evaluations
+of EL reasoners [2,13,15]: a version of the Gene Ontology (GO),5 an EL+-restricted
+version of the GALEN ontology,6 and the July 2013 release of SNOMED CT.7 We used
+a PC with Intel Core i5-2520M 2.50GHz CPU, with Java 1.6 and 4GB RAM available
+to JVM. The following experiments have been performed:
+
+Full Tracing Overhead: Our first experiment evaluates the overhead of full tracing
+(Algorithm 2) comparing to pure saturation (Algorithm 1). Each ontology was classified
+10 times with and without full tracing and the results were averaged (excluding 5 warmup runs). The results in Table 2 show that there is roughly x2x4 time overhead. The
+memory overhead is also significant which causes the algorithm to run out of memory
+(OOM) when classifying SNOMED CT with full tracing.8 In addition, the results show
+that the maximal number of conclusions per partition is negligible in comparison with
+the total number of conclusions. Thus the fact that Algorithm 3 saves some inferences
+not used in proofs of the target expression should not result in a substantial overhead.
+
+Goal-Directed Tracing: Next we evaluate performance of the recursive proof tracing
+procedure based on goal-directed tracing with partitions (i.e., on Algorithm 3). The
+experimental setup is as follows: each ontology was classified and then each direct
+subsumption between concept names was traced with recursive unfolding. Each subsumption was traced independently of others. We separately report results for tracing
+
+4 Version 0.5.0, projected release date Oct 2014, see http://elk.semanticweb.org.
+5 It is a richer version with concept equivalences, role hierarchies and chains. We thank Chris
+
+Mungall from the Lawrence Berkley Lab for providing it. It is accessible at:
+http://elk.semanticweb.org/ontologies/go_ext.owl.
+
+6 http://www.co-ode.org/galen/
+7 http://www.ihtsdo.org/snomed-ct/
+8 With the smaller ontologies the difference is less observable because of the relatively high
+(4GB) memory limit set to JVM; the difference is better observable with lower memory limits.
+?
+
+?
+
+?
+Table 3. Results for recursive goal-directed tracing partitions on all atomic subsumptions in the
+ontology when all (resp. the first) inferences for each conclusion are recursively unfolded. All
+numbers, e.g., the number of traced partitions, are averaged over all traced subsumptions.
+
+Ontology Total # of traced # of traced
+partitions
+3.7 (1.4) 456.2 (244.1)
+1.9 (1.5) 414.4 (350.9)
+8.6 (1.6) 788.3 (332.9)
+
+subsumptions
+73,270
+38,527
+443,402
+?
+
+?
+
+?
+SNOMED
+
+# of traced # of inferences # of used
+inferences used in proofs  axioms
+
+Time
+(in ms.)
+94.9 (6.4) 18.6 (2.5) 2.0 (1.2)
+21.7 (10.1) 5.2 (4.4) 1.9 (0.8)
+385.9 (12.7) 9.7 (3.7) 10.1 (1.9)
+
+all of the inferences for each conclusion or just of the first inference. The former is
+useful for generating all proofs whereas the latter can be used to produce one proof.
+
+The results are presented in Table 3. First, they demonstrate that the proposed method
+is very fast as it takes just a few milliseconds to find all inferences used in all proofs
+of a given subsumption. This is the effect of its goal-directed nature: it only traces
+inferences which belong to the same partitions as inferences actually used in the proofs,
+and the partitions are relatively small. From Table 2 one can calculate that the biggest
+partitions do not exceed 0.07% of the total number of derived subsumptions while on
+average there are only 122, 152, and 146 inferences per partition in GO, GALEN, and
+SNOMED CT respectively. The performance results thus follow from the low number
+of traced partitions and traced inferences. Second, the algorithm traces more inferences
+when all proofs are needed but the difference is not substantial and the running times are
+usually close. This is because alternative proofs overlap and the algorithm rarely needs
+to trace new partitions when considering more than one inference per conclusion. Third,
+the difference between the number of traced and used inferences shows granularity of
+partitioning in EL+ (inferences not used in proofs are traced only if they happen to
+be in one partition with used inferences). Finally, since the results are averaged over
+all subsumptions, the reader may wonder if the good performance is because most of
+them can be proved trivially. We present a more detailed evaluation in the technical
+report [12], where we separately aggregate results over subsumptions that are provable
+from at least 10 axioms and show that performance stays on the same level.
+
+Tracing and Justifications: In our final experiment, we investigate if it makes sense
+to use our tracing method to improve the computation of justifications. As discussed in
+Section 5, the set of axioms used in the side conditions of the inferences in each proof
+must be a superset of some justification. So it is worth to compare the number of such
+axioms with the sizes of justifications. Finding all justifications is intractable so we consider only the first proof and the first justification. In addition, we compare the number
+of axioms used in all proofs of a subsumption with the size of the ()
+-module extracted for this subsumption, and the times needed to extract the first justification from
+these setsas discussed, both sets must contain all justifications. We use the OWL API
+which provides generic methods for extracting modules and finding justifications.
+
+The results are given in Table 4. While we were able to generate the first justifications
+for all subsumptions in GO, it was not feasible for GALEN and SNOMED CT (with
+a 10 hours time-out). The problem with GALEN is that modules are large and even
+the first justification often takes minutes to pinpoint in the corresponding module (but
+
+Y. Kazakov and P. Klinov
+
+Table 4. Computing the set of subsumption axioms used in all proofs Sall or the first proof S1 vs.
+extracting the module M for the signature of the entailment or computing the first justification
+J1. Size of M and J1 is measured as the number of subsumption axioms (concept equivalence
+axioms in the ontologies are rewritten as two subsumptions). Running times are in milliseconds.
+
+Ontology
+
+Num. of traced Sall size S1 Sall S1 J S
+subsumptions (max size) size time time time
+
+1 M M J1 J1
+size time size time
+
+5.2 (86) 4.4 1.9 0.8 128.1 10,899 195 4.35 N/A
+?
+
+?
+
+?
+SNOMED CT 10,000 (sample) 9.7 (133) 3.7 10.1 1.9 19.0
+
+73,270 18.6 (288) 2.5 2.0 1.2 25.1 124.8 164 2.2
+38,527
+
+38.8 887 1.9
+
+not in the results of tracing, as explained below). Thus we focus only on the size of
+modules and their extraction time. In contrast, modules of SNOMED CT are small but
+take nearly a second to extract (since the ontology is large). So instead of extracting
+them for all subsumptions, we took a random uniform sample of 10, 000 subsumptions.
+For GO and SNOMED CT it can be seen that on average the number of axioms
+used in the first proof (S1) is not much larger than the size of the first justification
+(J1) while the number of axioms used in all proofs (Sall) is 37 times smaller than the
+module (M). The latter difference is several orders of magnitude for GALEN, which
+induces very large modules due to cyclic axioms. The time required to extract the first
+justification from Sall (J S
+1 time) is also 2.53.5 times smaller then the time to extract
+the first justification from M (J1 time) for the cases where it was possible.
+
+7 Summary
+
+In this paper we have presented a simple, efficient, and generalizable method for goaldirected tracing of inferences in EL+. Depending on the application, the inferences can
+be used offline to produce proofs or compute justifications. The method is goal-directed
+in the sense that it re-applies only a limited number of inferences using the previously
+computed conclusions as a set of support. It does not require storing additional indexing
+information or any sort of bookkeeping during the normal classification.
+The method is based on the same granularity property of reasoning in EL+ as was
+previously used for concurrent and incremental reasoning [13,11]. Specifically, concept
+subsumers in EL+ most of the time can be computed independently of each other.
+This enables efficient partitioning of all derived expressions so that tracing a particular
+expression requires re-applying inferences only in few partitions, as shown empirically.
+It is worth pointing out that our goal-directed procedure does not guarantee to be an
+improvement over full tracing in worst case: it is easy to construct pathological examples which trigger full tracing. This happens, e.g., for O = {Ai  Ai+1 | 1  i < n}
+{An  A1}, for which every inference is used in the proof of every entailed subsumption (since all concepts are equivalent), or for O = {A  Bi | 1  i  n}, for which
+there is only one partition. Arguably, such examples are not to be often expected in practice as the number of entailed subsumers of each concept is usually relatively small.
+?
+
+?
+

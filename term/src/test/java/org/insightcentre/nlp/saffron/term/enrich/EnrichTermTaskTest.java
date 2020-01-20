@@ -50,7 +50,7 @@ public class EnrichTermTaskTest {
         System.out.println("run");
         String docText = "this is a test document that should work";
         String[] tokens = docText.split(" ");
-        Document doc = new Document(null, "test", null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, docText);
+        Document doc = new Document(null, "test", null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, docText, null);
         ThreadLocal<POSTagger> tagger = new ThreadLocal<POSTagger>() {
             @Override
             protected POSTagger initialValue() {

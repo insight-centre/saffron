@@ -44,9 +44,9 @@ public class DocumentAnalyzerTest {
     @Test
     public void testAnalyze() throws Exception {
         System.out.println("analyze");
-        Document txtFile = new Document(new SaffronPath("src/test/resources/test.txt"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null);
-        Document pdfFile = new Document(new SaffronPath("src/test/resources/test.pdf"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null);
-        Document docFile = new Document(new SaffronPath("src/test/resources/test.doc"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null);
+        Document txtFile = new Document(new SaffronPath("src/test/resources/test.txt"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null);
+        Document pdfFile = new Document(new SaffronPath("src/test/resources/test.pdf"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null);
+        Document docFile = new Document(new SaffronPath("src/test/resources/test.doc"), "test" , null, "test", null, Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null);
         DocumentAnalyzer instance = new DocumentAnalyzer();
         
         for(Document d : Arrays.asList(txtFile, pdfFile, docFile)) {

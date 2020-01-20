@@ -1,0 +1,2781 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+Optimising resolution-based rewriting algorithms for OWL
+ontologies
+Despoina Trivela, Giorgos Stoilos, Alexandros Chortaras, Giorgos Stamou
+
+School of Electrical and Computer Engineering, National Technical University of Athens, Greece
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 30 September 2013
+Received in revised form
+1 December 2014
+Accepted 17 February 2015
+Available online 26 February 2015
+
+Keywords:
+Query answering
+Query rewriting
+Ontology
+Description logics
+Resolution
+
+An important approach to query answering over OWL ontologies is via rewriting the input ontology (and
+query) into a new set of axioms that are expressed in logics for which scalable query answering algorithms
+exist. This approach has been studied for many important fragments of OWL like SHIQ, Horn-SHIQ,
+OWL 2 QL, and OWL 2 EL. An important family of rewriting algorithms is the family of resolution-based
+algorithms, mostly because of their ability to adapt to any ontology language (such algorithms have been
+proposed for all aforementioned logics) and the long years of research in resolution theorem-proving.
+However, this generality comes with performance prices and many approaches that implement algorithms that are tailor-made to a specific language are more efficient than the (usually) general-purposed
+resolution-based ones.
+
+In the current paper we revisit and refine the resolution approaches in order to design efficient rewriting algorithms for many important fragments of OWL. First, we present an algorithm for the language
+DL-LiteR, which is strongly related to OWL 2 QL. Our calculus is optimised in such a way that it avoids
+performing many unnecessary inferences, one of the main problems of typical resolution algorithms. Sub-
+sequently, we extend the algorithm to the language ELHI which is strongly related to OWL 2 EL. This is
+a difficult task as ELHI is a relatively expressive language, however, we show that the calculus for DL-
+LiteR, requires small extensions. Finally, we have implemented all algorithms and have conducted an
+extensive experimental evaluation using many well-known large and complex OWL ontologies. On the
+one hand, this is the first evaluation of rewriting algorithms of this magnitude, while, on the other hand,
+our results show that our system is in many cases several orders of magnitude faster than the existing
+systems even though it uses an additional backwards subsumption checking step.
+
+ 2015 Elsevier B.V. All rights reserved.
+
+1. Introduction
+
+Efficient management and querying of large amounts of (pos-
+sibly distributed) data that are formally described using complex
+structures like ontologies is an important problem for many modern applications [13]. In such settings answers to user queries reflect both the stored data as well as the axioms that have been
+encoded in the ontology. However, query answering over OWL
+ontologies is a very challenging task mainly due to its very high
+computational complexity [46]. Even after intense implementation work and the design of modern sophisticated optimisations,
+
+ This is a revised and extended version of the work presented in Chortaras
+ Corresponding author.
+(2011), and Trivela (2013).
+
+E-mail addresses: despoina@image.ntua.gr (D. Trivela),
+
+gstoil@image.ece.ntua.gr (G. Stoilos), achort@cs.ntua.gr (A. Chortaras),
+gstam@cs.ntua.gr (G. Stamou).
+
+http://dx.doi.org/10.1016/j.websem.2015.02.001
+1570-8268/ 2015 Elsevier B.V. All rights reserved.
+
+direct (tableaux-based) approaches integrated in systems such as
+HermiT [7], Pellet [8], and Racer [9] are not yet able to cope with
+very large datasets. Moreover, in several important profiles of OWL
+2 [10], like OWL 2 QL and OWL 2 EL, different methods for query
+answering have been investigated.
+
+A prominent (indirect) approach to query answering over OWL
+ontologies is via rewriting the input into axioms expressed in
+formalisms for which efficient data management and retrieval
+systems are already available. More precisely, the input ontology
+O and query Q are transformed into a set of sentences R, typically
+a datalog program (or in some cases even a union of conjunctive
+queries) called rewriting, such that for any dataset D the answers
+to Q w.r.t. D and O coincide with the answers to Q w.r.t. D and R
+discarding O [1113]. Since R is a (disjunctive) datalog program
+query answering can be delegated to existing scalable (deductive)
+database systems.
+
+Computing rewritings has been studied for various fragments
+of OWL. One of the first approaches supported the language
+
+SHIQ [11], a large fragment of OWL, and the proposed techniques
+led to the development of KAON2 [14], one of the first practical
+systems for answering SPARQL queries over OWL ontologies. Re-
+cently, the technique has received considerable attention as it constitutes (perhaps) the standard approach to query answering over
+ontologies expressed in the languages DL-Lite [12,15], ELHI [13],
+and Horn-SHIQ [16]. DL-Lite and ELHI are particularly important
+as they are strongly related to the OWL 2 QL and OWL 2 EL profiles of OWL 2 [10]. Besides the theoretical works many prototype
+systems have been developed, prominent examples of which include Mastro [17], Presto [15], Quest [18], Rapid [19], Nyaya [20],1
+IQAROS [21], and Ontop [22] which support DL-Lite, Requiem [13],
+which supports ELHI, and Clipper [16], which supports Horn-
+SHIQ.
+
+Some approaches for computing rewritings have exploited the
+resolution-based calculi [23]. In this setting, the input is first
+transformed into a set of clauses which is then saturated using
+resolution to derive new clauses. The latter can either contain
+function symbols or be function-free, while the output rewriting
+consists of all the derived function-free clauses. Using resolution
+has at least two benefits. First, such calculi are worst-case optimal and allow for a large number of existing optimisations developed in the field of theorem-proving. Second, since there exist
+many resolution-based decision procedures for expressive fragments of first-order logic [24,25] it is (relatively) easier to design
+a resolution-based rewriting algorithm for an expressive fragment
+of OWL compared to designing a custom made one. For example,
+to the best of our knowledge, none of the tailor made systems for
+DL-Lite can currently support more expressive fragments of OWL,
+while a resolution-based algorithm for all aforementioned fragments exists.
+
+However, the efficiency of resolution-based approaches has
+also been criticised [26]. Even with all the existing optimisations
+the saturation produces many clauses unnecessarily. More pre-
+cisely, it can produce several clauses that contain function symbols
+and which are not subsequently used to derive other function-free
+clauses. Since these are neither part of the output rewriting nor
+do they contribute to the derivation of members of the rewriting
+their generation is superfluous with respect to query answering.
+Moreover, exhaustive application of the resolution rule is likely to
+create long derivations of clauses that are eventually redundant
+(subsumed) and the standard optimisations of resolution are not
+enough to provide a scalable approach. Consequently, the first generation systems (e.g., Requiem) have already been surpassed [27].
+Motivated by the desire to design efficient rewriting algorithms
+that can also support expressive fragments of OWL we present
+novel resolution-based rewriting algorithms. We start from DLLite and we show how a rewriting can be computed by greatly
+restricting the standard (binary) resolution calculus initially used
+in [28]. Roughly speaking, our calculus generates intermediate
+clauses that contain function symbols only when it is known
+that these will contribute to the generation of other function-free
+clauses. This is implemented by a new resolution inference rule,
+called shrinking, which packages many inference steps into one
+macro-step and employs certain restrictions over the resolvents.
+Subsequently, we extend our approach to the ontology language ELHI by investigating whether a rewriting algorithm that
+is again based on the shrinking rule can be defined. This is technically a very challenging task as the structure of ELHI axioms implies many complex interactions between the clauses (note that,
+in contrast to DL-Lite, checking concept subsumption in ELHI is
+in ExpTime). However, we show that a rewriting can be computed
+by an algorithm that contains an (arguably small) extension of the
+
+1 Nyaya actually supports linear Datalog.
+
+shrinking rule of DL-Lite, called n-shrinking, plus a new resolution
+rule, called function rule, which captures a very specific type of interaction between roles (binary predicates of the form R(x, y)) and
+their inverses (i.e., R(y, x)). Moreover, this new rule is strongly related to the extension of shrinking to n-shrinking. More precisely,
+if the new rule is never applied, then n-shrinking reduces precisely
+to the shrinking rule of DL-Lite. Hence, our algorithm has very good
+pay as you go characteristics. That is, if the ontology is expressed
+in ELH (i.e., does not allow for inverse roles), then it is guaranteed
+that the new rule is never applied and n-shrinking can be simplified to shrinking, while the more inverse roles are used in axioms
+the more the interaction between these two rules, which can create a bottleneck. However, realistic ontologies usually contain few
+inverse roles, hence we expect that the algorithm would usually
+behave well in practice. Experimental evaluation and analysis verify our remarks.
+
+Next, we discuss some implementation and optimisation issues
+which led us to the design and implementation of Rapid, a practical
+resolution-based system for computing rewritings. More precisely,
+we discuss how one can present the rewriting in a compact form
+reducing its size as well as some further optimisation for pruning
+redundant clauses.
+
+Finally, we conducted an extensive experimental evaluation
+using a new test suite that includes several real-world large-scale
+DL-Lite and ELHI ontologies hence greatly extending all existing
+benchmarks. Regarding the experiments, our comparison against
+several state-of-the-art systems has provided many encouraging
+results. More precisely, our results show that existing systems
+cannot always handle large-scale and complex ontologies as in
+several cases they fail to terminate after running for more than
+3 h. In contrast Rapid is in the vast majority of cases able to
+compute a rewriting within a few seconds. Hence, to the best of
+our knowledge, Rapid is currently the only system that can handle
+ontologies of this complexity and size. Yet, there are still many
+difficult cases that no system can handle.
+
+2. Preliminaries
+
+In this section we introduce the ontology languages ELHI and
+DL-Lite which are strongly related to OWL 2 EL and OWL 2 QL
+respectively; we briefly recall some basic notions from first-order
+logic and resolution theorem-proving; we provide the definition
+of conjunctive queries and of query rewriting; and we present an
+overview of the query rewriting algorithm implemented in the
+Requiem system since our calculi can be seen as a refinement of
+this algorithm.
+
+2.1. OWL ontologies and description logics
+
+We focus on OWL (2) ontologies interpreted under the direct
+semantics which are related to Description Logics (DL) [29]. DLs
+provide the theoretical underpinning for many fragments of OWL
+and there is a close connection between the functional syntax of
+OWL and DLs [30,31]. For brevity we will adopt the DL notation
+and terminology; hence, we will call classes and object properties
+as atomic concepts and roles, respectively.
+
+Let CN, RN, and IN be countable pairwise disjoint sets of atomic
+concepts, atomic roles, and individuals. ELHI-concepts and ELHIroles are defined using the syntax in the left-hand side of the
+upper two parts of Table 1, while on the right-hand side the
+corresponding OWL functional syntax is given. An ELHI-ontology
+O is a finite set of ELHI-axioms of the form depicted in the lower
+part of Table 1. The Description Logic DL-LiteR, (for simplicity
+DL-Lite in the following) is obtained from ELHI by disallowing
+concepts of the form R.C in the left-hand side of axioms. We call
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Table 1
+ELHI-concepts, -role, and -axioms and corresponding OWL functional syntax.
+
+ELHI-roles
+
+ELHI-concepts
+
+C1  C2
+R.C
+Axioms
+C1  C2
+R1  R2
+a : C
+(a, b) : R
+
+ObjectInverseOf(R)
+
+owl:Thing
+ObjectIntersectionOf(C1 C2)
+ObjectSomeValuesFrom(R C)
+
+SubClassOf(C1 C2)
+SubObjectPropertyOf(R1 R2)
+ClassAssertion(C a)
+ObjectPropertyAssertion(R a b)
+
+axioms of this form RA-axioms while all the rest are called DL-Lite-
+axioms.
+
+In the following and without loss of generality we assume that
+ontologies are normalised [32,13], i.e., they contain only axioms of
+the form A1  A2, A1  A2  A, A1  R.A2, or R.A2  A1,
+where A(i)  CN  {}, and R  RN  {P | P  RN}. We also
+make the standard distinction used in DLs between the schema
+of an ontology, called TBox T , which consists of all axioms except
+assertion axioms and the data, called ABox A, which consists of all
+class and object property assertions.
+
+The semantics of concepts, roles, and axioms in a DL/OWL
+ontology O are given by means of interpretations over a domain
+I. An interpretation maps individuals to objects of the domain,
+concepts to subsets of the domain, and roles to sets of pairs of
+domain objects. Concept is mapped to I while all other ELHIconcepts and ELHI-roles are mapped to subsets of I and I 
+I, respectively, using standard conditions listed in [30,31]. For
+example, an interpretation I maps C1  C2 to the intersection of
+the sets that C1 and C2 are mapped to by Ithat is, (C1  C2)I =
+1  CI
+
+2 . Moreover, I satisfies an ELHI-axiom again if I satisfies
+well-known conditions [30,31]. For example, I satisfies C1  C2 if
+I maps C1 to a subset of the set that C2 is mapped to. If all axioms
+of O are satisfied by I then O is called satisfiable (or consistent) and
+I a model of O; otherwise it is called unsatisfiable (or inconsistent).
+Finally, note that in the literature extensions of ELHI and
+DL-Lite are considered that allow for disjointness axioms, that is
+axioms of the form A1  A2 and R1  R2, where A(i) is an
+atomic concept and R(i) an atomic role or its inverse. The use of
+such axioms can lead to inconsistencies, e.g., if T = {A  B} and
+A = {A(a), B(a)} then T A is inconsistent. Query answering over
+inconsistent ontologies is meaningless unless special techniques
+and semantics are used [33,34]. In the current paper we consider
+query answering only over consistent ontologies; hence axioms
+like the above ones are superfluous and we have discarded them.
+
+2.2. Resolution-based calculi
+
+We use the standard notions of first-order variables, denoted by
+letters x, y, z . . . , constants, denoted by letters a, b, c, . . . , unary
+function symbols, denoted by letters f , g, . . . (e.g., f (x), g(y), . . .),
+terms which are also denoted by letters s, t, . . . , atoms (e.g., C(x),
+R(x, y)), the entailment relation |=, and of substitutions, denoted
+by letters  , , . . .. The depth of a term t is defined as follows:
+depth(t) = 0, if t is a constant or a variable and depth(f (s)) =
+1+ depth(s) if t contains a functional symbol. The depth of an atom
+is the maximum depth of its terms.
+A list of terms of the form (s1, . . . , sn) is abbreviated bys, while
+we also often abbreviate a conjunction of the form B1(s). . .Bn(s)
+by B(s). In addition, we use the notion of a (Horn) clause C, that is,
+a disjunction of atoms of the form H  B1  B2  . . .  Bn
+which can also be written as H  B1B2 . . .Bn. H is called the
+head of the clause and the set {B1, . . . , Bn} is called the body and
+
+is denoted by body(C). For an atom A we use var(A) to denote the
+set of its variables; var can be extended to clauses in the obvious
+way. Finally, we use the notation[B(x)] ([B(x)]) to indicate that the
+presence of atom B(x) (conjunction B(x)) is optional. For example,
+A(x)  C(x)  [B(x)] denotes either A(x)  C(x)  B(x) or
+A(x)  C(x).
+We also use standard notions from first-order theorem proving,
+like most general unifier (mgu) [35]. Next, we recapitulate some
+basic notions. An inference rule, or simply inference is an n + 2-ary
+relation usually written as follows:
+
+C C1 . . . Cn
+
+where clause C is called the main premise, C1, . . . , Cn are called the
+side premises and C is called the conclusion or resolvent; both main
+and side premises are also called premises. An inference system I,
+also called calculus, is a collection of inference rules. Let  be a set
+of clauses, C a clause and I an inference system. A derivation of C
+from  by I, written  I C (or simply   C if I is clear from
+the context), is a sequence of clauses C1, . . . , Cm such that Cm = C,
+each Ci is either a member of  or the conclusion of an inference
+by I from  {C1, . . . , Ci1}. In that case we say that C is derivable
+from  by I and that the derivation starts with C1. We write  i C
+to denote that the depth of the corresponding derivation tree [36]
+constructed for C from  is less than or equal to i. We also often
+write , C  C instead of   {C}  C. A set of clauses  is
+saturated with respect to an inference system I if the conclusion of
+any inference by I from  is an element of .
+A form of derivation with particular interest to us is SLD
+derivation [37]. An SLD derivation of a clause C from a set of clauses
+ is a sequence of clauses C1, . . . , Cn such that C1  , Cn = C and
+Ci+1 is a resolvent of Ci and some clause in . For a set of clauses
+ we call SLD calculus, I
+SLD, the inference system that consists of
+the (standard) binary resolution rule restricted to producing only
+SLD derivations as defined before. If it is clear from the context we
+simply write ISLD.
+
+2.3. Datalog and conjunctive queries
+
+A datalog clause r is a function-free Horn clause where the
+variables occurring in the head also occur in the body. A variable
+that appears at least twice in the body and not in the head is called
+ej-variable; we use ejvar(r) to denote all ej-variables of a clause r.
+A datalog program P is a finite set of datalog clauses.
+A union of conjunctive queries (UCQ) Q is a set of datalog clauses
+such that their head atoms share the same predicate Q , called
+query predicate, which does not appear anywhere in the body. A
+conjunctive query (CQ) is a UCQ with exactly one clause. We often
+abuse notation and identify a CQ with the single clause it contains
+instead of a singleton set. The variables that appear in the head of
+a CQ Q are called answer variables and are denoted by avar(Q). For
+a query Q with query predicate Q , a tuple of constants a is a certain
+answer to Q w.r.t. a TBox T and an ABox A if the arity of a agrees
+with the arity of Q and T  A Q |= Q (a). We use cert(Q, T  A)
+to denote all certain answers to Q w.r.t. T and A.
+Given two CQs Q1, Q2 with head predicates Q1, Q2 of the same
+arity respectively, we say that Q1 subsumes Q2 if there exists a
+substitution  such that Q1 = Q2 and every atom in body(Q1 )
+also appears in body(Q2).
+
+2.4. Query rewriting and the Requiem system
+
+Query rewriting is a prominent technique for answering queries
+over ontologies. Intuitively, a rewriting of a query Q w.r.t. a TBox
+T is a set of sentences (usually a datalog program or a UCQ) that
+captures all the information that is relevant from T for answering
+Q over an arbitrary ABox A [12,13,15]. This intuition is formalised
+next.
+
+Table 2
+Translating ELHI axioms into clauses.
+
+Axiom
+B  A
+B  C  A
+R  A
+R  A
+A  R.B
+
+A  R.B
+
+R.C  A
+R.C  A
+P  R
+P  R
+
+Clause
+A(x)  B(x)
+A(x)  B(x)  C(x)
+A(x)  R(x, y)
+A(x)  R(y, x)
+R(x, f (x))  A(x)
+B(f (x))  A(x)
+R(f (x), x)  A(x)
+B(f (x))  A(x)
+A(x)  R(x, y)  C(y)
+A(x)  R(y, x)  C(y)
+R(x, y)  P(x, y)
+R(x, y)  P(y, x)
+
+Definition 1. Let Q be a CQ with query predicate Q and let T be a
+TBox. A datalog rewriting (or simply rewriting) R of a CQ Q w.r.t. T
+is a datalog program whose clauses can be partitioned into two
+disjoint sets RD and RQ such that RD does not mention Q , RQ is a
+UCQ with query predicate Q , and where for each A2 and using only
+predicates from T we have:
+
+cert(Q, T  A) = cert(RQ , RD  A).
+
+If RD = , then R is called a UCQ rewriting.
+Note that if T is expressed in DL-Lite, then a UCQ rewriting
+always exists. This property is referred to as first-order rewritability
+[12,38].
+
+Example 1. Consider the following TBox and query:
+
+T1 = {A  R.B, R  S, B  E  C}
+Q1 = Q (x)  S(x, y)  C(y)
+
+It can be verified that the set R = {Q1, C1, C2} where C1 =
+S(x, y)  R(x, y) and C2 = C(x)  B(x)  E(x) is a datalog
+rewriting of Q1 w.r.t. T1. 
+Many query rewriting algorithms for various ontology languages
+have been developed in recent years [15,18,16,21]. Since the focus
+in the current paper is on resolution-based rewriting algorithms,
+next, we will briefly introduce the algorithm implemented in the
+Requiem system [13].
+The behaviour of Requiem over a given input CQ Q and TBox T
+
+can be described by the following steps:
+1. Clausification: First, the input TBox T is transformed into a set
+of (Horn) clauses TC by using the well-known equivalence of DL
+axioms with first-order clauses and by skolemising existential
+variables with new function symbols [39] (see also Example 2).
+The equivalence of DL axioms with Horn clauses is also depicted
+in Table 2, where each function symbol f is uniquely associated
+to the specific occurrence of concept R.B (R.B).
+
+2. Saturation: Next, the clausified TBox together with the input
+query is saturated by using (binary) resolution parameterised
+with a selection function [23] producing a new set of clauses
+T satC . When the calculus is applied to the clauses of the form
+depicted in Table 2 there are only specific types of resolution
+inferences that can be performed as well as specific types of new
+clauses that can be produced. The types of clauses that can be
+derived by Requiems calculus are given in Table 3. We give the
+possible interactions among them in Appendix B. Note that in
+
+2 Note that by our previous definitions A is always consistent w.r.t. T .
+
+Table 3
+Types of DL-Lite or ELHI clauses, where s is a list of terms
+(s1, s2, . . . , sn) and Dj(tj) denotes either a concept atom Dj(tj1
+), or
+a role atom Dj(tj1
+
+, tj2
+
+).
+
+Type
+
+Q (s)  Dj(tj)
+
+Clause
+R(x, f (x))  A(x)
+R(f (x), x)  A(x)
+B(f (x))  C(x)  [A(f (x))]
+R(x, y)  P(x, y)
+R(x, y)  P(y, x)
+A(x)  C(x)  [B(f (x))]
+A(x)  R(x, y)  [C(y)]
+A(x)  R(y, x)  [C(y)]
+
+3. Unfolding: It applies on T satC
+
+DL-Lite, clauses of type 4.1 and 4.2 can only appear without the
+conjunct C(y) and clauses of type 3.3 appear without functions.
+We refer the reader to [13] for the precise definition of the
+selection function. In brief, it is defined as follows: for clauses
+of type 2.1, 2.2 it selects the head atom; for clauses of type 2.3
+if there are body atoms that contain a functional term, then
+all these are selected; otherwise it selects the head atom; for
+clauses of type 3.1, 3.2, 4.1, 4.2 it selects the role atom in the
+body; for clauses of type 3.3 it selects the deepest body atom;
+for clauses of type 1, if the head contains a functional term, then
+it selects the head, otherwise it selects the deepest body atom.
+the so called unfolding step which
+produces a rewriting of an optimal form [13]. During the unfolding step clauses of type 3.1, 3.2, function-free clauses of type
+3.3, and clauses of type 4.1, 4.2 of the form A(x)  R(x, y) and
+A(x)  R(y, x), are exhaustively resolved with other functionfree clauses. For example, clause A(x)  C(x) will resolve with
+clause B(x)  A(x) to obtain B(x)  C(x). Although this step
+is in a sense optional, our proofs of correctness assume that this
+is also part of the Requiem calculus. Moreover, we consider a
+slightly extended version of unfolding, where also clauses of the
+form A(x)  C(x) are considered in the unfolding.
+4. Post-processing: Finally, Requiem returns all
+clauses in T satC .
+
+function-free
+
+We use IREQ to denote the calculus used at step 2. and RQR(Q, T )
+to denote the datalog program returned at step 4.
+
+All the previous steps are illustrated through the following
+
+example.
+
+Example 2. Consider the TBox and query of Example 1. As stated
+above the first step is to transform T1 into a set of clauses.
+According to Table 2 the clauses that are produced from TBox T1
+are the following:
+
+R(x, f (x))  A(x)
+B(f (x))  A(x)
+S(x, y)  R(x, y)
+C(x)  B(x)  E(x)
+
+(1)
+(2)
+(3)
+(4)
+As it can be seen, the axiom A  R.B produces two clauses that
+contain the function symbol f and which is uniquely associated
+with the specific occurrence of concept R.B in axiom A  R.B.
+Next, IREQ is applied on Q1 and all clauses (1)(4), where we
+have underlined the atoms that Requiems selection function will
+select. Then, according to the possible interactions depicted in
+Table B.10 the following inferences are performed:
+
+(3), (1)  S(x, f (x))  A(x)
+(4), (2)  C(f (x))  A(x)  E(f (x))
+Q1, (5)  Q (x)  A(x)  C(f (x))
+
+(5)
+(6)
+(7)
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Referring to Table B.10 the first inference is of the form 3.1+2.1 =
+2.1, the second one is of the form 3.3 + 2.3 = 2.3, while the third
+one is of the form 1 + 2.1 = 1.
+It is not hard to see that no new clauses different up to variable
+renaming can be produced using IREQ. By discarding the unfolding
+step mentioned above, the algorithm can terminate and return all
+function-free clauses, i.e., the set R = {Q1, (3), (4)}. If we also
+consider the unfolding step, then the algorithm unfolds clause (3)
+into Q1 to produce Q2 = Q (x)  R(x, y) C(y), clause (4) into Q1
+to obtain Q3 = Q (x)  S(x, y) B(x) E(x), and finally clause (4)
+into Q2 to obtain Q4 = Q (x)  R(x, y)  B(x)  E(x).3 Then, the
+rewriting returned would be R = {Q1, Q2, Q3, Q4}. 
+
+Since our topic is resolution algorithms which, to the best
+of our knowledge, always transform the input into clauses, in
+the following we assume that ontologies are already given in a
+clausal form to simplify the presentation. Moreover, clauses that
+are produced by clausifying RA-axioms and DL-Lite-axioms are
+called RA-clauses and DL-Lite-clauses, respectively. These notions
+are extended to include also clauses of the form A(x)  B(x) and
+A(x)  R(x, y)  C(y).
+
+3. Resolution-based rewriting for DL-Lite
+
+In the current section we present our resolution based rewriting
+algorithm for DL-Lite. We first illustrate the most important
+deficiencies of current resolution-based rewriting algorithms
+which led us to the new design. Then, we present the calculus and
+finally we show its correctness, i.e., that it computes a rewriting for
+a given query and DL-Lite-TBox.
+
+Example 3. Consider the TBox T1 and query Q1 from Example 2 as
+well as the inferences performed by IREQ on T1  Q1. As it can be
+observed the algorithm performed three unnecessary inferences.
+More precisely, all inferences producing clauses (5)(7) are not
+necessary because they produce clauses that are discarded in the
+final step (they contain a function symbol) and no inference using
+either of them as a side or main premise leads to clauses that are
+members of the rewriting R for T1, Q1.
+Assume now that T1 additionally contained C(x)  B(x). This
+clause resolves with (2) producing C(f (x))  A(x) which subsequently resolves with (7) producing Q (x)  A(x). Since the latter
+clause is function-free it is a member of a rewriting for Q1 w.r.t T1
+{C(x)  B(x)}. Clearly, in that case the inferences that produced
+clauses (5) and (7) are necessary and cannot be omitted. 
+As it has been argued [26], TBoxes of real-world ontologies typically contain many clauses of the form R(x, fi(x))  Ai(x). Together with clauses like clause (3) and Q1 of Example 2 this implies
+that typical resolution-based rewriting algorithms, like Requiems,
+would produce many clauses of the form S(x, fi(x))  Ai(x) and
+Q (x)  A(x)  C(fi(x)). Most of these clauses would not subsequently participate in additional inferences hence their generation
+is superfluous and it would be of benefit to avoid it especially in
+the case of large ontologies.
+
+In general, allowing the production of clauses containing
+function symbols is a too fine-grained approach and can lead to
+the construction of the same clause many times, as shown in the
+following example.
+
+3 The last two unfoldings are not performed by the original version of
+Requiem [13] but as mentioned above we consider this trivial extension here.
+
+Example 4. Consider the query Q3=Q (x)S(x, y)P(y, z)D(z)
+and the TBox T2 = T1{C1, C2}, where T1 is as defined in Example 2
+and C1, C2 are as follows:
+C1 = P(x, g(x))  B(x)
+C2 = D(g(x))  B(x)
+
+Then, IREQ would perform the following inferences:
+
+(8)
+(9)
+(10)
+(11)
+(12)
+(13)
+
+Q3, (5)  Q (x)  A(x)  P(f (x), z)  D(z)
+(8), C1  Q (x)  A(x)  B(f (x))  D(g(f (x)))
+(9), C2  Q (x)  A(x)  B(f (x))
+(10), (2)  Q (x)  A(x)
+Q3, C1  Q (x)  S(x, y)  B(y)  D(g(y))
+(12), C2  Q (x)  S(x, y)  B(y)
+(13), (5)  (10)
+Construction of clauses (8)(11) corresponds to one path in
+the derivation while construction of all clauses after (12) to
+another. We can note that both paths in the derivation lead to the
+production of the same clausethat is, clause (10), which can then
+be used to produce clause (11). It is also obvious that the second
+path is preferable as in addition it leads to the production of the
+function-free clause (13). 
+
+An initial workaround to the above issues can be achieved by
+applying the calculus IREQ in the following way: first, saturate the
+clauses of T to obtain a new set of clauses Tsat; then, perform only
+those inferences that if they first introduce a clause that contains
+an atom with a function symbol in the body, then Tsat also contains
+some clause that would subsequently eliminate this atom and
+create a function-free clause. In Example 2, this refined strategy
+would resolve Q1 with (5) only if clause C(f (x))  A(x) also exists
+in Tsat. If it does, then it is guaranteed that after generating clause
+(7) that contains conjunct C(f (x)) in the body, clause C(f (x)) 
+A(x) can be used as a side premise in an inference to eliminate
+C(f (x)) from (7) and generate the function-free clause Q (x) 
+A(x). Actually, both these inferences can be performed as one
+macro-inference with main premise Q1 and side premises (5) and
+C(f (x))  A(x)that is, two clauses that have the same function
+symbol in the head. In Example 4, this strategy would only generate
+clauses (13) and (11) of the second path, while the first part would
+be completely discarded.
+However, to implement this macro-inference approach we
+need to perform a quadratic loop over the set Tsat to look for pairs of
+clauses that together introduce and then eliminate some term that
+contains a function symbol. Since Tsat can be quadratically larger
+than T [13] this approach might not scale well in practice.
+The difficulty to efficiently implement the above macroinference step is mostly because the IREQ calculus follows a
+forward style approach to apply resolution which generates
+new clauses that contain function symbols (e.g., clause (5) was
+generated by propagating f from clause (1)(3)) hence causing
+a blow-up in the size of Tsat. To implement the aforementioned
+macro-resolution step in an efficient way we need to pick pairs
+of clauses from T rather than Tsat. To achieve this our calculus is
+based on a rather goal-oriented backwards style approach that
+resembles derivations by ISLD.
+Example 5. Consider Q1 and T1 from Example 3. Let also the TBox
+T  = T1  {C(x)  B(x)}.
+Assume that we have a calculus that instead of resolving clauses
+(1) and (3) to propagate the function f (like IREQ did in Example 2)
+it resolves Q1 with (3) to produce Q2=Q (x)R(x, y)C(y). Subse-
+quently, Q2 resolves with clause (1) creating Q (x)A(x)C(f (x))
+but, as mentioned above, it can additionally check if T  contains a
+
+clause of the form C(f (x))  A(x) which can be used afterwards to
+create a new resolvent that does not contain C(f (x)). Such a clause
+does not exist so the inference is avoided. Next, clause Q2 resolves
+with C(x)  B(x) creating Q3 = Q (x)  R(x, y)  B(y). Then, Q3
+can be resolved with (1) since also clause (2) is in T  and by resolving them in turn with Q3 we can generate the function-free clause
+Q (x)  A(x). 
+The crucial difference between IREQ and our hypothetical calculus
+is that, in the latter case, to implement the resolution step we pick
+clauses from a TBox rather than from its saturation. In addition
+to being much smaller, a (clausified) DL-Lite-TBox can contain atmost two clauses with a term containing the same function symbol.
+This is because function symbols are unique per occurrence of
+concepts R.B and no new clauses containing terms with function
+symbols are generated by the above calculus. The latter can be
+exploited in the implementation by using proper indexes in order
+to efficiently retrieve pairs of clauses for the macro-inference step.
+All the previous observations motivate our resolution-based
+
+rewriting algorithm for DL-Lite ontologies defined next.
+Definition 2. Let Q be a CQ and let C(i) be DL-Lite-clause(s). With
+Ilite we denote the inference system that consists of the following
+inference rules:
+ unfolding:
+Q C
+
+where
+
+1. Q is function-free resolvent of Q and C, and
+2. if x  f (y)   , then x  ejvar(Q).
+ shrinking:
+
+Q C1 [C2]
+
+where
+
+1. Q is a function-free resolvent of Q, C1, and C2, and
+2. some x  f (y)   exists such that x  ejvar(Q).
+
+Finally, for Q a CQ and T a DL-Lite-TBox Rapid-Lite(Q, T ) is the set
+of all the function-free clauses derivable from Q  T by Ilite.
+Inferences by the unfolding rule correspond to inferences by
+(classical) binary resolution where the resolvent is function-free.
+This is achieved by the condition on  . In contrast, shrinking
+is a macro-inference rule that packages many inferences into
+one and captures the intuition illustrated in our discussion and
+examples abovethat is, it represents derivations of the form
+Q, Q1, . . . , Qn, Q where Q is function-free, Q1 contains some
+function symbol f and then all subsequent inferences attempt to
+eliminate from each Qi all terms containing f until we reach a
+function-free clause Q.4 Since Q is function-free and Q1 mentions
+f , the mgu of the first inference must map an ej-variable of
+Q to a term of the form f (y). This is captured by the second
+condition on  . Moreover, as mentioned above, these inferences
+can involve at most two different side premises that mention f
+and which are from T . Hence, the side premises in the shrinking
+rule can be of the form R(x, f (x))  B(x) and A(f (x))  B(x).
+Furthermore, since the resolvent is function-free, the ej-variable
+of the main premise is eliminated and since the DL-Lite-clauses do
+not contain ej-variables in their bodies the resolvent has (strictly)
+fewer ej-variables than the main premise. Finally, note that the side
+premises always belong to T and hence Ilite actually produces SLD
+derivations.
+Applied to T  and Q1 from Example 5, the calculus Ilite would
+perform the steps described in the example. That is, Q2 is obtained
+as an unfolding on Q1 and (3), Q3 is again produced by unfolding on
+Q2 and C(x)  B(x), while Q (x)  A(x) is obtained by shrinking
+on Q3, (2) and (1).
+
+4 Note that the number of these inferences can be more than two if, for example,
+Q is of the form Q (x)  R(x, y)  R(z, y)  R(w, y)  D(y).
+
+3.1. Correctness of Ilite
+
+To show that our rewriting algorithm indeed produces a
+rewriting we will show that a derivation constructed by IREQ can
+be transformed into a derivation by Ilite. Hence, saturating T Q by
+Ilite will create all necessary members of a rewriting. To do so we
+proceed in two steps. First, we show that each Requiem derivation
+can be transformed into a derivation by ISLD. This is done by
+showing how a Requiem inference of the form Q, C  Q where
+T i C, can be unfolded into two inferences of the form Q, C1 
+Q, Q, C2  Q where T i1 C1, T i1 C2 and C1, C2  C. Hence,
+by repeated applications of this claim we obtain inferences with
+main premises type 1 clauses and side premises only clauses from
+T , i.e., a derivation by ISLD from T .
+Lemma 1. Let T be a DL-Lite-TBox and let Q be a CQ. Every
+type 1 clause derivable from T  Q by IREQ is also derivable from
+T  Q by ISLD.
+
+Second, we show that each derivation by ISLD can be transformed into a derivation by Ilite. Since unfolding corresponds
+to standard binary resolution, the non-trivial part is clearly
+the shrinking inferences. As stated, an inference by shrinking
+Q, C1,[C2]  Q corresponds to many inferences of the form
+Q, Ci1  Q1, Q1, Ci2  Q2, . . . , Qn1, Cin  Q for ij  {1, 2},
+where Q, Q are function-free and all Qk, 1  k  n  1
+and C1, C2 mention the same function symbol f . Hence, intuitively,
+derivations by Ilite are in a sense compact with respect to terms
+containing function symbolsthat is, one clause containing a function symbol (Q1) is created from a function-free clause (Q) and
+then many inferences follow which try to eliminate the terms introduced using side premises that also mention the same function
+symbol. We call such derivations function-compact.
+Definition 3. Let  be a set of Horn clauses and Q1, Q2, . . . , Qn
+a derivation by ISLD where Qi, Ci  Qi+1 and Ci   for each
+1  i < n. Assume also that all Q2, . . . , Qn1 contain a term
+of the form f (si) and of the same depth, and that Q1 and Qn are
+function-free. We say that the derivation is function-compact if all
+side premises Ci with 1  i < n used in the derivation also contain
+a term of the form f (xi).
+
+Hence, to show correctness of our algorithm we show that
+any derivation by ISLD using Horn clauses as side premises
+can be transformed into one that is function-compact. This is
+done by showing that in every non function-compact derivation
+Q1, . . . , Qn, there exists some inference with side premise a clause
+Ck that does not mention f which can be moved outside of the
+sequence either at the beginning, hence having Q1, Ck  Q
+2, or at
+the end, hence having Qn1, Ck  Qn. In the former case, since Q1
+is function-free and Ck does not mention f , Q
+2 must be function-
+free. In the latter case since Qn is function-free and Ck does not
+mention f , Q
+n1 must be function-free. Hence, this re-ordering
+either pushes downwards (in the former case) or upwards (in the
+latter case) all inferences with side premises that mention f . By
+repeated application of this re-ordering only inferences with side
+premises that mention f would appear in between the first clause
+where f was introduced until the last one that mentions it. First, we
+show a rather general result that is not based on DL-Lite and which
+will also be used later when we extend the calculus to ELHI.
+
+Lemma 2. Any derivation built by inferences that have as side
+premises Horn clauses that can contain terms with function symbols
+only in the head can be transformed into one that is function-compact.
+The next proposition follows straightforwardly by the form of
+
+clauses of DL-Lite-TBoxes.
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Proposition 1. Let T be a DL-Lite-TBox and Q a query. Any
+derivation from T  Q by ISLD is produced by using as side premises
+Horn clauses that have terms with function symbols only in the head.
+Summarising, a derivation from T  Q by IREQ can be transformed
+into a derivation by ISLD which can then be transformed into a
+function-compact one. Moreover, the inference rules of Ilite are
+trivially sound as they are based on resolution. These imply that Ilite
+indeed produces a rewriting for an input CQ and DL-Lite-TBox (see
+proofs in Appendix C). Finally, termination follows from the fact
+that there is a bounded number of symbols (variables, constants,
+roles, and concepts) with which we can construct a clause that can
+be derived from Ilite. More precisely, Ilite always produces functionfree clauses, hence no resolvent containing a term of the form f (x)
+can be produced by Ilite. Moreover, every resolvent produced by
+Ilite has at most the same number of ej-variables as the input query
+Q: first, only clauses from T are used as side premises and by
+Table 3 it is clear that their body atoms that are introduced in the
+resolvent after the inference, do not contain any new ej-variable.
+For shrinking, in more detail, the produced resolvent has strictly
+fewer ej-variables: the main premise must contain two atoms of,
+e.g., the form R(x, y) and C(y), y is the ej-variable, the side premises
+are of the form R(x, f (x))  A(x) and C(f (x))  A(x), the
+mgu maps y to f (x), and since the resolvent is function-free, y is
+eliminated. An inference via unfolding can, however, increase the
+number of variables of the main premise, e.g., if the main premise
+is of the form Q (x)  A(x) and the side premise of the form
+A(x)  R(x, y), then the resolvent is of the form Q (x)  R(x, y)
+and y is a new variable. However, y can never become an ej-variable
+and, moreover, it is necessarily associated with an answer or an ejvariable (e.g., x here). This implies, that for k the number of clauses
+in T of the form A(x)  R(x, y), the number of these new variables
+that can be introduced by subsequent unfoldings is bounded by k
+and the number of answer and ej-variables of the main premise
+(which as stated is bounded). Hence, by all the previous it follows
+that the number of clauses produced by Ilite is bounded by the
+number of answer and ej-variables of the input CQ and the number
+of symbols and axioms in T .
+Theorem 1. Let a DL-Lite-TBox T and a CQ Q. Every derivation from
+T  Q by Ilite terminates. Moreover, Rapid-Lite(Q, T ) is a rewriting
+of Q w.r.t. T .
+
+4. Resolution-based rewriting for ELHI
+
+In the current section we extend the inference system Ilite in
+order to provide a resolution-based rewriting algorithm for ELHI
+ontologies. Our goal is to design an optimised algorithm that is
+going to use as much as possible the macro-inference (shrinking)
+of Ilite.
+In addition to clauses stemming from DL-Lite axioms,
+ELHI also allows for RA-clauses,
+i.e., clauses of the form
+E(x)  R(x, y)  F(y). A straightforward approach to obtain a calculus for ELHI ontologies would be to extend Definition 2 to allow
+for arbitrary RA-clauses as side premises in shrinking and unfold-
+ing. Then, Lemmas 1 and 2 apply with few modifications and hence
+this calculus would produce a rewriting.
+Example 6. Let T be the ELHI-TBox consisting of the following
+clauses5:
+
+C(x)  S(x, y)  D(y)
+
+(14)
+
+S(f (x), x)  B(x)
+
+K (x)  S(y, x)  C(y)
+
+(15)
+(16)
+Let also the query Q1 = Q (x)  K (x).
+By unfolding on Q1 and (16) we obtain the clause Q2 = Q (x) 
+S(y, x)  C(y); then, by unfolding on Q2 and (14) we obtain the
+clause Q3 = Q (x)  S(y, x) S(y, z) D(z); finally, by shrinking
+on Q3 and (15) we can obtain the clause Q4 = Q (x)  B(x)D(x).
+It can be verified that R = {Q1, Q2, Q3, Q4} is a rewriting of Q
+w.r.t. T . 
+However, as the previous example shows, using RA-clauses as
+side premises can produce resolvents that contain more variables
+than the main premise of the inference (e.g. clause Q3 contains
+a variable z that does not appear in Q2) and hence to variable
+proliferation which implies termination problems. In general, one
+could remedy this issue by deciding a bound on the number of
+times (variables) that such clauses can be used as side premises
+(introduced to the resolvent). This problem is loosely related
+to query and predicate boundedness and although some recent
+results have been obtained [40], most of the proposed algorithms
+are based on complex automata which, to the best of our
+knowledge, have not yet been implemented.
+
+Consequently, to provide an efficient and terminating algorithm
+the calculus should not allow RA-clauses as side premises. But then,
+to be able to deal with ELHI ontologies the new algorithm would
+need to produce intermediate clauses that are derivable by RAclauses in a similar way to the standard IREQ calculus. The next
+example shows how IREQ would behave when applied to the input
+of Example 6 which we will use to illustrate the extensions that are
+needed to Ilite.
+Example 7. Consider the TBox T and query Q1 from Example 6.
+When applied to T and Q1 the Requiem algorithm would perform
+the following inferences with the respective conclusions:
+
+(14), (15)  C(f (x))  B(x)  D(x)
+(16), (15)  K (x)  B(x)  C(f (x))
+(18), (17)  K (x)  B(x)  D(x)
+Q1, (19)  Q (x)  B(x)  D(x)
+
+(17)
+(18)
+(19)
+(20)
+The set R = {Q1, (14), (16), (20)} is a (datalog) rewriting of Q1
+w.r.t. T .
+First, we can observe that, if we extend shrinking to accept
+RA-clauses as main premises, then the inferences performed to
+produce clause (19) from clause (16) can be captured by a single
+shrinking inference over clause (16) with side premises (15)
+and (17). However, clause (17) that is used as side premise in
+this shrinking inference does not belong in T but is produced
+by resolving an RA-clause together with a DL-Lite-clause. This
+interaction cannot be captured by any of the rules of Ilite. 
+Motivated by the above example, our calculus for ELHI-ontologies
+consists, first, of a new inference rule which can produce clauses
+like clause (17) from RA-clauses and clauses of the same form as
+clause (15) and, second, of an extension of unfolding and shrinking
+to allow as main premises besides type 1 clauses also RA-clauses,
+hence being able to compute, e.g., clause (19) from (15)(17).
+Because of the new inference rule that can produce new clauses
+with function symbols in the head (cf. clause (17)), there can now
+be more than two clauses that can mention the same function
+symbol f . Hence, shrinking has to be extended further to allow for
+(possibly) n side premises instead of at most two.
+Our calculus for ELHI-TBoxes is defined next.
+
+5 Note that these clauses are produced by clausifying the DL axioms S.D 
+C, B  S, and S.C  K, respectively.
+
+Definition 4. Let  be either a CQ or an RA-clause and let C(i)
+be DL-Lite-clause(s). With IEL we denote the inference system
+consisting of the following rules:
+
+ unfolding:
+
+where
+
+1.   is a function-free resolvent of  and C, and
+2. if x  f (y)   then x  ejvar( ).
+ n-shrinking:
+
+ C1 [C2 . . . Cn]
+
+where
+
+n  1, and
+
+1.   is a function-free resolvent of  and all C1, . . . , Cn for
+2. some x  f (y)   exists such that x  ejvar( ).
+ function:
+
+B(x)  R(x, y)  [C(y)] R(f (x), x)  A(x)
+B(x)  R(y, x)  [C(y)] R(x, f (x))  A(x)
+
+B(f (x))  A(x)  [C(x)]
+B(f (x))  A(x)  [C(x)]
+
+or
+
+Finally, for Q a CQ and T an ELHI-TBox, Rapid-EL(Q, T ) is defined
+as the set of all function-free clauses derivable from Q T by IEL.
+Note that an inference by n-shrinking with more than 2 side
+premises is only possible if the function rule has been previously
+fired to produce new type 2.3 clauses with some function symbol
+in the head; however, the function rule captures a quite complex
+interaction between a clause containing R(x, f (x)) (R(f (x), x)) and
+an RA-clause containing the inverse R(y, x) (R(x, y)) which, as
+shown next in our experimental evaluation, does not happen often
+in practice. Moreover, note that the application of the calculus
+IEL over some input T  Q can be partitioned into two phases.
+First, we can saturate T by IEL having as a main premise only RA-
+clauses. Second, we can collect all DL-Lite-clauses from T and those
+produced in the previous step and use them as side premises in
+inferences of IEL (modulo the function rule) with main premise
+only type 1 clauses. All the above imply excellent pay as you go
+properties for IEL. That is, in case T is expressed in DL-Lite the first
+phase is simply omitted; if T is expressed in ELH, i.e., it does not
+contain inverse roles, then the function rule is never applied and n-
+shrinking can be restricted to n = 2, i.e., to the DL-Lite shrinking.
+Finally, note that the number of inverse roles and RA-clauses in T
+is likely to affect the number of times the function rule is applied
+and hence the parameter n of the n-shrinking rule.
+
+Example 8. Consider Example 7. The inference between clauses
+(14) and (15) that produces clause (17) corresponds to an inference using the function rule. Then, clause (19) can be produced by
+n-shrinking over (16) with side premises clauses (15) and (17),
+while (20) is produced by unfolding on Q and (19), hence computing the required rewriting. 
+4.1. Correctness of IEL
+
+As mentioned in Section 3 correctness of Ilite is based on showing that derivations by IREQ can be transformed into derivations
+by Ilite. Since Ilite always uses as side premises clauses from T , our
+first intermediate step was to show that derivations by IREQ can be
+unfolded into derivations by ISLD which are closer to the derivations produced by Ilite. In a similar way, we also show here that
+derivations by IREQ can be transformed into extended forms of SLD
+derivations and then into derivations by IEL. This will be done by
+analysing the structure of the derivations produced by IEL and by
+taking again the two step approach.
+Consider an inference of the form  , C   , where T IREQ C.
+If the derivation of C does not involve an RA-clause, then (like in
+DL-Lite) we can show that   can be derived from  by ISLD using
+
+by the function rule over an RA-clause, or
+
+as side premises only DL-Lite-clauses. This can be done via our unfolding technique of  , C    into  , C1  2, . . . , n1, Cn 
+  where for each 1  i  n we have Ci  T and Ci is a
+DL-Lite-clause. In a different case, as explained in the previous sec-
+tion, the calculus IEL is expected to produce new clauses using
+the new inference rules that do not allow for RA-clauses as side
+premises. Hence, to match the derivations constructed by IEL the
+previous inference should be unfolded up to a certain levelthat is,
+for some Ck we might have Ck  T and Ck might be derivable by a
+sequence that begins with an RA-clause. By inspecting Definition 4
+we can see that IEL can produce either of the following non-type 1
+clauses, hence, unfolding should stop when either of the following
+cases occurs:
+1. Ck is of type 2.3 of the form A(f (x))  B(x)  [C(x)] produced
+2. Ck is a function-free type 3.3 clause produced by n-shrinking
+and unfolding starting with an RA-clause. This is because from
+an RA-clause of the form A(x)  R(x, y)  B(y) n-shrinking
+can produce a clause of the form A(x)  C(x)  [D(x)], i.e., a
+function-free type 3.3. Note that this inference captures many
+inference steps which start from the RA-clause and then several
+type 3.3 clauses containing a function symbol follow until we
+reach the function-free type 3.3 clause.
+Consequently, to show correctness we first show that derivations by IREQ can be partially unfolded into an extended form of SLD
+derivations, which (modulo the macro-inference) resemble those
+produced by IEL. These derivations are built by using inferences
+which allow as side premises DL-Lite-clauses from T , clauses produced by the function rule (case 1. above), or function-free clauses
+of type 3.3 possibly produced previously (case 2. above).
+
+Definition 5. Let  be a set of Horn clauses. An extended-SLD
+derivation from  is a sequence of clauses C1, . . . , Cn such that
+each Ci can be one of the following:
+ a type 1 or an RA-clause from ; or
+ the conclusion of an inference by binary resolution having
+as a main premise a type 1, type 3.3, or RA-clause from
+{C1, . . . , Ci1} and as a side premise a clause from , a functionfree type 3.3 clause from{C1, . . . , Ci1}, or a clause produced by
+the function rule with side premise from .
+
+A system producing such derivations is denoted by ISLD+.
+Note that the first condition allows a kind of restart step, i.e., one
+can copy some RA-clause from  into the sequence and use it for
+deriving new clauses.
+Next we show that indeed each derivation by IREQ can be
+
+transformed into an extended-SLD derivation.
+Lemma 3. Let T be an ELHI-TBox and let  be a CQ (resp. RA-
+clause). Then, every type 1 clause (resp. type 3.3 clause) derivable from
+T by IREQ starting with  is also derivable from T by ISLD+ starting
+with  .
+
+Moreover, it follows by the structure of extended-SLD derivations that side premises can only contain function symbols in the
+head.
+Proposition 2. Let T be an ELHI-TBox and Q a query. Any
+extended-SLD derivation from T Q by ISLD+ is produced by using as
+side premises clauses that have function symbols only in the head.
+Proof. By Definition 5 ISLD+ uses as side premises either clauses
+from T , which can contain function symbols only in the head,
+clauses produced by the function rule, which by Definition 4 only
+contain function symbols in the head, or function-free type 3.3
+clauses. 
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Consequently, Lemma 2 applies and any extended-SLD derivation of function-free type 1 or type 3.3 clauses can be transformed
+into a function-compact one. Similarly to the case of DL-Lite, the
+above together with soundness of the inference rules can be used
+to show correctness of IEL. Finally, regarding termination we have
+the following: first, only a finite number (up to renaming of vari-
+ables) of RA-clauses can be produced (these can be produced only
+by unfolding); second, the function rule can also be applied only a
+finite number of times (its side premise is always a clause from T
+and its main premise is an RA-clause and as stated there can only
+be a finite number of them); third, like in DL-Lite, n-shrinking and
+unfolding on either type 1 or RA-clauses can only produce a finite
+number of clauses.
+Theorem 2. Let an ELHI-TBox T and a CQ Q. Every derivation from
+T  Q by IEL terminates. Moreover, Rapid-EL(Q, T ) is a datalog
+rewriting of Q w.r.t. T .
+
+5. Practical implementation and optimisations
+
+A resolution calculus provides a general mechanism for reasoning over a given knowledge base, while to provide with a wellbehaved practical implementation several aspects need to be taken
+into consideration like the strategy of rule application. In the current section we discuss some implementation and optimisation
+issues that help us provide a well-behaved (optimised) rewriting
+algorithm that is based on the calculus Ilite.
+
+As illustrated by the following example, inferences using the
+unfolding rule can, in many cases, lead to the generation of
+redundant or even previously computed queries.
+Example 9. Let T be a TBox consisting of the following clauses:
+
+R(x, f (x))  A(x)
+C(f (x))  A(x)
+D(x)  C(x)
+S(x, y)  R(x, y)
+
+(21)
+(22)
+(23)
+(24)
+By applying Ilite on T {Q1} we obtain the following inferences
+
+and let also the query Q1 = Q (x)  A(x)  S(x, y)  D(y).
+and the respective conclusions:
+
+(27), (21), (22)  Q (x)  A(x)
+
+(28)
+It can be verified that the set containing Q1 and (25)(27) is a UCQ
+rewriting for Q1 w.r.t. T .
+
+However, we can note that query (27) is produced twice.
+In large ontologies this issue can occur quite often and hence
+adversely affect performance. Second, we can also note that
+query (28) subsumes all queries Q1 and (25)(27). Ideally, if we
+could compute query (28) directly from Q1 and then identify that
+it subsumes Q1, we could subsequently discard Q1 and hence also
+avoid constructing all queries (25)(27). 
+In general, queries produced via shrinking are likely to subsume
+queries produced by unfolding, since the former contain less
+variables than the latter (recall that shrinking eliminates an ej-
+variable). A technical difficulty is that shrinking might only be
+applicable after first applying several unfolding inferences. More
+precisely, in the previous example query (28) can only be produced
+after first generating query (27) via unfolding.
+
+To minimise any redundancies due to unfolding our algorithm
+does not explicitly construct such queries by applying the rule.
+
+Q1, (23)  Q (x)  A(x)  S(x, y)  C(y)
+Q1, (24)  Q (x)  A(x)  R(x, y)  D(y)
+(25), (24)  Q (x)  A(x)  R(x, y)  C(y)
+(26), (23)  (27)
+
+(25)
+(26)
+(27)
+
+Instead, it computes only a minimal amount of information that
+is sufficient to actually construct them. This is made precise in the
+following definition.
+Definition 6. Let T be a DL-Lite-TBox, let Q be a CQ, and let A
+be some atom in the body of Q. Let also QA be a query such that
+body(QA) = {A} and avar(QA) = var(A)  ejvar(Q). The unfolding
+set of A w.r.t. Q, T is the set defined as follows:
+{body(Q) | Q derivable from T  QA using
+
+only the unfolding rule}.
+
+Clearly, for a query Q the unfolding sets of its atoms fully
+characterise the queries that are derivable from Q via unfolding.
+Proposition 3. Let T be a DL-Lite-TBox, and let Q be a CQ with body
+atoms A1, . . . , An and respective unfolding sets S1, . . . , Sn. A query
+Q can be derived from T  Q via unfolding iff for every Si there exists
+A  Si such that A  body(Q).
+Example 10. Consider the TBox T and query Q1 from Example 9.
+The unfolding set SD of D(y) w.r.t. Q1 contains all body atoms of
+queries produced via unfolding from T  {QD(y)  D(y)}, that
+is, the body atoms of queries QD(y)  D(y) and QD(y)  C(y).
+Similarly, the unfolding set SS of S(x, y) w.r.t. Q1, T contains the
+body atoms of QS (x, y)  S(x, y) and QS (x, y)  R(x, y), while
+the unfolding set SA of A(x) contains only A(x).
+It can be seen that all queries (25)(27) of Example 9 can be
+obtained from the previous unfolding sets. For example, query (27)
+can be constructed by atom A(x) from SA, atom R(x, y) from SS, and
+atom C(y) from SD. 
+
+Using the information computed in the unfolding sets, our
+algorithm constructs queries that would otherwise be computed
+later on via shrinking, directly and without explicitly performing
+all intermediate steps.
+Example 11. Consider again Example 9 and the query Q1. Its body
+atoms S(x, y) and D(y) share the ej-variable y, while the unfolding
+set of S(x, y) contains R(x, y) and the unfolding set of D(y) contains
+C(y). Moreover, the TBox contains clauses R(x, f (x))  A(x) and
+C(f (x))  A(x) and their body atoms are unifiable. Therefore, we
+can conclude that there exists a query constructed after several
+steps of unfolding (i.e., query (27) of Example 9) over which
+shrinking with side premises clauses (21) and (22) would be
+applicable. Hence, from Q1 we can directly construct query (27) by
+replacing S(x, y) and D(y) with atom A(x). Finally, the algorithm
+can detect that query (27) subsumes Q1 and hence none of the
+queries (25)(27) are generated. 
+We stress that computing the unfolding sets is in most cases much
+more efficient than directly computing the queries derivable by
+unfolding. First, the queries in the unfolding set contain very few
+atoms (typically at most one); hence, inferences can be performed
+more efficiently. Second, by proper variable renamings previously
+computed unfolding sets can be reused. For example, the unfolding
+set of some atom D(y) can be readily used to compute the unfolding
+set of the atom D(z) by renaming all y to z. Third, by avoiding
+computing these queries explicitly we avoid the redundancy issue
+highlighted in Example 9.
+In case a query Q is not subsumed by the one produced via
+shrinking, the algorithm can use the unfolding sets to explicitly
+compute all the respective queries as shown in Example 10.
+However, such a step can clearly create an exponential number
+of queries (one needs to take all possible combinations of atoms
+from all unfolding sets). Alternatively, the system can provide
+a more compact representation of the rewriting by encoding
+
+Table 4
+Statistics of the used test ontologies.
+
+Concepts
+
+Roles
+
+GCIs
+
+RIAs
+
+Ontology
+DL-Lite
+OBO protein
+
+OpenGALEN2
+
+OBO Protein
+NASA SWEET
+PERIODIC Table
+NotGALEN
+GALEN-Doctored
+OpenGALEN2
+ExtendedDNS
+
+Table 5
+Evaluation results using Requiems test suite.
+
+P5X
+
+Time (hh:mm:ss.msec)
+Rapid
+
+Requiem
+
+2:17.683
+
+1:14:24
+
+Presto
+
+1:00.466
+
+1:21:06
+
+Requiem
+
+Rewriting size
+Rapid
+
+the information in the unfolding sets using datalog clauses. In
+Example 10 the unfolding set of D(y) contains C(y). Hence, instead
+of using C(y) to compute new queries from Q1 the algorithm can
+return the datalog clause r1 = D(x)  C(x). Similarly, for the
+unfolding set for S(x, y) the algorithm can encode this information
+via the datalog clause r2 = S(x, y)  R(x, y). It can be verified that
+{Q1, r1, r2} is a datalog rewriting of Q1 w.r.t. T .
+
+However, there may be cases where one wants to compute all
+the respective queries using the unfolding sets (e.g., if one wants
+to compute a UCQ rewriting if one exists). Since as stated above
+this process can be exponential it should be optimised as much as
+possible. As the following example shows, the information in the
+unfolding sets can also be used to easily identify whether some of
+these queries will be redundant and hence discard them.
+Example 12. Consider query Q1 = Q (x)  A(x)  D(x) and
+assume the unfolding sets {A(x), E(x)} and {D(x), E(x)} for atoms
+A(x) and D(x), respectively. According to these unfolding sets the
+queries that are generated via unfolding are (amongst others) Q2 =
+Q (x)  E(x)D(x), Q3 = Q (x)  A(x)E(x), and Q4 = Q (x) 
+E(x). It can be easily seen that Q4 subsumes Q2 and Q3. Intuitively,
+this is because both unfolding sets contain the atom E(x). Hence,
+any query constructed by picking atom E(x) from one of the two
+unfolding sets and another atom different than E(x) from the other,
+will eventually be subsumed by the query that is constructed by
+picking E(x) from both sets. 
+Our intuition in the previous example is formalised in the following
+proposition which can be used by the algorithm in order to avoid
+generating queries that would eventually be redundant in the
+result.
+
+k = Bl.
+
+i) \ ejvar(Q)  var(Q) such that B
+
+k}  Sk, and there also exists  : var(B
+
+Proposition 4. Let T be a DL-Lite TBox, and let Q be a CQ with body
+atoms A1, . . . , An and the respective unfolding sets S1, . . . , Sn. Let also
+a query Q obtained via unfolding from T  Q. If there exist atoms
+{Bi, Bj}  body(Q), an unfolding set Si such that {Bi, B
+i}  Si, and
+a mapping  : var(B
+i = Bj,
+then there exists a query Q  obtained via unfolding from T  Q that
+subsumes Q.
+Proof. Let Q be derived via unfolding from T Q and assume that
+for some {Bk, Bl}  body(Q), there exists an unfolding set Sk with
+atoms {Bk, B
+k) \ ejvar(Q) 
+var(Q) such that B
+Now, let Q be the query constructed from Q by replacing atom
+Bk with atom B
+k. By the definition of unfolding sets, it is easy to
+see that ejvar(Q)  ejvar(Q); hence  only maps variables of B
+k.
+Consequently, for each i = k we have Bi = Bi while for B
+k we have
+k = Bl; thus, Q  Q. Finally, by Proposition 3 it also follows
+
+that Q can be derived from T  Q via unfolding, as required. 
+The above lemma gives sufficient conditions for deciding whether
+a query is redundant. The following example shows that indeed a
+query can be redundant without satisfying the conditions of the
+proposition.
+Example 13. Let the query Q=Q (x)R(x, y)A(y)P(x, z)A(z)
+and assume that for some TBox T we have the unfolding sets
+{R(x, y), P(x, y)} and{P(x, z), R(x, z)} for atoms R(x, y) and P(x, z),
+respectively. Hence, by Proposition 3 the query Q = Q (x) 
+P(x, y)  A(y)  R(x, z)  A(z) can be produced by unfolding
+on Q. For  = {y  z, z  y} we clearly have Q  Q,
+however, y, z  ejvar(Q ) hence Q does not satisfy conditions of
+Proposition 4. 
+
+Presto
+
+However, note that in all previous examples we have that two
+different unfolding sets contain an atom with the same predicate
+name (e.g., E in E(x) of Example 12 and R and P in Example 13).
+If this does not happen (i.e., all unfolding sets contain different
+predicate names) then we can deduce that the queries produced
+by them are non-redundant. Our algorithm uses such strategies to
+identify non-redundant queries in a conservative way which can
+very often speed up the algorithm.
+
+6. Evaluation
+
+We have implemented the calculus IEL together with the optimisations outlined in Section 5 in our prototype tool Rapid6
+[19,41]. Our system can either output the unfolding sets as a datalog program or optionally create the respective queries attempting
+to construct a UCQ rewriting (see Section 5).
+
+We evaluated Rapid by comparing it against the query rewriting
+systems Requiem [13], Presto [15], and Clipper [16] (we did not use
+Presto in the ELHI ontologies as it only supports DL-Lite). In every
+experiment Rapid uses a final backwards subsumption deletion
+step, while no other system does; both Clipper and Presto do not
+apply it by default and we used Requiem in the naive mode which
+does not apply it. Only in the experiments reported in Table 5 we
+used the greedy mode of Requiem that does apply backwards
+subsumption.
+
+We have significantly extended the existing benchmark suites
+for query rewriting systems by including many real-world large
+scale and complex ontologies. In particular, we used DL-Lite
+
+6 http://www.image.ece.ntua.gr/~achort/rapid/.
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Table 6
+Evaluation results for large DL-Lite ontologies.
+
+OBO Protein
+
+OpenGALEN2
+
+Time (hh:mm:ss.msec)
+Rapid
+
+5:26.680
+
+Requiem
+
+9:51.364
+12:31.979
+t/o
+
+t/o
+1:17:51.520
+9:39.122
+
+6:04.373
+
+5:46.020
+
+Presto
+59:09.975
+1:04:36.706
+1:17:22.561
+59:35.577
+1:09:05.760
+1:58:34.415
+2:02:14.930
+2:02:32.860
+2:04:19.429
+2:09:21.690
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Clipper
+1:04.782
+1:07.770
+1:07.084
+1:03.496
+1:08.245
+11:49.193
+12:00.461
+13:16.689
+13:55.669
+13:27.232
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Rewriting size
+Rapid
+
+Requiem
+
+t/o
+
+t/o
+
+Presto
+
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Clipper
+
+t/o
+t/o
+t/o
+t/o
+t/o
+
+the OBO Protein,7 NCI 3.12e,8 and the Openversions of
+GALEN29 ontologies, and ELHI versions of the LUBM,10 OBO
+Protein, NASA SWEET 2.3,11 PERIODIC Table,12 NotGALEN,13
+GALEN-Doctored [42], the OpenGALEN2, and the DOLCE 397 ExtendedDNS14 ontologies. Table 4 provides statistics for the ontolo-
+gies. For many of these ontologies no test queries exist, hence
+we manually constructed five. Further statistics and details about
+them can be found in Appendix A. All the previous ontologies and
+queries are available online.6 In addition, we also attempted to use
+the query generator proposed in [27] to automatically construct
+test queries for them. Unfortunately, due to the complexity of the
+used ontologies in most cases the tool failed to terminate. Even after imposing various bounds, the tool produced such a large set
+of test queries (hundreds of thousands) that would be practically
+impossible to perform all these tests with all systems. Hence, we
+considered its output only for NASA SWEET (706 queries) and the
+ExtendedDNS ontology (7603 queries). The results for these
+queries are presented in Table 8. Finally, we also used the DL-Lite
+ontologies and test queries proposed in [28].
+
+All tests were performed on a dual core 1.8 GHz Intel Celeron
+processor laptop running Windows 8 and JVM 1.7 with 3.6GB
+maximum heap size. The timeout limit was set to 3 h.
+In all subsequent tables column O indicates the name of the on-
+tology, column Time the time to produce a rewriting (discarding
+loading the inputs into the systems), and column Rewriting size
+the number of clauses that the computed rewriting contains. More-
+over, t/o denotes a timeout.
+
+6.1. DL-Lite
+
+In Table 5 we present the results for some of the ontologies
+and queries in the test suite proposed in [28]. These ontologies are
+relatively small and simple and hence we present the results only
+for the most interesting ones. Because of their simple structure a
+UCQ rewriting can be computed in reasonable time. The purpose
+of this evaluation is mostly to illustrate Rapids performance
+
+7 http://www.obofoundry.org.
+8 http://evs.nci.nih.gov/ftp1/NCI_Thesaurus.
+9 http://www.opengalen.org.
+10 http://swat.cse.lehigh.edu/projects/lubm.
+11 http://sweet.jpl.nasa.gov/ontology.
+12 http://www.cs.man.ac.uk/~stevensr/ontology.
+13 http://www.cs.ox.ac.uk/isg/ontologies/lib/GALEN/not-galen.
+14 http://www.loa.istc.cnr.it.
+
+for computing a UCQ rewriting when using the optimisations
+described in Section 5. The results show that Rapid has either
+similar performance to the other systems or it is much faster, as
+e.g. in query 5 over AX requires only 1 s while Requiem and Presto
+require about 1 h. The analysis showed that Requiem spends most
+of the time in the final backwards subsumption step (recall that
+for these experiments we used the greedy mode of Requiem that
+applies subsumption). For example, in query 5 over ontology P5X,
+rewriting takes around 45 s while subsumption around 1 min and
+30 s while for query 5 over ontology AX rewriting takes around
+14 min while backwards subsumption around 1 h. Hence, even
+without the final subsumption step Requiem is considerably slow.
+In contrast, due to the optimisations illustrated in Section 5 Rapid
+can identify subsumed queries very efficiently and produce the
+minimal UCQ rewriting.
+
+The results for the large DL-Lite ontologies are shown in Table 6.
+Since these ontologies are quite large we ran all systems in
+the mode of computing compact datalog rewritings. First, we
+observe that neither Presto nor Clipper managed to compute
+a rewriting for OpenGALEN2, Requiem required up to 6 min
+depending on the query, while Rapid required only milliseconds.
+Similar observations can be made for the other two ontologies.
+Notable cases are all queries over NCI for Clipper, where it required
+1214 min for each of them, query 5 over OBO Protein and query
+3 over NCI for Requiem, for which it did not manage to compute a
+rewriting, and all queries over OBO Protein and NCI for Presto for
+which it required about 1 and 2 h, respectively. Rapid was slower
+only in query 5 over OBO Protein, for which it required 5:26 min.
+However, most of this time was spent to the final backwards
+subsumption deletion that Rapid applies (which guarantees a
+compact result with no duplicate or subsumed queries), while
+the actual rewriting time was only a few seconds. Recall that,
+no other system performs backwards subsumption and hence, in
+contrast to Rapid, in query 5 over OBO Protein Clipper computes
+a rewriting that is twice the size of the one computed by Rapid,
+since it contains many duplicate (up to variable renaming) clauses;
+Presto computed a rewriting with only 2670 clauses which is a
+surprisingly small number (also in comparison to the rewritings it
+computed in previous queries) but we did not investigate further.
+Regarding the rewriting size in other cases, all systems computed
+rewritings of roughly similar size, except for query 5 over OBO
+Protein (as stated above), and queries 1, 4, 5 over NCI for Requiem.
+As stated, small differences in the sizes of the rewritings can be
+attributed to the different form of the datalog program that each
+system produced. For example, in the case of query 1 over the
+OpenGALEN2 ontology Requiem produces the datalog program
+{Q (x)  Heme(x), Q (x)  Haem(x)}, while Rapid produces the
+
+Table 7
+Evaluation results for large ELHI ontologies.
+
+OBO Protein
+
+NASA SWEET
+
+PERIODIC Table
+
+NotGALEN
+
+GALEN-Doctored
+
+OpenGALEN2
+
+ExtendedDNS
+
+Time (hh:mm:ss.msec)
+Rapid
+
+11:23.172
+
+2:49:21.804
+t/o
+t/o
+t/o
+
+Requiem
+t/o
+t/o
+t/o
+t/o
+t/o
+
+3:31.069
+4:11.178
+4:26.803
+4:35.427
+10:30.913
+
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Clipper
+1:42.249
+1:45.742
+1:46.322
+1:44.356
+1:49.475
+t/o
+t/o
+t/o
+t/o
+t/o
+
+23:57.628
+24:35.363
+22:50.269
+22:28.542
+22:59.788
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Rewriting size
+Rapid
+
+t/o
+t/o
+t/o
+
+Requiem
+t/o
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+
+Clipper
+
+t/o
+t/o
+t/o
+t/o
+t/o
+
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+t/o
+
+program {Q (x)  Heme(x), Heme(y)  Haem(y), Haem(z) 
+Heme(z)}. Clearly, the two rewritings produce the same certain
+answer when evaluated over an ABox.
+6.2. ELHI
+
+The results for the ELHI ontologies are shown in Table 7.
+As it can be seen, Rapid is faster in the case of the medium
+sized ontologies, while in the case of the large and more complex
+ones it greatly outperforms all other systems by several orders of
+magnitude. Actually, in several occasions the competing systems
+did not terminate within the assigned time frame. However, again
+in query 5 over the OBO Protein ontology, Rapid performed worse
+than Clipper due to the final backwards subsumption checking
+and Clipper computed a rewriting that is of about the double size
+comparing to that produced by Rapid. A notable case is that, unlike
+Rapid, both Requiem and Clipper fail to handle the ExtendedDNS
+ontology, which is in general not a very large ontology.
+
+The various versions of the GALEN ontology that we used
+allow us to make some additional useful remarks. NotGALEN and
+GALEN-Doctored are based on two early versions of the GALEN
+ontology that have a relatively simple structure. The results show
+that Rapid scales well and can compute rewritings within a few
+seconds. Clipper needs about 25 min for NotGALEN (which is
+the more simple between the two), and timeouts for GALEN-
+Doctored; Requiem timeouts for both. The situation is different
+for the OpenGALEN2 ontology, whose complex structure poses
+a challenge to all systems. Clipper fails on all queries, Requiem
+
+Table 8
+Evaluation results for the queries generated using the techniques in [27].
+
+ExtDNS
+
+Time (hh:mm:ss.msec)
+Rapid
+
+Req.
+
+t/o
+
+Clip.
+t/o
+t/o
+
+Rewriting size
+Rapid
+
+Req.
+
+t/o
+
+Clip.
+t/o
+t/o
+
+succeeds for query 1, but Rapid is able to compute rewritings for
+queries 1, 2 after requiring, however, a significant amount of time
+for query 2 (about 3 h). For queries 3, 4, and 5 Rapid also did not
+manage to terminate.
+
+After analysis we concluded that this failure is due to the
+extensive application of the function rule (after several minutes the
+rule has already been applied more than a million times), hence the
+number of side premises that need to be considered in n-shrinking
+is vast. In contrast, this number is much smaller in the other
+ontologies. In particular, OBO Protein and NotGALEN are actually
+ELH ontologies hence the rule is never applied while PERIODIC
+Table contains very few RA-clauses of the form R.C  D and
+no axiom of the form A  S.B, hence again the function rule is
+never triggered (it would require an axiom R.C  D paired with
+A  R.B or an axiomR.C  D paired with A  R.B). Moreover,
+in NASA SWEET, which contains only 12 inverse role axioms, the
+function rule is applied from 71 (query 2) to at most 536 times
+(queries 4 and 5), in ExtendedDNS, which contains 98 inverse role
+axioms, the rule is applied from 11 (query 3) to 510 times (query 5),
+while in GALEN-Doctored, which contains 207 inverse role axioms,
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+the function rule, depending on the query, is either not applied at
+all (queries 1 and 4) or it is applied more than 20 millions times
+(queries 2, 3, 5).
+
+Another interesting case is query 1 for the various versions of
+the GALEN ontology. This query retrieves all objects of the concept
+Heme which is found low in the GALEN hierarchy and is isolated
+with respect to the complex part of the ontology (also evident by
+its small rewriting). We note that Rapid and Requiem are able to
+recognise this fact and answer instantly, while Clipper apparently
+still processes the whole ontology before computing a rewriting.
+Finally, Table 8 presents the results for the ontologies for which
+we could compute test queries using the query generator in [27].
+Due to the large number of queries we present average times and
+rewriting sizes. Again, we can see that Rapid outperforms Requiem
+and Clipper.
+
+Summarising the above, we can see that the new calculus can
+indeed compute a rewriting very efficiently for the vast majority of
+ontologies. This is also the case for large ELHI ontologies since the
+function rule and n-shrinking do not interact that much. However,
+for well-known problematic ontologies (e.g., OpenGALEN2) computing a rewriting still poses a significant challenge to all state-of-
+the-art systems.
+
+7. Related work
+
+Query answering via rewriting has been extensively studied for
+various fragments of OWL during the last decade. The problem
+has been studied both from a theoretical point of view by producing many complexity results and characterising rewritability
+[4345,40], as well as from a practical point of view by designing
+and developing many algorithms and practical systems for computing rewritings [12,13,15,20,19,18,16,21].
+
+The works that are most closest to ours are those that propose
+a resolution-based rewriting algorithm. The first algorithm to be
+proposed was the one implemented in the KAON2 system [14].
+It was based on basic superposition and ordered hyperresolution
+and it supported queries with distinguished variables over the
+languages SHIQ and Horn-SHIQ. Later, Perez-Urbina et al. [13]
+used binary resolution with free-selection to provide a rewriting
+algorithm that supports arbitrary queries over DL-Lite and ELHI.
+Recently, resolution was also used to provide a rewriting algorithm
+for linear Datalog [20]. The calculus was based on SLD resolution
+but with forward-chaining. Forward-chaining can create clauses
+with increasing nesting of function terms (terms with increasing
+depth). Hence, an additional condition was employed to ensure
+termination.
+
+Even in the case of KAON2 that applies restrictions on the ordering of terms and the selection function, all the aforementioned
+calculi explicitly produce resolvents that contain terms with function symbols, although these clauses are always discarded from the
+final rewriting and, as it has been shown [26], in several cases they
+do not contribute to the generation of members of the rewriting. To
+the best of our knowledge, this is the first work on resolution-based
+rewriting for OWL ontologies that attempts to further optimise the
+resolution calculus by constructing such clauses only when they
+are guaranteed to contribute to the generation of members of the
+rewriting.
+
+Finally, it is worth mentioning that the idea behind shrinking as
+well as the technique of postponing the generation of queries created via unfolding outlined in Section 5 is related to the approach
+of eliminating ej-variables followed in Presto [15]. However, the
+crucial difference is that Presto does not provide native support
+of qualified existential restrictions on the right-hand side of axioms but it relies on the same encoding as in [12]. This encoding
+increases the number of the input clauses and the overhead of dealing with them is evident by our performance evaluation. Moreover,
+Presto only supports DL-Lite.
+
+8. Conclusions
+
+In the current paper we have studied the problem of efficiently
+computing rewritings for ontologies expressed in various fragments of OWL using the framework of resolution.
+
+First, we studied the problem for the language DL-Lite which
+is strongly related to the language OWL 2 QL. We designed a
+resolution-based rewriting algorithm which tries to (implicitly)
+generate clauses with function symbols only when these are
+necessarythat is, only when it is guaranteed that these will
+further contribute to the generation of function-free clauses. To
+achieve this we designed a new rule, namely shrinking, which
+accumulates many inferences into a macro-step and has the additional restriction that its conclusion must be function-free. Inter-
+estingly, due to the structure and properties of DL-Lite axioms this
+rule is amenable to many optimisations and can be implemented
+highly-efficiently.
+Second, we studied the problem for the language ELHI, which
+is strongly related to the language OWL 2 EL. ELHI is far more
+expressive than DL-Lite and the structure of its axioms makes the
+task very challenging; it is worth mentioning that deciding concept
+subsumption in ELHI is in ExpTime while deciding concept
+subsumption in DL-Lite is in P. However, by careful analysis of
+previous resolution-based rewriting approaches we can see that
+a calculus which follows similar principles like the ones designed
+for DL-Lite can be defined. More precisely, it suffices to extend
+the shrinking step so that it allows for n side premises and for
+type 1 and RA-clauses as main premises, and to add one more
+inference rule that captures a very specific interaction between
+roles and their inverses. Interestingly, there is a close connection
+between the number of side premises to be considered in the n-
+shrinking rule and the application of the new rule. In realistic
+ontologies we expect that there are few inverse roles and therefore
+we expect that the function rule is rarely applied in practice and
+that the number of side premises to consider in the n-shrinking
+rule is small. Hence, the nice properties of the DL-Lite calculus are
+largely being preserved even for the much more expressive ELHI
+language.
+
+Although optimised in its design, there are several issues to be
+considered when implementing our proposed resolution calculus.
+We have subsequently discussed some issues of the algorithm and
+have shown how some of its properties can be used to further
+optimise it. For example, we have shown how we can reduce
+the size of the computed rewriting by encoding much of the
+information using datalog clauses. Moreover, we have shown how
+we can construct queries produced eventually via shrinking before
+applying unfolding.
+
+Finally, we have implemented all algorithms into the rewriting
+system Rapid and we have conducted an extensive experimental
+evaluation. Our test suite includes many well-known large
+and complex ontologies and hence significantly extends all
+previous benchmarks that mostly included toy ontologies [28,27].
+Moreover, our comparison against many state-of-the-art systems
+has provided many encouraging and important results. More
+precisely, when tested over the large and complex ontologies we
+see that, in most cases, existing systems fail to terminate within a
+timeout of 3 h, while Rapid manages to compute a rewriting in just
+a few seconds. Despite this favourable performance there are still
+cases that pose a significant challenge for Rapid, like the highlycomplex GALEN ontology. After analysis we concluded that the
+structure of GALEN forces many applications of the function rule
+(the additional rule for ELHI) which consequently increases the
+number of side premises that need to be considered in n-shrinking.
+Hence, there is further room to improve the computations of
+rewritings.
+
+Regarding directions for future work we plan to investigate
+whether the principles underlying the shrinking step can be used
+
+Table A.9
+Statistics of the test queries.
+
+|Qi|
+ejvar
+
+|Qi|
+ejvar
+
+|Qi|
+ejvar
+
+|Qi|
+ejvar
+
+Q2
+
+Q2
+
+OBO Protein
+Q1
+
+NASA SWEET
+Q1
+
+NotGALEN/GALEN-Doctored
+Q1
+
+OpenGALEN2
+Q1
+
+Q2
+
+Q3
+
+Q3
+
+Q2
+
+Q3
+
+Q4
+
+Q4
+
+Q4
+
+Q5
+
+Q5
+
+Q3
+
+Q5
+
+Q1
+
+PERIODIC Table
+Q1
+
+ExtendedDNS
+Q1
+
+Q2
+
+Q2
+
+Q4
+
+Q2
+
+Q3
+
+Q3
+
+Q3
+
+Q4
+
+Q4
+
+Q5
+
+Q4
+
+Q5
+
+Q5
+
+Q5
+
+in resolution-based rewriting algorithms for even more expressive
+ontology languages. We plan to target both languages that can
+be rewritten into datalog, like linear Datalog and Horn-SHIQ
+but also much more expressive languages like ALC. The latter is
+an extremely challenging task as ALC can only be rewritten into
+disjunctive datalog [46].
+
+Acknowledgement
+
+The work by Giorgos Stoilos was funded by a Marie Curie Career
+Reintegration Grant within European Unions 7th Framework
+Programme (FP7/2007-2013) under REA grant agreement 303914.
+
+Appendix A. Statistics on manually constructed CQs
+
+In Table A.9 we provide statistics for all manually constructed
+test queries we created for each of the test ontologies; with|Qi| we
+indicate the number of conjuncts in the query body and with ejvar
+the number ej-variables of the respective query. All queries contain
+one answer variable except for queries 2 and 5 over the NASA
+SWEET ontology which contain 2. Finally, note that all queries are
+tree-shaped.
+
+To construct the queries we have tried to use concepts and
+roles that appear both low as well as high in the hierarchy of the
+ontology or appear in axioms with qualified existential restrictions.
+For example, queries 1, 2 for NotGALEN are the queries Q (x) 
+Heme(x), Q (x)  BodyProcess(x) where concepts Heme and
+BodyProcess have seven and three ancestors in the class hierarchy,
+respectively. Query 4 posed for ExtendedDNS is the query Q (x) 
+duses(x, y)task(y)duses(x, z)description(z), where concepts
+task, description and role duses participate in several axioms with
+qualified existentials. More precisely, the ontology contains the
+axioms plan  duses.task, description  dusedby., and
+dusedby  duses.
+
+Appendix B. Requiem types of inferences
+
+Table B.10 presents all interactions (types of inferences) that
+are possible when applying IREQ over clauses expressed in the
+language ELHI.
+In DL-Lite there are no RA-clauses, hence these are of the form
+B(x)  P(x, y) and B(x)  P(y, x). Consequently, inferences of
+the form 4.1 + 2.1 = 3.3 are simplified to:
+
+B(x)  P(x, y) P(x, f (x))  A(x)
+
+B(x)  A(x)
+
+where the resolvent is function-free. Moreover, according to
+Table 3 the input ontology can only contain function-free type 3.3
+clause. Consequently, in DL-Lite all type 3.3 clauses are function-
+free; therefore, inference 3.3 + 2.3 = 3.3 in Table B.10 is never
+performed in DL-Lite.
+Furthermore, since we consider normalised ontologies, in DLLite there can only be clauses of the form B(f (x))  F (x). Hence,
+inferences of the form 3.3 + 2.3 = 2.3 are simplified to be of the
+following form:
+
+C(x)  A(x)  [B(x)] A(f (x))  F (x)
+
+C(f (x))  F (x)  [B(f (x))]
+
+That is, there is exactly one function-free atom in the body of the
+resolvent. Moreover, the above resolvent can subsequently be used
+only as a main premise in an inference of the form 2.3+ 2.3 = 2.3,
+which in the case of DL-lite is simplified to be of the following form:
+
+C(f (x))  F (x)  B(f (x))  D(f (x)) B(f (x))  F (x)
+
+C(f (x))  F (x)  D(f (x))
+
+That is, the body part of the side premise is the same at the
+single function-free atom of the main premise. This is because each
+function symbol f is associated with a single body atom.
+
+Appendix C. Proofs of Section 3
+
+Lemma 1. Let T be a DL-Lite-TBox and let Q be a CQ. Every type 1
+clause derivable from T  Q by IREQ is also derivable from T  Q by
+ISLD.
+Proof. We show using induction that for each clause Q of type 1
+such that T , QIREQ
+Q (i.e., that is derivable at depth i) we also
+have T , QISLD Q.
+Base case (i = 0): In that case Q is actually the input CQ Q and
+hence we clearly have T , QISLD Q.
+Induction step: For i some derivation depth assume that for every
+l Q we have T , QISLD Q
+l  i and Q such that T , QIREQ
+(induction hypothesis). Assume now that at a next step a clause
+Q of type 1 is produced, i.e., T , QIREQ
+i+1 Q. By the definition of
+IREQ Q is produced by an inference of the form Q, C IREQ Q,
+i.e., one that has as a main premise another clause of type 1 such
+that T , QIREQ
+l Q and as a side premise a clause C such that
+T IREQ C. Clearly, we have Q, C ISLD Q. If C  T then, by
+the previous and the induction hypothesis we immediately obtain
+T , QISLD Q. Otherwise, we have T IREQ
+C with j > 0, and it
+suffices to show that Q can also be derived from Qi by ISLD using
+only clauses of T . This follows by the following claim:
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+Table B.10
+Possible types of inferences of IREQ.
+
+3.3 + 2.3 = 2.3
+
+C(x)  A(x)  B(x) A(f (x))  F(x)
+
+C(f (x))  B(f (x))  F(x)
+
+3.3 + 2.3 = 3.3
+
+E(x)  B(f (x))  C(f (x))  D(x) B(f (x))  G(x)
+
+E(x)  C(f (x))  G(x)  D(x)
+
+2.3 + 2.3 = 2.3
+
+E(f (x))  B(f (x))  C(f (x))  D(x) B(f (x))  G(x)
+
+E(f (x))  C(f (x))  G(x)  D(x)
+
+4.1 + 2.1 = 3.3
+
+B(x)  P(x, y)  [C(y)] P(x, f (x))  A(x)
+
+B(x)  P(x, y)  [C(y)] P(f (x), x)  A(x)
+
+B(x)  A(x)  [C(f (x))]
+
+4.1 + 2.2 = 2.3
+
+B(f (x))  A(x)  [C(x)]
+
+S(x, y)  P(x, y) P(f (x), x)  A(x)
+
+1 + 2.3 = 1
+
+Q(s)  Dj(tj)  R(t1, t2)  B(t) B(f (x))  C(x)
+Q(s)  Dj(tj)  R(t1, t2)  B(t) R(x, f (x))  C(x)
+
+Q(s)  Dj(tj)  R(t1, t2)  C(x)
+Q(s)  Dj(tj)  C(x)  B(t)
+
+where  is an mgu for {B(t), B(f (x))}
+
+where  is an mgu for {R(t1, t2), R(x, f (x))}
+
+1 + 2.1 = 1
+
+S(x, y)  P(x, y) P(x, f (x))  A(x)
+
+3.1 + 2.1 = 2.1
+S(x, f (x))  A(x)
+3.1 + 2.2 = 2.2
+S(f (x), x)  A(x)
+
+2. C is of type 2.2. This case is symmetric to the previous one.
+3. C is of type 2.3. Then, Q, C ISLD Q is of the following form:
+
+QP (s)  Dj(tj)  B(v) B(f (x))  A(x)  [A(f (x))]
+
+QP (s)  Dj(tj)  A(x)  [A(f (x))]
+
+where  is an mgu for {B(v), B(f (x))}. Moreover, IREQ produces
+clauses of type 2.3 by resolving clauses C1, C2 of either type 3.3
+and 2.3, or of type 4.1 and 2.2, or of type 4.2 and 2.1.
+First, let C1 be of type 3.3 (B(x)  C(x)[A(x)]) and C2 of
+type 2.3 (C(f (x))  A(x)), while C is produced by resolving
+them with mgu 1 = {x/f (x)}. Clearly, Q resolves with C1
+producing clause:
+
+Q = QP (s)  Dj(tj)  C(x)  [A(x)]
+clause Q is actually of the form QP (s) Dj(tj)C(v)[A(v)].
+
+with  mgu for {B(v), B(x)}. As before, we can assume that 
+is the mgu {x  v}. Moreover, since x does not appear in Q,
+Hence, since the variables that appear in C(v), A(v) are the
+same as those in B(v), Q resolves with C2 with mgu  to obtain
+clause Q. Therefore, there are derivations of the form Q, C1 
+Q and Q, C2  Q. Moreover, we clearly have T IREQ
+j1 C1 and
+T IREQ
+j1 C2.
+Second, let C1 be of type 4.1 (B(x)  R(x, y)) and C2 is
+of type 2.2 (R(f (x), x)  A(x)), while is produced using mgu
+1 = {x/f (x), y  x}; the case of 4.2 and 2.1 is similar. Again,
+Q resolves with C1 producing clause:
+
+Q = QP (s)  Dj(tj)  R(x, y)
+hence, we have Q = QP (s)  Dj(tj)  R(v, y). Since v also
+
+with  mgu for {B(v), B(x)} and  can be the mgu {x
+ v};
+appears in B(v) of Q and y is new in Q, Q resolves with C2
+with mgu   =   {y  x} which produces Q. Thus, again,
+there is a derivation of the form Q, C1  Q, Q, C2  Q, while
+since IREQ never produces clauses of type 4.1, C1  T , and finally
+T IREQ
+4. C is of type 3.3. Then, Q, C ISLD Q is of the following form:
+
+j1 C2, as required.
+
+QP (s)  Dj(tj)  A(v) A(x)  B(x)
+QP (s)  Dj(tj)  B(x)
+
+where  is an mgu for {A(v), A(x)}. Moreover, IREQ produces
+clauses of type 3.3 by resolving clauses C1, C2 of either type 4.1
+and 2.1 or of type 3.2 and 2.2. Assume that C1 is of type 4.1
+(A(x)  R(x, y)) and C2 of type 2.1 (R(x, f (x))  B(x)) while
+C is produced using the mgu 1 = {y/f (x)} (the case of 4.2 and
+2.2 is similar). Clearly, Q resolves with C1 producing clause:
+
+Q = QP (s)  Dj(tj)  R(x, y)
+actually of the form Q = QP (s)  Dj(tj)  R(v, y). Hence,
+
+Again we can assume that  is the mgu {x  v} and Q is
+
+since v appears both in R(v, y) and A(v) and y does not appear
+in Q, clause Q resolves with C2 with mgu  to obtain clause
+Q.
+The previous claim implies that for a clause C such that T IREQ C
+the inference Q, C ISLD Q can be transformed into a sequence
+of inferences of the form Q, C1 ISLD Q
+2, . . . ,
+n1, Cn ISLD Q, such that for all 1  i  n we have Ci  T ;
+
+hence T , Q ISLD Q and combined with the induction hypothesis
+(T , QISLD Q) we get T , QISLD Q as required. 
+
+1, C2 ISLD Q
+
+1, Q
+
+Lemma 2. Any derivation built by inferences that have as side
+premises Horn clauses that can contain terms with function symbols
+only in the head can be transformed into one that is function-compact.
+
+C, and
+
+j1 C1 and T IREQ
+
+Claim 1. For each Q and C such that Q, C ISLD Q, T IREQ
+j > 0 there exist C1 and C2 such that the following hold:
+ T IREQ
+j1 C2, and
+ Q, C1 ISLD Q, Q, C2 ISLD Q.
+We show Claim 1 by a case analysis on the types of clauses that
+can be deduced from T by IREQ. According to IREQ, only clauses of
+type 2.1, 2.2, 2.3 (of the form B(f (x))  C(x)  [A(f (x))]), or 3.3
+(of the form A(x)  B(x)) can be derived from T by IREQ. We show
+each case next:
+1. C is of type 2.1. Then, Q, C ISLD Q is of the form:
+
+QP (s)  Dj(tj)  R(v, u) R(x, f (x))  A(x)
+
+QP (s)  Dj(tj)  A(x)
+
+where  is an mgu for {R(v, u), R(x, f (x))}. Moreover, IREQ
+produces clauses of type 2.1 by resolving clauses C1, C2 of either
+type 3.1 and 2.1 or of type 3.2 and 2.2. We show the case
+that C1 is of type 3.1 (R(x, y)  P(x, y)) and C2 of type 2.1
+(P(x, f (x))  A(x)); the case of types 3.2 and 2.2 is similar.
+Assume w.l.o.g. that the mgu in the inference of C1 and C2 is
+1 = {y/f (x)}. Clearly, Q resolves with C1 producing clause:
+
+Q = QP (s)  Dj(tj)  P(x, y)
+
+actually of the form QP (s)  Dj(tj)  P(v, u). Consequently,
+
+with  the mgu for {R(v, u), R(x, y)}. The mapping 1 = {x 
+v, y  u} is an mgu for {R(v, u), R(x, y)}. However, if v, u are
+variables, then 2 = {v  x, u  y} is also a possible mgu.
+But, the result of applying 1 or 2 to a clause is equivalent up
+to renaming of variables. Hence, w.l.o.g. we can assume that
+ = 1. Moreover, since x, y do not appear in Q, clause Q is
+since the variables that appear in P(v, u) are the same as those
+in R(v, u), Q resolves with C2 with mgu  to obtain clause Q.
+Therefore, there are inferences of the form Q, C1  Q and
+Q, C2  Q. Since IREQ never produces clauses of type 3.1,
+C1  T and for C2 we clearly have T IREQ
+
+j1 C2.
+
+clauses Q2, . . . , Qn1 contain a term that mentions a function
+symbol f while Q1 and Qn do not mention f . In the following
+to also quantify over the side premises used in a derivation we
+write such a derivation as Q1, C1,Q2, C2, . . . ,Qn, Cn, where
+Qi, Ci  Qi+1.
+
+The lemma follows by the following claim:
+
+Claim 2. For every derivation like the above and for which there exist
+Qj and Cj such that Cj does not mention f , then there also exists Ck that
+does not mention f and is such that either of the following are valid
+derivations by ISLD:
+(a) Q1, Ck,Q
+k, Ck1,
+(b) Q1, C1,Q2, C2, . . . ,Qk, Ck+1,
+
+Qk+1, Ck+1, . . . ,Qn, Cn or
+
+2, C1, . . . ,Q
+
+k+1, Ck+2, . . . ,Q
+
+n1, Ck,Qn, Cn.
+
+2. Hence, then the first clause that mentions f
+
+The claim says that some inference with side premise Ck that
+does not mention f can be moved outside of the relevant part
+of the derivation. In Case 1., since Q1 and Ck do not mention f ,
+so does Q
+is Q
+3.
+In Case 2., again since Qn, Ck do not mention f , so does Qn1
+(a function-free clause cannot be created from an inference with
+main a clause containing a functional symbol and a functionfree side premise). Consequently, by repeated applications of
+the above transformation we can remove all the inferences that
+have a side premise that does not mention f and create new
+function-free first and last clauses that are closer together. The
+transformation clearly terminates and it can be done to all parts
+of an SLD derivation. Hence after a finite number of steps we can
+obtain a function-compact derivation.
+
+We now show Claim 2.
+First, we show that if a pair of inferences Q1, C1  Q2 and
+Q2, C2  Q3 can be rewritten as Q1, C2  Q and Q, C1  Q,
+then Q is actually Q3that is, if we can reorder the pair, then after
+the reordering we obtain the same final derived clause. Thus, in
+Claim 2, after Ck has been pushed to the beginning (end), we indeed
+have that Q
+
+In more detail, the inference Q1, C1  Q2 is of the form:
+
+where  is the m.g.u. for {A, A1}, while Q2, C2  Q3 is of the form:
+
+k, Ck1  Qk+1 (Q
+
+n1, Ck  Qn).
+QP (s)  Dj(tj)  A  B A1  A2
+QP (s)  Dj(tj)  A2  B
+QP (s)  Dj(tj)  A2  B B1  B2
+QP (s)   Dj(tj)   A2   B2
+QP (s)  Dj(tj)  A  B B1  B2
+QP (s)  Dj(tj)  A  B2
+QP (s)  Dj(tj)  A  B2 A1  A2
+QP (s)   Dj(tj)   A2   B2 
+
+where  is the m.g.u. for {B , B1}. After reordering, the inference
+Q1, C2  Q is of the form:
+
+for  a most general unifier for {B, B1}, while Q, C2  Q is of the
+form:
+
+with   an m.g.u. for {A1, A}. Clause Q contains the same
+predicates as Q3. To show that Q is equal (up to renaming of
+variables to Q3) we need to show that unifiers  and   exist such
+that     maps variables of Q in the same way as   . To do
+so, given a mapping s1  s2   and a mapping t1  t2  , we
+
+show how we can build mappings s
+ such that, w.r.t. the variables that are being mapped, applying
+ and then  has the same result as applying first  and then
+
+2    and t
+
+1  t
+
+1  s
+
+D. Trivela et al. / Web Semantics: Science, Services and Agents on the World Wide Web 33 (2015) 3049
+
+ . Consequently, since this can be done for any combination of
+mappings in  and , applying  and then   would have the same
+effect on all the variables of the query. Since there are unifiers there
+are also most general unifiers and we will have that Q3 = Q.
+Unifiers  and   are constructed based on  and  as follows,
+where 1. and 2. are applied exhaustively first, and then 3., 4., 5.,
+and 6. in that order:
+1. If  contains x  s and  contains w  s, then add w  x to
+ and x  s to  . Clearly,     maps x and w to the same
+terms as   .
+2. If  contains x  s and  contains w  g(s) for some function
+g, then add w  g(x) to  and x  s to  . Again,    maps
+x and w to the same terms as   .
+
+3. In all other cases copy all mappings of  to .
+4. Let  contain x  y and let x be a variable of Q1. If  contains
+no mapping of the form y  s, then add x  y to  ; otherwise,
+add x  s to  ; similarly if x  f (y)   and y  s  , then
+add x  f (s) to  . Again,     maps variables x and y to the
+same terms as   .
+
+5. In all other cases copy all mappings of  to  .
+6. If  contains a mapping of the form x  s and x is a variable
+of C1, then add x  s to  . In this case this mapping has no
+effects on the variables of Q as x belongs in C1.
+
+Note that the construction is well-founded: Cases 1. and 2. are
+independent from each other and do not depend on previously
+introduced mappings. Moreover, Case 3. is also independent. Case
+4. has an if condition over . However,  is never altered again,
+hence the if condition is either always satisfied or not and the
+construction of   is well-defined. Finally, Cases 5. and 6. are also
+well-defined.
+Before proceeding we note that a pair of inferences Q1, C1 
+Q2 and Q2, C2  Q3 cannot be rewritten as Q1, C2  Q and
+Q, C1  Q only if the head of C2 resolves with some atom that
+was introduced when resolving Q1 with C1that is, C1 is of the form
+A  B, C2 is of the form B  C and B  B and hence the inference
+with side premise C2 requires that the inference with side premise
+C1 occurs first. If reordering of the previous inference is possible
+then we say that C2 is independent of C1, while if they cannot then
+we say that it is dependent.
+
+Finally, we show that clauses that do not mention a functional
+symbol can indeed be pushed either at the beginning or at the end
+of the sequence.
+Consider a sequence Q1, . . . , Qn where all Q2, . . . , Qn1 mention a function symbol f while Q1 and Qn do not. Assume also in
+contrast that none of the clauses Ci with 2  i  n  1 that does
+not mention f can be moved either at the beginning or at the end.
+Let Ck be the first side premise that does not mention f . By assumption it cannot be moved at the beginning of the sequence.
+Hence, Ck is of the form A  B and there is some previous inference Qj, Cj  Qj+1 with j > 1, where Cj is of the form F  A
+with A  A and hence Ck cannot be moved outside. If Cj is functionfree then the assumption also applies to it and hence there is some
+other clause before over which Cj depends. It follows that for some
+clause that cannot be moved outside the clause obstructing the
+move contains f in the head. Let that be Cj, that is, for Cj we additionally have that F contains the function symbol f . It also follows
+that no clause Cl in between, i.e., where j < l < k can depend on Cj
+for otherwise the inference with Cl would eliminate A and hence Ck
+would not depend on Cj. Consequently, all these clauses in between
+can be moved before Cj, that is, the sequence can be reordered such
+that j = k  1.
+Next, again by assumption, Ck cannot be moved downwards ei-
+ther. Hence, this implies that there is also some clause Cm that depends on Ckthat is, it is of the form B  C, where B  B.
+
+Again no clause in between Ck and Cm can depend on Ck. Moreover it can also not depend on Cj as A is eliminated by the inference
+with side premise Ck. Hence, all these clauses can also be moved
+before clause Cj, i.e., Ck1 in the reordered sequence. By applying
+this reasoning repeatedly we can reorder the sequence such that
+after clause Ck1 we have inferences with side premises clauses
+Ck1, Ck, Ck+1 such that the head of each clause resolves with some
+body atom of its clause immediately on the left. Let Ck+1 be the
+clause produced by the inferences Ck1, Ck  C, C, Ck+1  Ck+1.
+By the form of the clauses used in these inferences (see before)
+Ck+1 must be of the form F  C. Moreover, we can easily see
+that instead of obtaining Qk+2 through the inferences Qk1, Ck1 
+Qk, Qk, Ck  Qk+1, and Qk+1, Ck+1  Qk+2 we can obtain it as a resolvent of Qk1 and Ck+1. Furthermore, since Qk1 mentions f , the
+inference Qk1, Ck1  Qk creates a clause that also mentions f ,
+and Ck+1 has the same head as Ck1, then so would Qk+2 mention f .
+Consequently, if Ck+1 is the last clause in the sequence, i.e., Cn1,
+then we reach a contradiction: in that case Qk+2 is Qn and as shown
+before it must mention f . Otherwise, there are other inferences
+and side premises between Ck+1 and Cn1. First note that these can
+only depend on Ck+1. If some dependent clause exists then, reorder
+the sequence by moving it after Ck+1, and compute the clause Ck+2
+where Ck+1, Ck+2  Ck+2; otherwise, starting from the topmost,
+push all independent clause one by one before Ck1. We can repeat
+this reordering until we reach a sequence where all inferences have
+side premises of the form Ck1, Ck, Ck+1, Ck+2, . . . , Cn1, all clauses
+depend on the clause immediately on the left and as stated before Qn can be obtained as a resolvent of Qk1 and some clause
+Cn1 which is built by resolving one-by-one in an iterative way
+all the side premises of the previous list. Hence, we can reach a
+contradiction. 
+Theorem 1. Let T be a DL-LiteR TBox and let Q be a CQ. Every derivation from T  Q by Ilite terminates. Moreover, Rapid-Lite(Q, T ) is a
+UCQ rewriting for Q, T .
+Proof. Termination follows by our observations stated in Section 3. Next we show correctness. Let RQ = Rapid-Lite(Q, T ). To
+show that RQ is a UCQ rewriting we need to show that for each A
+we have cert(Q, T  A) = cert(RQ , A).
+In order to show that cert(Q, T A)  cert(RQ , A), it suffices to
+show that T Q |= RQ , which is equivalent to showing T Q |= Qi
+for each Qi  RQ . This follows trivially since each Qi is built using
+a resolution based calculus.
+Now we show that cert(Q, T  A)  cert(RQ , A). Consider
+the Requiem algorithm. It suffices to show that for each Q 
+RQR(Q, T ) a query Q  RQ exists such that Q and Q are
+equivalent up to renaming of variables. RQR(Q, T ) is constructed
+in two steps. First, T  Q is saturated by IREQ to obtain a (non-
+recursive) datalog program P, and then P is unfolded to obtain a
+UCQ.
+By Lemma 1, every clause of type 1 in P can also be derived
+from T  Q by ISLD, while by Lemma 2 the SLD derivation can
+additionally be assumed to be function-compact. Hence, it suffices
+to show that for each function-free clause of type 1 derivable from
+T  Q by ISLD is also derivable from T  Q by Ilite.
+Let Qi be the ith query derived from T  Q by ISLD. We use
+induction.
+Base case (i = 0): In that case Q0 = Q and by definition of
+Rapid-Lite(Q, T ), we have Q0  RQ .
+Induction step: Assume that for all 1  i  n, all function-free
+clauses Qi derivable by ISLD are also derivable by Ilite and assume
+that a new function-free clause Qi+1 is derived next by ISLD. There
+are two cases:
+
+1. Qi+1 is derived from some function-free Qj with j  i and
+side premise some clause Cj  T . Since both Qj and Qi+1 are
+function-free this inference can be captured by the unfolding
+inference rule; hence, Qj, Cj Ilite Qi+1 and thus Qi+1  RQ .
+2. Qi+1 is derived from some Qj by ISLD with an SLD derivation of the form Qj, Qj+1, . . . , Qj+k where Qj+k = Qi+1,
+all intermediate clauses contain a term f (sj), while also by
+function-compactness all side premises contain f (tj). By definition of ISLD all side premises belong to T and T is nor-
+malised; hence, function symbols are unique per axiom of the
+form R.A and consequently, all side premises are either of the
+form R(x, f (x))  D or A(f (x))  C, while the atoms of all intermediate clauses of type 1 over which they resolve are of the
+form R(uj, f (sj)), R(f (sj), uj) or A(f (sj)) for sj, uj terms. More-
+over, since Qj is function-free and Qj+1 mentions f , the atom
+of Qj that resolves with Cj is of the form R(s, t) or A(t) and the
+mgu must contain a mapping of the form x  f (y) for x an
+ej-variable of Qj.
+Let S1 contain all the role atoms of Qj that participate in the inference and S2 all the concept atoms. (Note that either can be
+empty.) Since there is an mgu for all intermediate SLD infer-
+ences, there is also a simultaneous mgu for S1{R(x, f (x))} and
+S2  {A(f (x))} [35]. Moreover, as analysed above and by construction of the simultaneous mgu, this must contain a mapping
+of the form x  f (y) for x an ej-variable. Consequently, there is
+an inference of the form Qj, C1,[C2]  Qi+1 using the shrinking
+rule.
+Hence,
+derivable by Ilite.
+Finally, we show that all queries derived using unfolding are
+also derivable by Ilite. This is straightforward: again all such
+inferences can be unfolded to be captured by inferences using as
+side premises only clauses from T and moreover all these always
+produce function-free type 1 clauses; hence, they can be captured
+by the unfolding rule of Ilite and hence all such queries belong to
+RQ . 
+
+in either case all function-free clauses of type 1 are
+
+Appendix D. Proofs of Section 4
+
+Lemma 3. Let T be an ELHI-TBox and let  be a CQ (resp. RA-
+clause). Then, every type 1 clause (resp. type 3.3 clause) derivable from
+T by IREQ starting with  is also derivable from T by ISLD+ starting
+with  .
+Proof. First, let  be an arbitrary RA-clause that produces some
+clause of type 3.3 from T by IREQ. We show the claim via induction.
+Assume that at some point all 3.3 clauses derivable from T by IREQ
+starting with an RA-clause are also derivable from T by ISLD+ (IH1).
+Assume that a new 3.3 clause C is derived in some part of the
+derivation that is starting with  . We show only the case that  is
+of the form A(x)  R(x, y)  D(y), i.e., of type 4.1; for  of type
+4.2 the proof is similar.
+Clause C is of type 3.3. According to Table B.10 such clauses can
+be produced by inferences of the form C1, D1 IREQ C where C1 and
+D1 can be one of the following forms:
+1. Clause C1 is of type 4.1 and clause D1 is of type 2.1; the case C1
+is of type 4.2 and D1 is of type 2.2 is similar. Since IREQ never
+produces clauses of type 4.1, C1  T . In contrast, D1 can be
+produced by an inference of the form E2, D2  D1, where E2 is
+of type 3.1 and D2 is again of type 2.1. Consequently, as shown
+in the proof of Lemma 1, C1, D1 IREQ C can be unfolded into the
+inferences C1, E2  C2 and C2, D2  C. Clauses of type 3.1 are
+never produced by IREQ, hence E2  T , while D2 (again of type
+2.1) is of lower derivation depth. By a straightforward inductive
+claim we can show that we can exhaustively unfold these
+
+j1 F, T IREQ
+
+inferences until we have a derivation of the form C1, . . . , Cn, C
+where Ci, Ei  Ci+1, all Ci are of type 4.1, C1  T , all Ei are of
+type 3.1 (or 3.2) also in T and C is derived by some Cn, Dn  C,
+where Dn is of type 2.1 (or 2.2) and again in T . Consequently, C
+is derivable from T by ISLD+.
+2. Clause C1 is of type 3.3 and clause D1 is some clause. Since C
+is derived by a sequence starting with  , so does C1. Hence,
+by induction hypothesis IH1 C1 is derivable from T by ISLD+.
+Now, we turn our attention to D1. By a second induction we can
+show that if D1 is derivable by inferences over other clauses,
+then C1, D1 IREQ C can either be unfolded using these clauses
+which are of lower derivation depth or D1 is derivable. More
+precisely, we have the following claim:
+Claim 3. For each C1, C, and D1 such that C1, D1  C and
+T IREQ
+D1 we have that if D1 is of type 3.3., then it is function-free
+and moreover either D1 is produced by ISLD+ or there exist clauses
+F and G such that T IREQ
+j1 G, and C1, F  C, C, G 
+C.
+Proof of Claim 3. We study different cases according to the
+form of D1:
+(a) D1 is of type 2.3. Such clauses can be produced by inferences
+of the form F, G IREQ D1, where F and G can be one of the
+following forms:
+i. F is of type 4.1 (4.2) and G is of type 2.2 (2.1). We show
+only the case 4.1 + 2.2.
+First, assume that F contains the conjunct [C(y)], i.e., it
+is of the form A(x)  R(x, y)  C(y). Then, inference
+F, G IREQ D1 corresponds to an inference by the
+function rule and moreover, recall that since F is of type
+4.1 we have F  T . Consequently, if additionally G  T ,
+then D1 can be derived by ISLD+ as required. In contrast,
+G can be produced by an inference between a clause J1
+of type 3.1 and a clause G1 of type 2.2. Then, the inference
+F, G  D1 can be unfolded into F, J1  F1 and F1, G1 
+D1. Furthermore, we have J1  T since such clauses
+are never produced by IREQ and hence F1 can be derived
+by ISLD from F. This can be done exhaustively until we
+reach a derivation of the form F0, F1, . . . , Fn, D1 where
+for 0  i < n we have Fi, Ji+1  Fi+1, F0 = F, all Ji+1
+are of type 3.1, and Fn, Gn  Ci for some Gn  T . Since
+all Ji are of type 3.1 and F0  T , then Fn is derivable
+by ISLD. Moreover, the last inference in the sequence
+corresponds the function rule and since Fn is derivable
+by ISLD and Gn  T , then we can conclude that D1 can
+be produced from T by ISLD+.
+Second, assume that F does not contain the conjunct
+[C(y)], i.e., it is of the form A(x)  R(x, y). Then, the inference F, G  D1 can be used to unfold the inference
+C1, D1  C into C1, F  C and C, G  C, where G and F
+are derivable at lower depths.
+ii. F is of type 3.3, G is of type 2.3 and according to Table B.10 F is function-free. In this case the inference
+C1, D1  C can be unfolded into C1, F  C and C, G 
+D1 and F and G obviously have smaller derivation
+depths and according to Table B.10 clause F is function-
+free; hence, all conditions in Claim 3 are satisfied.
+iii. both F and G are of type 2.3. Then, inference C1, D1  C
+can be unfolded into inferences of the form C1, F  C,
+C, G  C where F and G are derivable at lower depths.
+(b) D1 is of type 3.3. By induction hypothesis of Claim 3 it
+follows that D1 is function-free, thus it is of the form A(x) 
+B(x)  [C(x)]. We now have the following two cases:
+First, assume that D1 is actually of the form A(x) 
+B(x) (i.e., no conjunct C(x)). Then, for F and G we have the
+following cases:
+
+i. F is of the form A(x)  R(x, y) (type 4.1 without [C(y)])
+and G is of the form R(x, f (x))  B(x) (type 2.1) or F
+is of the form A(x)  R(y, x) (type 4.2 again without
+[C(y)]) and G is of the form R(f (x), x)  B(x) (type 2.2).
+In this case we can unfold the inference C1, D1  C into
+C1, F  C, C, G  C where F and G are derivable at
+lower depths.
+ii. F is of the form A(x)  D(f (x))  B(x) (i.e., type 3.3)
+and G is of the form D(f (x))  B(x) (i.e., type 2.3).
+Since the input TBox T never contains clauses of the form
+A(x)  D(f (x))  B(x), F must have been produced
+by applying IREQ on T . F can be produced again by an
+inference of the above form, i.e. 3.3 + 2.3, where the
+main premise must contain a functional-term in its body.
+Consequently, again this type 3.3 clause cannot belong
+to T . We can conclude that in this case the derivation
+producing D1 must start with an RA-clause. But then, by
+the induction hypothesis IH1, we have that D1 has been
+produced from T by ISLD+.
+Second assume that D1 is of the form A(x)  B(x)  C(x)
+(i.e., with a conjunct C(x)). Again like in the previous case,
+we can conclude from the form of inferences that D1 is
+produced by a derivation starting from an RA-clause; hence,
+by induction hypothesis IH1 D1 is produced from T by
+ISLD+.
+
+This concludes the case where  is an RA-clause.
+Second, we show the case that  is a type 1 clause Q producing
+another type 1 clause Qthat is, for Q, Q we have T , QIREQ
+Q.
+Let Plt be all DL-Lite-clauses derivable from T by ISLD+. We will
+show using induction that Plt , QISLD Q.
+Base case (i = 0): Then, Q = Q and we trivially have Plt ,
+QISLD Q.
+Induction step: Assume that for every l  i and Q such that
+l Q we have Plt , QISLD Q (induction hypothesis). As-
+T , QIREQ
+sume now that at a next step a clause Q of type 1 is produced,
+i.e., T , QIREQ
+i+1 Q. By the definition of IREQ Q is produced by an
+inference of the form Q, C IREQ Q, i.e., one that has as a main
+premise another clause of type 1 such that T , QIREQ
+l Q and as
+a side premise a clause C such that T IREQ C. Clearly, we have
+Q, C ISLD Q. If C  T then by the previous, the induction hy-
+pothesis, and since Plt is initialised to T we immediately obtain
+Plt , QISLD Q. Otherwise, we have T IREQ
+C with j > 0 and we
+need to show that either C  Plt or that Q can also be derived from
+Q by ISLD using only clauses of Plt. This follows by the following
+claim:
+Claim 4. For each Q and C such that Q, C  Q, T IREQ
+either C  Plt or C  Plt and the following conditions hold:
+j1 C1, T IREQ
+ There exist clauses C1 and C2 such that T IREQ
+Q, C1  Q, Q, C2  Q.
+ If C is of type 3.3 then it is function-free.
+We show Claim 4 by a case analysis on the types of clauses that
+
+can be deduced from T by IREQ, i.e., on the forms of clause C:
+1. C is of type 2.1 or of type 2.2. Then, by Table B.10 such clauses
+can be derived by inferences involving only DL-Lite-clauses
+(cf. inferences 3.1 + 2.1 = 2.1 and 3.1 + 2.2 = 2.2). Hence,
+the claim follows from the proof of Claim 1 in Lemma 1.
+2. C is of type 2.3 or of type 3.3. These cases are similar to cases
+2a and 2b in the proof of Claim 3, hence we dispense with the
+details.
+
+j1 C2, and
+
+C, j > 0,
+
+D and Rr
+
+2, . . . , Q
+
+1, C2  Q
+
+ Plt such
+The previous claim implies that for a clause C
+C, and j > 0, the inference Q, C ISLD Q can be
+that T IREQ
+transformed into a sequence of inferences of the form Q, C1 
+n1, Cn  Q, such that for all 1 
+
+1, Q
+i  n we have Ci  Plt; hence Plt , Q ISLD Q and using the
+induction hypothesis (Plt , QISLD Q) we get Plt , QISLD Q as
+required. 
+Theorem 2. Let an ELHI-TBox T and a CQ Q. Every derivation from
+T  Q by IEL terminates. Moreover, Rapid-EL(Q, T ) is a datalog
+rewriting of Q, T .
+Proof. Using the same arguments as in the case of Rapid-Lite(Q, T )
+it can be shown that only a finite number of RA-clauses and of
+clauses of type 1 can be produced by the unfolding and n-shrinking
+rule application. More precisely, none of the side premises allowed
+by IEL contains (and hence introduces) a new ej-variable to the
+resolvent. Moreover, the function rule uses RA-clauses in the main
+premise position and clauses from T in the side premise position;
+hence it can only be applied a finite number of times.
+Now let R = Rapid-EL(Q, T ) that is partitioned into RQ and
+RD. Again, by soundness of the inference system IEL we trivially
+have cert(Q, T A)  cert(RQ , RDA) for each A. Next, we need
+to show that we also have cert(Q, T  A)  cert(RQ , RD  A).
+Consider the Requiem output Rr  RQR(Q, T ). Rr can be partitioned into Rr
+Q satisfying the conditions of Definition 1.
+By Lemma 3 every derivation of a type 1 Q clause from T Q by
+IREQ can be transformed into an extended-SLD derivation. More-
+over, by Proposition 2 the derivation of Q can be transformed into
+a function-compact one. Hence, by a similar induction as in the
+proof of Theorem 1 it follows that every Q derived from T  Q
+by IREQ is also in R.
+Now consider the datalog clauses produced by IREQ. This consists of clauses of one of the following forms (we have omitted analogous clauses with inverses):
+A(x)  R(x, y)  C(y)
+A(x)  R(x, y)
+R(x, y)  S(x, y)
+A(x)  B(x)  [C(x)]
+
+(D.1)
+(D.2)
+(D.3)
+(D.4)
+Clauses of the form (D.1)(D.3) are never produced by IREQ. Hence,
+it follows that all such clauses are also in R. Clauses of the form
+(D.4) either appear in T or are produced by sequences starting with
+an RA-clause as shown in Lemma 3. In the latter case it follows by
+Lemma 3 and Proposition 2 that these clauses can be produced by
+unfolding and n-shrinking, and thus such clauses are also in R. In
+the former case (D.4) are unfolded into type 1 clause and as shown
+in DL-Lite Requiem unfolding corresponds to many inferences of
+IEL using the unfolding rule.
+D is produced by applying the Requiem unfolding using the produced datalog clauses and Rr
+Q by unfolding the produced queries using the unfolded clause. As shown before, Rr
+D must
+be equivalent to the datalog part of R. Moreover, like in Theorem 1
+all unfoldings over queries can be transformed into inferences with
+side premises clauses from T or function-free type 3.3 clauses in R.
+Hence, Rr
+
+Finally, Rr
+
+Q  R. 

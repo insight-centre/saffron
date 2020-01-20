@@ -1,0 +1,929 @@
+Locking for Concurrent Transactions
+
+on Ontologies
+
+Stefan Scheglmann, Steffen Staab, Matthias Thimm, and Gerd Gr oner
+
+WeST  Institute for Web Science and Technologies
+
+University of Koblenz-Landau
+
+{schegi,staab,thimm,groener}@uni-koblenz.de
+
+56070 Koblenz, Germany
+
+Abstract. Collaborative editing on large-scale ontologies imposes serious demands on concurrent modifications and conflict resolution. In order to enable robust handling of concurrent modifications, we propose a
+locking-based approach that ensures independent transactions to simultaneously work on an ontology while blocking those transactions that
+might influence other transactions. In the logical context of ontologies,
+dependence and independence of transactions do not only rely on the
+single data items that are modified, but also on the inferences drawn
+from these items. In order to address this issue, we utilize logical modularization of ontologies and lock the parts of the ontology that share
+inferential dependencies for an ongoing transaction. We compare and
+evaluate modularization and the naive approach of locking the whole ontology for each transaction and analyze the trade-off between the time
+needed for computing locks and the time gained by running transactions
+concurrently.
+
+Introduction
+
+Ontologies, as a prominent knowledge representation approach on the Web, are
+often collaboratively developed, distributed and extended by multiple users. In
+general, users modify ontologies independently from each other and they are
+not aware of edits of other users. Accordingly, approaches for enabling concurrent editing of large ontologies have to ensure that modifications of users are
+not contradicting each other. Concurrent ontology editing and knowledge base
+authoring has been the topic of several previous works, which can be roughly
+partitioned into two categories. First, optimistic versioning-based approaches,
+like in Karp et al. [10] or ContentCVS by Ruiz et al.
+[9], make users feel as in a
+single-user setting  by distinguishing between a private (editable) knowledge
+base and a public version users can only commit their changes to. In general,
+commits in these systems consist of multiple changes and these systems provide conflict resolution functionalities. Second, systems like [15] address conflict
+resolution for parallel editing over a Web interface. The latter systems usually
+focus more on the social component by making simultaneous changes of different
+users possible and showing them immediately to all users. In terms of time spans
+
+P. Cimiano et al. (Eds.): ESWC 2013, LNCS 7882, pp. 94108, 2013.
+c Springer-Verlag Berlin Heidelberg 2013
+?
+
+?
+
+?
+between two commits/edits of a single user, these two categories are the endpoints of a wide spectrum of approaches for dealing with concurrent knowledge
+base and ontology editing. However, the trade-off between isolated access and
+interleaving operations is also studied in traditional transaction management
+for databases, which is the foundation for the approach to deal with concurrent
+access to ontologies. There, sophisticated access methods and protocols avoid
+unwanted intermediate results and guarantee a consistent synchronization between users. This is achieved by introducing transactions and specific means
+for handling them. A transaction is defined by an opening statement (begin
+of transaction), some arbitrary program code that includes interactions with
+the database and a conclusion statement, i. e., either a commit that finalizes
+the transaction or an abort that erases all effects of this transaction. Using
+a transaction, the individual user should be shielded from influences of other
+users. The easiest way to achieve such isolation would be a strict serial execution of all transactions. Because individual transactions, however, may contain
+time-consuming user code, the parallel execution of transactions seems to be a
+necessity for the performance of the system. Trading off between users wishes
+for isolation from effects of other users led to the notion of serializability [2]. If
+transactions are scheduled in atypically interleavedway that is equivalent to
+some serial schedule of the same transactions, then the schedule is called serializable and the program code defining the transactions behaves functionally as
+if it has exclusive access to the database. Obviously, such a scheme is not only
+desirable to have for databases but is also highly desirable to have in the case
+of frequently accessed ontologies. However, there arise several issues that need
+to be tackled to carry over the notions of transaction and serializability from
+databases to ontologies: (1)The notion of serializability is based on the notion of
+equivalence of transaction schedules, but what does it mean that two schedules
+are equivalent if also computational inferences in ontologies need to be accounted
+for? (2)As will be shown below, serializability is typically based on locking data
+items such that different transactions do not interact with each other. But what
+should be locked when logical inference comes into play? (3)Locking data items
+for transaction scheduling is beneficial as the actual locking process is computationally cheap. However, in the context of ontologies computing the axioms to be
+locked may become computationally expensive. What is the trade-off between
+concurrency of ontology access and determining the locks for transactions on an
+ontology? To illustrate the above challenges, we consider the following example:
+Example 1. Let O = (T ,A) be an ontology with the following axioms in the
+T -Box:
+
+A1  R.D1
+B  D1
+
+(1)
+(4)
+
+A2  R.D2
+A  R.B
+
+(2)
+(5)
+
+D1  D2  
+
+(3)
+
+and some arbitrary ABox A. Assume that one user intends to replace Axiom
+(4) B  D1 by a new Axiom (6) B  D2. Imagine a second user is asking (at
+
+the same time) for all concepts that subsume A. Before the change of the first
+
+S. Scheglmann et al.
+
+user (replacement of Axiom (4) by (6)), concept A1 subsumes A, but after the
+change, A2 subsumes A. Before the first user starts the transaction the result to
+the second users query would be A  A1 and afterwards A  A2. However, the
+added Axiom (6), the result would be neither A  A1 nor A  A2.
+
+relationship does not hold after the first user has deleted Axiom (4) and not yet
+
+In this paper, we present a locking-based framework for handling concurrent
+transactions on ontologies. We define a notion of conflict that prevents different
+transactions to be executed in an arbitrary way (Sect. 4) and adapt a two-phase
+locking approach from databases [3] (Sect. 5). Whenever a user issues some
+operation the necessary locks are acquired. For computing the locking areas for
+transactions, we utilize the modules of an ontology [6].
+
+2 Foundations and Related Work
+
+The first part of this section introduces fundamentals on concurrent transactions
+and locking principles, rooted in the database research field. The second part
+gives an overview on related work of concurrent ontology editing.
+
+2.1 Foundations of Transaction and Locking
+
+Transaction management guarantees the isolation of a transaction execution
+from the inference with other transactions. Transactions in databases ensure the
+following properties [2]: Atomicity: A transaction is either completely executed
+or not executed; Consistency: The execution of a transaction has to maintain the
+consistency of a database; Isolation: The execution of a set of transactions has
+the same effect as all transactions would be executed individually; Durability:
+After executing a transaction, all modifications need to be stored in the database.
+Technically, isolation can be ensured by serializability, which guarantees that the
+outcome of a schedule is equal to the outcome of the same transactions executed
+one after the other. Such a schedule is called serializable. The serializability is
+guaranteed by concurrency control mechanisms like locking, e. g., the two-phase
+locking (2PL) [3], where data of potential competing transactions are locked
+in two phases: In the expanding phase, the transaction successively tries to
+acquire locks for the resources of each single atomic operation. If it successfully
+acquires a lock then it performs the operations and continues. If the resource of
+an operation is already locked by another transaction, the current transaction
+will stop and consecutively try to acquire a lock for this resource until it succeeds.
+After all operations of an transaction are performed, the transaction will enter
+the shrinking phase and free all of its locks.
+
+Following this line of argumentation, a key issue is to determine the resources
+that need to be locked in order to execute an atomic operation. Obviously, the
+locked area should be as small as possible to enable interleaving transactions,
+but the area should be as large as necessary to avoid conflicts.
+?
+
+?
+
+?
+2.2 Concurrent Ontology Editing
+
+The need for concurrency control in knowledge bases was already acknowledged
+by Chaudhri et al. [4]. They show the inadequacy of concurrency control mechanism from databases and present Dynamic Directed Graph (DDG), a concurrency control mechanism for rule-based knowledge bases. Their setting and
+approach is similar to ours but use a very restrictive knowledge representation
+formalism which simplifies transaction schedule computations.
+
+Other approaches can be roughly partitioned into two categories. The first
+category [10,9] extends versioning systems to the knowledge base setting and
+implement an optimistic conflict resolution schema. The second category [15]
+applies ideas of online editors to the field of collaborative ontology editing, without considering issues of conflict resolution directly. The rationale behind using
+these two approaches base on different assumptions. For the first category, it
+is assumed that knowledge bases are created over a large period of time. For
+both, it is assumed that the areas of responsibility of different contributors are
+relatively independent, i. e. they usually modify different parts of the knowledge
+base. However these assumptions do not necessarily hold in many of application areas, where e. g. already deployed ontologies are modified more frequently.
+In this paper, we focus on scenarios that need not satisfy these assumptions.
+Nonetheless, we now look at some of these approaches in more detail.
+
+In [10], Karp et al. introduced an authoring tool for knowledge bases based
+on frame logic, a predecessor of modern ontology languages. Along with the
+collaborative subsystem they define the notion of conflicts regarding knowledge
+base operations and they provide conflict detection mechanisms for the merge
+process. A similar approach is pursued in ContentCVS [9]. The authors adopted
+the popular concurrent versioning approach CVS to the field of collaborative
+ontology development. They include structural and semantic-based conflict detection and state-of-the-art ontology debugging and repair techniques to help
+the user in conflict resolution. Both approaches make use of an optimistic versioning based approach which detects and resolves conflicting edits in commits
+on merge time without locking. In [15], Tudorache et al. evaluate the collaboration features of WebProt eg e within an intense user study during the development process of the 11th version of the International Classification of Diseases
+(ICD-11). WebProt eg es collaborative features are all directly integrated in the
+editing process and make all users aware of all edits currently happening. Additional WebProt eg e provides features for incorporating, tracking and reviewing
+changes on-the-fly. This way of collaborative ontology editing is focusing on conflict prevention or just-in-time conflict resolution. To provide the users of such
+an editor with useful information about possible conflicts resulting from their
+edits, an approach similar to our approach could be facilitated. In such a setting
+our approach would not lock resources but make users aware of possible conflicts
+calculate from the current edits.
+
+For further related work, Falconer et al. [5] describe patterns of editing behavior and roles of the contributors for large scale ontology-development projects.
+This is of particular interest for the design and implementation of collaborative
+
+S. Scheglmann et al.
+
+editing environments for ontology. The concurrency control mechanism, described
+in this paper, builds the basis for such systems and the calculation of areas affected
+by a transaction might benefit from contributor roles and predefined behavior
+patterns.
+
+For OWL ontologies, Seidenberg and Rector [13] discuss basic principles for
+multi-user ontology editing. They indicate that due to inference capabilities the
+computation of locking areas goes beyond transaction management principles
+in databases since changes of a class might lead to different subsumptions of
+other classes, for instance: (i) classes with different names are classified as equal;
+(ii) a class is classified as a new subclass of a new/changed class; (iii) a class
+might become unsatisfiable. In this paper, we tackle this indicated challenge of
+computing locking areas for transaction management.
+
+In order to handle locking, it is necessary to identify areas that are affected
+by a transaction. Subsequently, we call such areas of an ontology the area of
+influence of a single operation. These areas are obtained by computing modules,
+either in terms of structural areas, which are built by traversal techniques [14,11],
+or in terms of semantic influence areas [6], as it is used in our work.
+
+3 Preliminaries
+
+In this section, we introduce description logics [1], the language family that
+underlies modern ontology languages like OWL2 [8]. For purpose of presentation,
+we refer to ALC, but our approach can be generalized to any other description
+logic where module computation [6] is supported. The signature SigL = CRI
+of L is composed of a set C of atomic concepts denoted by A, B, C, . . . , a set R of
+atomic roles denoted by r, s, . . . , and a set I of individuals denoted by a, b, c, . . . ,
+and subsets of SigL are denoted S, S1, S2, . . .. Concepts in L are built using the
+symbols in SigL and the following syntax rules:
+
+C ::= A| | | (C)| (C  C)| (C  C)| ( r.C)| ( r.C)|
+
+where A  C is a concept name, r  R is a role name and a1, . . . , an  I are
+individuals. If C1, C2 are concepts then C1  C2 is an inclusion axiom. If C is
+a concept, r  R is a role, and a, b  I are individuals, then C(a) and r(a, b)
+are assertional axioms. An ontology O is a pair O = (T ,A) where T is a finite
+set of inclusion axioms (called the Tbox) and A is a finite set of assertional
+axioms (called the Abox). The signature Sig(O) of an ontology O is the set
+Sig(O)  SigL of symbols occurring in O. The signature Sig() of an axiom
+ is defined analogously. If O = (T ,A) is an ontology and  is an axiom we
+define O  {} to be either O  {} = (T  {},A) or O  {} = (T ,A  {}),
+depending on whether  is an inclusion or assertional axiom. The set difference
+is defined analogously. We assume the standard first-order semantics of O, given
+by Tarski style model-theoretic semantics using interpretations like in [1].
+?
+
+?
+
+?
+4 Transactions on Ontologies
+
+In this section, we illustrate the problem of concurrent transaction management
+for ontologies and specify the notion of atomic operations, transactions, transaction schedules and serializability. By a slight abuse of the notation, we use
+
+standard set operators in the context of sequences, e. g., a  (a1, . . . , an) 
+a  {a1, . . . , an}. The union  of two sequences is defined as the set (a1, . . . , an)
+(b1, . . . , bm) = {a1, . . . , an, b1, . . . , bm} and the concatenation  of two sequences
+is defined as the sequence (a1, . . . , an)  (b1, . . . , bm) = (a1, . . . , an, b1, . . . , bm).
+Definition 1. Let O be an ontology in language L and VC , VR and VI be sets
+of variable names for concepts, roles and individuals. Then an atomic operation
+a on O is a tuple a = (o, ), consisting of one operation o  {ask, tell, f orget}
+with SigL = (C  VC )  (R  VR)  (I  VI )
+and an axiom  with 1.)   L
+(if o = ask), 2.)   L (if o = tell), or 3.)   O (if o = f orget).
+For an atomic operation (ask, ), we allow  to contain variable names in order to
+ask for more general formulas, e. g., the operation (ask, A  ?X) or (ask, ?Y 
+B) with ?X, ?Y  VC , asking for axioms with concept descriptions C such
+that O |= A  C is true or for all axioms with concept descriptions D that
+O |= D  B is true, respectively. Hence, an empty result to an ask operation
+means false whereas some result would mean true. The operation (f orget, )
+= O \ {}.
+triggers a contraction of O by   O yielding a new ontology O
+The operation (tell, ) triggers an expansion of O by  yielding a new ontology
+= O  {}. Note that we do not consider the general problem of complex
+O
+belief dynamics in ontologies [12]. For example, we do not consider the problem
+of revising an ontology by a possibly contradicting axiom  such that the new
+ontology remains consistent. To formalize the above intuition, we introduce two
+functions that describe the results of an atomic operation. ansanswer, returns
+a set of axioms for a given pair of ontology and atomic operationand upd
+update returns a new (updated) ontology, for a given pair of ontology and atomic
+with SigL = (C VC ) (R VR) (I VI ) let gr() be
+operation. For   L
+the set of groundings of  in L, i. e., the set of all axioms that are the same as 
+but every variable is substituted by some concept description, role description,
+or individual. Let O be an ontology and a = (o, ) an atomic operation. Then
+define
+
+ans(O, (o, )) =
+
+upd(O, (o, )) =
+
+
+
+{
+
+O
+O  {}
+O \ {}
+
+  gr() | O |= 
+}
+
+o = ask
+otherwise
+
+o = ask
+o = tell
+o = f orget
+
+Note that only the ask operation may yield a non-empty answer and only tell
+and f orget operations actually update the ontology. Based on these atomic op-
+erations, we are able to define ontology transactions as follows.
+
+Definition 2. An ontology transaction  (or transaction for short) is a finite
+sequence  = (a1, . . . , an) of atomic operations a1, . . . , an.
+
+S. Scheglmann et al.
+
+A transaction bundles a sequence of atomic operations to be executed on behalf of a user. For a transaction  = ((o1, 1), . . . , (on, n)) let axioms() =
+{1, . . . , n}. We denote with Sig()  SigL the signature of all axioms of a
+transaction , with L
+For an ontology O and a sequence of atomic operations (a1, . . . , an), in order
+to take cumulative changes of O into account, we abbreviate
+
+being the same as in Definition 1.
+
+upd(O, ()) = O
+
+upd(O, (a1, . . . , an)) = upd(upd(O, (a1, . . . , an1)), an)
+
+for all i = 1, . . . , n. In other words, upd(O, (a1, . . . , an)) is the ontology resulting after sequentially executing the atomic operations a1, . . . , an. Analogously,
+ans(O, an) is the answer of the atomic operation an on upd(O, (a1, . . . , an1)).
+
+ans(O, an) = ans(upd(O, (a1, . . . , an1)), an)
+
+(1)
+
+(2)
+
+(3)
+
+Example 2. To clarify this, we continue with formalizing our Example 2 from the
+introduction according to the definitions made so far. Let 1 = (a1, a2), 2 = (b1)
+be the two transactions on O defined as:
+
+a1 = (f orget, B  D1)
+b1 = (ask, A ?X)
+
+a2 = (tell, B  D2)
+
+As defined in the introduction, transaction 1 intends to replace the axiom B 
+D1 by B  D2 while transaction 2 asks for all subsumption relations of the form
+A ?X. Figure 1 shows the interaction between these two transactions. The left
+part of the figure shows transaction 1, while the right part shows the three
+possible execution orders of transactions 1 and 2. As we can see, depending
+on the transaction order, the outcome differs. The outcome of the operation
+of b1 = (ask, (A ?X)) is A  A1 if the operation takes place before and
+A  A2 after the operations of 1, a1, a2. Both cases refer to a serial schedule.
+However, in the second case, we observe unintended answers of transaction 2.
+Since the operation (b1) takes place in between the operations a1 and a2 (non-
+serial schedule) the only concept that subsumes A is the universal concept .
+Definition 3. Let  = {1, . . . , k} with i = (ai,1, . . . , ai,mi) for i = 1, . . . , k
+
+be a set of transactions. A transaction schedule  of  is a transaction  =
+(c1, . . . , cm) such that
+
+{c1, . . . , cm} = 1  2  . . .  k
+
+(4)
+
+(5)
+
+and for all i = 1, . . . , k we have u < r iff s < t for cu = ai,s and cr = ai,t.
+Definition 4. Let  = {1, . . . , k} be a set of transactions. A transaction
+schedule  is a serial transaction schedule of  if there is a permutation  :
+{1, . . . , k}  {1, . . . , k} such that
+
+ = (1)  (2)  . . .  (k)
+
+Let ser be the set of all possible serial transaction schedules for a given set of
+transactions .
+?
+
+?
+
+?
+Transaction 2
+
+Before schedule
+
+Begin 2
+
+(ask, A ?X)
+
+End 2
+
+Transaction 1
+
+T |= A  A1
+
+Begin 1
+
+(f orget, B  D1)
+
+T |= A  A1  A  A2
+
+(tell, B  D2)
+
+End 1
+
+T |= A  A2
+
+dummy
+
+Intermediate schedule
+
+After schedule
+
+Begin 2
+
+(ask, A ?X)
+
+End 2
+
+Begin 2
+
+(ask, A ?X)
+
+End 2
+
+Fig. 1. Transaction Processing
+
+Obviously, a serial transaction schedule ser is a transaction schedule that respects the original order of the atomic operations in the original transactions and
+executes operations of the individual transactions in distinguishable batches. For
+a set  of n transactions i with i = 1, . . . , n there exist n! different serial transaction schedules. Apart from the serial transaction schedules, a vast number of
+other interleaving schedules exists, e. g., for two transactions of lengths m1, m2
+the possible number of schedules is (m1+m2
+). So there is, in general, a large number of possibilities for transactions to interleave. In order to both preserve the
+intended semantics of a set of transactions and optimizing performance we are
+interested in serializable schedules.
+
+m1
+
+Definition 5. Let O be an ontology and  = {1, . . . , k} be a set of transactions on O. A transaction schedule 
+= (c1, . . . , cn) of  is serializable if there
+exists a serial transaction schedule ser = (d1, . . . , dn) such that ci = d(i) (for
+i = 1, . . . , n) for some bijection  : {1, . . . , n}  {1, . . . , n} of  such that
+1. upd(O, 
+2. ans(O, (c1, . . . , ci)) = ans(O, (d(1), . . . , d(i))) for i = 1, . . . , n
+
+) = upd(O, ser)
+
+is serializable wrt. O if there is a serial
+on O yields the same ontology
+
+In other words, a transaction schedule 
+transaction schedule ser such that applying 
+as applying ser on O and all answers to queries stay the same.
+Example 3. We continue Example 2 with the two transactions 1 = (a1, a2)
+and 2 = (b1). Possible transaction schedules, which adhere to a fixed order in
+operations of the same transaction, are 1 = (a1, a2, b1), 2 = (a1, b1, a2) and
+3 = (b1, a1, a2). Both 1 and 3 are serial transaction schedules. The schedule
+2 is not serializable due to
+?
+
+?
+
+?
+ans1(O, b1) = {A  A1}
+
+ans3(O, b1) = {A  A2}
+
+ans2(O, b1)  {A1, A2} = 
+
+Definition 6. A set of transaction  = {1, . . . , n} is conflicting if there is a
+
+transaction schedule  that is not serializable.
+
+S. Scheglmann et al.
+
+Obviously, in the case of conflicting transactions, some mechanism need to decide
+how transactions have to be scheduled in order to have a well-defined outcome of
+concurrent transactions. In the following, we address this issue in a conservative
+way by restricting interleaving executions of possibly conflicting transactions
+using locking.
+
+5 What Has to Be Locked?
+
+A problem of concurrent transaction management is to find, if existing, a serializable transaction schedule for a sequence of transactions 1, . . . , n. The simplest serializable transaction schedule for a given set of transactions  would be
+a serial transaction schedule, i. e., locking the whole ontology. However, such a
+schedule would potentially suffer from execution delays regarding multiple trans-
+actions. The other extreme is to lock exactly this part of the ontology necessary
+to avoid conflicts, but this could suffer from a potentially expensive calculation
+of the concrete locking area. To remedy this trade-off, we investigate the problem
+of determining the right part of the ontology that has to be locked. Based on
+this, we are able to investigate the problem of acquiring locks and determining
+a serializable interleaving transaction schedule.
+
+5.1 Modules of an Ontology
+
+According to our example in Sect. 4, a lock has to be acquired on more than
+just the axioms of the operations of a transaction (axioms()). Additionally,
+also the logical consequences, constructed using symbols from Sig(), should be
+locked. Thus, for a transaction  over ontology O, we have to lock a sub-ontology
+O  O  axioms(), so that every logical consequence  constructed using only
+symbols from Sig() with O  axioms() |=  is already a logical consequence of
+O. It is possible to define finite sets of axioms M  O such that for all axioms
+ with terms only from some Signature S  Sig(O), we have that M |=  iff
+O |= . In such case M is called S-module of O, cf. [6].
+Definition 7. Let O  O be ontologies and S be a signature. Then O
+is a
+module for S of O, if for all axioms  with Sig()  S, it holds that O |=  if
+and only if O |= .
+An important property of modules is convexity, i. e., given three ontologies O1 
+O2  O3 if O1 is an S-module in O3 then O1 is an S-module in O2 and O2
+is an S-module in O3 [6]. This means that it is sufficient to focus on minimal
+S-modules. An S-module O1 is minimal if there is no other S-module O2  O1.
+
+This is also advantageous from a locking point of view, locking less is better
+since is is more likely that other transactions could also be executed. However,
+just one module is not enough since for a given signature S and an ontology
+O there might be multiple S-modules and for our task we are interested in the
+fragment O that covers all axioms essential for the transaction . For such kind
+
+of fragment of an ontology the literature gives us the following definition, cf. [6].
+?
+
+?
+
+?
+Definition 8. For a signature S and an ontology O, we say that an axiom   O
+is S-essential in O wrt. L if  belongs to some minimal S-module in O wrt. L.
+Unfortunately, it has been shown in the literature that deciding if a set of axioms
+is a module is hard or even undecidable for expressive DLs [6,7]. But there exists
+several alternative (approximative) definitions of modules. One of them is the so
+called locality-based module (LBM) [16], which comes in two flavors, syntactic
+and semantic LBM. For syntactic LBMs it is known that they contain the corresponding semantic LBM and for their calculation algorithms with polynomial
+runtime wrt. the size of the ontology are known [16].
+
+Based on the definition above, we can now state our notion of influence area,
+which describes the set of all axioms and entailments, which could be influenced
+by a single atomic operation.
+
+Definition 9. The minimal influence area a of an atomic operation a = (o, )
+with respect to an ontology O is the set of all Sig()-essential axioms in O. If
+o = tell we extend the definition to all Sig()-essential axioms in O  {}.
+
+5.2 Two-Phase Locking for Ontologies
+
+Now, we are able to define a 2PL based locking mechanism for ontology transac-
+tions. Algorithm 1 displays the locking procedure. The input to the algorithm is
+the transaction i and a global lock GLock, which is synchronized for all running
+instances of this procedure. The algorithm can be subdivided into three parts.
+First the initialization part, in which a local empty lock T Lock is initialized,
+line (2). The second part of the algorithm complies the Expanding Phase of
+the 2PL mechanism. The algorithm picks the current atomic operation (a) (4).
+
+Algorithm 1: ExecuteTransaction
+
+input : , a single transaction, GLock a globale syncronized Lock
+
+1 begin
+
+/* Initialization
+
+T Lock  ;
+for i = 1 to || do
+
+/* Expanding phase: acquire locks
+
+wait;
+
+a  [i];
+while ((GLock\T Lock)  Sig(a) = ) do
+GLock  GLock\T Lock;
+T Lock  Sig(a1...ai);
+GLock  GLock  T Lock;
+execute a;
+
+/* Shrinking phase: remove all locks
+
+GLock  GLock\T Lock;
+
+*/
+
+*/
+
+*/
+
+S. Scheglmann et al.
+
+Only if the intersection between this a and the global lock GLock is empty the
+algorithm will continue, otherwise it will wait (5,6). During the time procedure
+(a) is waiting for resources to be freed, it could happen that another parallel
+working procedure (b) changes the ontology in two ways that could affect (a).
+First, an axiom currently in the T Lock of (a) is removed by (b), then the T Lock
+of (a) is just too big but the locking is still valid. Second, a new axiom that
+should be part of T Lock (a) is added by (b), then the calculated T Lock of (a)
+is to small and therefore it has to be constantly recalculated. If it is empty the
+procedure acquires the lock for a, by adding a to T Lock as well as to GLock,
+lines (7,8,9). Then the procedure could execute the atomic operation a, line (10).
+As soon as all atomic operations of i are processed, the procedure enters the
+Shrinking Phase (third part) and frees all acquired locks (line (11)).
+
+Theorem 1. Let  = {1, . . . , n} be a set of transactions. Any transaction
+
+schedule that is emitted by parallel executions of Algorithm 1 for each transaction
+1, . . . , n is serializable.
+Proof (Sketch). Let  = {1, . . . , n} with i = (ai,1, . . . , ai,mi) for i = 1, . . . , k
+be a set of transactions. Let  = (c1, . . . , cn) be a transaction schedule emitted by
+the parallel executions of Algorithm 1. Consider the serial transaction schedule
+ser = (1)  . . . (n) with a permutation  : {1, . . . , n}  {1, . . . , n} and
+(i) < (j) iff k < l for ck = ai,1 and cl = aj,1. In other words, ser is the serial
+schedule obtained from  by ordering the transactions according to their first
+operation in . It suffices to show that ser is the witness of s serializability
+according to Definition 5. Assume upd(O, 
+) = upd(O, ser) does not hold. Then
+that manipulate some axiom   O. Without loss of
+there are transactions , 
+in ser. Then  acquires a lock on at least
+generality assume  appears before 
+the axiom note that always   Sig()in line 9 of Algorithm 1 and releases
+
+it only after executing the whole transaction in line 11. Then 
+is blocked and
+O is updated in the same way as a serial execution of  and 
+
+, as in ser.
+It follows upd(O, 
+) = upd(O, ser). Similarly, it also holds that the answer
+behavior is the same for both  and ser by taking into account that the subset
+ O that suffices to produce answers for an operation (ask, )i. e.
+
+
+ans(O, (ask, )) = {
+} = {
+} is
+Sig()
+
+accessed by only one transaction at a time as well.
+
+  gr() | Sig() |= 
+
+  gr() | O |= 
+?
+
+?
+
+?
+6 Evaluation
+
+For our evaluation, we use different versions of the National Cancer Institute
+Thesaurus (NCIt) which are available as OWL EL++ ontologies1. As there are
+no real transaction logs available for NCIt (or any other versioned ontology), we
+perform our evaluation using transactions artificially generated from four consecutive versions available for NCIt. More specifically, for each two consecutive
+
+1 NCIt archive http://evs.nci.nih.gov/ftp1/NCI_Thesaurus/archive, Nov 2012.
+?
+
+?
+
+?
+versions of the NCIt ontology, we generate around 140 different transactions,
+each consisting of 6-12 atomic operations, which contain tell -operations on axioms that are present in the more recent version but missing in the previous
+version, forget -operations on axioms that are present in the previous version but
+missing in the more recent version, and ask -operations on axioms artificially generated partially from the signature of the tell - and forget -operations in the same
+transaction and potentially other symbols. We computed schedules for around
+240 different combinations of these transaction.
+
+Our evaluation aims at measuring the potential benefit of the module-based
+locking approach in terms of total execution time. For each atomic operation
+in a transaction, we compute the locking areas based on syntactic locality as
+described in Sec. 5. While the time needed for computing a module-based lock
+is, in general, much larger than for the whole ontology (which is almost imme-
+diate) we estimate a benefit when taking varying execution times of non-critical
+operationsi. e. user code that is contained in a transactioninto account. We
+expect that with increasing average execution time of non-critical operations the
+effort for computing a more specific locking area becomes negligible.
+
+6.1 Evaluation Setup
+?
+
+?
+
+?
+ic
+?
+
+?
+
+?
+i c
+?
+
+?
+
+?
+i
+?
+
+?
+
+?
+i
+?
+
+?
+
+?
+i , where in c
+
+In order to compensate for the lack of existing real transaction logs, we implemented Algorithm 1 in a non-parallel fashion and compute all serializable transaction schedules that are consistent with our locking approach. Let mod resp.
+onto be these sets of serializable transaction schedules. For the approach of locking the whole ontology for each atomic operation it follows that onto is the set
+of all serial transaction schedules. For both locking approaches and each transaction schedule  = (c1, . . . , cn) obtained in this way, we estimate the running time
+for executing the schedule as follows. Each atomic operation ci (i = 1, . . . , n)
+
+can be decomposed via ci = c
+i the lock is acquiredwhich
+might take some time of lock calculation and the locking itselfc
+is the critical operationwhich contains the actual database access and is the reason for
+is a non-critical operation, which might contain user
+acquiring the lockand c
+
+interaction and other user code. For each non-critical operation c
+i , we consider
+different (but uniform over all non-critical operations) execution times while we
+assume critical operations to be immediate, i. e. they have an execution time
+?
+
+?
+
+?
+i+1 where ci and ci+1
+i+1c
+i+1c
+of zero. If  contains a sequence cici+1 = c
+?
+
+?
+
+?
+originate from different transactions we assume that c
+i and c
+i+1 can be
+executed in parallel, thus decreasing total execution time. A parallelization f
+of  is a function f : {1, . . . , n}  {1, . . . , n} that satisfies
+1. f(i)  f(j) for all i, j = 1, . . . , n,
+2. If f(i) = f(j) then c
+3. there is n
+?
+
+?
+
+?
+j come from different transactions, and
+
+} (Im f is the image of a function f )
+
+  n with Im f = {1, . . . , n
+?
+
+?
+
+?
+i and c
+?
+
+?
+
+?
+ic
+?
+
+?
+
+?
+i c
+?
+
+?
+
+?
+i c
+?
+
+?
+
+?
+i+1c
+?
+
+?
+
+?
+i+1c
+
+Therefore, a parallelization f says that all c
+parallel at a first step (after their corresponding c
+?
+
+?
+
+?
+i with f(i) = 0 are executed in
+
+i with f(i) = 1
+?
+
+?
+
+?
+i). Then all c
+
+S. Scheglmann et al.
+
+are executed in parallel, and so on. The first requirement above ensures that no ci
+is executed before cj if j < i. The second requirement says that only operations
+of different transactions can be executed in parallel, and the third requirement
+states that there are no steps in the execution where nothing is executed. Due to
+the assumed execution time of zero for critical operations, we can neglect those.
+Let F be the set of all parallelizations of . As there may be different variants
+on how to parallelize a single transaction schedule we average the total execution
+time over all of them. Let tnc be the average execution time for a non-critical
+operation and let tX () be the total time needed for computing locks in  wrt.
+the approach X  {onto, mod}. Then we estimate the total execution time for
+a transaction schedule  = (c1, . . . , cn) via
+?
+
+?
+
+?
+T X
+tnc() = tX () + tnc
+
+fF max Im f
+
+|F|
+
+Finally, for each tnc we take the average total execution time over all transaction
+schedules for both approaches, i. e.
+?
+
+?
+
+?
+T X
+
+tnc =
+
+tnc()
+
+X T X
+|X|
+
+with X  {onto, mod}. The implementation used for our evaluation can be
+downloaded from https://launchpad.net/ontotrans.
+
+6.2 Results
+
+As mentioned, we considered different combinations of transactions of different
+lengths. For around 30% of these tested combinations ( 240 combinations), we
+could find serializable interleaving schedules. This seams to be strongly related
+to our strategy of randomly picking axioms to generate the operations of a
+transaction. The influence area of a whole transaction consisting of randomly
+generated operations can be quite large so that the only possible serializable
+schedules for a combination of such transactions are the serial ones. For real
+transactions, we assume the axioms in the single operations to be more related
+to each other and therefore the influence areas to be smaller. Due to reasons of
+execution time, we decided to compute a maximum of 30 schedules per tested
+transaction combination. With these settings, we were able to find around 1200
+serializable transaction schedules. The average serializable transaction schedules
+has only 76.642% of the length of the serial schedules and a single computation of
+the two modules, one for the global lock and one for the current atomic operation
+takes in average 2.832 seconds. Figure 2, displays the average total execution time
+for a schedule of average length of ten, considering different execution times for
+
+the non-critical part c
+i of the atomic operation. The figure shows that starting
+from a average execution time for a non-critical operations of around 12 seconds
+the locking based approach starts to perform better.
+?
+
+?
+
+?
+t/sec
+
+T onto
+T mod
+
+tnc/sec
+
+Fig. 2. Average Total Execution Time for T mod vs. T onto
+
+6.3 Lessons Learned and Discussion
+
+The relatively high threshold shown in Fig. 2 is the result of the expensive
+module calculation. Due to a lack of implementations of incremental module
+calculation mechanisms like those introduced in [17], we use the locality-based
+module calculation of the OWLAPI which recalculates the global module for
+every comparison. It turns out that this global lock calculation takes on average
+over 90% of the whole time spend on module calculation. Thus, applying an
+optimized incremental module calculation and efficient caching strategies would
+lead to a significant decrease in average module calculation time and therefore to
+a significantly lower threshold. However, even with our naive implementation our
+results depicted in Fig. 2 clearly show the benefit of computing module-based
+locks as total execution time decreases compared to the naive approach.
+
+7 Conclusion
+
+In this paper, we have presented a locking approach for concurrent ontology
+transactions. While the management of transactions in general is a challenging
+problem on its own, it becomes more complicated for ontologies since changes
+in an ontology also affect the entailments of the ontology. Thus, the management of transactions has to take the entailments of an ontology into account.
+Several research has been done in order to analyze changes in ontologies and to
+compare versions of ontologies or to build links between ontology versions. The
+locking approach in this paper is a further step towards collaborative ontology
+management. The locking principle takes the dependencies between axioms regarding the DL entailment into account, by determining the influence area of
+transactions. Locking policies lock ontologies according to the influence area of
+a transaction.
+
+As a next step, we plan to investigate efficient scheduling of ontology trans-
+actions, while the presented locking principles and locking policies are the fundamental building blocks of a scheduling approach.
+
+Acknowledgments. The research reported here was partially supported by the
+SocialSensor FP7 project (EC under contract number 287975).
+
+S. Scheglmann et al.

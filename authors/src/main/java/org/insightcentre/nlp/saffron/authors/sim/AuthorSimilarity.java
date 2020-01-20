@@ -38,7 +38,6 @@ public class AuthorSimilarity {
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
         //System.err.printf("%d author terms\n", ats.size());
         for (AuthorTerm at : ats) {
-            log.tick();
             if (!vectors.containsKey(at.getAuthorId())) {
                 vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
@@ -75,8 +74,7 @@ public class AuthorSimilarity {
             }
             termAuthors.addAll(topN);
         }
-        
-        log.endTick();
+
         return termAuthors;
     }
 

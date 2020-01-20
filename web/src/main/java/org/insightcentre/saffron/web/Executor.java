@@ -6,6 +6,7 @@ import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,12 +14,20 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.common.flogger.FluentLogger;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
@@ -28,9 +37,18 @@ import org.insightcentre.nlp.saffron.authors.Consolidate;
 import org.insightcentre.nlp.saffron.authors.ConsolidateAuthors;
 import org.insightcentre.nlp.saffron.authors.connect.ConnectAuthorTerm;
 import org.insightcentre.nlp.saffron.authors.sim.AuthorSimilarity;
-import org.insightcentre.nlp.saffron.config.*;
+import org.insightcentre.nlp.saffron.concept.consolidation.AlgorithmFactory;
+import org.insightcentre.nlp.saffron.concept.consolidation.ConceptConsolidation;
+import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
+import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
+import org.insightcentre.nlp.saffron.config.ConceptConsolidationConfiguration;
+import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Concept;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
@@ -57,9 +75,7 @@ import org.json.JSONObject;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.common.io.Files;
-import com.mongodb.MongoException;
 import com.mongodb.client.FindIterable;
-import java.io.FileNotFoundException;
 
 /**
  *
@@ -74,6 +90,7 @@ public class Executor extends AbstractHandler {
     private Configuration defaultConfig;
     private final File logFile;
     static String storeCopy = System.getenv("STORE_LOCAL_COPY");
+    private static final FluentLogger logger = FluentLogger.forEnclosingClass();
 
     public Executor(SaffronDataSource data, File directory, File logFile) {
         this.data = data;
@@ -83,7 +100,8 @@ public class Executor extends AbstractHandler {
             this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
         } catch (IOException x) {
             this.defaultConfig = new Configuration();
-            System.err.println("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");
+            logger.atInfo().log("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");
+
         }
         this.logFile = logFile;
 
@@ -200,11 +218,14 @@ public class Executor extends AbstractHandler {
                 = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+        ConceptConsolidationConfiguration conceptConsolidationConfiguration
+        		= new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.termSim = termSimilarityConfiguration;
+        newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -235,7 +256,8 @@ public class Executor extends AbstractHandler {
                         obj.getString("mime_type"),
                         authors,
                         result,
-                        obj.get("metadata").toString());
+                        obj.get("metadata").toString(),
+                        obj.has("date") ? org.insightcentre.nlp.saffron.data.Document.parseDate(obj.get("date").toString()) : null);
                 other.addDocument(docCorp);
             }
         }
@@ -320,7 +342,7 @@ public class Executor extends AbstractHandler {
             @Override
             public void run() {
                 _status.stage = 1;
-                _status.setStatusMessage("Loading ZIP " + tmpFile.getPath());
+                _status.setStageStart("Loading corpus" + tmpFile.getPath(), saffronDatasetName);
                 try {
                     final Corpus corpus;
                     if (tmpFile.getName().endsWith(".tgz") || tmpFile.getName().endsWith(".tar.gz")) {
@@ -367,7 +389,7 @@ public class Executor extends AbstractHandler {
             @Override
             public void run() {
                 _status.stage = 1;
-                _status.setStatusMessage("Crawling " + url);
+                _status.setStageStart("Loading corpus" + url, saffronDatasetName);
                 try {
                     URL url2 = new URL(url);
                     File f = Files.createTempDir();
@@ -400,7 +422,7 @@ public class Executor extends AbstractHandler {
             @Override
             public void run() {
                 _status.stage = 1;
-                _status.setStatusMessage("Reading JSON: " + tmpFile.getPath());
+                _status.setStageStart("Loading corpus" + tmpFile.getPath(), saffronDatasetName);
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     Corpus corpus = CorpusTools.fromJson(tmpFile);
@@ -418,7 +440,7 @@ public class Executor extends AbstractHandler {
                                 org.insightcentre.nlp.saffron.data.Document newDoc
                                         = new org.insightcentre.nlp.saffron.data.Document(doc.file,
                                             doc.id, doc.url, doc.name, doc.mimeType,
-                                        doc.authors, doc.metadata, writer.toString());
+                                        doc.authors, doc.metadata, writer.toString(), doc.date);
                                 newDocs.add(newDoc);
                             }
                         }
@@ -477,107 +499,103 @@ public class Executor extends AbstractHandler {
             }
         }
         ow.writeValue(new File(datasetFolder, "config.json"), config);
-
+        _status.setStageComplete("Loading corpus", saffronDatasetName);
         _status.stage++;
-        _status.setStatusMessage("Indexing Corpus");
+
+        _status.setStageStart("Indexing Corpus", saffronDatasetName);
         final File indexFile = new File(new File(parentDirectory, saffronDatasetName), "index");
         DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, _status, isInitialRun);
+        _status.setStageComplete("Indexing Corpus", saffronDatasetName);
 
         _status.stage++;
-        _status.setStatusMessage("Initializing term extractor");
+
+        _status.setStageStart("Extracting Terms", saffronDatasetName);
         TermExtraction extractor = new TermExtraction(config.termExtraction);
-        _status.setStatusMessage("Extracting Terms");
         TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
-        //res.normalize();
-
-        _status.setStatusMessage("Writing extracted terms");
-        //if (storeCopy.equals("true"))
-        //    ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.topics);
-
-        _status.setStatusMessage("Writing document term correspondence");
-        if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTerms);
-
-        data.setDocTerms(saffronDatasetName, res.docTerms);
-
-        _status.stage++;
-        _status.setStatusMessage("Extracting authors from corpus");
-        Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
-
-        _status.setStatusMessage("Consolidating author names");
-        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
-
-        _status.setStatusMessage("Applying consolidation to corpus");
-        applyConsolidation(searcher, consolidation, _status);
-        data.setCorpus(saffronDatasetName, corpus);
-
-        _status.stage++;
-        _status.setStatusMessage("Building concepts (skipped)");
-        // TODO: Even the LinkToDBpedia executable literally does nothing!
         List<Term> terms = new ArrayList<>(res.terms);
         data.setTerms(saffronDatasetName, terms);
 
-        _status.setStatusMessage("Saving linked terms");
+        //_status.setStageStart("Writing extracted terms", saffronDatasetName);
+        //if (storeCopy.equals("true"))
+        //    ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms-extracted.json"), res.topics);
+
+        _status.setStageStart("Writing Document-Term Correspondence", saffronDatasetName);
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms.json"), terms);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "doc-terms.json"), res.docTerms);
+        data.setDocTerms(saffronDatasetName, res.docTerms);
+        _status.setStageComplete("Writing Document-Term Correspondence", saffronDatasetName);
+        _status.setStageComplete("Extracting Terms", saffronDatasetName);
 
         _status.stage++;
-        _status.setStatusMessage("Connecting authors to terms");
+        _status.setStageStart("Consolidating concepts", saffronDatasetName);
+        ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
+        List<Concept> concepts = conceptConsolidation.consolidate(terms);
+        data.addConcepts(saffronDatasetName, concepts);
+        _status.setStageComplete("Consolidating concepts", saffronDatasetName);
+        
+        _status.stage++;
+
+        _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
+        Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
+        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
+        applyConsolidation(searcher, consolidation, _status);
+        data.setCorpus(saffronDatasetName, corpus);
+        _status.setStageComplete("Extracting authors from corpus", saffronDatasetName);
+
+        _status.stage++;
+
+        _status.setStageStart("Saving linked terms", saffronDatasetName);
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "terms.json"), terms);
+        _status.setStageComplete("Saving linked terms", saffronDatasetName);
+
+        _status.stage++;
+
+        _status.setStageStart("Connecting authors to terms", saffronDatasetName);
         TFIDF.addTfidf(res.docTerms);
         ConnectAuthorTerm cr = new ConnectAuthorTerm(config.authorTerm);
         Collection<AuthorTerm> authorTerms = cr.connectResearchers(terms, res.docTerms, searcher.getDocuments(), _status);
-
-        _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-terms.json"), authorTerms);
-
         data.setAuthorTerms(saffronDatasetName, authorTerms);
+        _status.setStageComplete("Connecting authors to terms", saffronDatasetName);
 
         _status.stage++;
-        _status.setStatusMessage("Connecting terms");
+
+        _status.setStageStart("Connecting terms", saffronDatasetName);
         TermSimilarity ts = new TermSimilarity(config.termSim);
         final List<TermTerm> termSimilarity = ts.termSimilarity(res.docTerms, _status);
-
-        _status.setStatusMessage("Saving term connections");
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "term-sim.json"), termSimilarity);
-
         data.setTermSim(saffronDatasetName, termSimilarity);
+        _status.setStageComplete("Connecting terms", saffronDatasetName);
 
         _status.stage++;
-        _status.setStatusMessage("Connecting authors to authors");
+
+        _status.setStageStart("Connecting authors to authors", saffronDatasetName);
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
         final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, _status);
-
-        _status.setStatusMessage("Saving author connections");
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
-
         data.setAuthorSim(saffronDatasetName, authorSim);
+        _status.setStageComplete("Connecting authors to authors", saffronDatasetName);
 
         _status.stage++;
-        _status.setStatusMessage("Building term map");
-        Map<String, Term> termMap = loadMap(terms, mapper, _status);
 
-        _status.setStatusMessage("Reading model");
+        _status.setStageStart("Building term map and taxonomy", saffronDatasetName);
+        Map<String, Term> termMap = loadMap(terms, mapper, _status);
         if (config.taxonomy.modelFile == null) {
             config.taxonomy.modelFile = new SaffronPath("${saffron.home}/models/default.json");
         }
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
-
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
-        _status.setStatusMessage("Building taxonomy");
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, bwList.taxoWhiteList, bwList.taxoBlackList);
         Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
-        _status.setStatusMessage("Saving taxonomy");
-
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
         data.setTaxonomy(saffronDatasetName, topRootGraph);
-
-
-        _status.setStatusMessage("Done");
+        _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
         _status.completed = true;
     }
 
@@ -599,38 +617,78 @@ public class Executor extends AbstractHandler {
         public boolean failed = false;
         public boolean completed = false;
         public boolean advanced = false;
-        private String statusMessage2 = "";
+        public boolean warning = false;
         public String name;
+        public String statusMessage;
         private final PrintWriter out;
 
         public Status(PrintWriter out) {
             this.out = out;
         }
 
-        public String getStatusMessage() {
-            return statusMessage2;
-        }
-
         public void setStatusMessage(String statusMessage) {
-            System.err.printf("[STAGE %d] %s\n", stage, statusMessage);
+            logger.atInfo().log("[STAGE %d] %s\n", stage, statusMessage);
             if (out != null) {
                 out.printf("[STAGE %d] %s\n", stage, statusMessage);
             }
             if (out != null) {
                 out.flush();
             }
-            this.statusMessage2 = statusMessage;
+        }
+
+        public void setErrorMessage(String errorMessage) {
+            logger.atSevere().log("[STAGE %d] %s\n", stage, errorMessage);
+            this.statusMessage = errorMessage;
+        }
+
+        public void setWarningMessage(String warningMessage) {
+            logger.atWarning().log("[STAGE %d] %s\n", stage, warningMessage);
+            this.statusMessage = warningMessage;
+        }
+
+        @Override
+        public void setStageStart(String statusMessage, String taxonomyId) {
+            logger.atInfo().log("[STAGE %d] %s\n", stage, statusMessage);
+            String run = data.getRun(taxonomyId);
+            JSONObject runJson = new JSONObject(run);
+            data.updateRun(taxonomyId, statusMessage, runJson, "running");
+            if (out != null) {
+                out.printf("[STAGE %d] %s\n", stage, statusMessage);
+            }
+            if (out != null) {
+                out.flush();
+            }
+            this.statusMessage = statusMessage;
+        }
+
+        @Override
+        public void setStageComplete(String statusMessage, String taxonomyId) {
+            String run = data.getRun(taxonomyId);
+            JSONObject runJson = new JSONObject(run);
+            data.updateRun(taxonomyId, statusMessage, runJson, "completed");
+        }
+
+        @Override
+        public void warning(String message, Throwable cause) {
+            this.warning = true;
+            setWarningMessage("Warning: " + message);
+            cause.printStackTrace();
+            if (out != null) {
+                cause.printStackTrace(out);
+            }
+            if (out != null) {
+                out.flush();
+            }
         }
 
         @Override
         public void fail(String message, Throwable cause) {
             this.failed = true;
-            System.out.println(message + " cause = " + cause.getClass());
             if (cause instanceof com.mongodb.MongoTimeoutException){
-                setStatusMessage("Failed: Cannot connect to a MongoDB instance. " +
+                setErrorMessage("Failed: Cannot connect to a MongoDB instance. " +
                         "Please configure Saffron to connect to a running MongoDB instance and try again.");
             } else {
-                setStatusMessage("Failed: " + message);
+                setErrorMessage("Failed: " + message);
             }
             data.remove(name);
             cause.printStackTrace();
@@ -644,7 +702,7 @@ public class Executor extends AbstractHandler {
 
         @Override
         public void log(String message) {
-            System.err.println(message);
+            logger.atInfo().log("[STAGE %d] %s\n", stage, message);
             if (out != null) {
                 out.println(message);
             }
@@ -655,7 +713,7 @@ public class Executor extends AbstractHandler {
 
         @Override
         public void endTick() {
-            System.err.println();
+            logger.atInfo().log("[STAGE %d] %s\n", stage, "");
             if (out != null) {
                 out.println();
             }
@@ -666,7 +724,7 @@ public class Executor extends AbstractHandler {
 
         @Override
         public void tick() {
-            System.err.print(".");
+            logger.atInfo().log("[STAGE %d] %s\n", stage, ".");
             if (out != null) {
                 out.print(".");
             }

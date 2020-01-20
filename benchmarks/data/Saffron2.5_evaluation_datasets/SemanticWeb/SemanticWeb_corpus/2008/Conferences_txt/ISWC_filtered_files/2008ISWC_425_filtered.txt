@@ -1,0 +1,1032 @@
+Scalable Grounded Conjunctive Query
+Evaluation over Large and Expressive
+
+Knowledge Bases
+
+Julian Dolby1, Achille Fokoue1, Aditya Kalyanpur1, Li Ma2, Edith Schonberg1,
+
+Kavitha Srinivas1, and Xingzhi Sun2
+
+1 IBM Watson Research Center, P.O. Box 704, Yorktown Heights, NY 10598, USA
+
+{dolby,achille,adityakal,ediths,ksrinivs}@us.ibm.com
+
+2 IBM China Research Lab, Beijing 100094, China
+
+{malli,sunxingz}@cn.ibm.com
+
+Abstract. Grounded conjunctive query answering over OWL-DL ontologies is intractable in the worst case, but we present novel techniques
+which allow for efficient querying of large expressive knowledge bases in
+secondary storage. In particular, we show that we can effectively answer
+grounded conjunctive queries without building a full completion forest
+for a large Abox (unlike state of the art tableau reasoners). Instead we
+rely on the completion forest of a dramatically reduced summary of the
+Abox. We demonstrate the effectiveness of this approach in Aboxes with
+up to 45 million assertions.
+
+1 Introduction
+
+Scalable conjunctive query answering is an important requirement for many
+large-scale Semantic Web applications. In this paper, we present a tableau-based
+reasoning solution for answering grounded conjunctive queries over large and
+expressive Aboxes. Grounded conjunctive queries, which use distinguished variables only, are more realistic in practice and can also be answered more efficiently
+than the more general case. Our approach is sound and complete for DL SHIN
+(OWL-DL minus nominals and datatypes).
+
+The naive tableau-based algorithm for grounded conjunctive query is to split
+the query into its component membership atoms and relationship atoms, solve
+each atom separately, and join the respective bindings at the end. For example,
+consider a conjunctive query C(x)  R(x, y)  D(y) where x and y are distinguished variables, C and D are concepts, and R and S are roles. Naively, the
+membership atoms C(x) and D(x) and the relationship atom R(x, y) are solved
+as three separate queries, and then the result bindings are joined. Without any
+optimization, solving each membership atom requires testing every individual
+in the Abox, and solving each relationship query requires testing every pair of
+individuals in the Abox. For the membership atom C(x), for each individual
+a, the assertion a : C is added to the Abox, and the new Abox is tested for
+
+A. Sheth et al. (Eds.): ISWC 2008, LNCS 5318, pp. 403418, 2008.
+c Springer-Verlag Berlin Heidelberg 2008
+
+J. Dolby et al.
+
+consistency. For the relationship atom R(x, y), for each pair of individuals a and
+b, the assertions a : RNb and b : Nb are added to the Abox, where Nb is
+a new concept. This abox is then tested for consistency. Optimizations reduce
+the number of tests that need to be performed. However, this approach remains
+fundamentally impractical for large Aboxes.
+This paper builds on our previous technique for solving membership queries
+over SHIN KBs containing millions of assertions [1]. The technique applies a
+standard tableau algorithm to a summary Abox A rather than the original Abox
+A. The summary A is created by aggregating individuals with the same concept
+sets (i.e., the same set of explicit types) into a single summary individual (of that
+same type). For a given membership query, its negation is added to the concept
+set of each individual a in A. If the summary is consistent, then all individuals
+mapped to a can be ruled out as solutions to the query. If inconsistent, it is
+possible that either (i) a subset of individuals mapped to a are instances of the
+query or (ii) the inconsistency is a spurious effect of the summarization. We
+determine the answer through refinement, a process which selectively expands
+the summary Abox by focusing on inconsistency justifications (minimal assertion
+sets implying the inconsistency), and making them more precise w.r.t the original
+Abox. Precise justifications are then used to find query solutions. A key point
+here is that the individuals in the summary Abox after each refinement step,
+even individuals in precise justifications, still represent many individuals in the
+original Abox. The scalability of the approach comes from the fact that it makes
+decisions on groups of individuals as a whole in the summary.
+
+We extend our summarization-based technique to solve grounded conjunctive queries. Like the naive tableau-based conjunctive algorithm, we split a conjunctive query into its atomic parts, solve each atom separately, and join the
+respective bindings at the end. To find bindings for membership atoms, we apply our membership algorithm on the summary Abox (Section 3). The relationship atoms provide additional optimization opportunities: potential membership
+query bindings that do not satisfy relationship constraints are filtered out as can-
+didates. We use the completion forest of the summary Abox to filter candidates,
+and reduce the search space significantly. We prove that this optimization is
+correct for summary Aboxes in Section 3.1.
+Solving relationship atoms efficiently using the summary Abox is not as
+straightforward. For a relationship atom R(x, y) and A individuals a and b, we
+cannot simply add a : RNb to A and apply our summary Abox membership
+algorithm. This is because both a and b in A each represent many individuals
+in A. If a and b satisfy this relationship atom, we need to find all pairs ai, bi
+in A that map to a and b respectively, such that R(ai, bi) holds in A. This requires testing some individual pairs in the original Abox for completeness, which
+defeats the advantage of summarization1. Instead, we apply datalog reasoning
+over the original Abox to conservatively estimate candidates, and apply a modified summary graph algorithm to determine which of these candidates are real
+solutions. We present details in Section 4.
+
+1 For details, see [2].
+?
+
+?
+
+?
+Our contributions in this paper are as follows: (a) we present a technique to
+perform scalable grounded conjunctive query answering over large and expressive Aboxes which relies on an important new property  using the completion
+forest of the summary Abox for various optimizations; (b) we demonstrate the
+effectiveness of this technique with very large Aboxes on the UOBM benchmark;
+(c) we demonstrate graceful degradation of our algorithms performance, such
+that queries whose solutions do not exploit non-determinism in the KB (e.g., do
+not require non-deterministic mergers between individuals) are performed very
+efficiently.
+
+2 Background
+
+2.1 Definition of Conjunctive Query
+Given a knowledge base (KB) K and a set of variables V disjoint with the set
+Ind of named individuals in K, a conjunctive query Q is of the form (x1, ..., xn)
+ q1...qm where, for 1  i  n, xi  V and, for 1  j  m, qj is a query term.
+A query term q is of the form C(x) or R(x, y) where x and y are either variables
+or named individuals in K, C is a concept expression and R is a role. V ar(Q)
+refers to the set of variables occurring in query Q. Let  : V ar(Q)  Ind be a
+total function from variables in Q to named individual in K. For a query term
+q, .q denotes the query term obtained by substituting in q all occurrences of a
+variable x by (x).
+(a1, ..., an) is a solution in the KB K of the conjunctive query Q of the form
+(x1, ..., xn)  q1  ...  qm iff. there is a total function  : V ar(Q)  Ind such
+that the following hold : (1), for 1  i  n, (xi) = ai, and (2), for 1  j  m,
+K |= .qj (i.e. K entails .qj).
+
+2.2 Summarization and Refinement
+
+In our earlier work, we presented an algorithm based on summarization and
+refinement to scale consistency checking and membership query answering to
+large Aboxes in secondary storage. A key feature of our algorithm is that we
+perform consistency detection on a summarized version of the Abox rather than
+the Abox in secondary storage [3]. A summary Abox A can be constructed by
+mapping all individuals in the original Abox A with the same concept set to a
+single individual in the summaryA. Formally, an Abox A is a summary Abox of
+a SHIN 2 Abox A if there is a mapping function f that satisfies the following
+constraints:
+(1) if a : C  A then f(a) : C  A
+(2) if R(a, b)  A then R(f(a), f(b))  A
+(3) if a  =b  A then f(a)  =f(b)  A
+2 We assume without loss of generality that A does not contain an assertion of the
+form a  =b
+
+J. Dolby et al.
+
+If the summary Abox A obtained by applying the mapping function f to A is
+consistent w.r.t. a given Tbox T and a Rbox R, then A is consistent w.r.t. T
+and R. However, the converse does not hold. In general, an inconsistency in the
+summary may reflect either a real inconsistency in the original Abox, or could
+simply be an artifact of the summarization process.
+
+In the case of an inconsistent summary, we use a process of iterative refinement
+described in [1] to make the summary more precise, to the point where we can
+conclude that an inconsistent summary A reflects a real inconsistency in the
+actual Abox A. Refinement is a process by which only the part of the summary
+that gives rise to the inconsistency is made more precise, while preserving the
+summary Abox properties(1)-(3). To pinpoint the portion of the summary that
+gives rise to the inconsistency, we focus on the justification for the inconsistency,
+where a justification is a minimal set of assertions which, when taken together,
+imply a logical contradiction.
+
+2.3 Tableau Completion Forest
+
+As described in [4], the tableau algorithm operates on a completion forest F =
+(G,L,  =,  =) where G is a graph, with nodes corresponding to individuals and
+edges corresponding to relations; L is a mapping from a node x in G to a set of
+concepts, L(x), and from an edge < x, y > in G to a set of roles, L(< x, y >), in
+R;
+ = is an equivalence relation corresponding to the equality between nodes of
+G; and  = is the binary relation distinct from on nodes of G. At the beginning
+of the execution of the tableaux algorithm on an Abox A, the completion forest
+is initialized as follows: There is a node x in G iff there is an individual x in
+A. < x, y > is an edge in G with R  L(< x, y >) iff R(x, y)  A. For x and
+y in G, x  =y iff x  =y  A. Initially, there are no x and y in G such that x  =y.
+The tableaux algorithm consists of executing a set of non-deterministic rules to
+satisfy constraints in A. As soon as an obvious inconsistency, a clash, is detected,
+the algorithm either backtracks and selects a different non-deterministic choice
+or stops if all non-deterministic choices have already been made. A root node a
+is a node present in the initial completion forest (it corresponds to the named
+individual with the same name in A).
+
+For a root node c in the completion forest F , the root node (c) is defined as
+follows (informally, (c) corresponds to the node in which c has been directly or
+indirectly merged):
+
+
+ c if L(c) = 
+d if L(c) = , d is the unique root node in F
+with L(d) =  and d  =c
+
+(c) =
+
+3 Solving the Membership Query Part
+
+The algorithm for solving membership queries on the summary Abox consists
+of two phases: finding candidate individuals in the summary Abox, and then
+?
+
+?
+
+?
+applying the membership query algorithm as described in [1] to all of the can-
+didates. The technique for finding candidates is described in Section 3.1. The
+complete algorithm is described in Section 3.2.
+
+3.1 Optimizing Conjunctive Querying with the Summary
+
+Completion Forest
+
+By theorem 1, if F
+
+To evaluate all the membership query atoms in the conjunctive query efficiently,
+we restrict our tests to candidate individuals that conservatively satisfy all the
+relationship atoms in the conjunctive query by making use of the completion
+forest of the summary Abox. Note that in general (as described in [5]), the
+completion forest of an Abox can be used to rule out candidates a, b to test
+for a relationship query R(x, y). The intuition here is that a completion forest
+F represents an abstraction of a model of the Abox, and thus if b is not an
+Rneighbor3 of a in F (and R is not transitive), the relation R(a, b) cannot be
+entailed by the KB. We apply the same principle to the completion forest of the
+summary Abox, which is possible due to theorem 1 below.
+ denotes the clash-free completion forest resulting from
+the consistency check on the summary A of A, then there exists a complete
+and clash-free completion forest F resulting from a direct application of tableau
+rules on A, such that for two named individuals in A, a and b, if (f(b)) is not
+a R-neighbor of (f(a)) then b is not a R-neighbor of a. In other words, we can
+rule out the existence of R-neighbors of a in F based on the non-existence of
+. Therefore, candidate solutions for a query of the
+R-neighbors of (f(a)) in F
+ instead
+form R(x, y) can be pruned based on completion forest checking on F
+of F .
+Theorem 1. Let K = (A,T ,R) be a consistent knowledge base. Let f be a
+summary mapping function that maps A to a consistent summary Abox A. Let
+ be the complete and clash-free completion forest resulting from a consistency
+
+check on A , T and R. There exists a complete and clash-free completion forest
+F resulting from an application of tableau rules directly on A such that, for
+named individuals a and b in F originally present in A and a role S in R,
+(1) L(a)  L((f(a))) (where L(a) denotes the concept set of a in F , and
+, (f(b)) is a S-neighbor of (f(a)).
+
+L((f(a))) is the concept set of the (f(a)) in F
+
+(2) if b is S-neighbor of a in F , then, in F
+?
+
+?
+
+?
+Proof. The proof relies on the following main ideas:
+
+ First, to make sure that properties (1) and (2) of Theorem 1 hold, we use
+ to guide the execution of non-deterministic rules on A (i.e. we make the
+
+same choices as in F
+
+).
+
+3 By definition, y is a R-neighbor of x iff. S(x, y)  A or P (y, x)  A where S and P
+are subroles of R
+
+
+
+J. Dolby et al.
+
+ Second, we maintain, during the execution of the tableau algorithm on A,
+a mapping  that maps nodes x in the completion forest F obtained from
+A to nodes in F
+, regardless of whether x refers to a root node, or to a
+generated node. Furthermore, the relationship between a node x in F and
+(x) should be compatible with properties (1) and (2) of Theorem 1. This
+ is not straightforward in the presence of
+mapping of x in F to nodes in F
+blocking, because there is no guarantee that an unblocked generated node x
+ that is also not blocked.
+in F always maps to a node in F
+
+) of nodes in F
+
+. The node u in the pair is the node that blocks u
+
+pair (u, u
+node u
+is not blocked, then u and u
+
+We therefore formally define the function  as mapping a node x in F to a
+, to handle the case when x is related to a blocked
+ is blocked; if u
+
+Let F be the completion forest initialized from A in the standard way. Before
+the start of the execution of tableau rules on F , the function  maps a root node
+in F to a pair of nodes in F
+
+ are the same (u = u
+
+ as follows:
+
+ if u
+
+).
+
+ For a root node a in F , we define (a) = ((f(a)), (f(a)))
+
+As new generated nodes are introduced during the execution of the tableau
+rules on F , the mapping  is extended to these new nodes as explained in the
+treatment of the -rule and -rule. (a)[1] denotes the first element of the pair
+(a), and (a)[2] is its second element.
+
+We show by induction that at any given step k of a particular execution4 of
+
+tableau rules on F the following holds: for all nodes x and y in F
+
+)
+
+x, then, in F
+
+) Lk(x)  L((x)[1]) (where Lk(x) denotes the concept set of a at step k of
+the execution of the standard tableau algorithm on A, and L((x)[1]) is
+the concept set of the (x)[1] in F
+) if y is a S-neighbor of x and y is either a root node or a generated child of
+) for (x) = (u, u
+) for (x) = (u, u
+) if x  =y holds in F , then (x)[2]  =(y)[2] holds in F
+It is very important to note that, since F
+) and (E
+The details of the induction proof is given in [2].
+
+, (y)[2] is a S-neighbor of (x)[1].
+ is blocked by u.
+
+) hold, then, at any step k, F is clash-free.
+
+ iff. u is not blocked
+ iff. u
+
+ is clash-free, if, at any step k, (A
+
+), u = u
+), u = u
+
+),
+?
+
+?
+
+?
+(A
+
+(B
+
+(C
+(D
+(E
+
+(B
+
+3.2 Membership Query Algorithm
+
+The algorithm SELECT-CANDIDATES-MQ to select test candidates is shown
+below. Basically, the algorithm transforms the relationship atoms in the original
+conjunctive query into a SPARQL query Qr and issues it over the completion
+. Solutions to Qr give us candidates to test for the
+forest of the summary F
+membership constraints.
+
+4 An execution in which non-deterministic choices are made based on choices made in
+
+as explained in the treatment of non-deterministic rules
+?
+
+?
+
+?
+, R, f , Rj (xk, xl) (1  j  n))
+?
+
+?
+
+?
+Select-Candidates-MQ(F
+Completion forest of Summary Abox, R Rbox of the
+Input: F
+original KB, f Abox Summary mapping function, Rj(xk, xl) Set of
+role atoms in original conjunctive query
+Output:  (x  i) mapping from variables to summary individuals
+(1)
+(2)
+(3)
+
+Vs  set of all variables in role atoms Rj (1  j  n)
+Rs  set of all role atoms Rj(xk, xl)(1  j  n)
+For any constant c in any of the role atoms in Rs, obtain
+the summary individual s  f (c), and replace c by s
+Create a SPARQL query Qr whose SELECT clause is Vs
+and whose WHERE clause is  Rs.
+with only Rbox inferencing using R to
+Issue Qr over F
+obtain solution mapping  (x  i)
+Remove individual solutions from  which are considered
+anonymous in F
+may contain mergers between individuals in A
+Since F
+,
+expand any individual binding i in  by its equivalence set
+(sameAs(i))
+return  (x  i)
+
+(4)
+
+(5)
+
+(6)
+
+(7)
+
+(8)
+?
+
+?
+
+?
+During the transformation, special care is taken for constants appearing in
+role atoms. Since Qr is evaluated on the summary, constants are replaced by the
+corresponding summary individuals that they are mapped to. Since we assume
+that all variables in the original conjunctive query are distinguished, we need
+to consider the variables in role atoms in the select clause of Qr. The query
+is evaluated considering the Rbox R of the original KB, as we would like to
+capture relationships that can be inferred due to sub-property, inverse or transitive axioms in it (Note that the Tbox need not be considered since we do not
+ is small,
+care about concepts and concept-related axioms at this point). Since F
+evaluating this query is straightforward.
+
+The result of executing Qr is a mapping  from variable to summary individu-
+als, the latter becoming test candidates for the membership query constraints on
+the former. Note that the completion forest of the summary Abox may contain
+anonymous individuals that are generated due to the presence of existential
+quantifiers in the KB. Obviously, these anonymous summary individuals are not
+present in the original Abox either and so we do not need to test them. Therefore,
+we discard any anonymous individuals from .
+
+Having identified suitable test candidates, we now proceed to test them for
+their respective membership query atoms, using our summarization and refinement algorithm [1].While the previous work focused on testing a single membership query on the summary, it can be easily extended to test multiple membership queries on the summary at the same time. The main difference is that we
+now start by adding the negation of all the membership types to their respective
+summary individual candidates, before testing for inconsistency (for details of
+other optimizations to membership querying, see [2]).
+
+J. Dolby et al.
+
+SOLVE-MQ, sketched below, captures the essence of the evaluation of mem-
+
+bership queries.
+
+c, F
+
+c completion forest of A
+?
+
+?
+
+?
+Solve-MQ( Q, A,T ,R )
+Input: Q the conjunctive query, A Abox, T Tbox, R Rbox
+Output: A
+ping function for A
+variable to summary individuals satisfying its type constraints
+(1)
+
+c consistent version of summary Abox, fc summary map-
+c,  mapping from a
+, f )  compute summary abox of A and its mapping
+(A
+function f
+c, fc)  consistent version of A
+(A
+obtained through refinement
+c  complete and clash-free completion forest of A
+?
+
+?
+
+?
+  Select-Candidates-MQ(F
+foreach variable xk in Q
+
+c,R, fc, Rj(xk, xl)  Q)
+?
+
+?
+
+?
+and its mapping function
+
+c
+
+(2)
+
+(3)
+(4)
+(5)
+(6)
+(7)
+
+(8)
+(9)
+(10)
+
+if variable xk has type constraints in Q
+
+(xk)  compute, through refinement, summary individuals in  (xk) instances of concept Cp(xk)Q Cp
+(xk)   (xk)
+
+c, )
+
+c , fc, F
+
+else
+
+return (A
+
+4 Solving the Relationship Query Part
+
+In this section, we discuss how we evaluate each of the role atoms R(x, y) in the
+conjunctive query. We solve an atomic role query in three steps:
+
+1. Section 4.1: We estimate an upper bound on potential relationship solutions
+for R(x, y) in the Abox by capturing all possible ways in which relationships can be inferred in SHIN . We do this efficiently using the completion
+forest of the summary Abox and a set of Datalog rules. The rules are restricted to the membership query solutions that are output in the previous
+step.
+
+2. Section 4.2: After estimating potential role assertion solutions in the Abox,
+we identify definite or deterministically-derived role assertions, since we do
+not have to test for them.
+
+3. Section 4.3: Finally, we test and solve the remaining potential relationship
+
+solutions in the summary Abox.
+
+4.1 Estimating Potential Solutions for an Atomic Role Query
+
+R(x, y)
+
+Our approach to estimate potential solutions to role queries consists in first understanding how, in the completion forest F of an Abox A, a root node can
+acquire new root node R-neighbors (i.e. root node R-neighbors that were not
+?
+
+?
+
+?
+Fig. 1. Acquisition of named individual R-neighbors
+
+(Init)
+(SameSym)
+(SameTrans)
+(NamedMerge)
+
+InfTriple(X, R, Y)
+same(X,Y)
+same(X, Y)
+same(X, Y)
+
+:- R(X, Y )  A
+:- same(Y, X)
+:- same(X,Z) and same(Z,Y)
+:- f (Z) = A and  nR  L
+
+X = Y and InfTriple(Z, R, X)
+and InfTriple(Z, R, Y)
+
+((A)) and
+
+InfTriple(X, R, Y)
+(SameRel1)
+(SameRel2)
+InfTriple(X, R, Y)
+(UnnamedMerge) InfTriple(X, R, Y)
+
+:- same(X,Z) and InfTriple(Z, R, Y)
+:- same(Y,Z) and InfTriple(X, R, Z)
+:- f (X) = A and f (Y ) = B and
+
+((A)) and
+((A)) or  mS  L
+
+ nT  L
+(S.C  L
+((A)))
+
+and (B) is a R-neigbhor of (A) in F
+and {R, T}  A and InfTriple(X, T, Y)
+R and InfTriple(X, S, Y) and S = R
+:- S 
+InfTriple(X, R, Y)
+
+= R and InfTriple(Y, S, X)
+InfTriple(X, R, Y)
+:- S
+RelInfTriple(X, R, Y) :- InfTriple(X, R, Y) and f (X) = A
+and f (Y ) = B and R(x1, x2)  Q
+and A  (x1) and B  (x2)
+
+(SubRole)
+(InvRole)
+(Relevance)
+
+Fig. 2. PotentialRuleSet: Rules to compute potential new named individual neighbors
+that are relevant to conjunctive query Q. Main output: RelInf T riple.
+
+present before the beginning of rule execution). Then, we devise a set of simple
+rules (see Figure 2) to conservatively estimate potential R-neighbors. These rules
+are simple enough to be efficiently evaluated using a datalog engine. Figure 1
+illustrates the two ways a root node a in F can acquire new R-neighbors that
+are root nodes during the execution of the tableaux algorithm on F :
+
+(A) The root node a is merged with another root node d and acquires root
+node R-neighbors of d. The merger is performed to satisfy the maximum
+cardinality restriction  nQ in the concept set of c. This case also captures acquisition of R-neighbors through mergers involving root neighbors
+of a.
+
+J. Dolby et al.
+
+(B) The root node b is merged with a generated node x to satisfy the maximum
+cardinality restriction  nQ in the concept set of a. As a result of this
+merger, b becomes a R-neighbor of a since x was a R-neighbor of a.
+
+Let us assume that F
+
+ is a complete and clash-free completion forest of the
+summary A of the Abox A, and F is the complete and clash-free completion
+forest of A given by Theorem 1.
+
+We can conservatively account for acquisition of named R-neighbors of a
+through mergers with named individuals by applying rules (see N amedM erge,
+SameRel1, and SameRel2 in Figure 2) on the Abox that trigger a merger between a and d if (1) a is a Q-neighbor of c in A (explicitly or as a result of
+evaluation of our simple rules), (2) d is a Q-neighbor of c in A (explicitly or as
+,
+a result of evaluation of our simple rules), and (3), in the completion forest F
+ nQ  L((f(c))) . If the last condition is not satisfied, Theorem 1 guarantees
+that a merger between a and d is not possible in F since  nQ cannot be the
+concept set of c in F .
+
+One way to account for mergers between root nodes and generated nodes is
+to have rules that create these generated nodes. However, this is not practical
+because too many nodes might be generated, complex blocking mechanism will
+be required to ensure termination, and the resulting rules will not be simple
+enough to be efficiently evaluated by a datalog engine.
+
+Our approach to conservatively account for mergers illustrated in Figure 1 (B)
+is to first observe that in order for them to occur in F , the following conditions
+must be satisfied:
+ a role generator (S.C or  mS, where S is a role in the Rbox) must be
+in the concept set of a (otherwise, a cannot have a generated node as its
+neighbor), and
+ a maximum cardinality restriction  nQ must be in the concept set of a
+
+and, the following must hold:
+ b must be a Q-neigbhor of a, and
+ x must be a Q-neigbhor of a.
+
+For a named individual a in the abox A, Theorem 1 allows us to check whether
+a maximum cardinality  nQ and a role generator concept (S.C or  mS )
+can be present in the concept set of a in the completion forest F of A simply
+. This reduces the
+by checking whether they are in concept set of (f(a)) in F
+number of potential individuals a and b such that b can become a R-neighbor of
+a through mergers of type (B). To further reduce this number, we need a good
+upper bound on the set a of roles P such that there is a generated node x
+P -neighbor of a in F , since R has to be in a. A direct consequence of property
+) in the proof of Theorem 1 is that the following set is such an upper bound:
+(B
+Let f (a) be an upper bound of the set a that depends only on information
+{P| there is a P -neigbhor of (f(a)) in F
+
+. We can now express all the necessary conditions for b to possibly become
+
+in F
+
+}.
+?
+
+?
+
+?
+:
+
+must be in the concept set of (f(a)) in F
+
+a R-neighbor of a in F through a merger of type (B) in terms of information
+present in F
+ an existential restriction S.C or a minimum cardinality restriction  mS
+ a maximum cardinality restriction  nQ must be in the concept set of
+(f(a)) and, the following must hold:
+ b must be a Q-neigbhor of a (either explicitly in A or through the appli-
+ {Q, R}  f (a) (because there must be a generated node x which is both
+
+cation of rules to estimate potential new mergers)
+
+.
+
+a Q-neighbor of a and a R-neighbor of a in F ).
+
+ finally, (f(b)) must be a R-neighbor of (f(a))(direct consequence of The-
+
+orem 1 and the fact that b has become R-neighbor of a in F )
+
+Based on the previous necessary conditions, rule U nnamedM erge in Figure 2
+accounts for potential acquisition of new R-neighbors in F through merger of
+type (B).
+
+For transitive roles, we perform the transitive closure over the estimated inferred neigbhors (computed by rules in Figure 2). It is important to note that
+new relations found after the application of the transitive closure cannot cause
+merger rules to trigger because, in SHIN , maximum cardinality restrictions can
+only be defined on simple roles (i.e. roles which are not transitive and do not
+have transitive subrole).
+
+Finally, the rule Relevance in Figure 2 forces the rule engine to focus only on
+relationships appearing in the conjunctive query Q, and on the individual solutions which satisfy the membership constraints in Q, specified by the mapping
+ in the output of algorithm SOLVE-MQ.
+
+4.2 Finding Definite Role Assertions
+
+After estimating potential role assertion solutions in the Abox, we identify definite or deterministically-derived role assertions, since we do not have to test for
+them.
+
+In particular, consider the rule N amedM erge in Figure 2 which conservatively
+estimates potential mergers between named Abox individuals. We can be more
+precise here for deterministic mergers if we somehow identify which Abox individuals mapped to summary individual A are entailed to be of type  1.R. Con-
+ceptually, this amounts to solving the membership query  1.R(x), which we
+evaluate efficiently using our membership query answering solution. Similar analysis is done for the rule U nnamedM erge to identify Abox individuals that have
+role-generators ( m.S or S.C) as an entailed type. This gives us two new rules
+ Def nN amedM erge, Def nU nnamedM erge  shown in Figure 3, which replace
+the rules N amedM erge, U nnamedM erge in the P otentialRuleSet (Figure 2)
+
+J. Dolby et al.
+
+(SummaryKB Defn) K
+(DefnNamedMerge)
+
+same(X, Y)
+
+(DefnUnnamedMerge) InfTriple(X, R, Y) :- K |= 1T (X)
+
+= (A, T , R)
+:- K |= 1R(Z) and X = Y
+
+and InfTriple(Z, R, X)
+and InfTriple(Z, R, Y)
+and ( K |= S.C(X) or K |= mS(X))
+R and S 
+and S 
+
+and InfTriple(X, T, Y)
+
+Fig. 3. DefnRuleSet: Obtained by replacing N amedM erge and U nnamedM erge in
+the PotentialRuleSet with the rules shown
+
+to produce the rule set Def nRuleSet that computes definite Abox relationship
+solutions.
+
+4.3 Solving Remaining Potential Role Assertions
+
+Having found potential role assertions solutions for R(x, y) in the Abox and
+identifying the definite ones, we are left with testing the remaining potential
+solutions.
+Suppose the remaining potential tuples to test are {R(u1, v1), ...R(un, vn)},
+where uk, vk, (1  k  n) are Abox individuals. Instead of testing these tuples
+in the Abox, we test them in the summary, i.e., for a given tuple R(uk, vk) we
+identify the summary individuals to which uk, vk are mapped, say ai, bj respec-
+tively, and test whether R(ai, bj) is entailed in the summary KB. This test is
+done by reducing the problem to membership query answering as described in
+the introduction. However, the limitation here is that when we find a tuple solution R(bi, bj) in the summary (where bi, bj are summary individuals), we cannot
+compute all Abox relationship solutions from it  all we know is that every individual mapped to bi is entailed to have an R-relation to some individual in
+ relation to some
+bj (and vice-versa, every individual mapped to bj has an R
+individual mapped to bi)5.
+
+In this case, for the sake of completeness, we are left with no choice other
+than to split one of the summary individuals down to the level of the Abox
+individuals mapped to it and test for relationships subsequently. Obviously, we
+choose to split the summary individual which has less Abox individuals mapped
+to it, to restrict the size of our summary Abox. Even in this worst case scenario,
+the performance of the algorithm is not severely affected as only one end of the
+tuple is split and the grouping of individuals is still preserved at the other end.
+Also, other than the tested tuples, the rest of the summary remains unchanged
+(so typically a large part of the Abox is still summarized).
+
+We combine the three steps discussed in this section into an algorithm SOLVE-
+
+RQ that finds all solutions to a relationship query.
+
+5 From a precise summary justification for R(bi, bj ), we can issue an SQL query based
+on the justification pattern to get some relationship pair solutions in the Abox, but
+this would not be complete. For details, see [2]
+?
+
+?
+
+?
+c
+
+(2)
+(3)
+
+c, fc, F
+?
+
+?
+
+?
+c, )
+
+Solve-RQ(R(xi, xj), A, T , R, A
+Input: R(xi, xj) Relationship query, A Abox, T Tbox, R Rbox, A
+Consistent Summary of A, fc Abox  Summary mapping function,
+?
+
+?
+
+?
+c,  output mapping from Solve-MQ(..)
+c Completion forest of A
+
+Output: S set of pairs (a, b) s.t. (A, T ,R) |= R(a, b)
+DefnInfTriple  RelInf T riple computed after evaluation
+(1)
+c (for A
+of Def nRuleSet using T , R, , A
+S  Def nInf T riple
+PotentialInfTriple  RelInf T riple computed after evaluation of P otentialRuleSet using R, , A
+), fc (for f )
+) (Note: Init rule here initializes Inf T riple
+and F
+as a union of role assertions in A and DefnInfTriple)
+PotentialInfTriple  PotentialInfTriple - DefnInfTriple (re-
+maining potential Abox role assertion solutions)
+Test and Solve P otentialInf T riple as described in Section
+4.3 to get solution pairs S
+S  S  S
+return S
+
+c (for A
+
+), fc (for f )
+?
+
+?
+
+?
+c (for F
+?
+
+?
+
+?
+(4)
+
+(5)
+
+(6)
+(7)
+?
+
+?
+
+?
+5 Computational Experience
+
+5.1 Correctness and Scalability Tests
+
+We evaluated our approach on the UOBM benchmark [6], which was modified
+to SHIN expressivity. We used 14 of the 15 queries defined in the benchmark
+(query Q2, which is a pure membership query, was not included in our evalu-
+ation). The results are reported for 1, 5, 10, 30, 100 and 150 universities. We
+compared our results against KAON2 [7]. (Pellet [8] did not scale to even one
+university). For KAON2, we set all maximum cardinality restrictions to one
+because of KAON2 limitations. Our experiments were conducted on a 2-way
+2.4GHz AMD Dual Core Opteron system with 16GB of memory running Linux,
+and a maximum heap size of 2G. The Abox was stored in a IBM DB2 V9.1 for
+SHER and MySQL V5.0 for KAON2.
+
+The size of the datasets are given in Table 1 (a). Table 1 (b) summarizes the
+times taken (in seconds) by KAON2 and SHER solely for query answering, i.e.,
+in both cases, the times do not include the knowledge base pre-processing and
+setup costs. KAON2 ran out of memory on UOBM-30. In 13 out of 14 queries
+SHER and KAON2 had 100% agreement. The difference on query Q15 was due
+to differences in the constraints used. As can be seen, the average runtimes for
+SHER are significantly lower, usually by an order of magnitude, than those for
+KAON2. [2] presents more detailed data on the evaluation performance for each
+query on each KB. On all queries, except query 9, SHER scales almost linearly
+from UOBM-1 to UOBM-150. Query 9, which has 3 role atoms, is an example
+of a query where we can improve our performance by using a cost model based
+approach to control the order of evaluation of query atoms as explained in [5].
+
+J. Dolby et al.
+
+Table 1. Evaluation data
+
+Dataset type assertions role assertions
+?
+
+?
+
+?
+214K
+928K
+1,816K
+6.5M
+22.4M
+33.5M
+
+25K
+120K
+224K
+709K
+7.8M
+11.7M
+
+(a) Dataset Statistics
+
+Reasoner Dataset Avg. Time St.Dev Range
+KAON2 1
+KAON2 5
+KAON2 10
+?
+
+?
+
+?
+(b) Runtimes in sec
+?
+
+?
+
+?
+5.2 Handling Non-deterministic Mergers
+
+In experiments described in the previous subsection, UOBM queries did not
+exploit non-deterministic mergers between individuals in the Abox to produce
+new inferred results. Therefore, we modified the UOBM dataset to generate new
+relationships from non-deterministic mergers between named individuals, and
+considered a new query whose solutions required this.
+
+We added disjoint relations between the four UOBM concepts FineArts,
+Science, HumanitiesAndSocial, Engineering representing course subjects,
+and a set of Abox assertions each resembling the pattern shown in Figure 4.
+The newly added individual LS1 had type LeisureStudent, which is defined as
+( 3. takesCourse) in the UOBM Tbox. LS1 was assigned four takesCourse
+relations to individuals C1..C4 respectively. In general, we randomly added any
+one of the four course subjects mentioned above as a type to Ci, 1  i  3 (C4
+is always assigned the type Course). In the case shown, C1, C2, C3 are mutually
+disjoint concepts and hence the maxCardinality restriction in the type of LS1
+causes a non-deterministic merger between C4 and any one Cj (1  j  3),
+which in turn causes C4 to acquire a new isTaughtBy relation to the Lecturer
+individual L1. To exploit this behavior, we considered the query: QN D: (x, y,
+z)  LeisureStudent(x) takesCourse(x, y) Course(y) isT aughtBy(y, z)
+Lecturer(z). In the example shown, there are 4 tuple solutions to QN D, three
+of which are explicit (LS1, C1/C2/C3, L1), and one is inferred (LS1, C4, L1) .
+
+We modified UOBM-1, UOBM-5 and UOBM-10 by adding 100, 200 and 300
+instances of LeisureStudent respectively. These numbers and datasets were
+chosen since as the pattern in Figure 4 shows, generation of new relationships due
+to non-deterministic mergers is non-trivial and seldom seen in large quantities in
+practice. We then evaluated QN D on the modified datasets. KAON2 is unable to
+handle this query since it cannot deal with non-deterministic mergers. Results
+of this query evaluation using SHER are shown in Figure 5. In the table, the
+column E (resp. I) stands for the number of explicit (resp. inferred) solutions
+for the query introduced by our script, PA, computed in step (4) of SOLVE-
+RQ, is the number of potential relationship pairs in the Abox that need to be
+?
+
+?
+
+?
+Dataset Time E I PA PA SA
+
+(in s)
+?
+
+?
+
+?
+38 210 70 182 32
+
+76 480 160 335 75
+165 786 152 319 100 15
+
+Fig. 4. Abox pattern creating new isTaughtBy
+relations from non-deterministic mergers
+
+Fig. 5. Evaluating QND
+
+tested, PA is the number of summary pairs corresponding to the Abox pairs
+counted in PA, and SA is the number of summary solution tuples found using
+the procedure described in Section 4.3, which are eventually split down to the
+individual level.
+
+As the results show, the algorithm demonstrates a graceful degradation for
+this query. For example, in UOBM-10, there are a total of 786+152 = 938 entailed isTaughtBy relationships (152 due to non-deterministic mergers6), however our algorithm finds, in step(4) of SOLVE-RQ, that only 319 need to be
+tested. Moreover, they are first tested through their corresponding summary
+pairs as explained in Section 4.3. As result, only 15 out of 100 summary pairs
+are found to be solutions7, and only one end of these 15 pairs are split down
+to the individual level. We feel that the times shown are acceptable for realistic
+use-cases.
+
+6 Related Work and Conclusions
+
+We have focused on answering grounded conjunctive queries instead of general conjunctive queries because, to our knowledge, there is currently no practical algorithm for answering general conjunctive queries with respect to SHIN
+ontologies [9]. It is for this reason that OWL-DL reasoner implementations
+which support conjunctive query answering, such as Pellet [8], RACER [10] and
+KAON2 [7], do so with the grounded conjunctive query semantics.At the same
+time, even after using the grounded conjunctive query semantics, tableau-based
+
+6 Only isTaughtBy relations can be inferred due to non-deterministic mergers.
+7 Not all potential relationships are solutions since the script may not necessarily add
+
+disjoint subject types to individuals C1, C2, C3.
+
+J. Dolby et al.
+
+reasoners such as Pellet and RACER do not scale to several millions of assertions
+as SHER does. The fundamental limitation is that they work with the complete
+Abox, and the complexity of the tableau reasoning algorithm makes it infeasible
+to build a completion forest for a large and expressive Abox, which affects both
+solution pruning and testing.
+
+On the other hand, KAON2, which we included in our evaluation, is a nontableau based approach that relies on translating Description Logic to disjunctive
+datalog and is able to scale to an Abox with a million assertions. However,
+KAON2 has problems dealing with max-cardinality restrictions (for cardinality
+greater than 1) and even excluding such restrictions, is unable to scale to an
+Abox with 7 million assertions.
+
+In our experiments, our technique appears to scale almost linearly for conjunctive queries of large, expressive Aboxes composed of 30-45 million Abox
+assertions, and conceptually, nothing in our approach prevents it from scaling
+to much larger datasets. As future work, we plan to integrate a cost-model to
+determine an efficient join order for the query atoms.

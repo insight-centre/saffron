@@ -112,7 +112,6 @@ public class Browser extends AbstractHandler {
             // Exposing an existing directory
             if (saffronHandler != null && saffronHandler.isLoaded(saffronDatasetName)) {
                 final ObjectMapper mapper = new ObjectMapper();
-                System.err.println(target);
                 if (target.equals("/taxonomy")) {
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
@@ -345,7 +344,6 @@ public class Browser extends AbstractHandler {
                 } else if (target.startsWith("/doc_content/")) {
                     final String docId = decode(target.substring(13));
                     final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
-                    System.err.println(doc);
                     if (doc != null && doc.file != null) {
                         File f = doc.file.toFile();
                         response.setContentType(Files.probeContentType(f.toPath()));

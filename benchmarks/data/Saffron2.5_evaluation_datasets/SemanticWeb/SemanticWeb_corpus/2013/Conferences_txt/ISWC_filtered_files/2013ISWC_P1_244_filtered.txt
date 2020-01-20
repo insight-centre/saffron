@@ -1,0 +1,1022 @@
+A Query Tool for EL with Non-monotonic Rules
+
+Vadim Ivanov1,2, Matthias Knorr1, and Jo ao Leite1
+
+1 CENTRIA & Departamento de Inform atica, Universidade Nova de Lisboa, Portugal
+
+2 Department of Computing Mathematics and Cybernetics,
+
+Ufa State Aviation Technical University, Russia
+
+Abstract. We present the Prot eg e plug-in NoHR that allows the user to take an
+EL+ ontology, add a set of non-monotonic (logic programming) rules  suitable
+e.g. to express defaults and exceptions  and query the combined knowledge base.
+Our approach uses the well-founded semantics for MKNF knowledge bases as
+underlying formalism, so no restriction other than DL-safety is imposed on the
+rules that can be written. The tool itself builds on the procedure SLG(O) and,
+with the help of OWL 2 EL reasoner ELK, pre-processes the ontology into rules,
+whose result together with the non-monotonic rules serve as input for the topdown querying engine XSB Prolog. With the resulting plug-in, even queries to
+very large ontologies, such as SNOMED CT, augmented with a large number
+of rules, can be processed at an interactive response time after one initial brief
+pre-processing period. At the same time, our system is able to deal with possible
+inconsistencies between the rules and an ontology that alone is consistent.
+
+1 Introduction
+
+Ontology languages have become widely used to represent and reason over taxonomic
+knowledge, and often such knowledge bases are expressed within the language of the
+OWL 2 profile OWL 2 EL [23]. For example, the clinical health care terminology
+SNOMED CT,1 arguably the most prominent example in the area of medicine and currently used for electronic health record systems, clinical decision support systems, or
+remote intensive care monitoring, to name only a few, builds on a fragment of OWL 2
+EL and its underlying description logic (DL) EL++ [5].
+
+Whereas the OWL ontology languages based on DLs [4] are monotonic by nature,
+which means that once drawn conclusions persist when adopting new additional infor-
+mation, the ability to model defaults and exceptions with a closed-world view is frequently requested as a missing feature. For example, in [25], modeling pharmacy data
+of patients with the closed-world assumption would have been preferred in the study
+to match patient records with clinical trials criteria, because usually it can be assumed
+that a patient is not under a specific medication unless explicitly known. Similarly, in
+clinical health care terminology, it would be advantageous to be able to express that
+normally the heart is on the left side of the body unless the person is a dextrocardiac.
+
+In recent years, there has been a considerable amount of effort devoted to extending
+DLs with non-monotonic features  see, e.g., related work in [12,24])  and many of
+the existing approaches focus on combining DLs and non-monotonic rules as known
+
+1 http://www.ihtsdo.org/snomed-ct/
+
+H. Alani et al. (Eds.): ISWC 2013, Part I, LNCS 8218, pp. 216231, 2013.
+c Springer-Verlag Berlin Heidelberg 2013
+?
+
+?
+
+?
+from Logic Programming. The latter are one of the most well-studied formalisms that
+admit expressing defaults, exceptions, and also integrity constraints in a declarative
+way and are part of RIF [6], the other expressive language for the Semantic Web whose
+standardization is driven by the W3C.2
+
+Here we focus on one such combination  Hybrid MKNF under the well-founded
+semantics [20]  for two reasons. First, the overall approach, which was introduced in
+[24] and is based on the logic of minimal knowledge and negation as failure (MKNF)
+[22], provides a very general and flexible framework for combining DL ontologies and
+non-monotonic rules (see [24]). Second, [20], which is a variant of [24] based on the
+well-founded semantics [14] for logic programs, has a (lower) polynomial data complexity and is amenable for applying top-down query procedures, such as SLG(O) [2],
+to answer queries based only on the information relevant for the query, and without
+computing the entire model  no doubt a crucial feature when dealing with large ontologies such as SNOMED with over 300,000 classes or [25] with millions of assertions.
+In this paper, we describe the system NoHR, realized as a plug-in for the ontology
+editor Prot eg e 4.X,3 that allows the user to query combinations of EL+ ontologies and
+non-monotonic rules in a top-down manner. To the best of our knowledge, it is the first
+Prot eg e plug-in to integrate non-monotonic rules and top-down queries. Our approach
+is theoretically founded in the abstract procedure SLG(O) and based on utilizing the
+consequence-driven, concurrent EL reasoner ELK, which is considerably faster than
+other EL reasoners [18], to classify the ontology part and then translate the result into
+rules which, together with the non-monotonic rules, serve as input for the top-down
+query engine XSB Prolog.4 Additional features of the plug-in include: the possibility
+to load and edit rule bases, and define predicates with arbitrary arity; guaranteed termination of query answering, with a choice between one/many answers; robustness w.r.t.
+inconsistencies between the ontology and the rule part. Our main contributions are:
+ We generalize the procedure presented in [2] to avoid the normalization of EL+
+knowledge bases, which is not necessary for ELK, also reducing the size of the
+XSB file and of the tables in XSB. At the same time we significantly improve the
+formalization in [2]  including the correct handling of complex concept assertions
+ in order to show that our procedure is correct.
+
+ We describe an implementation of this revised procedure in Java including an ELK
+reasoner for preprocessing the ontology, whose translated output, together with the
+rules, can be queried interactively under XSB via the Java front-end Interprolog.5
+ We evaluate the performance of our tool, showing that even SNOMED augmented
+with a large number of rules can be preprocessed in a brief period of time and then
+query answering is possible at interactive response time.
+
+The remainder of the paper is structured as follows. In Sect. 2, we briefly recall the
+DL EL+ and MKNF knowledge bases as a tight combination of the former DL and
+non-monotonic rules. Then, we present the revised reasoning algorithm that allows us
+
+2 http://www.w3.org
+3 http://protege.stanford.edu
+4 http://xsb.sourceforge.net
+5 http://www.declarativa.com/interprolog/
+
+V. Ivanov, M. Knorr, and J. Leite
+
+Table 1. Syntax and semantics of EL+
+
+atomic concept
+atomic role
+individual
+top
+bottom
+conjunction
+existential restriction
+concept inclusion
+role inclusion
+role composition
+concept assertion
+role assertion
+
+Syntax
+A  NC
+R  NR
+a  NI
+
+
+
+C  D
+R.C
+C  D
+R  S
+
+C(a)
+R(a, b)
+
+Semantics
+I  
+?
+
+?
+
+?
+I  
+I  
+a
+
+I  
+
+
+
+I  D
+
+I | y  
+: (x, y)  R
+
+I  D
+?
+
+?
+
+?
+I  S
+?
+
+?
+
+?
+1  . . .  (xk, y)  R
+?
+
+?
+
+?
+)  R
+
+I  C
+a
+?
+
+?
+
+?
+, b
+
+(a
+
+k
+
+{x  
+
+R1     Rk  S (x1, x2)  R
+
+I  y  C
+
+I}
+
+ (x1, y)  S
+
+to query such MKNF knowledge bases in Sect. 3. In Sect. 4, we introduce our implementation of the plug-in and evaluate it in Sect. 5, before we conclude in Sect. 6.
+
+2 Preliminaries
+2.1 Description Logic EL+
+We start by recalling the syntax and semantics of EL+, a large fragment of EL++ [5],
+the DL underlying the tractable profile OWL 2 EL [23], following the presentation in
+[18,19]. For a more general and thorough introduction to DLs we refer to [4].
+The language of EL+ is defined over countably infinite sets of concept names NC,
+role names NR, and individual names NI as shown in the upper part of Table 1. Building
+on these, complex concepts are introduced in the middle part of Table 1, which, together
+with atomic concepts, form the set of concepts. We conveniently denote individuals by
+a and b, (atomic) roles by R and S, atomic concepts by A and B, and concepts by C
+and D. All expressions in the lower part of Table 1 are axioms. A concept equivalence
+C  D is an abbreviation for C  D and D  C. Concept and role assertions are ABox
+axioms and all other axioms TBox axioms, and an ontology is a finite set of axioms.
+
+The semantics of EL+ is defined in terms of an interpretation I = (
+
+) consist-
+
+. The latter is defined
+ing of a non-empty domain 
+for (arbitrary) concepts, roles, and individuals as in Table 1. Moreover, an interpretation
+I satisfies an axiom , written I |= , if the corresponding condition in Table 1 holds.
+If I satisfies all axioms occurring in an ontology O, then I is a model of O, written
+I |= O. If O has at least one model, then it is called consistent, otherwise inconsistent.
+Also, O entails axiom , written O |= , if every model of O satisfies . Classification
+requires to compute all concept inclusions between atomic concepts entailed by O.
+
+and an interpretation function I
+
+,I
+?
+
+?
+
+?
+2.2 MKNF Knowledge Bases
+MKNF knowledge bases (KBs) build on the logic of minimal knowledge and negation
+as failure (MKNF) [22]. Two main different semantics have been defined [24,20], and
+we focus on the well-founded version [20], due to its lower computational complexity
+and amenability to top-down querying without computing the entire model. Here, we
+only point out important notions, and refer to [20] and [2] for the details.
+We start by recalling MKNF knowledge bases as presented in [2] to combine an
+(EL+) ontology and a set of non-monotonic rules (similar to a normal logic program).
+Definition 1. Let O be an ontology. A function-free first-order atom P (t1, . . . , tn) such
+that P occurs in O is called DL-atom; otherwise it is called non-DL-atom. A rule r is
+of the form
+(1)
+where the head of r, H, and all Ai with 1  i  n and Bj with 1  j  m in the body
+of r are atoms. A program P is a finite set of rules, and an MKNF knowledge base K is
+a pair (O,P). A rule r is DL-safe if all its variables occur in at least one non-DL-atom
+Ai with 1  i  n, and K is DL-safe if all its rules are DL-safe.
+DL-safety ensures decidability of reasoning with MKNF knowledge bases and can be
+achieved by introducing a new predicate o, adding o(i) to P for all constants i appearing
+in K and, for each rule r  P, adding o(X) for each variable X appearing in r to the
+body of r. Therefore, we only consider DL-safe MKNF knowledge bases.
+Example 2. Consider an MKNF knowledge base for recommending vacation destinations taken from [24] (with a few modifications). We denote DL-atoms and constants
+with upper-case names and non-DL-atoms and variables with lower-case names.6
+
+H  A1, . . . , An, notB1, . . . , notBm
+
+PortCity(Barcelona) OnSea(Barcelona, Mediterranean)
+PortCity(Hamburg) NonSeaSideCity(Hamburg)
+
+RainyCity(Manchester ) Has(Manchester , AquaticsCenter )
+
+Recreational (AquaticsCenter )
+
+SeaSideCity  Has.Beach
+Beach  Recreational
+
+Has.Recreational  RecreationalCity
+
+SeaSideCity(x )  PortCity(x ), notNonSeaSideCity(x )
+interestingCity(x )  RecreationalCity(x ), notRainyCity(x )
+
+hasOnSea(x )  OnSea(x , y)
+
+false  SeaSideCity(x ), nothasOnSea(x )
+summerDestination(x )  interestingCity(x ), OnSea(x , y)
+
+This example shows that we can seamlessly express defaults and exceptions, such as
+every port city normally being a seaside city, integrity constraints, such as requiring to know for every seaside city on which sea it lies, and at the same time taxo-
+nomic/ontological knowledge including information over unknown individuals, such as
+
+6 To ease readability, we omit the auxiliary atoms that ensure DL-safety and leave them implicit.
+
+V. Ivanov, M. Knorr, and J. Leite
+
+a seaside city being recreational even if we do not know the specific name of the beach.
+Note that, unlike [24], the rule with head false is not a true integrity constraint in our
+case. Rather, whenever the keyword false would be derivable, we know that there is at
+least one seaside city for which we do not know on which sea it lies.
+
+The semantics of MKNF knowledge bases K is usually given by a translation  into
+an MKNF formula (K), i.e., a formula over first-order logic extended with two modal
+operators K and not. Namely, every rule of the form (1) is translated into KH 
+KA1, . . . , KAn, notB1, . . . , notBm, (P) is the conjunction of the translations of
+its rules, and (K) = K(O)  (P) where (O) is the first-order translation of O.
+Reasoning with such MKNF formulas is then commonly achieved using a partition of
+modal atoms, i.e., all expressions of the form K for each K or not occurring in
+(K). For [20], such a partition assigns true, false, or undefined to (modal) atoms, and
+can be effectively computed in polynomial time. If K is MKNF-consistent, then this
+partition does correspond to the unique model of K [20], and, like in [2], we call the
+partition the well-founded MKNF model Mwf(K). Here, K may indeed not be MKNFconsistent if the EL+ ontology alone is inconsistent, which is possible if  occurs, or
+by the combination of appropriate axioms in O and P, e.g., A   and A(a) . In
+the former case, we argue that the ontology alone should be consistent and be repaired
+if necessary before combining it with non-monotonic rules. Thus, we assume in the
+following that O occurring in K is consistent.
+
+SLG(O)
+
+2.3 Querying in MKNF Knowledge Bases
+In [2], a procedure, called SLG(O), is defined for querying MKNF knowledge bases
+under the well-founded MKNF semantics. This procedure extends SLG resolution with
+tabling [9] with an oracle to O that handles ground queries to the DL-part of K by
+returning (possibly empty) sets of atoms that, together with O and information already
+proven true, allows us to derive the queried atom. We refer to [2] for the full account of
+SLG(O), and only recall a few crucial notions necessary in the following.
+
+is based on creating top-down derivation trees with the aim of
+the form q(X)  A1, . . . ,
+answering (DL-safe) conjunctive queries Q of
+An, notB1, . . . , notBm where each variable in Q occurs in at least one non-DL atom
+in Q, and where X is the (possibly empty) set of requested variables appearing in the
+body.
+In general, the computation of Mwf(K) uses two different versions of K in parallel
+to guarantee that a) coherence is ensured, i.e., if P (a) is derivable, then notP (a) has
+to be true as well (cf. also [20]), and b) MKNF-consistency of K can be verified. For
+a top-down approach this is impractical, so, instead, a doubled MKNF knowledge base
+Kd = (O,Od,P d) is defined in which a copy of O with new doubled predicates is
+added, and two rules occur in P d for each rule in P, intertwining original and doubled
+predicates (see Def. 3.1 in [2]). It is shown that an atom A is true in Mwf(K) iff A is
+true in Mwf(Kd) and A is false in Mwf(K) iff Ad is false in Mwf(Kd). Note that Kd is
+indeed necessary in general, but if K does not contain , then we can use K directly.
+?
+
+?
+
+?
+In [2], the notion of oracle is defined to handle ground queries to the ontology, but
+
+before we recall that notion, we use an example to illustrate the idea.
+Example 3. Recall K in Ex. 2. Since  does not occur in K, we can restrict ourselves to
+K here. First, consider query q = interestingCity(Manchester ). We find a rule whose
+head unifies with q, and obtain two new queries, RecreationalCity(Manchester ) and
+notRainyCity(Manchester ). There is no rule whose head matches the former, but we
+can query the ontology and the answer is yes together with an empty set of atoms,
+i.e., RecreationalCity(Manchester ) can be proven from O alone. Now we handle
+notRainyCity(Manchester ), so we query RainyCity(Manchester ) which can also
+be proven by O alone. Therefore notRainyCity(Manchester ) fails, so q is false.
+
+Now, consider q1 = interestingCity(Barcelona). We obtain again two new queries,
+q2 = RecreationalCity(Barcelona) and q3 = notRainyCity(Barcelona). In this
+case, q2 = RecreationalCity(Barcelona) cannot be proven from O alone, but the oracle could return Has(Barcelona, X ) and Recreational (X ), which, if we would find
+a value for X, would allow us to derive q2. However, neither of the two atoms appear in a rule head in P, so we will never be able to derive it from P. In fact, the
+only proper answer the oracle may return is q4 = SeaSideCity(Barcelona). From the
+corresponding rule in P we obtain two new queries q5 = PortCity(Barcelona) and
+q6 = notNonSeaSideCity(Barcelona). Then, q5 can be derived from O alone, and q6
+succeeds, because NonSeaSideCity(Barcelona) fails. So q4 succeeds, and therefore
+also q2. Finally q3 succeeds since RainyCity(Barcelona) fails, so q1 is true.
+
+We recall the notions of a complete and a (correct) partial oracle from [2].
+
+Definition 4. Let Kd = (O,Od,P d) be a doubled MKNF KB, I a set of ground atoms
+(already proven to be true), S a ground query, and L a set of ground atoms such that
+each L  L is unifiable with at least one rule head in P d. The complete oracle for
+O, denoted compTO, is defined by compTO(I, S,L) iff O  I  L |= S or Od  I 
+L |= S. A partial oracle for O, denoted pTO, is a relation pTO(I, S,L) such that if
+pTO(I, S,L), then O  I  L |= S or Od  I  L |= S for consistent O  I  L and
+Od  I  L, respectively.
+A partial oracle pTO is correct w.r.t. compTO iff, for all MKNF-consistent Kd, replacing compTO in SLG(O) with pTO succeeds for exactly the same set of queries.
+Partial oracles may avoid returning unnecessary answers L, such as non-minimal
+answers or those that try to derive an MKNF-inconsistency even though Kd is MKNF-
+consistent. Moreover, correctness of partial oracles is only defined w.r.t MKNFconsistent K. The rationale is that, when querying top-down, we want to avoid checking
+whether the entire KB Kd is MKNF-consistent. This leads to para-consistent derivations
+if Kd is not MKNF-consistent, e.g., some atom P is true, yet P d is false, while other
+independent atoms are evaluated as if Kd was MKNF-consistent (see [2]).
+
+3 Pre-processing the Ontology and Querying
+In [2], an SLG(O) oracle for EL+ is defined based on the reasoning algorithm for
+ontology classification presented in [5], which is restricted to normalized ontologies.
+?
+
+?
+
+?
+Even though the process of normalizing EL ontologies is linear, it introduces auxiliary
+predicates to achieve the normal form, which, e.g., not only is counter-intuitive to the
+idea of finding meaningful explanations for information derived by top-down queries
+but also increases the size of the resulting XSB file and tables used in XSB. Since the
+reasoning algorithm of ELK [18,19] is defined for the general case, and ELK is the
+reasoner we want to use for implementing our query-tool, because it is considerably
+faster than other EL reasoners, we generalize the algorithm in [2] to non-normalized
+ontologies. At the same time, we fix a problem in [2] w.r.t. handling non-atomic concept
+assertions, and we improve the formalization to prove correctness of our oracle.
+
+In the following, we first utilize the algorithm underlying ELK to compute implicit
+information derivable from a given ontology. After that, we discard certain axioms,
+because, with the implicit information computed, they are no longer required for the
+query task used in SLG(O). Then, we translate the remaining set of axioms into rules,
+which can equally be used as an EL oracle.
+
+3.1 Simplifying the Ontology
+The basic idea for an EL+ oracle is to translate the ontology into rules. The only obstacle are concept inclusions with R.C on the right-hand side since these cannot be
+translated straightforwardly. However, such axioms alone can never contribute to oracle derivations. Consider, e.g., querying K in Ex. 2 for Beach(i) for any constant i:
+an oracle cannot derive Beach(i) even if SeaSideCity(c) and has(c, i) were already
+known to be true. Yet, such axioms are useful indirectly, e.g., to obtain that proving
+SeaSideCity(Barcelona) would suffice to derive RecreationalCity(Barcelona). So,
+classification is applied first to make such implicit links explicit, and then all concept
+inclusions with sub-concepts R.C on the right-hand side can be rewritten or removed.
+The consequence-based procedure for classification of TBoxes in EL+ is described
+in [19]. Here we only sketch it with a focus on the results important for our purposes.
+First, the initial set input is defined to contain one axiom init(A) for each atomic
+concept A in O. Then, a set of EL+ inference rules for TBox reasoning in EL+ (see
+[19]) is applied exhaustively to input, yielding Closure as final result, which contains
+axioms derivable from O and axioms of the form init(C) and C R D, where the latter
+represents that, for two (initialized) concepts C and D, C  R.D is entailed.
+Theorem 5 ([19]). Let O be an EL+ ontology, input a set of expressions init(C),
+and Closure the closure of input under the EL+ inference rules w.r.t. O. Then, for
+each concept C such that init(C)  Closure and each atomic concept A, we have
+1. O |= C   iff C    Closure,
+2. O |= C  A iff C    Closure or C  A  Closure.
+
+Note that one of the inference rules (R
+Closure. Hence, Theorem 5 does not apply only to init(C)  input.
+One thing missing so far, which is not correctly covered in the translation presented
+in [2], is that concept assertions also have to be considered since, e.g., R.C(a) together
+
+ ) allows init(D)  Closure if C  R.D 
+
+?
+
+?
+
+?
+with R.C  D, make D(a) derivable, yet the EL+ inference rules are defined for
+TBox axioms. The solution, adapted from [19], is to apply a transformation N that
+translates concept assertions C(a) into concept inclusions Na  C, where the set of
+atomic concepts contains an atomic concept Na for every a  NI s.t. Na does not
+appear in O, and leaves all other axioms unchanged. Note that we do not translate role
+assertions R(a, b), because R is just an atomic role without occurrences of concepts of
+the form R.C. Still, it holds for consistent O and axiom  that do not contain atomic
+concepts of the form Na, that O |=  iff N (O) |= N () ([19], Theorem 3).
+
+We are now ready to present the new definition of a reduced ontology.
+
+Definition 6. Let O be an EL+ ontology, input a set of expressions init(A) for each
+atomic concept A, and Closure the closure of input under the EL+ inference rules
+w.r.t. N (O). The reduced ontology of O is obtained from O1 = N (O)  Closure as
+follows.
+1. Remove all statements of the forms init(C), C R D, and C  R.D from O1;
+2. Remove all sub-concepts of the form R.D from the right-hand side of any axiom
+3. Substitute all concept inclusions of the form Na  C remaining after 1. and 2. by
+
+C  D1  D2  O1; if no conjunct is left, remove the entire axiom from O1;
+C(a) for all a  NI.
+
+Note that input does contain init(Na) for all a  NI. Moreover, steps 1. and 2. already
+remove all sub-concepts of the form R.D from concept inclusions that represent concept assertions, so indeed the reduced ontology does not contain concepts of the form
+R.D in concept assertions and the right-hand sides of concept inclusions. We can show
+that reduced O contain all atomic concept assertions they entail.
+Lemma 7. Let O be reduced and A an atomic concept. If O |= A(a), then A(a)  O.
+
+Also O and the reduced O
+
+entail the same unary and binary atoms.
+
+Lemma 8. Let O be an EL+ ontology, O
+R a binary predicate: O |= A(a) iff O |= A(a) and O |= R(a, b) iff O |= R(a, b).
+
+the reduced ontology of O, A a unary and
+
+Now, we show that we can use the reduced ontology of O instead of O as an EL+
+oracle. First, we specify a partial oracle that is necessarily a correct partial oracle for O.
+Definition 9. Let Kd = (O,Od,P d) be a doubled MKNF KB, I a set of ground atoms
+(already proven to be true), S a ground query, and L a set of ground atoms such that
+each L  L is unifiable with at least one rule head in P d. The abstract partial oracle for
+O, denoted pT aO, is a relation pT aO(I, S,L) such that pT aO(I, S,L) iff O  I  L |= S
+or Od  I  L |= S for consistent O  I  L and Od  I  L, respectively.
+
+Such an abstract partial oracle is not necessarily efficient, since it does return all possible
+consistent tuples (I, S,L) but it certainly is correct.
+Proposition 10. Let Kd = (O,Od,P d) be a doubled MKNF KB. The abstract partial
+oracle pT aO is correct w.r.t. compTO.
+
+V. Ivanov, M. Knorr, and J. Leite
+
+Based on this result, we can show that O can be substituted with the reduced ontology
+
+of O and still yield a correct partial oracle.
+Theorem 11. Let Kd = (O,Od,P d) be a doubled MKNF KB and O
+ontology of O. Then pT aO is a correct partial oracle w.r.t. compTO.
+
+the reduced
+
+3.2 Translation into Rules
+Now, we can show how to translate a reduced EL+ ontology into rules. The only
+thing missing is pointing out a technical detail on how coherence and detection of
+MKNF-inconsistencies is achieved in [20,2]. We would like to remind that coherence
+intuitively ensures that an atom being classically false also is false by default in the
+non-monotonic rules. That allows us, e.g., to derive from C  , C(a)  notD(a),
+and D(a)  notC(a) that C(a) is false and D(a) is true, and is therefore useful in
+general, even if Kd is MKNF-consistent. In SLG(O), special atoms N H(ti) are used
+to represent a query H(ti) to the oracle. Care must be taken when translating an ontology containing  to rules, so that these queries still work properly. Of course, if 
+does not appear in O, then considering K suffices.
+
+To ease the presentation of the following translation, we introduce a few a priori
+simplifications. First, in a reduced ontology, the concepts C of concept assertions C(a)
+and the right-hand sides D of concept inclusions C  D are all of the form C1. . .Cn
+with n > 0. We can separate these into an equivalent set of n axioms Ci(a) and C  Ci,
+respectively, for 1  i  n, simplifying in particular where some Ci is  and another
+an atomic concept. Moreover, we assume without loss of generality that  does not
+occur on the left-hand side of concept inclusions. We know that   C and R. are
+both equivalent to  and   C is always true, so we do not need to care translating
+such cases into rules. Finally, for , only axioms of the form   C and sub-concepts
+of the form R. deserve our attention, all other instances, namely (a), C  , or
+C   D, are irrelevant. Hence,  is not considered in assertions, the right-hand side
+of concept inclusions, and in conjunctions on the left-hand side of concept inclusions,
+all the more, since  does not appear in P. We also omit the auxiliary DL-safe atoms.
+
+First, we translate arbitrary concepts into a set of correctly connected atoms.
+
+Definition 12. Let C be an EL+ concept without occurrences of , x a variable, and
+X a set of variables with x  X. We define tr(C, x) as follows:
+
+
+
+tr(C, x) =
+
+{A(x)}
+
+tr(C1, x)  tr(C2, x)
+{R(x, y)}  tr(D, y)
+
+if C = A
+if C = 
+if C = C1  C2
+if C = R.D
+
+where y  X is a new variable that has not been used before. We obtain tr(C, x)d from
+tr(C, x) by substituting all predicates P in tr(C, x) with P d, and, given a set of atoms
+S, S is a sequence of all atoms contained in S separated by ,.
+
+Each y is indeed intended to be a variable that is globally new in the process of translating C. E.g.,R.((S.)(AR.B)) translates into S = {R(x, y1), S(y1, y2), A(y1),
+?
+
+?
+
+?
+R(y1, y3), B(y3)}. Then S is simply R(x, y1), S(y1, y2), A(y1), R(y1, y3), B(y3)
+which can appear as such in a rule body.
+Definition 13. Let K = (O,P) be an MKNF KB with consistent and reduced O. We
+define P dO from O, where A is an atomic concept, C a concept, D a non-atomic concept,
+R, Ri, S roles, and a, b individuals, as the smallest set containing:
+(a1) for each A(a)  O: A(a)  and Ad(a)  notN A(a).
+(a2) for each R(a, b)  O: R(a, b)  and Rd(a, b)  notN R(a, b).
+(t1) for each   A  O: A(x)  and Ad(x)  notN A(x).
+(c1) for each C  A  O : A(x)  tr(C, x) and Ad(x)  tr(C, x)d, notN A(a).
+(r1) for each R  S  O: S(x, y)  R(x, y) and
+(r2) for each R1    Rk  S  O: S(x1, y)  R1(x1, x2), . . . , Rk(xk, y) and
+1(x1, x2), . . . , Rd
+(i1) for each A    O: N A(x) .
+(i2) for each D    O: {N A(y)  tr(D, x) \ {A(y)} | A(y)  tr(D, x)} 
+
+Sd(x, y)  Rd(x, y), notN S(x, y).
+Sd(x1, y)  Rd
+
+k(xk, y), notN S(x1, y).
+
+{N R(y, z)  tr(D, x) \ {R(y, z)} | R(y, z)  tr(D, x)}.
+
+We create in P dO the rule representation for both O and Od. Again, if  does not occur
+in O, then we can skip all rules with doubled predicates, and (i1) and (i2) will not
+contribute anything either. The additional default atoms of the form notN A(x) and
+notN S(x, y) are added to the doubled rules to be in line with the idea of the doubling
+of rules in [2]: whenever, e.g., A(x) is classically false for some x, then we make
+sure that Ad(x) is derviable as false for that same x from the rules, but not necessarily
+A(x), thus allowing to detect potential MKNF-inconsistencies. That is also the reason
+why (i1) and (i2) do not produce the doubled counterparts: atoms based on predicates
+of the forms N Cd or N Rd are not used anywhere.
+
+We can show that the translation also maintains derivability of atoms.
+
+Lemma 14. Let O be a reduced EL+ ontology, A a unary and R a binary predicate:
+O |= A(a) iff P dO |= A(a) and Od |= Ad(a) iff P dO |= Ad(a), and, likewise,
+O |= R(a, b) iff P dO |= R(a, b) and Od |= Rd(a, b) iff P dO |= Rd(a, b).
+
+Thus, we can define a correct partial oracle based on P dO.
+
+Theorem 15. Let Kd = (O,Od,P d) be a doubled MKNF KB, O1 the reduced ontology of O, and pT
+ I  L |= S.
+Then pT
+
+O a partial EL oracle such that pT
+O (I, S,L) iff P dO1
+?
+
+?
+
+?
+O is a correct partial oracle w.r.t. compTO.7
+
+Instead of coupling two rule reasoners that interact with each other using an oracle,
+we can simplify the process altogether and integrate both into one rule reasoner. The
+resulting approach is decidable with data complexity in P.
+Theorem 16. Let K = (O,P) be an MKNF KB with EL+O. An SLG(O) evaluation
+of a query in KEL+ = (, (P d  P dO)) is decidable with data complexity in P.
+
+V. Ivanov, M. Knorr, and J. Leite
+
+Java Virtual Machine
+
+Protege
+
+NoHR Plugin
+
+OWL File
+
+Protege
+Ontology
+
+Translator
+
+Ontology
+
+NM Rules
+
+NM Rules 
+
+Base
+
+InterProlog
+
+Query 
+
+Processor
+
+NM Rules
+
+File
+
+NoHR 
+Rules Tab
+
+NoHR 
+
+Query Tab
+
+Knowledge 
+
+Base
+
+Query 
+
+Answering
+
+Tracer/
+
+Debugger
+
+Tables
+
+Fig. 1. System Architecture of NoHR
+
+4 System Description
+
+In this Section, we briefly describe the architecture of our plug-in for Prot eg e as shown
+in Fig. 1 and discuss some features of our implementation and querying in XSB.
+
+The input for our plug-in consists of an OWL file, which can be manipulated as
+usual in Prot eg e, and a rule file. For the latter, we provide a tab called NoHR Rules
+that allows us to load, save and edit rule files in a text panel. The syntax follows Prolog
+conventions, so that one rule from Ex. 2 can be represented, e.g., by
+
+SeaSideCity(X) :- PortCity(X), not NonSeaSideCity(X).
+
+The NoHR Query tab also allows for the visualization of the rules, but its main purpose is to provide an interface for querying the combined KB. Whenever the first query
+is posed by pushing Execute, the translator is started, initiating the ELK reasoner to
+classify the ontology and return the inferred axioms to translator. It is verified whether
+DisjointW ith axioms appear in O which determines whether the application of the
+transformations presented in Sect. 3 provides a doubled set of rules or not, and whether
+the non-monotonic rules have to be doubled as well. Then, accordingly, a joint (non-
+monotonic) rule set is created in which all predicates and constants are encoded using
+MD5 to ensure full compatibility with XSB Prologs more restrictive admitted input
+syntax. The result is transfered to XSB via InterProlog [8], which is an open-source
+Java front-end allowing the communication between Java and a Prolog engine.
+
+Next, the query is sent via InterProlog to XSB, and answers are returned to the query
+processor, which collects them and sets up a table showing for which variable substitutions we obtain true, undefined, or inconsistent valuations (or just shows the truth value
+for a ground query). The table itself is shown in the Result tab of the Output panel,
+while the Log tab shows measured times and system messages, including those from
+XSB via InterProlog. XSB itself not only answers queries very efficiently in a top-down
+manner, with tabling, it also avoids infinite loops.
+
+Once the query has been answered, the user may pose other queries, and the system
+will simply send them directly without any repeated preprocessing. If the user changes
+7 Of course, the partial EL oracle has to be defined w.r.t. the reduced O1.
+?
+
+?
+
+?
+ 
+
+ChEBI
+
+EMAP
+
+Fly Anatomy
+
+FMA
+
+GALEN-OWL
+
+GALEN7
+
+GALEN8
+
+GO1
+
+GO2
+
+Molecule Role
+
+SNOMED CT
+
+# Axioms
+
+Translator
+
+XSB
+
+Total
+
+67184
+
+13730
+
+19211
+
+126548
+
+36547
+
+44461
+
+73590
+
+28897
+
+73590
+
+9629
+
+3,92
+
+2,94
+
+2,70
+
+7,56
+
+5,00
+
+5,88
+
+21,90
+
+3,74
+
+4,57
+
+3,41
+
+7,41
+
+5,14
+
+4,99
+
+14,67
+
+8,76
+
+9,67
+
+42,76
+
+6,06
+
+8,90
+
+5,14
+
+1,75
+
+0,00
+
+0,83
+
+3,58
+
+2,46
+
+4,56
+
+28,12
+
+1,09
+
+5,02
+
+0,15
+
+294480
+
+20,61
+
+43,32
+
+24,69
+
+9,16
+
+5,14
+
+5,82
+
+18,25
+
+11,22
+
+14,23
+
+70,88
+
+7,15
+
+13,92
+
+5,29
+
+68,01
+
+Fig. 2. Preprocessing time (s) of different EL ontologies
+
+data in the ontology or in the rules, then the system offers the option to recompile, but
+always restricted to the part that actually changed.
+
+Our plug-in is under active development and the most recent version is available at
+
+https://code.google.com/p/nohr-reasoner/.
+
+5 Evaluation
+In this section, we evaluate our system with the aim of showing that a) different EL
+ontologies can be preprocessed for querying in a short period of time, b) adding rules
+increases the time of the translation only linearly, and c) querying time is in comparison
+to a) and b) in general completely neglectable.
+
+We performed the tests on a Mac book air 13 under Mac OS X 10.8.4 with a 1.8 GHz
+Intel Core i5 processor and 8 GB 1600 MHz DDR3 of memory. We used OWL API
+3.4.2 for managing ontologies, the ELK libraries 0.3.2, directly integrated into our tool,
+InterProlog 2.3a4 as Java front end between Java and Prolog, and XSB 3.4.0 for query-
+ing. We ran all tests in a terminal version and Java with the -XX:+AggressiveHeap
+option, and test results are averages over 5 runs.
+
+First, we preprocessed a number of ontologies without additional rules and measured
+
+the time. The results are shown in Fig. 2.
+
+We considered the ontologies, mentioned in [19], that are available online8 or, in the
+case of SNOMED CT, freely available for research and evaluation.9 The second column
+of Fig. 2 shows the number of axioms in each ontology to give an idea of their size. Very
+detailed measures of these ontologies are presented in [19].
+
+We measured the time it takes to only classify these ontologies with the ELK standalone application for comparison (third column), and also the time to translate the
+
+8 http://code.google.com/p/elk-reasoner/
+9 http://www.ihtsdo.org/licensing/
+
+V. Ivanov, M. Knorr, and J. Leite
+?
+
+?
+
+?
+)
+s
+(
+ 
+
+e
+m
+
+i
+
+60
+
+50
+
+40
+
+30
+
+20
+
+10
+
+0
+
+ELK
+Translator
+XSB
+
+0
+
+44
+
+88
+
+132 176 220 264 308 352 396 440
+
+NM Rules + Facts (1000)
+
+Fig. 3. Preprocessing time for SNOMED with a varying number of Rules
+
+OWL file into a file that can be loaded into XSB (Translator, fourth column). Then, we
+measured the time to load the resulting file dynamically into XSB (fifth column) and
+we also show the total time (sixth column, sum of columns four and five).
+
+One can observe that the total time is not proportional to the number of axioms,
+but rather also influenced by which kinds of axioms appear in each ontology which in
+particular affects the reasoning time of ELK (see also [19]). We can also see that the
+translator (including ELK processing) takes approximately twice the amount of time of
+ELK alone, while loading the file in XSB varies from 0 sec. (EMAP) to approximately
+the same time as running ELK alone, depending on the number of derived axioms that
+can be translated into rules. Still, the total preprocessing time varies from 5.14 sec. to
+70.88 sec. which we belief is acceptable since this has to be executed only once before
+querying.
+
+Next, we considered only SNOMED CT and added a varying number of nonmonotonic rules. These rules were generated arbitrarily, using predicates from the ontology and additional new predicates (up to arity three), producing rules with a random
+number of body atoms varying from 1 to 10 and facts (rules without body atoms) with
+a ratio of 1:10. Note that, due to the translation of the DL part into rules, all atoms
+literally become non-DL-atoms. So ensuring that each variable appearing in the rule
+is contained in at least one non-negated body atom suffices to guarantee DL-safety for
+these rules.
+
+The results are shown in Fig. 3 (containing also a constant line for classification of
+ELK alone and starting with the values from the first experiment with no additional
+rules), and clearly show that the time of translator and loading the file in XSB only
+grows linearly on the number of rules with a small degree, in particular in the case of
+translator. This indicates that adding non-monotonic rules to ontologies has a rather low
+impact on preprocessing.
+
+Finally, we tested the querying time. To this purpose, we randomly generated and
+handcrafted several queries of different sizes and shapes, some satisfiable while others
+not, using SNOMED CT with a varying number of non-monotonic rules as described in
+?
+
+?
+
+?
+the previous experiment. More concretely, we tested queries ranging from single atoms
+to complex conjunctive queries. We also varied the depth of classes and properties in the
+hierarchies, how many sub-elements the considered classes/properties have themselves
+(the more they have, the more answers are returned w.r.t. the arbitrarily many created
+rules and facts), and how variables are connected. E.g., we considered sequences of
+atoms without any (positive variable) connection between them, thus creating all combinations of the answers for each atom, but also queries in which properties (or new
+predicates of arity greater 1) introduce connections or where the same variable appears
+in different queried classes. In all cases, we observed that the query response time is
+interactive, mostly significantly below one second, observing longer reply times only if
+the number of replies is very high because either the queried class contains many subclasses in the hierarchy or if the arbitrarily generated rules create too many meaningless
+links, thus in the worst case requiring to compute the entire model. Requesting only one
+solution avoids this problem. Additionally, the question of realistic randomly generated
+rule bodies for testing querying time remain an issue of future work.
+
+6 Conclusions
+
+We have presented NoHR, the first plug-in for the ontology editor Prot eg e that integrates
+non-monotonic rules and top-down queries with ontologies in the OWL 2 profile OWL
+2 EL. Our approach realizes an SLG(O) oracle for EL+, utilizing the EL reasoner ELK
+for preprocessing an ontology and then translating it into rules, which can be queried
+together with the non-monotonic rules in XSB.
+We have generalized the procedure presented in [2] to non-normalized EL+ knowledge bases and shown that this formalization provides a correct SLG(O) oracle. We
+also have discussed how this procedure is implemented in our tool, and that it offers the
+representation of non-monotonic knowledge such as defaults and exceptions in a seamless way. We have evaluated the performance showing that different EL ontologies can
+be preprocessed for querying in a short period of time, adding rules increases this time
+only linearly, and querying time is in comparison to preprocessing insignificant.
+
+There are several relevant approaches discussed in the literature. Most closely related
+are probably [16,21], because both build on the well-founded MKNF semantics [20].
+In fact, [16] is maybe closest in spirit to the original idea of SLG(O) oracles presented
+in [1]. It utilizes the CDF framework already integrated in XSB, but its non-standard
+language is a drawback if we want to achieve compatibility with standard OWL tools
+based on the OWL API. On the other hand, [21], presents an OWL 2 QL oracle based
+on common rewritings in the underlying DL DL-Lite [3]. Less closely related is the
+work pursued in [7,15] that investigates direct non-monotonic extensions of EL, so that
+the main reasoning task focuses on finding default subset inclusions, unlike our querycentered approach.
+
+Two related tools are DReW [26] and HD Rules [10], but both are based on different
+underlying formalisms to combine ontologies and non-monotonic rules. The former
+builds on dl-programs [12] and focuses on datalog-rewritable DLs [17], and the latter
+builds on Hybrid Rules [11]. While a more detailed comparison is surely of interest,
+the main problem is that both underlying formalisms differ from MKNF knowledge
+
+V. Ivanov, M. Knorr, and J. Leite
+
+bases in the way information can flow between its two components and how flexible
+the language is [12,24]. Finally, SWRL-IQ [13] is also interesting because it utilizes
+expressive features of XSB, but in a monotonic setting and under Prot eg e 3.X, so OWL
+2 is not supported.
+
+In terms of future work, we consider extending our tool so that it is possible to
+load files in RIF format, thereby achieving a tool to jointly utilize the two language
+paradigms present in the ongoing standardization of the Semantic Web. We also want
+to work on extending the language, to allow nominals, or at least safe nominals [19].
+Finally, improving the user interface is also in our focus leveraging XSB language fea-
+tures, in particular in the light of [13], which uses an expressive query language and
+elaborate traces for finding explanations.
+
+Acknowledgments. We would like to thank Miguel Calejo for his help with Inter-
+Prolog, Pavel Klinov for his help with ELK, Terry Swift for his help with XSB, and
+Gonca G ull u for her collaboration. Vadim Ivanov was partially supported by a MULTIC  Erasmus Mundus Action 2 grant. Matthias Knorr and Jo ao Leite were partially supported by FCT funded project ERRO  Efficient Reasoning with Rules and
+Ontologies (PTDC/EIA-CCO/121823/2010) and Matthias Knorr also by FCT grant
+SFRH/BPD/86970/2012.

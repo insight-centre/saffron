@@ -99,7 +99,7 @@ public class Consolidate {
             }
             Document doc2 = new Document(document.file, document.id, document.url,
                     document.name, document.mimeType, authors2, document.metadata, 
-                    document.getContents());
+                    document.getContents(), document.date);
             corpus.updateDocument(document.id, doc2);
         }
     }

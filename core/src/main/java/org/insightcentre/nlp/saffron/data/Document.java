@@ -1,15 +1,35 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.deser.std.DateDeserializers;
+import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
+import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Month;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +52,9 @@ public class Document {
     public List<Author> authors;
     private Loader contents;
     public Map<String, String> metadata;
+    @JsonSerialize(using = DateSerializer.class)
+    @JsonDeserialize(using = DateDeserializer.class)
+    public LocalDateTime date;
 
     @JsonCreator
     public Document(@JsonProperty(value = "file") SaffronPath file,
@@ -41,7 +64,8 @@ public class Document {
             @JsonProperty("mime_type") String mimeType,
             @JsonProperty("authors") List<Author> authors,
             @JsonProperty("metadata") Map<String, String> metadata,
-            @JsonProperty("contents") String contents) {
+            @JsonProperty("contents") String contents,
+            @JsonProperty("date") LocalDateTime date) {
         if (file == null && contents == null && url == null) {
             System.err.println("id=" + id);
         }
@@ -52,14 +76,15 @@ public class Document {
         this.mimeType = mimeType == null && contents != null ? "text/plain" : mimeType;
         this.authors = authors == null ? new ArrayList<Author>() : authors;
         this.metadata = metadata == null ? new HashMap<String, String>() : metadata;
-        if(contents != null) {
+        this.date = date;
+        if (contents != null) {
             this.contents = new InMemory(contents);
-        } else if(file != null) {
+        } else if (file != null) {
             this.contents = new OnDisk();
-        } else if(url != null) {
+        } else if (url != null) {
             this.contents = new Remote();
         } else {
-            throw new IllegalArgumentException("Please give either document contents or link to file");            
+            throw new IllegalArgumentException("Please give either document contents or link to file");
         }
     }
 
@@ -71,7 +96,7 @@ public class Document {
      */
     public Document withLoader(Loader contents) {
         // Skip this in the case that the contents are in memory
-        if(this.contents == null || !(this.contents instanceof InMemory)) {
+        if (this.contents == null || !(this.contents instanceof InMemory)) {
             this.contents = contents;
         }
         return this;
@@ -95,6 +120,7 @@ public class Document {
     /**
      * Retrieve the contents of the document. Note this method cause documents
      * to be read from disc
+     *
      * @return The contents of the document
      */
     public String contents() {
@@ -228,13 +254,13 @@ public class Document {
         }
 
     }
-    
+
     public static class Remote implements Loader {
 
         @Override
         public String getContents(Document d) {
-            if(d.url != null) {
-                try(BufferedReader reader = new BufferedReader(new InputStreamReader(d.url.openStream()))) {
+            if (d.url != null) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(d.url.openStream()))) {
                     StringBuilder sb = new StringBuilder();
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -253,7 +279,7 @@ public class Document {
         public String getContentsSerializable(Document d) {
             return null;
         }
-        
+
     }
 
     /**
@@ -272,26 +298,89 @@ public class Document {
             for (String c : context) {
                 sb.append(c);
             }
-            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, sb.toString());
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, sb.toString(), this.date);
         } else {
-            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, "");
+            return new Document(this.file, this.id, this.url, this.name, this.mimeType, this.authors, this.metadata, "", this.date);
         }
     }
 
     @Override
     public String toString() {
-        if(contents != null && contents instanceof InMemory) {
+        if (contents != null && contents instanceof InMemory) {
             return String.format("Document(%s,InMemory)", id);
-        } else if(contents != null && contents instanceof OnDisk) {
-            return String.format("Document(%s,%s)", id, file.toFile().getAbsolutePath());            
-        } else if(contents != null && contents instanceof Remote) {
-            return String.format("Document(%s,%s)", id, url);   
-        } else if(contents != null) {
-            return String.format("Document(%s,%s)", id, contents.toString());   
+        } else if (contents != null && contents instanceof OnDisk) {
+            return String.format("Document(%s,%s)", id, file.toFile().getAbsolutePath());
+        } else if (contents != null && contents instanceof Remote) {
+            return String.format("Document(%s,%s)", id, url);
+        } else if (contents != null) {
+            return String.format("Document(%s,%s)", id, contents.toString());
         } else {
             return String.format("Document(%s,NoContent)", id);
         }
     }
-    
-    
+
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern(
+            "yyyy[-MM[-dd]]");
+
+    /**
+     * Parse a date
+     *
+     * @param date The date as an ISO String
+     * @return The date object
+     */
+    public static LocalDateTime parseDate(String s) {
+        if(s == null || s.equals(""))
+            return null;
+        if (s.matches("\\d{4}")) {
+            return LocalDateTime.of(Integer.parseInt(s), Month.JANUARY, 1, 0, 0);
+        } else if (s.matches("\\d{4}-\\d{1,2}")) {
+            return LocalDateTime.of(Integer.parseInt(s.substring(0, 4)), Integer.parseInt(s.substring(5, 7)), 1, 0, 0);
+        }
+        try {
+            return LocalDateTime.parse(s, formatter);
+        } catch (Exception x) {
+            return LocalDate.parse(s, dateFormatter).atStartOfDay();
+        }
+    }
+
+    @JsonIgnore
+    public String getDateAsString() {
+        if (date == null) {
+            return null;
+        }
+        return formatter.format(date);
+    }
+
+    public static class DateDeserializer extends StdDeserializer<LocalDateTime> {
+
+        public DateDeserializer() {
+            super(LocalDateTime.class);
+        }
+
+        @Override
+        public LocalDateTime deserialize(JsonParser jp, DeserializationContext dc) throws IOException, JsonProcessingException {
+            String s = jp.getText();
+            return parseDate(s);
+        }
+
+    }
+
+    public static class DateSerializer extends StdSerializer<LocalDateTime> {
+
+        public DateSerializer() {
+            super(LocalDateTime.class);
+        }
+
+        private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+                "yyyy[-MM[-dd[[ ]['T']HH:mm[:ss][XXX]]]]");
+
+        @Override
+        public void serialize(LocalDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException {
+            jg.writeString(formatter.format(t));
+        }
+
+    }
 }

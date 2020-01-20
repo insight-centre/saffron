@@ -1,0 +1,736 @@
+Minimal Deductive Systems for RDF
+
+Sergio Mu noz1, Jorge P erez2,3, and Claudio Gutierrez4
+
+1 Universidad Cat olica de la Sant sima Concepci on, Chile
+
+2 Pontificia Universidad Cat olica de Chile
+
+3 Universidad de Talca, Chile
+
+4 Universidad de Chile
+
+Abstract. This paper presents a minimalist program for RDF, by showing how one can do without several predicates and keywords of the RDF
+Schema vocabulary, obtaining a simpler language which preserves the
+original semantics. This approach is beneficial in at least two directions:
+(a) To have a simple abstract fragment of RDFS easy to formalize and
+to reason about, which captures the essence of RDFS; (b) To obtain algorithmic properties of deduction and optimizations that are relevant for
+particular fragments. Among our results are: the identification of a simple fragment of RDFS; the proof that it encompasses the main features
+of RDFS; a formal semantics and a deductive system for it; sound and
+complete deductive systems for their sub-fragments; and an O(n log n)
+complexity bound for ground entailment in this fragment.
+
+1 Introduction
+
+The Resource Description Framework (RDF) is the W3C standard for representing information in the Web [17]. The motivation behind the development of RDF
+by the W3C was, as Tim Berners-Lee pointed out for the Semantic Web, to have
+a common and minimal language to enable to map large quantities of existing
+data onto it so that the data can be analyzed in ways never dreamed of by its
+creators [2]. If one would like to bring to reality this vision, the processing of
+RDF data at big scale must be viable. The very future of RDF data deployment
+and their use will depend critically on the complexity of processing it.
+
+Efficient processing of any kind of data relies on a compromise between two
+parameters, namely, the size of the data and the expressiveness of the language
+describing it. As we already pointed out, in the RDF case the size of the data
+to be processed will be enormous, as examples like Wordnet [12], FOAF [3] and
+Gene Ontology [19] show. Hence, a program to make RDF processing scalable
+has to consider necessarily the issue of the expressiveness of RDF. Due to the
+well known fact that the complexity of entailment using RDF data in its full
+expressiveness is an untractable problem [7,8,4], such a program amounts essentially to look for fragments of RDF with good behavior w.r.t. complexity of
+processing. This is the broad goal of the present paper.
+
+The full specification of RDF (that is, including RDFS vocabulary) and their
+fragments has not yet been studied in detail. Its description is given in [16] and its
+
+E. Franconi, M. Kifer, and W. May (Eds.): ESWC 2007, LNCS 4519, pp. 5367, 2007.
+c Springer-Verlag Berlin Heidelberg 2007
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+semantics is defined in [15]. The first observation that arises when dealing with
+RDFS vocabulary is the difficulty to work with it. An example of this fact is that
+even the rules of deduction presented in the official RDF Semantics specification
+are not complete [10,8]. A second empirical observation is that several parts of
+the RDFS vocabulary have been depreciated, and practice shows that there are
+others that are hardly used or not being used at all. This makes it very hard for
+developers to build and optimize sound implementations and algorithms, and
+for theoreticians to work on this specification.
+
+In order to illustrate the above issues, let us consider two well known RDFS
+specifications: WordNet [12] and Friend of a Friend (FOAF) [3]. Both schemas
+use only a proper subset of the RDFS vocabulary. FOAF schema has no blank
+nodes. Additionally, there is a point about the real need of explicitly declaring
+classes via rdfs:Class: In both specifications the triples where rdfs:Class
+occurs are redundant (i.e. can be deduced from the rest of the data). Something
+similar happens with terms defined as properties (rdf:Property). Why use all
+the weight of the full RDFS specification in these cases? Another example where
+these type of issues will arise, is the SPARQL query language specification [11],
+which currently does not support RDFS entailment. There is wide agreement
+that more expressive vocabularies must be treated orthogonally to the rest of
+the SPARQL features. In practice, each query will use just a small fragment
+of the RDFS vocabulary. For reasoning and optimization purposes, it would
+be useful to have a sound and complete theory of each such fragment which
+preserves the semantics of RDFS.
+
+Among the most important directions of a program to develop solutions to
+
+the above mentioned problems are:
+ To identify a fragment which encompasses the essential features of RDF,
+which preserves the original semantics, be easy to formalize and can serve
+to prove results about its properties.
+
+ To study in detail the semantics of different fragments of RDF, and give
+
+sound and complete deductive system for each of them.
+
+ To study the complexity of entailment for the vocabulary in general and
+in these fragments in particular, and to develop algorithms for testing
+entailment.
+
+As for the first point, in this paper we identify a fragment of RDFS that
+covers the crucial vocabulary of RDFS, prove that it preserves the original RDF
+semantics, and avoids vocabulary and axiomatic information that only serves
+to reason about the structure of the language itself and not about the data it
+describes. We lift this structural information into the semantics of the language,
+hiding them from developers and users.
+
+Regarding the second point, we study thoroughly all fragments of the core
+fragment showing that they retain the original RDFS semantics. We then study
+the lattice of the theories induced by these fragments, developing minimal sound
+and complete proof systems for them. We also calculate what are the minimal sub-theories that should be considered when reasoning with restricted
+vocabulary.
+?
+
+?
+
+?
+Finally, regarding the point of complexity of entailment, there are two main
+aspects of RDF to consider: the built-in vocabulary and the notion of blank
+nodes. For the complexity of entailment considering blank nodes, good (polyno-
+mial) cases can be derived from well known databases and constraintsatisfaction
+results [4,9,5]. These cases consider special forms of interaction between blank
+nodes that are very common in practice. On this regard, we prove that there is
+a notion of normalized proof for RDFS entailment which permits to treat the
+issue of blank nodes entailment in a way orthogonal to the treatment of RDFS
+vocabulary. Using this notion, results for blank nodes can be composed modularly with particular results for ground RDFS fragments, that is, not considering
+blank nodes semantics.
+
+For the the ground case, from a database point of view, even current known
+bounds seems totally impractical. For example, the naive approach would use
+closure, and estimates for the size of the closure are high: we show that in the
+fragment presented, it is quadratic. Nevertheless, this bound is still impractical
+from a database point of view. On these lines, we prove that entailment can be
+done in time O(n log n) in the worst case, where n is the size of the source data.
+The paper is organized as follows. Section 2 presents standard RDF and its
+semantics and discusses the vocabulary design to conclude with a proposal of
+core fragment, called df. Section 3 studies the df fragment. Section 4 presents
+the lattice of minimal fragments of df and their deductive systems. Section 5
+studies complexity of entailment in the df fragment. Finally, Section 6 presents
+the conclusion.
+
+2 RDF Semantics
+Assume there are pairwise disjoint infinite sets U (RDF URI references), B
+(Blank nodes), and L (Literals). Through the paper we assume U, B, and L fixed,
+and for simplicity we will denote unions of these sets simply concatenating their
+names. A tuple (s, p, o)  UBLUUBL is called an RDF triple. In this tuple,
+s is the subject, p the predicate, and o the object. Note that following recent
+developments [6,11] we are omitting the old restriction stating that literals
+cannot be in subject position.
+Definition 1. An RDF graph (or simply a graph) is a set of RDF triples. A subgraph is a subset of a graph. The universe of a graph G, denoted by universe(G)
+is the set of elements in UBL that occur in the triples of G. The vocabulary of
+G, denoted by voc(G) is the set universe(G)  UL. A graph is ground if it has
+no blank nodes. In general we will use uppercase letters N, X, Y, . . . to denote
+blank nodes.
+In what follows we will need some technical notions. A map is a function  :
+UBL  UBL preserving URIs and literals, i.e., (u) = u for all u  UL.
+Given a graph G, we define (G) as the set of all ((s), (p), (o)) such that
+(s, p, o)  G. We will overload the meaning of map and speak of a map  from
+G1 to G2, and write  : G1  G2, if the map  is such that (G1) is a subgraph
+of G2.
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+2.1 Interpretations
+
+The normative semantics for RDF graphs given in [15], and the mathematical
+formalization in [10] follows standard classical treatment in logic with the notions of model, interpretation, entailment, and so on. In those works the RDFS
+theory is built incrementally from Simple, to RDF, to RDFS interpretations (or
+structures) and models for graphs. We present here a single notion of interpretation which summarizes Simple, RDF, and RDFS interpretations in one step,
+and which will be used later to define the semantics of our fragment.
+Definition 2. An interpretation over a vocabulary V is a tuple
+
+I = (Res, P rop, Class, Ext, CExt, Lit, Int)
+
+such that: (1) Res is a nonempty set of resources, called the domain or universe
+of I; (2) P rop is a set of property names (not necessarily disjoint from Res); (3)
+Class  Res is a distinguished subset of Res identifying if a resource denotes
+a class of resources; (4) Ext : P rop  2ResRes, a mapping that assigns an
+extension to each property name; (5) CExt : Class  2Res a mapping that
+assigns a set of resources to every resource denoting a class; (6) Lit  Res the
+set of literal values, Lit contains all plain literals in L  V ; (7) Int : UL  V 
+Res  P rop, the interpretation mapping, a mapping that assigns a resource or
+a property name to each element of UL in V , and such that Int is the identity
+for plain literals and assigns an element in Res to elements in L.
+In [15,10] the notion entailment is defined using the idea of satisfaction of a graph
+under certain interpretation. Intuitively a ground triple (s, p, o) in an RDF graph
+G will be true under the interpretation I if p is interpreted as a property name,
+s and o are interpreted as resources, and the interpretation of the pair (s, o)
+belongs to the extension of the property assigned to p.
+In RDF, blank nodes work as existential variables. Intuitively the triple (X, p, o)
+with X  B would be true under I if there exists a resource s such that (s, p, o) is
+true under I. When interpreting blank nodes, an arbitrary resource can be chosen,
+taking into account that the same blank node must always be interpreted as the
+same resource. To formally deal with blank nodes, extensions of the interpretation
+map Int are used in the following way. Let A : B  Res be a function from blank
+nodes to resources; we denote IntA the extension of Int to domain B defined by
+IntA(X) = A(X) when X  B. The function A captures the idea of existentiality.
+The formal definition of model and entailment for RDFS in [15,10] relies on
+a set of semantics restrictions imposed to interpretations in order to model the
+vocabulary, and the a priori satisfaction of a set of axiomatic triples. We refer
+the reader to Appendix A for a complete formal definition of the semantics of
+RDFS using the notion of interpretation defined here.
+
+2.2 RDFS Vocabulary
+
+The RDF specification includes a set of reserved words, the RDFS vocabulary
+(RDF Schema [16]) designed to describe relationships between resources as well
+?
+
+?
+
+?
+as to describe properties like attributes of resources (traditional attribute-value
+pairs). Table 1 (Appendix A) shows the full RDFS vocabulary as it appears
+in [15], and (in brackets) the shortcuts that we will use in this paper. This
+vocabulary has a special interpretation (see Definition 6 in Appendix A).
+
+Roughly speaking, this vocabulary can be divided conceptually in the follow-
+
+ing groups:
+(a) a set of properties rdfs:subPropertyOf [sp], rdfs:subClassOf [sc], rdfs:domain
+
+[dom], rdfs:range [range] and rdf:type [type].
+
+(b) a set of classes,
+
+rdfs:Literal, rdfs:Datatype.
+
+rdfs: Resource, rdfs:Class,
+
+rdf:Property, rdf:XMLLiteral,
+
+(c) Other functionalities, like a system of classes and properties to describe lists:
+rdfs:Container, rdfs:ContainerMembershipProperty, rdfs:member, rdf:List, rdf:Alt,
+rdf:Bag, rdf:Seq, rdf:first, rdf:rest, rdf:nil, rdf: 1, rdf: 2, . . . , and a systems for
+doing reification: a class rdf:Statement together with properties rdf:subject,
+rdf:predicate, rdf:object.
+
+(d) Utility vocabulary, like rdfs:seeAlso, rdfs:isDefinedBy, rdfs:comment, rdf:value,
+
+rdfs:label.
+The groups in (b), (c) and (d) have a very light semantics, essentially describing its internal function in the ontological design of the system of classes
+of RDFS. Their semantics is defined by axiomatic triples [15]which are relationships among these reserved words. Note that all axiomatic triples are struc-
+tural, in the sense that do not refer to external data, but talk about themselves.
+Much of this semantics correspond to what in standard languages is captured
+via typing. From a theoretical and practical point of view it is inconvenient to
+expose it to users of the language because it makes the language more difficult
+to understand and use, and for the criteria of simplicity in the design of the
+language.
+
+On the contrary, the group (a) is formed by predicates whose intended meaning is non-trivial and is designed to relate individual pieces of data external to
+the vocabulary of the language. Their semantics is defined by rules which involve
+variables (to be instantiated by real data). For example, rdfs:subClassOf[sc] is
+a binary property reflexive and transitive; when combined with rdf:type[type]
+specify that the type of an individual (a class) can be lifted to that of a su-
+perclass. This group (a) forms the core of the RDF language developers use, as
+practice is showing.
+
+For all the above considerations, it is that group (a) forms a natural fragment
+of RDFS to be studied in depth. Section 3 is devoted to study this fragment,
+and our results will show that there are theoretical reasons that support the
+convenience of this choice.
+
+3 The df Fragment of RDFS
+
+Define df (read rho-df, the  from restricted rdf) to be the following subset of
+the RDFS vocabulary:
+
+df = {sp, sc, type, dom, range}.
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+Definition 3. Let G be a graph over df. An interpretation I is a model of G
+under df, denoted I |=df G, iff I is an interpretation over df  universe(G)
+that satisfies the following conditions:
+
+1. Simple:
+
+(a) there exists a function A : B  Res such that for each (s, p, o)  G, Int(p) 
+P rop and (IntA(s), IntA(o))  Ext(Int(p)), where IntA is the extension of
+Int using A.
+
+2. Subproperty:
+
+(a) Ext(Int(sp)) is transitive and reflexive over P rop
+(b) if (x, y)  Ext(Int(sp)) then x, y  P rop and Ext(x)  Ext(y)
+
+3. Subclass:
+
+(a) Ext(Int(sc)) is transitive and reflexive over Class
+(b) if (x, y)  Ext(Int(sc)) then x, y  Class and CExt(x)  CExt(y)
+
+4. Typing I:
+
+(a) x  CExt(y)  (x, y)  Ext(Int(type))
+(b) if (x, y)  Ext(Int(dom)) and (u, v)  Ext(x) then u  CExt(y)
+(c) if (x, y)  Ext(Int(range)) and (u, v)  Ext(x) then v  CExt(y)
+
+5. Typing II:
+
+(a) For each e  df, Int(e)  P rop.
+(b) if (x, y)  Ext(Int(dom)) then x  P rop and y  Class.
+(c) if (x, y)  Ext(Int(range)) then x  P rop and y  Class.
+(d) if (x, y)  Ext(Int(type)) then y  Class.
+
+We define G entails H under df, denoted G |=df H, iff every model under df
+of G is also a model under df of H.
+
+Note that in dfmodels we do not impose the a priori satisfaction of any axiomatic triple. Indeed, dfmodels does not satisfy any of the RDF/S axiomatic
+triples in [15,10], because all of them mention RDFS vocabulary outside df. This
+is also the reason for the inclusion of conditions 5 in df models that capture
+the semantics restrictions imposed syntactically by the RDF/S axiomatic triples
+(dom, dom, prop), (dom, range, class), (range, dom, prop), (range, range, class),
+and (type, range, class), and the fact that every element in df must be interpreted as a property.
+
+The next theorem shows that this definition retains the original semantics for
+
+the df vocabulary:
+Theorem 1. Let |= be the RDFS entailment defined in [15,10], and let G and
+H be RDF graphs that do not mention RDFS vocabulary outside df. Then
+
+G |= H iff G |=df H.
+?
+
+?
+
+?
+The issue of reflexivity. There are still some details to be refined in the theory of df. Note that, although in dfmodels we do not impose the a priori
+satisfaction of any triple, there are triples that are entailed by all graphs, for example the triples (sp, sp, sp), (sc, sp, sc), (type, sp, type), (dom, sp, dom), and
+(range, sp, range). These triples are true under every df model due to the fact
+that sp must be interpreted as a reflexive relation. Also, because blank nodes
+work as existential variables, the triples above with the subject or the object
+replaced by any blank node, are also true in every dfmodel. The good news
+is that these are the only triples in the df fragment that are satisfied by every
+model:
+Proposition 1. Let t be an RDF triple such that |=df t. Then, either t 
+{(sp, sp, sp), (sc, sp, sc), (type, sp, type), (dom, sp, dom), (range, sp, range)},
+or t is obtained from these triples replacing the subject or object by a blank
+node.
+
+This is part of a more general phenomena, namely the presence of reflexivity for
+sp and sc. We will show that reflexivity for sp and sc is orthogonal with the
+rest of the semantics.
+Definition 4 (Semantics without reflexivity of sp and sc). An interpretation I is a reflexiverelaxed model under df of a graph G, written I |=nrx
+df G,
+iff I is a df model that does not necessarily satisfy the restrictions stating that
+Ext(Int(sp)) and Ext(Int(sc)) are reflexive relations over P rop and Class re-
+spectively.
+Theorem 2. Let G and H be df graphs. Assume that H does not contain
+triples of the form (x, sp, x) nor (x, sc, x) for x, y  UL, nor triples of the form
+(X, sp, Y ) nor (X, sc, Y ) for X  B or Y  B. Then,
+
+G |=df H iff G |=nrx
+
+df H.
+
+Essentially the above theorem states that the only use of reflexive restrictions
+in RDFS models is the entailment of triples of the form (x, sp, x), (x, sc, x), or
+their existential versions replacing the subject or object by blank nodes. Another
+property of |=nrx
+Corollary 1. There is no triple t such that |=nrx
+
+df is that it does not entail axiomatic triples:
+
+df t.
+
+3.1 Deductive System for df Vocabulary
+
+In what follows, we present a sound and complete deductive system for the
+fragment of RDF presented in the previous section. The system is arranged in
+groups of rules that captures the semantic conditions of models. In every rule,
+A,B,C,X , and Y are meta-variables representing elements in UBL.
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+1. Simple:
+
+(a) G
+G
+
+for a map  : G  G
+
+(b) G
+G
+
+for G  G
+
+2. Subproperty:
+
+(a) (A,sp,B) (B,sp,C)
+
+(A,sp,C)
+
+3. Subclass:
+
+(a) (A,sc,B) (B,sc,C)
+
+(A,sc,C)
+
+4. Typing:
+
+(a) (A,dom,B) (X ,A,Y)
+
+(X ,type,B)
+
+5. Implicit Typing:
+
+(b) (A,sp,B) (X ,A,Y)
+
+(X ,B,Y)
+
+(b) (A,sc,B) (X ,type,A)
+
+(X ,type,B)
+
+(b) (A,range,B) (X ,A,Y)
+
+(Y,type,B)
+
+(a) (A,dom,B) (C,sp,A) (X ,C,Y)
+
+(X ,type,B)
+
+(b) (A,range,B) (C,sp,A) (X ,C,Y)
+
+(Y,type,B)
+
+6. Subproperty Reflexivity:
+
+(a) (X ,A,Y)
+(A,sp,A)
+(b)
+
+(A,sp,B)
+
+(A,sp,A) (B,sp,B)
+
+7. Subclass Reflexivity:
+
+(a)
+
+(A,sc,B)
+
+(A,sc,A) (B,sc,B)
+
+(c) (p,sp,p)
+(d) (A,p,X )
+(A,sp,A)
+
+for p  df
+for p  {dom, range}
+
+(b) (X ,p,A)
+(A,sc,A)
+
+for p  {dom, range, type}
+
+Note 1 (On rules (5a) and (5b)). As noted in [10,8], the set of rules presented
+in [15] is not complete for RDFS entailment. The problem is produced when
+a blank node X is implicitly used as standing for a property in triples like
+(a, sp, X), (X, dom, b), or (X, range, c). Here we solve the problem following the
+elegant solution proposed by Marin [10] adding just two new rules of implicit
+typing (rules 5 above).
+
+An instantiation of a rule is a uniform replacement of the metavariables occurring in the triples of the rule by elements of UBL, such that all the triples
+obtained after the replacement are well formed RDF triples.
+Definition 5 (Proof). Let G and H be graphs. Define G df H iff there exists
+a sequence of graphs P1, P2, . . . , Pk, with P1 = G and Pk = H, and for each j
+(2  j  k) one of the following cases hold:
+ there exists a map  : Pj  Pj1 (rule (1a)),
+ Pj  Pj1 (rule (1b)),
+?
+
+?
+
+?
+ there is an instantiation R
+
+and Pj = Pj1  R
+
+.
+
+R of one of the rules (2)(7), such that R  Pj1
+
+The sequence of rules used at each step (plus its instantiation or map), is called
+a proof of H from G.
+Theorem 3 (Soundness and completeness). The proof system df is sound
+and complete for |=df, that is, given graphs G and H we have
+
+G df H iff G |=df H.
+
+Corollary 2. Define the proof system nrx
+(rules (6) and (7)). Then for graphs G and H,
+df H iff G |=nrx
+
+G nrx
+
+df H.
+
+df as df by droping rules of reflexivity
+
+4 Deductive Systems for Minimal Fragments of df
+
+We will assume in the rest of the paper that the user does not redefine or enrich
+the semantics of the df-vocabulary. In syntactical terms this means that there
+is no triple where this vocabulary occurs in subject or object positions. This
+assumption is light and can be found on almost all published RDF specifications.
+To begin with, the following theorem shows that for several purposes blank
+
+nodes can be treated in an orthogonal form to df vocabulary.
+Theorem 4 (Normal form for proofs). Assume G df H. Then there is a
+proof of H from G where the rule (1) is used at most once and at the end.
+Consider the lattice of fragments of df in Figure 1. Given one of the fragments
+X, by an X-graph we will understand a graph that mention df vocabulary only
+from X. Similarly, an X-rule is one rule (2-7) that mention df vocabulary only
+from X.
+Theorem 5. Let X be one of the fragments of df in Figure 1, and let G and
+H be X-graphs. Assume that G df H, then there exists a proof of H from G
+which only uses X-rules and rule (1).
+The above result is based in the observation that in a proof of H from G we can
+avoid the following fact: a sequence of graphs Pi, Pi+1, . . . , Pi+j produced in the
+proof may present vocabulary outside X, but with Pi and Pi+j X-graphs. This
+fact may impose new rules obtained from the rules of df by a concatenation
+that result in a sound derivation between X-graphs. It can be shown that the
+only rules obtained in this way coincide actually with X-rules. A second point
+is that triples with vocabulary outside X, produced by the application of non
+X-rules are not needed and can be left out of the proof of H from G.
+Theorem 5 implies that X-rules are sound and complete for |=df in fragment
+X. As a direct consequence we also obtain that X-rules without considering
+reflexivity rules, are sound and complete for |=nrx
+In what follows G|V means the subgraph induced by vocabulary V , i.e. those
+
+df in fragment X.
+
+triples having subject, or predicate, or object in V .
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+df
+
+sc, sp, type
+
+sp, type, d+r
+
+sc,sp,d+r
+
+sc, type, d+r
+
+sp, sc
+
+sp, type
+
+sp, d+r
+
+sc, type
+
+sc, d+r
+
+type, d+r
+
+sp
+
+sc
+
+type
+
+d+r
+
+Fig. 1. The lattice of fragments of df
+
+iff G|dom |=df (a, dom, b).
+
+iff G|range |=df (a, range, b).
+
+iff G|{sp,a,b,c} |=df (a, b, c).
+
+Interpolation Lemmas for RDF. Interpolation lemmas refer to lemmas expressing the role of vocabularies in deduction. They follow from the previous results
+in this section.
+Lemma 1. Let G and H be graphs. If (a, b, c)  G and a, b, c do not appear in
+voc(H) nor in df, then G |=df H iff G  {(a, b, c)} |=df H.
+Lemma 2. Let a, b, c be ground terms with b not belonging to df. Then: G |=df
+(a, b, c)
+Lemma 3. Let a, b  UBL, then
+1. G |=df (a, dom, b)
+2. G |=df (a, range, b)
+Moreover, if a, b are ground, |=df reduces to membership in G.
+Note 2. Although (a, dom, b) refers to a property a and a class b, inferring a dom
+statement in the RDFS system does not depend on statements about classes or
+properties. For example, from the previous lemma follows the non-intuitive fact
+that {(c1, sc, c2), (c2, sc, c1), (a, dom, c1)} does not entail (a, dom, c2).
+Lemma 4. Let a = b, then
+1. G |=df (a, sc, b)
+2. G |=df (a, sp, b)
+It turns out that type is the most entangled keyword in the vocabulary and
+deducing G |=df (a, type, b) can involve all of G (except those triples mentioned
+in Lemma 1).
+
+iff G|sc |=df (a, sc, b).
+iff G|sp |=df (a, sp, b).
+?
+
+?
+
+?
+5 The Complexity of df Ground Entailment
+
+Let us introduce some notation. For a graph G and a predicate p, define Gp as
+the subgraph of G consisting of the triples of the form (x, p, y) of G, and define
+G as the subgraph consisting of triples without df vocabulary. Let G(sp) be
+the directed graph whose vertices are all the elements v which appear as subject
+or objects in the triples of G, and in which (u, v) is an edge if and only if
+(u, sp, v)  G. Similar definition for G(sc).
+The naive approach to test the entailment G |= H in the ground case would
+be to consider the closure of G and check if H is included in it. Recall that for
+ground G, the closure is the graph obtained by adding to G all ground triples
+that are derivable from G. The following result shows that this procedure would
+take time proportional to |H|  |G|2 in the worst case, which is too expensive
+from a database point of view.
+Theorem 6. The size of the closure of G is O(|G|2), and this bound is tight.
+
+For the upper bound, the result follows by an analysis of the rules. The most
+important point is the propagation when applicable of the triples of the form
+(x, a, y) through the transitive closure of the G(sp) graph by the usage of rule
+2(b): it can be shown that this gives at most |G||Gsp| triples. For triples having
+a fixed predicate in df the quadratic bound is trivial. For the tightness, consider
+the graph {(a1, sp, a2), . . . , (an, sp, an+1)}  {(x1, a1, yn), . . . , (xn, an, yn)}. The
+k=1 k that is quadratic
+number of triples of the closure of this graph is 2n+1+
+in n.
+?
+
+?
+
+?
+n
+
+The following algorithm presents a much better procedure to check ground
+
+entailment in this fragment.
+
+Algorithm (Ground Entailment)
+Input: G, triple (a, p, b)
+1. IF p  {dom, range} THEN check if (a, p, b)  G.
+2. IF p = sp, a = b, THEN check if there is a path from a to b in G(sp).
+3. IF p = sc, a = b, THEN check if there is a path from a to b in G(sc).
+4. IF p  {sp, sc} and a = b, THEN check if (a, p, a)  G else check all patterns
+5. IF p / df THEN check (a, p, b)  G, if it is not
+
+of triples in the upper part of rules 6 (for sp) and rule 7 (for sc).
+LET G(sp) be the graph G(sp) with the following marks:
+For each (a, v, b)  G, if v  G(sp) then mark it green.
+IN Check in G(sp) if there is a path from a vertex marked green to p
+LET G(sp) be the graph G(sp) with the following marks:
+
+6. IF p = type THEN
+
+- For each triple (u, dom, v)  Gdom, if u  G(sp) mark the
+vertex u with d(v).
+- For each triple (a, e, y)  G, if e  G(sp), mark the
+vertex e with a.
+
+S. Mu noz, J. P erez, and C. Gutierrez
+
+LET G(sc) be the graph G(sc) with the following marks:
+
+- For vertex u marked d(v) reachable from a vertex marked a in G(sp),
+if v  G(sc) mark it blue.
+- For each (a, type, w)  G, if w  G(sc) mark it blue.
+IN Check in G(sc) if there is a path from a blue node to b.
+Repeat this point for range instead of dom.
+
+y
+
+G(sp)
+
+e
+a
+
+type
+
+a
+
+w
+
+sc
+
+sp
+
+G(sc)
+
+b
+
+sc
+
+v
+
+d o m
+
+d(v)
+u
+
+Fig. 2. Point 6 of the Ground Entailment Algorithm
+
+Theorem 7. Let (a, b, c) be a ground triple. The algorithm above can be used to
+test the entailment G |=df (a, b, c) in time O(|G| log |G|).
+Correctness and completeness of the algorithm follows from an inspection of
+the rules. The algorithm uses the rules in a bottom-up fashion. There are some
+subtleties in points 5 and 6. Point 5 follows from Lemma 2 and rule 2(a). The
+construction of G(sp) can be done in |G| log |G| steps: order G and then while
+traversing G(sp) do binary search on G. For point 6 (see Figure 2) the crucial
+observation is that in G(sp), if there is a path from a vertex marked a to a
+vertex u marked d(v), then G |= (a, u, y) for some y, and hence G |= (a, type, v)
+using rule 4(a). Note that this checking takes time at most linear in |G|. From
+here, it is easy to see that the checking in G(sc) will do the job.
+Corollary 3. Let H be a ground graph. Deciding if G |=df H can be done in
+time O(|H|  |G| log |G|).
+The following result shows that the above algorithm cannot be essentially im-
+proved, in the sense that, any other algorithm for testing the ground entailment
+G |=df H will take time proportional to |H|  |G| log |G| in the worst case.
+Theorem 8. The problem of testing G |=df t takes time (|G| log |G|).
+The bound is obtained by coding the problem of determining whether two sets
+are disjoint, which is a well known problem that needs (n log n) comparisons in
+the worst case [1]. The codification is as follows: Given the sets A = {a1, . . . , an}
+and B = {b1, . . . , bn}, construct the RDF graph G = {(ai1, sp, ai)}2in 
+{(x, bj, y)}1jn. Then, we have that G |= (x, an, y) iff A  B = .
+?
+
+?
+
+?
+6 Conclusions
+
+We presented a streamlined fragment of RDFS which includes all the vocabulary that is relevant for describing data, avoiding vocabulary and semantics that
+theoretically corresponds to the definition of the structure of the language. We
+concentrated in studying the semantics, entailment, minimal proof systems, and
+algorithmic properties of this relevant fragment of RDFS. Our results show a viable proposal to lower the complexity of RDF data processing by using fragments
+of RDFS.
+
+In this paper we have concentrated primarily on the ground dimension of RDF.
+Future work includes the refinement of our current results about the interplay
+between blank nodes semantics and the ground part. We are also working in the
+applications of our results to practical cases, as well as developing best practices
+for logical design of RDF specification based on the previous considerations.
+
+Acknowledgments. P erez was supported by Direcci on de Investigaci on  Universidad de Talca, Gutierrez by Proyecto Enlace DI 2006, ENL 06/13, Universidad de Chile, and the three authors by Millennium Nucleus Center for Web
+Research, P04-067-F, Mideplan, Chile.

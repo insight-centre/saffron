@@ -52,7 +52,7 @@ public class TermExtractionTest {
     static int docs = 0;
 
     private Document mkDoc(String contents) {
-        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
     }
 
     /**
