@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.data.connections;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Objects;
 import org.insightcentre.nlp.saffron.data.Status;
 
@@ -9,6 +10,7 @@ import org.insightcentre.nlp.saffron.data.Status;
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
+@JsonIgnoreProperties(ignoreUnknown=true)
 public class AuthorAuthor {
     public final String author1_id;
     public final String author2_id;
