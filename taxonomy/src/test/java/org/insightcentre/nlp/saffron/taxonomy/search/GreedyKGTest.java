@@ -157,7 +157,6 @@ public class GreedyKGTest {
         Set<TypedLink> blackList = new HashSet<>();
         whiteList.add(new TaxoLink("thing", "vehicles"));
         whiteList.add(new TypedLink("wheel", "automobile",TypedLink.Type.meronymy));
-        blackList.add(new TaxoLink("thing", "car"));
         blackList.add(new TaxoLink("automobile", "coach"));
         blackList.add(new TypedLink("car wheel", "car",TypedLink.Type.meronymy));
         
@@ -166,16 +165,15 @@ public class GreedyKGTest {
         
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(1, result.getPartonomy().size());
-       /* System.out.println(result.getTaxonomy());
+        System.out.println(result.getTaxonomy());
         System.out.println(result.getPartonomy().get(0));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
-        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("thing") && t.hasDescendent("vehicles")));
-        assert(result.getTaxonomy().children.stream().noneMatch((Taxonomy t) -> t.root.equals("thing") && t.hasDescendent("car")));
+        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
                 
         assert(result.getPartonomy().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("automobile") && t.status == Status.accepted));
         assert(result.getPartonomy().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
-        */
+        
     }
 
 }

@@ -1,6 +1,5 @@
 package org.insightcentre.saffron.web;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -8,7 +7,7 @@ import org.bson.Document;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
-import org.json.JSONObject;
+import org.insightcentre.nlp.saffron.taxonomy.search.TypedLink;
 
 import com.mongodb.client.FindIterable;
 
@@ -22,9 +21,9 @@ import com.mongodb.client.FindIterable;
 public class BlackWhiteList {
 
     public final Set<String> termWhiteList, termBlackList;
-    public final Set<TaxoLink> taxoWhiteList, taxoBlackList;
+    public final Set<TypedLink> taxoWhiteList, taxoBlackList;
 
-    public BlackWhiteList(Set<String> termWhiteList, Set<String> termBlackList, Set<TaxoLink> taxoWhiteList, Set<TaxoLink> taxoBlackList) {
+    public BlackWhiteList(Set<String> termWhiteList, Set<String> termBlackList, Set<TypedLink> taxoWhiteList, Set<TypedLink> taxoBlackList) {
         this.termWhiteList = termWhiteList;
         this.termBlackList = termBlackList;
         this.taxoWhiteList = taxoWhiteList;
@@ -55,8 +54,8 @@ public class BlackWhiteList {
             }
         }
         termBlackList.removeAll(termWhiteList);
-        Set<TaxoLink> taxoWhiteList = new HashSet<>();
-        Set<TaxoLink> taxoBlackList = new HashSet<>();
+        Set<TypedLink> taxoWhiteList = new HashSet<>();
+        Set<TypedLink> taxoBlackList = new HashSet<>();
 //        Taxonomy graph = new Taxonomy("", 0.0, 0.0, "", "", new ArrayList<>(), Status.none);
 //
 //        for (Document taxo : taxonomy) {
@@ -88,7 +87,7 @@ public class BlackWhiteList {
      * @param taxoDenialList - the list to be populated with denied parent-child
      * relations
      */
-    private static void buildTaxoBWList(Taxonomy taxonomy, Set<TaxoLink> taxoAcceptanceList, Set<TaxoLink> taxoDenialList) {
+    private static void buildTaxoBWList(Taxonomy taxonomy, Set<TypedLink> taxoAcceptanceList, Set<TypedLink> taxoDenialList) {
         for (Taxonomy child : taxonomy.children) {
             if (child.getStatus().equals(Status.accepted)) {
                 taxoAcceptanceList.add(new TaxoLink(taxonomy.root, child.root));

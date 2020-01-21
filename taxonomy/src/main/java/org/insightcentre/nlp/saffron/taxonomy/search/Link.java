@@ -32,7 +32,7 @@ public class Link {
 			return true;
 		if (obj == null)
 			return false;
-		if (getClass() != obj.getClass())
+		if (!getClass().isInstance(obj))
 			return false;
 		Link other = (Link) obj;
 		if (source == null) {

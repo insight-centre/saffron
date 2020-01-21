@@ -101,7 +101,7 @@ public class GreedyKG implements KGSearch{
                 soln = soln.add(sp,
                         termMap.get(sp.getSource()).getScore(),
                         termMap.get(sp.getTarget()).getScore(),
-                        score.deltaScore(sp), true);
+                        1.0, true);
                 score = score.next(sp, soln);
             }
         }

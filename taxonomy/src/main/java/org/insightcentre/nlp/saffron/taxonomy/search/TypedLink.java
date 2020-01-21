@@ -60,7 +60,7 @@ public class TypedLink extends Link implements Comparable<TypedLink>{
 			return true;
 		if (!super.equals(obj))
 			return false;
-		if (getClass() != obj.getClass())
+		if (!getClass().isInstance(obj))
 			return false;
 		TypedLink other = (TypedLink) obj;
 		if (type != other.type)
