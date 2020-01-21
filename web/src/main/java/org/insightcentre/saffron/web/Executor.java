@@ -426,29 +426,29 @@ public class Executor extends AbstractHandler {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     Corpus corpus = CorpusTools.fromJson(tmpFile);
-                    List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
-                    if (corpus.getDocuments() != null) {
-                        for (org.insightcentre.nlp.saffron.data.Document doc : corpus.getDocuments()) {
-                            if (doc.file != null) {
-                                FileReader reader = new FileReader(doc.file.toFile());
-                                Writer writer = new StringWriter();
-                                char[] buf = new char[4096];
-                                int i = 0;
-                                while ((i = reader.read(buf)) >= 0) {
-                                    writer.write(buf, 0, i);
-                                }
-                                org.insightcentre.nlp.saffron.data.Document newDoc
-                                        = new org.insightcentre.nlp.saffron.data.Document(doc.file,
-                                            doc.id, doc.url, doc.name, doc.mimeType,
-                                        doc.authors, doc.metadata, writer.toString(), doc.date);
-                                newDocs.add(newDoc);
-                            }
-                        }
-
-                        if (newDocs.size() > 0) {
-                            corpus = CorpusTools.fromJsonFiles(tmpFile);
-                        }
-                    }
+//                    List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
+//                    if (corpus.getDocuments() != null) {
+//                        for (org.insightcentre.nlp.saffron.data.Document doc : corpus.getDocuments()) {
+//                            if (doc.file != null) {
+//                                FileReader reader = new FileReader(doc.file.toFile());
+//                                Writer writer = new StringWriter();
+//                                char[] buf = new char[4096];
+//                                int i = 0;
+//                                while ((i = reader.read(buf)) >= 0) {
+//                                    writer.write(buf, 0, i);
+//                                }
+//                                org.insightcentre.nlp.saffron.data.Document newDoc
+//                                        = new org.insightcentre.nlp.saffron.data.Document(doc.file,
+//                                            doc.id, doc.url, doc.name, doc.mimeType,
+//                                        doc.authors, doc.metadata, writer.toString(), doc.date);
+//                                newDocs.add(newDoc);
+//                            }
+//                        }
+//
+//                        if (newDocs.size() > 0) {
+//                            corpus = CorpusTools.fromJsonFiles(tmpFile);
+//                        }
+//                    }
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
@@ -532,7 +532,7 @@ public class Executor extends AbstractHandler {
         List<Concept> concepts = conceptConsolidation.consolidate(terms);
         data.addConcepts(saffronDatasetName, concepts);
         _status.setStageComplete("Consolidating concepts", saffronDatasetName);
-        
+
         _status.stage++;
 
         _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
@@ -574,7 +574,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Connecting authors to authors", saffronDatasetName);
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
-        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, _status);
+        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, saffronDatasetName, _status);
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
         data.setAuthorSim(saffronDatasetName, authorSim);
