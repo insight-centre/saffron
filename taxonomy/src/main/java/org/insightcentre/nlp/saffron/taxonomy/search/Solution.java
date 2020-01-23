@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 
 /**
  * A (partial) solution to the taxonomy search problem
@@ -120,18 +121,27 @@ public class Solution {
      * @return true if the solution is valid
      */
     public boolean isComplete() {
-        return size() == terms.size() && heads.size() == 1;
+        return size() == terms.size();
     }
 
     /**
-     * Convert this to a taxonomy (if it complete)
+     * Convert this to a taxonomy (if it is complete)
      *
      * @return The complete taxonomy
      * @throws IllegalStateException If the solution is not complete
      */
     public Taxonomy toTaxonomy() {
         if (isComplete()) {
-            return heads.values().iterator().next();
+        	Taxonomy result;
+        	if (heads.size() >1){
+        		result = new VirtualRootTaxonomy();
+        		for(Taxonomy taxonomy: heads.values()) {
+        			result.addChild(taxonomy);
+        		}
+        	} else {
+        		result = heads.values().iterator().next();
+        	}
+        	return result;
         } else {
             throw new IllegalStateException("Cannot convert to a taxonomy until this taxonomy is complete");
         }
