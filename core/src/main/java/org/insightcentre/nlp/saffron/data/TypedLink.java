@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.taxonomy.search;
+package org.insightcentre.nlp.saffron.data;
 
 public class TypedLink extends Link implements Comparable<TypedLink>{
 

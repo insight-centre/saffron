@@ -5,7 +5,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 import java.util.HashSet;
 
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

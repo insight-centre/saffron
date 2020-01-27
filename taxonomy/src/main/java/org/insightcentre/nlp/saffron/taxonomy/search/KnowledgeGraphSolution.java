@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 public class KnowledgeGraphSolution extends Solution{

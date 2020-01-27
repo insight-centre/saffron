@@ -8,6 +8,7 @@ import java.util.Set;
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
 import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 

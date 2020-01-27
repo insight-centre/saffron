@@ -1,7 +1,7 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 
 /**
  * An interface for scorers for solutions. Each instance can only provide the

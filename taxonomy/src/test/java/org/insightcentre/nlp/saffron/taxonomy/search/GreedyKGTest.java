@@ -10,8 +10,10 @@ import java.util.Map;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.SumKGScore;
 import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;

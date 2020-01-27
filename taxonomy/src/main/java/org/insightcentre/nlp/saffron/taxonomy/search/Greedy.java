@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;

@@ -2,7 +2,7 @@ package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import java.util.Map;
 
-import org.insightcentre.nlp.saffron.taxonomy.search.TypedLink;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 
 /**
  * Classifier that verifies the probability of multiple relationship

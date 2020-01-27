@@ -4,8 +4,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;

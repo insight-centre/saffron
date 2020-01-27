@@ -27,7 +27,6 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.common.flogger.FluentLogger;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.eclipse.jetty.server.Request;
@@ -72,8 +71,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.flogger.FluentLogger;
 import com.google.common.io.Files;
 import com.mongodb.client.FindIterable;
 
@@ -478,9 +480,9 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
-        if (bwList == null) {
-            bwList = new BlackWhiteList();
+        AllowanceDenialList allowDenyList = extractBlackWhiteList(saffronDatasetName);
+        if (allowDenyList == null) {
+            allowDenyList = AllowanceDenialList.getInstance(Taxonomy.class);
 
         }
         data.deleteRun(saffronDatasetName);
@@ -511,7 +513,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Extracting Terms", saffronDatasetName);
         TermExtraction extractor = new TermExtraction(config.termExtraction);
-        TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
+        TermExtraction.Result res = extractor.extractTerms(searcher, allowDenyList.getTermAllowanceList(), allowDenyList.getTermDenialList(), _status);
         List<Term> terms = new ArrayList<>(res.terms);
         data.setTerms(saffronDatasetName, terms);
 
@@ -590,7 +592,7 @@ public class Executor extends AbstractHandler {
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
-        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, bwList.taxoWhiteList, bwList.taxoBlackList);
+        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
         Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
@@ -599,15 +601,14 @@ public class Executor extends AbstractHandler {
         _status.completed = true;
     }
 
-    public BlackWhiteList extractBlackWhiteList(String datasetName) {
+    public AllowanceDenialList extractBlackWhiteList(String datasetName) throws JsonParseException, JsonMappingException, IOException {
 
         MongoDBHandler mongo = new MongoDBHandler();
 
-        if (!mongo.getTerms(datasetName).iterator().hasNext()) {
-            return new BlackWhiteList();
+        if (!mongo.getAllTerms(datasetName).iterator().hasNext()) {
+            return AllowanceDenialList.getInstance(Taxonomy.class);
         } else {
-            return BlackWhiteList.from(mongo.getTerms(datasetName), mongo.getTaxonomy(datasetName));
-
+            return AllowanceDenialList.from((List) mongo.getAllTerms(datasetName), mongo.getTaxonomy(datasetName));
         }
     }
 

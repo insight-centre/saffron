@@ -5,8 +5,9 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySolution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.junit.After;

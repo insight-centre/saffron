@@ -9,8 +9,8 @@ import static java.lang.Math.sqrt;
 import java.util.Arrays;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 
 import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;

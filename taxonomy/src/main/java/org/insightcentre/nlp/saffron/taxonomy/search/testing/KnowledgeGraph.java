@@ -1,10 +1,13 @@
 package org.insightcentre.nlp.saffron.taxonomy.search.testing;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 
 public class KnowledgeGraph {
 
@@ -34,6 +37,27 @@ public class KnowledgeGraph {
 	}
 	public void setPartonomy(List<Taxonomy> partonomy) {
 		this.partonomy = partonomy;
+	}
+	
+	/**
+     * Retrieve all relation pairs with a given {@link Status}
+     * 
+     * @param status - the status of the pairs to be retrieved
+     * @return a {@link Set} with all typed relations with that status
+     * 
+     * @author Bianca Pereira
+     */
+	public Set<TypedLink> getRelationsByStatus(Status status) {
+		Set<TypedLink> result = new HashSet<TypedLink>();
+		if (this.getTaxonomy() != null) {
+			result.addAll(this.getTaxonomy().getRelationsByStatus(status));
+		}
+		if (this.getPartonomy() != null) {
+			for(Taxonomy component: this.getPartonomy()) {
+				result.addAll(component.getRelationsByStatus(status));
+			}
+		}
+		return result;
 	}
 	
 	@Override

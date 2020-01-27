@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.taxonomy.search;
+package org.insightcentre.nlp.saffron.data;
 
 /**
  * A single link in a taxonomy

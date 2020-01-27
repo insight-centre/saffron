@@ -1,7 +1,7 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
