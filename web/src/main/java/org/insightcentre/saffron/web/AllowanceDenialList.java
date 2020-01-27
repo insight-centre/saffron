@@ -24,10 +24,10 @@ public abstract class AllowanceDenialList<T extends TypedLink> {
 	private Set<T> relationAllowanceList, relationDenialList;    
 
 	public AllowanceDenialList() {
-		this.termAllowanceList = new HashSet<>();;
-		this.termDenialList = new HashSet<>();;
-		this.relationAllowanceList = new HashSet<>();;
-		this.relationDenialList = new HashSet<>();;
+		this.termAllowanceList = new HashSet<>();
+		this.termDenialList = new HashSet<>();
+		this.relationAllowanceList = new HashSet<>();
+		this.relationDenialList = new HashSet<>();
 	}
 	
 	public AllowanceDenialList(Set<String> termAllowanceList, Set<String> termDenialList, 

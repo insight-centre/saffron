@@ -480,7 +480,7 @@ public class Executor extends AbstractHandler {
     }
 
     void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        AllowanceDenialList allowDenyList = extractBlackWhiteList(saffronDatasetName);
+        AllowanceDenialList allowDenyList = extractAllowanceDenialList(saffronDatasetName);
         if (allowDenyList == null) {
             allowDenyList = AllowanceDenialList.getInstance(Taxonomy.class);
 
@@ -601,7 +601,7 @@ public class Executor extends AbstractHandler {
         _status.completed = true;
     }
 
-    public AllowanceDenialList extractBlackWhiteList(String datasetName) throws JsonParseException, JsonMappingException, IOException {
+    public AllowanceDenialList extractAllowanceDenialList(String datasetName) throws JsonParseException, JsonMappingException, IOException {
 
         MongoDBHandler mongo = new MongoDBHandler();
 

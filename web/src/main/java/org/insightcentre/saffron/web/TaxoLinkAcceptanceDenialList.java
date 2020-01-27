@@ -30,22 +30,22 @@ public class TaxoLinkAcceptanceDenialList extends AllowanceDenialList<TaxoLink>{
 
 		protected static TaxoLinkAcceptanceDenialList from(List<Term> allTerms, Taxonomy taxonomy) {
 
-	        Set<String> termWhiteList = new HashSet<>();
-	        Set<String> termBlackList = new HashSet<>();
+	        Set<String> termAllowanceList = new HashSet<>();
+	        Set<String> termDenialList = new HashSet<>();
 
 	        for (Term term : allTerms) {
 	            if (term.getStatus().equals(Status.accepted)) {
-	                termWhiteList.add(term.getString());
+	                termAllowanceList.add(term.getString());
 
 	                if (term.getOriginalTerm() != null && !term.getString().equals(term.getOriginalTerm())) {
-	                    termBlackList.add(term.getOriginalTerm());
+	                    termDenialList.add(term.getOriginalTerm());
 	                }
 	            } else if (term.getStatus().equals(Status.rejected)) {
-	                termBlackList.add(term.getString());
+	                termDenialList.add(term.getString());
 	            }
 	        }
 
-	        return new TaxoLinkAcceptanceDenialList(termWhiteList, termBlackList,
+	        return new TaxoLinkAcceptanceDenialList(termAllowanceList, termDenialList,
 	        		taxonomy.getRelationsByStatus(Status.accepted), taxonomy.getRelationsByStatus(Status.rejected));
 	    }
 }

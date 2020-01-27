@@ -19,8 +19,9 @@ import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
  */
 public class TypedLinkAcceptanceDenialList extends AllowanceDenialList<TypedLink>{
 
-		public TypedLinkAcceptanceDenialList(Set<String> termWhiteList, Set<String> termBlackList, Set<TypedLink> taxoWhiteList, Set<TypedLink> taxoBlackList) {
-	        super(termWhiteList, termBlackList, taxoWhiteList, taxoBlackList);
+		public TypedLinkAcceptanceDenialList(Set<String> termAllowanceList, Set<String> termDenialList,
+				Set<TypedLink> taxoAllowanceList, Set<TypedLink> taxoDenialList) {
+	        super(termAllowanceList, termDenialList, taxoAllowanceList, taxoDenialList);
 	    }
 
 	    public TypedLinkAcceptanceDenialList() {
