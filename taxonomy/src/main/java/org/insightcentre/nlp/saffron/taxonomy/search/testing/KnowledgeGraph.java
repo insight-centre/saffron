@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search.testing;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -13,6 +14,7 @@ public class KnowledgeGraph {
 
 	private Taxonomy taxonomy;
 	private List<Taxonomy> partonomy;
+	private Collection<Set<String>> synonymyClusters;
 	
 	public static KnowledgeGraph getEmptyInstance() {
 		KnowledgeGraph kg = new KnowledgeGraph();
@@ -38,7 +40,13 @@ public class KnowledgeGraph {
 	public void setPartonomy(List<Taxonomy> partonomy) {
 		this.partonomy = partonomy;
 	}
-	
+	public Collection<Set<String>> getSynonymyClusters() {
+		return synonymyClusters;
+	}
+	public void setSynonymyClusters(Collection<Set<String>> synonymyClusters) {
+		this.synonymyClusters = synonymyClusters;
+	}
+
 	/**
      * Retrieve all relation pairs with a given {@link Status}
      * 

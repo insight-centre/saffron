@@ -55,6 +55,15 @@ public class GreedyKG implements KGSearch{
             candidates.sort(new Comparator<TypedLink>() {
                 @Override
                 public int compare(TypedLink o1, TypedLink o2) {
+                	//Consider synonyms as the most important links
+                	
+                	if(o1.getType().equals(TypedLink.Type.synonymy) &&
+                			!o2.getType().equals(TypedLink.Type.synonymy)) {
+                		return Integer.MIN_VALUE;
+                	} else if (!o1.getType().equals(TypedLink.Type.synonymy) &&
+                			o2.getType().equals(TypedLink.Type.synonymy)) {
+                		return Integer.MAX_VALUE;
+                	}
                     double d1 = scores.getOrDefault(o1, Double.MIN_VALUE);
                     double d2 = scores.getOrDefault(o2, Double.MIN_VALUE);
                     int c = Double.compare(d1, d2);

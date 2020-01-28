@@ -136,6 +136,7 @@ public class GreedyKGTest {
         assertEquals("thing", result.getTaxonomy().root);
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(2, result.getPartonomy().size());
+        assertEquals(1,result.getSynonymyClusters().size());
         
     }
     
@@ -167,6 +168,7 @@ public class GreedyKGTest {
         
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(1, result.getPartonomy().size());
+        assertEquals(1,result.getSynonymyClusters().size());
         System.out.println(result.getTaxonomy());
         System.out.println(result.getPartonomy().get(0));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
