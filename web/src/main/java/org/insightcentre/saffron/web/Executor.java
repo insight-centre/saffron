@@ -692,18 +692,19 @@ public class Executor extends AbstractHandler {
                 setErrorMessage("Failed: " + message);
             }
             data.remove(name);
-            if(cause != null)
+            if(cause != null) {
                 cause.printStackTrace();
-            if (out != null) {
-                cause.printStackTrace(out);
+	            if (out != null) {
+	                cause.printStackTrace(out);
+	            }
+	            logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
+            }
+            else {
+            	logger.atSevere().log("Failed: " + message);
             }
             if (out != null) {
                 out.flush();
             }
-            if(cause != null)
-                logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
-            else 
-                logger.atSevere().log("Failed: " + message);
         }
 
         @Override
