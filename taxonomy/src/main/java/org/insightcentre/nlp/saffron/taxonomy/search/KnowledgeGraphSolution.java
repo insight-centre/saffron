@@ -15,10 +15,6 @@ public class KnowledgeGraphSolution extends Solution{
 	private TaxonomySolution taxonomy;
 	private TaxonomySolution partonomy;
     public final Set<String> terms;
-    
-    //private Set<TypedLink> visitedLinks;
-    //private long size;
-    //what about synonyms?
 	
     private KnowledgeGraphSolution(Set<String> terms) {
         this.taxonomy = TaxonomySolution.empty(terms);
