@@ -139,9 +139,7 @@ public class Executor extends AbstractHandler {
                 doExecute(name, response, baseRequest, hsr);
             } else if (corpus != null && (target.startsWith("/execute/advanced/"))) {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
-                if (doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest)) {
-                    return;
-                }
+                doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest);
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
@@ -293,12 +291,15 @@ public class Executor extends AbstractHandler {
             x.printStackTrace();
             return true;
         }
+        // Clear the 'advanced' status so the system switches to the spinner
+        statuses.get(saffronDatasetName).advanced = false;
         new Thread(new Runnable() {
             @Override
+            @SuppressWarnings("UseSpecificCatch")
             public void run() {
                 try {
                     execute(corpus, newConfig, data, saffronDatasetName, true);
-                } catch (IOException x) {
+                } catch (Exception x) {
                     Status _status = statuses.get(saffronDatasetName);
                     _status.fail(x.getMessage(), x);
                 }
@@ -684,16 +685,22 @@ public class Executor extends AbstractHandler {
         @Override
         public void fail(String message, Throwable cause) {
             this.failed = true;
-            if (cause instanceof com.mongodb.MongoTimeoutException){
+            if (cause != null && cause instanceof com.mongodb.MongoTimeoutException){
                 setErrorMessage("Failed: Cannot connect to a MongoDB instance. " +
                         "Please configure Saffron to connect to a running MongoDB instance and try again.");
             } else {
                 setErrorMessage("Failed: " + message);
             }
             data.remove(name);
-            cause.printStackTrace();
-            if (out != null) {
-                cause.printStackTrace(out);
+            if(cause != null) {
+                cause.printStackTrace();
+	            if (out != null) {
+	                cause.printStackTrace(out);
+	            }
+	            logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
+            }
+            else {
+            	logger.atSevere().log("Failed: " + message);
             }
             if (out != null) {
                 out.flush();

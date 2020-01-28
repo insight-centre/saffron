@@ -154,7 +154,7 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
     }
 
     private static org.insightcentre.nlp.saffron.data.Document fromLucene(Document d) {
-        return new org.insightcentre.nlp.saffron.data.Document(new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
+        return new org.insightcentre.nlp.saffron.data.Document(d.get(LuceneDocument.SOURCE_FILE).equals("") ? null : new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
                 d.get(LuceneDocument.UID_NAME),
                 docURL(d),
                 d.get(LuceneDocument.FULL_NAME),
