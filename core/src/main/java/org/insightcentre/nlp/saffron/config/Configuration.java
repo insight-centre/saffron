@@ -25,6 +25,9 @@ public class Configuration {
     
     /** The configuration for the taxonomy extraction process */
     public TaxonomyExtractionConfiguration taxonomy = new TaxonomyExtractionConfiguration();
+    
+    /** The configuration for knowledge graph extraction process **/
+    public KnowledgeGraphExtractionConfiguration kg = new KnowledgeGraphExtractionConfiguration();
 
     @Override
     public String toString() {
