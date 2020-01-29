@@ -593,10 +593,9 @@ public class Executor extends AbstractHandler {
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
         final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
-        Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
-        data.setTaxonomy(saffronDatasetName, topRootGraph);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
+        data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
         _status.completed = true;
     }
