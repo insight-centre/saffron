@@ -25,7 +25,7 @@ public class BERTBasedRelationClassifier {
 
         String simpleMlp = new ClassPathResource("model_test_bert_new_softmax.h5").getFile().getPath();
         ComputationGraph net = KerasModelImport.importKerasModelAndWeights(simpleMlp);
-        Bert bert = Bert.load("com/robrua/nlp/easy-bert/bert-cased-L-12-H-768-A-12");
+        Bert bert = Bert.load("com/robrua/nlp/easy-bert/bert-uncased-L-12-H-768-A-12");
 
         float[] embedding_left = bert.embedSequence(source);
         float[] embedding_right = bert.embedSequence(target);
