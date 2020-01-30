@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
@@ -892,16 +893,15 @@ public class Taxonomy {
      * @author Bianca Pereira
      */
     private void collectRejectedRelationPairs(Set<TaxoLink> rejectedRelations) {
+    	
+    	throw new NotImplementedException("There is no record of rejected relations until version 3.4");
+    	/*
     	if (rejectedRelations == null)
     		rejectedRelations = new HashSet<TaxoLink>();
     	
-    	if (this.originalParent != null && !this.originalParent.isEmpty()) {
-            rejectedRelations.add(new TaxoLink(this.originalParent, this.getRoot()));
-        }
-    	
     	for(Taxonomy child: this.getChildren()) {
     		child.collectRejectedRelationPairs(rejectedRelations);
-    	}
+    	}*/
     }
 
 

@@ -18,13 +18,13 @@ public class KnowledgeGraph {
 	
 	public static KnowledgeGraph getEmptyInstance() {
 		KnowledgeGraph kg = new KnowledgeGraph();
-		kg.setTaxonomy(new Taxonomy("NO TERMS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none));
+		kg.setTaxonomy(new Taxonomy("NO TERMS", 0, 0, Collections.EMPTY_LIST, Status.none));
 		return kg;
 	}
 	
 	public static KnowledgeGraph getSingleTermInstance(String term) {
 		KnowledgeGraph kg = new KnowledgeGraph();
-		kg.setTaxonomy(new Taxonomy(term, 0, 0, "", "", Collections.EMPTY_LIST, Status.none));
+		kg.setTaxonomy(new Taxonomy(term, 0, 0, Collections.EMPTY_LIST, Status.none));
 		return kg;
 	}
 	
