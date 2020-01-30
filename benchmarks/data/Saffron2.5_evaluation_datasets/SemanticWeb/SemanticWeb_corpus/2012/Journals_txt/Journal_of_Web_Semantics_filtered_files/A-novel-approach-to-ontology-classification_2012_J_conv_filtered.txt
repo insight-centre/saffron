@@ -1,0 +1,2494 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+Contents lists available at SciVerse ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+A novel approach to ontology classification
+Birte Glimm a, Ian Horrocks b, Boris Motik b, Rob Shearer b, Giorgos Stoilos b,
+
+a Ulm University, Institute of Artificial Intelligence, 89069 Ulm, DE, Germany
+b University of Oxford, Department of Computer Science, Wolfson Building, Parks Road, Oxford, OX1 3QD, UK
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 23 May 2011
+Received in revised form
+23 December 2011
+Accepted 30 December 2011
+Available online 10 January 2012
+
+Keywords:
+Ontologies
+
+Class classification
+Property classification
+Optimisations
+
+1. Introduction
+
+Ontology classification  the computation of the subsumption hierarchies for classes and properties  is
+a core reasoning service provided by all OWL reasoners known to us. A popular algorithm for computing
+the class hierarchy is the so-called Enhanced Traversal (ET) algorithm. In this paper, we present a new
+classification algorithm that attempts to address certain shortcomings of ET and improve its performance.
+Apart from classification of classes, we also consider object and data property classification. Using several
+simple examples, we show that the algorithms commonly used to implement these tasks are incomplete
+even for relatively weak ontology languages. Furthermore, we show that property classification can be
+reduced to class classification, which allows us to classify properties using our optimised algorithm. We
+implemented all our algorithms in the OWL reasoner HermiT. The results of our performance evaluation
+show significant performance improvements on several well-known ontologies.
+
+ 2012 Elsevier B.V. All rights reserved.
+
+Ontologies expressed using the Web Ontology Language (OWL)
+and its revision OWL 2 [3,4] play a central role in the development
+of the Semantic Web. They are also widely used in biomedical
+information systems [57], as well as in an increasing range
+of application domains such as agriculture [8], astronomy [9],
+defence [10], and geography [11]. Ontology classification  the
+computation of the subsumption hierarchies for classes and
+properties  is a core reasoning service provided by all OWL
+reasoners known to us. The resulting class and property hierarchies
+are used by ontology engineers to navigate the ontology and
+identify modelling errors, as well as for inference, explanation, and
+query answering.
+
+Most OWL reasoners, such as Pellet [12], FaCT++ [13], and
+RacerPro [14], solve the classification problem using an Enhanced
+Traversal (ET) classification algorithm similar to the one used
+in early description logic reasoners [15]. To construct a class
+hierarchy, this algorithm starts with the empty hierarchy and
+then iteratively inserts each class from the ontology into the
+hierarchy. Each insertion step typically requires one or more
+subsumption tests  checks whether a subsumption relationship
+
+ This is a revised and extended version of the work presented in [1,2].
+ Corresponding author.
+
+E-mail addresses: birte.glimm@uni-ulm.de (B. Glimm),
+
+ian.horrocks@cs.ox.ac.uk (I. Horrocks), boris.motik@cs.ox.ac.uk (B. Motik),
+rob.shearer@cs.ox.ac.uk (R. Shearer), giorgos.stoilos@cs.ox.ac.uk (G. Stoilos).
+
+1570-8268/$  see front matter  2012 Elsevier B.V. All rights reserved.
+doi:10.1016/j.websem.2011.12.007
+
+holds between two classes  in order to determine the proper
+position of a class in the hierarchy constructed thus far. Significant
+attention has been devoted to the optimisation of individual
+subsumption tests [1621]. Nevertheless, the ET algorithm can
+be inefficient on ontologies with a large number of classes: even
+if each subsumption test is very efficient, the large number of
+tests required to construct a hierarchy can make classification an
+expensive operation. Furthermore, repeatedly traversing a large
+class hierarchy during each insertion step can be costly; this is
+particularly acute on the relatively flat (i.e., broad and shallow)
+tree-shaped hierarchies often found in manually constructed
+ontologies. In order to overcome these deficiencies, algorithms
+for efficient classification of OWL 2 EL [22] and OWL 2 QL
+ontologies [23] have been proposed; however, it is currently not
+known how to apply these algorithms to OWL 2 DL ontologies.
+
+Motivated by the desire to improve the performance of class
+classification,
+in this paper we present a novel classification
+algorithm that can greatly reduce the number of required
+subsumption tests. Unlike ET, our algorithm does not construct
+the hierarchy directly; instead, it maintains the sets of known
+(K) and remaining possible (P) subsumer pairs, and it performs
+subsumption tests to augment K and reduce P until K contains
+all the relevant subsumptions and P becomes empty. Such a
+representation of the hierarchy allows one to manipulate K and
+P using highly-tuned algorithms, such as the ones for computing
+the transitive closure and the transitive reduction of a relation.
+Furthermore, the relatively small subset of P that contains the
+remaining possible subsumers of a single class can be efficiently
+extracted using simple operations, which can greatly reduce the
+
+cost of hierarchy traversal. To further reduce the number of
+subsumption tests, we exploit the transitivity of the subclass
+relation to propagate (non-)subsumption information and thus
+speed up the process of augmenting K and reducing P.
+
+The practicability of such an algorithm critically depends on
+several factors. The first question is how to initialise K and
+P. We have developed an initialisation approach that exploits
+information from reasoning tests in order to eagerly identify
+subsumption relations and unsatisfiable classes and thus reduce
+the overall amount of work. The second question is how to
+propagate (non-)subsumptions in K and P efficiently: a naive
+strategy, such as the one from [1], can be very inefficient in practice.
+We have addressed this problem by again exploiting information
+gathered during reasoning tests.
+
+Apart from the classification of classes, we also consider the
+classification of object and data properties. To the best of our
+knowledge, all state of the art OWL reasoners construct property
+hierarchies by simply computing the reflexivetransitive closure
+of the subproperty axioms in the ontology. Such a procedure is
+incomplete, as can be demonstrated by a simple example that
+uses existential restrictions (ObjectSomeValuesFrom), functional
+properties, and property hierarchies (i.e., the example can be
+expressed in OWL Lite), or an example that uses existential
+restrictions, property chains (ObjectPropertyChain), and inverse
+properties. Surprisingly, however, the problem of efficiently and
+correctly constructing property hierarchies has received almost no
+attention in the literature, even though this is a standard reasoning
+task extensively used by ontology editors such as Protege. Property
+classification can in theory be solved using an algorithm such as ET;
+however, as we discuss in more detail, such an approach is unlikely
+to be efficient. As a remedy, we present a novel encoding of the
+property classification problems into class classification problems,
+which allows us to exploit our new class classification algorithm to
+correctly and efficiently compute property hierarchies.
+
+We have implemented our techniques in the HermiT reasoner.
+To the best of our knowledge, this makes HermiT the only OWL
+2 DL reasoner that correctly classifies object and data properties.
+Moreover, we have conducted an extensive experimental evalua-
+tion, which shows that our algorithms consistently outperform ET,
+sometimes by a factor of ten or more.
+
+2. Preliminaries
+
+In this section we briefly introduce OWL [3,4]  the ontology
+language developed by the W3C; we present an overview of
+the Enhanced Traversal (ET) algorithm [15]; and we present
+an overview of the model-building calculi, such as tableau
+and hypertableau, that provide the algorithmic foundation for
+subsumption checking in most state of the art OWL reasoners.
+
+2.1. OWL ontologies
+
+In this paper we focus on OWL 2 ontologies interpreted under
+the Direct Semantics; however, our techniques are also applicable
+to OWL, as well as any propositionally closed ontology language.
+For a full definition of OWL 2, please refer to the OWL 2 Structural
+Specification and Direct Semantics [3,4]; here we just recapitulate
+the relevant terminology. A domain of interest can be modelled
+in OWL 2 by means of individuals (which denote objects from
+the domain of discourse), literals (which denote data values, such
+as strings or integers), classes (which denote sets of individuals),
+datatypes (which denote sets of data values), object properties
+(which relate pairs of individuals), and data properties (which relate
+individuals with concrete values). Individuals, classes, datatypes,
+and object properties can be used to form class expressions, data
+ranges, and object property expressions, respectively; these are
+
+complex descriptions of sets of individuals, sets of literals, and
+relationships between individuals. Finally, class expressions, data
+ranges, object property expressions, data properties, individuals,
+and literals can be used to form axioms  statements that describe
+the domain being modelled. Axioms describing individuals are
+commonly called assertions. An OWL 2 ontology O is a finite set of
+axioms.
+
+For example, consider axioms (1)(4) below.1 Axiom (1) states
+that the class Human is a subclass of the class Animal (i.e., all
+humans are animals). Axiom (2) states that the individual Alex is
+an instance of the class Human, while axiom (3) states that the
+individual Alex is related to literal 27xsd:integer by the data
+property hasAge (i.e., the age of Alex is 27). Finally, axiom (4) states
+that the value of the object property hasColour must be an instance
+of the class Colour.
+
+(1)
+SubClassOf(Human Animal)
+(2)
+ClassAssertion(Human Alex)
+(3)
+DataPropertyAssertion(hasAge Alex 27xsd:integer)
+ObjectPropertyRange(hasColour Colour)
+(4)
+The semantics of axioms in an OWL ontology O is given by
+means of two-sorted interpretations over the object domain and
+the data domain, where the latter contains well-known data values
+such as integers and strings. An interpretation I maps individuals
+to elements of the object domain, literals to elements of the
+data domain, classes to subsets of the object domain, datatypes
+to subsets of the data domain, object properties to sets of pairs
+of object domain elements, and data properties to sets of pairs
+whose first component is from the object domain and whose
+second component is from the data domain. OWL 2 contains
+two classes, one datatype, two object properties, and two data
+properties which are all interpreted in every interpretation in a
+predetermined way. In particular, class owl:Thing is mapped to
+the set of all objects in the object domain, and class owl:Nothing
+is mapped to the empty set. Similarly, datatype rdfs:Literal
+is mapped to the set of all data values in the data domain.
+Furthermore, object property owl:topObjectProperty is mapped to
+the set of all pairs of objects from the object domain, and object
+property owl:bottomObjectProperty is mapped to the empty set.
+Finally, data property owl:topDataProperty is mapped to all pairs
+consisting of an object from the object domain and an object from
+the data domain, and data property owl:bottomDataProperty is
+mapped to the empty set. An individual i is an instance of a class
+C in an interpretation I if the image of C contains the image of i.
+For an object property op, an individual i is an op-successor of an
+individual j in an interpretation I if the image of op contains, ,
+where  and  are the images of i and j, respectively.
+An interpretation I is a model of an ontology O if I satisfies all
+conditions listed in [4]. For example, if O contains axiom (5), then
+the conditions from [4] require each instance of C in I to be an
+instance of D in I. As another example, if O contains axiom (6), then
+i must have an op-successor j in I that is an instance of C in I.
+
+SubClassOf(C D)
+(5)
+ClassAssertion(ObjectSomeValuesFrom(op C) i)
+(6)
+If the axioms of O cannot be satisfied in any interpretation
+(i.e., if O has no model), then O is unsatisfiable; otherwise, O
+is satisfiable. If the interpretation of a class C is contained in
+the interpretation of a class D in all models of O, then C is a
+subclass of D (or, equivalently, D subsumes C) in O and we write
+O |	 C  D. If the interpretations of C and D necessarily coincide
+
+1 All elements in OWL are identified using IRIs, but for brevity we do not use IRIs
+and prefix names in this paper.
+
+in all models of O, then C and D are equivalent in O and we write
+O |	 C  D. A class C is satisfiable if a model of O exists in which
+the interpretation of C is not empty; otherwise, C is unsatisfiable. If
+O |	 C  D, then a model I of O exists in which C has an instance
+that is not an instance of D. We use analogous notation for object
+and data properties.
+
+Fig. 1. A run of ET over O containing axioms (7) and (8).
+
+general subclasses of C are determined using a bottom-up traversal
+of H.
+A sample run of the ET algorithm on an ontology O containing
+axioms (7) and (8) is shown in Fig. 1. The algorithm starts by setting
+H = {owl:Nothing, owl:Thing}. Next, the algorithm inserts C
+into H using the following two steps:
+ In the top-down phase, the algorithm checks whether subsumption O |	 C  owl:Thing holds. This is trivially the
+case, so the algorithm proceeds with the children of owl:Thing;
+so far, this includes only owl:Nothing, so the algorithm checks
+O |	 C  owl:Nothing, which does not hold. Consequently,
+C must be inserted into H somewhere between owl:Thing and
+owl:Nothing.
+ In the bottom-up phase,
+the algorithm checks whether
+subsumption O |	 owl:Nothing  C holds. This is trivially
+the case, so the algorithm next checks O |	 owl:Thing  C.
+The latter subsumption does not hold, so C is inserted into H
+exactly between owl:Nothing and owl:Thing.
+
+In an analogous way, D is next inserted into H exactly between
+owl:Nothing and owl:Thing, but in a separate branch from C since
+O |	 C  D and O |	 D  C. Finally, since O |	 C  E,
+O |	 E  C, and O |	 D  E, class E is inserted into H below
+owl:Thing and above C.
+The ET algorithm significantly reduces the number of subsumption tests from the theoretical upper bound of n2. For example, in
+the top-down phase, if O |	 C  D, then the algorithm does not
+need to check C against the children of D. Nevertheless, classifying
+large ontologies might still require a large number of subsumption
+tests. This is because most real-world ontologies usually have relatively flat (i.e., broad and shallow) hierarchies with only a few toplevel classes (i.e., classes located immediately below owl:Thing in
+the hierarchy). In such cases, most classes have owl:Nothing as a
+child, so in the bottom-up phase one must check the subsumption
+of a class against a (possibly) large number of such leaf classes.
+Furthermore, as H becomes larger in size, repeated traversal of H
+in both the top-down and bottom-up phases can be costly.
+
+In order to further reduce the number of subsumption
+tests required to compute the hierarchy, additional optimisation
+techniques have been proposed. Most of these try to identify
+obvious (non-)subsumptions by propagating information from
+previous tests [15] or via cheap syntactic checks, such as told
+subsumers [15], told non-subsumers [24], and completely defined
+classes [25]. While such optimisations can significantly improve
+the performance of the ET algorithm, they do not overcome all the
+problems outlined above.
+
+2.3. Model construction using (hyper)tableau calculi
+
+It is well known that checking subsumption between classes
+C and D w.r.t. an ontology O (i.e., checking if O |	 C  D) is
+equivalent to checking whether the class
+
+A = ObjectIntersectionOf(C ObjectComplementOf( D ))
+
+2 The reflexivetransitive reduction of a binary relation R is the minimal
+relation R such that the reflexivetransitive closure of R is the same as the
+reflexivetransitive closure of R.
+
+We use the following notation for sets of entities occurring in
+
+an ontology O:
+
+O is the set of all classes that occur in O different from
+owl:Thing and owl:Nothing;
+
+O contains op and ObjectInverseOf(op) for each object
+property op that occurs in O and that is different from
+owl:topObjectProperty and owl:bottomObjectProperty;
+
+owl:topDataProperty and owl:bottomDataProperty.
+
+O contains each data property that occurs in O different from
+
+Furthermore, we use the following abbreviations as well:
+
+CO = C
+
+OPEO = OPE
+DPO = DP
+
+ {owl:Thing, owl:Nothing}
+O  {owl:topObjectProperty,
+owl:bottomObjectProperty}
+O  {owl:topDataProperty,
+owl:bottomDataProperty}
+
+We next illustrate these definitions by means of an example. Let
+O be the ontology containing axioms (7) and (8); then, O |	 C  E
+even though this is not stated explicitly. This is because axiom (7)
+ensures that, in each model of O, each instance i of C is related to
+an instance of D using the object property op. Each i thus has an op-
+successor, so the property domain axiom (8) ensures that i is also
+an instance of E. Since this holds for an arbitrary i, we can conclude
+that C is a subclass of E.
+
+SubClassOf(C ObjectSomeValuesFrom(op D))
+ObjectPropertyDomain(op E)
+
+(7)
+(8)
+
+2.2. The Enhanced Traversal algorithm
+
+Classification of an ontology O is the computation of all pairs
+of classes C, D such that {C, D}  CO and O |	 C  D;
+similarly, object (resp. data) property classification of O is the
+computation of all pairs of object property expressions (resp. data
+properties) R, S such that {R, S}  OPEO (resp. {R, S}  DPO)
+and O |	 R  S. Roughly speaking, for a relation U containing all
+the resulting pairs, the corresponding hierarchy is the reflexively
+and transitively reduced relation H that implies all pairs in U.2 For
+example, from an ontology that contains (7) and (8), a classification
+algorithm should compute the following hierarchy:
+
+{owl:Nothing, C,owl:Nothing, D,
+C, E,E, owl:Thing,D, owl:Thing}
+A naive way to classify O is to check whether subsumption
+O |	 C  D holds for all possible pairs of C and D in O.
+Given n classes, such an algorithm requires n2 tests, which
+is inefficient even on medium-sized ontologies. To obtain a
+practical classification algorithm, numerous optimisations have
+been developed with the goal of reducing the number of tests
+performed. A prominent such technique is the Enhanced Traversal
+(ET) algorithm [15]. The algorithm starts with the trivial hierarchy
+H = {owl:Nothing, owl:Thing} and it progressively adds new
+classes to H using a two-phase procedure. In the first phase, the
+most specific superclasses of a class C are determined using a topdown breadth-first traversal of H; in the second-phase, the most
+
+is unsatisfiable w.r.t. O, which is equivalent to checking whether
+
+O  {ClassAssertion(A s0)}
+
+is unsatisfiable for s0 a fresh individual (i.e., an individual not
+occurring in O). To decide the latter problem, most OWL reasoners
+use a model construction calculus, such as tableau or hypertableau.
+Please refer to [26] for a detailed introduction to the hypertableau
+calculus for OWL 2, and to [27] for the tableau calculus; here, we
+just present an overview of the aspects of these calculi that are
+relevant to our classification algorithm.
+
+Although (hyper)tableau calculi have been formalised in a
+variety of ways, all of them can be seen as constructing a generalised
+set of assertions that represents (an abstraction of) a model of
+O. Each such calculus consists of one or more derivation rules
+that can be applied to a set of assertions A to produce a set
+of assertions A, where the latter set makes a certain piece of
+information from O explicit. Derivation rules usually add new class
+or property assertions, and they may introduce new individuals;
+the latter may be necessary to satisfy, for example, existential
+restrictions (ObjectSomeValuesFrom). Moreover, in addition to
+standard assertions, derivation rules can add a special assertion
+unsatisfiable if an obvious contradiction is detected. Finally,
+derivation rules can be nondeterministic  that is, a derivation rule
+can be allowed to choose between several alternative assertions to
+add. To show that A is satisfiable, (hyper)tableau calculi construct a
+derivation for O and A  a sequence of sets of assertions A0, . . . , An
+where
+ A0 contains all assertions in O as well as the assertion
+ClassAssertion(A s0), where s0 is a fresh individual called the
+root,
+ Ai+1 is a possible result of applying a derivation rule to Ai for
+each 0 < i  n, and
+ no derivation rule is applicable to An.
+If a derivation for O and A exists such that An does not contain
+unsatisfiable, then A is satisfiable and An is called a pre-model for
+A. If no such derivation exists, then A is unsatisfiable (i.e., it is
+equivalent to owl:Nothing).
+Each assertion occurring in a derivation A0, . . . , An is derived either deterministically or nondeterministically, which is determined inductively as follows: all assertions in A0 are derived
+deterministically; furthermore, an assertion occurring in some Ai
+is derived deterministically if and only if it is derived using a deterministic derivation rule from assertions that were all derived
+deterministically. In the rest of this paper we assume that we can
+determine for each assertion  occurring in some Ai how  was
+derived. This is straightforward in practice since all state of the art
+(hyper)tableau reasoners employ dependency directed backtracking [17]. In order to optimise backtracking, these reasoners associate with each assertion  a dependency set  a data structure that
+indicates the nondeterministic choices that  depends on. Then, 
+is derived deterministically if and only if the dependency set of  is
+empty. Discussing the details of dependency directed backtracking
+is out of scope of this paper; please refer to [17] for further details.
+For a set of assertions A and individuals s and t that appear in
+A, we define the label LA(s) of s in A as follows:
+LA(s) := {A | ClassAssertion(A s)  A and A is a class}
+The classification algorithm presented in this paper can be used
+with any (hyper)tableau calculus for which each pre-model An for
+O and A with root individual s0 produced by the calculus satisfies
+the following property:
+(P1) if C  LAn
+
+(s0) and the assertion ClassAssertion(C s0) was
+
+derived deterministically, then O |	 A  C.
+
+All (hyper)tableau calculi used in practice that we are aware of
+satisfy this property and so they can be used with our classification
+algorithm.
+In addition, for each ontology O and each pre-model An
+generated by the hypertableau calculus used in the HermiT
+reasoner [26], the following property holds:
+(P2) for an arbitrary individual s in An and arbitrary classes D and
+
+(s), then O |	 D  E.
+
+E, if D  LAn
+
+(s) and E  LAn
+
+Pre-models produced by tableau algorithms as presented in
+the literature also satisfy property (P2); however, commonly
+used optimisations, such as lazy unfolding [15], can compromise
+property (P2). Nevertheless, most (if not all) implemented calculi
+produce pre-models that satisfy at least the following weaker
+property:
+(P3) for an arbitrary individual s in An and arbitrary classes D and
+(s),
+
+E where E is primitive in O,3 if D  LAn
+then O |	 D  E.
+
+(s) and E  LAn
+
+As the following example shows, properties (P2) and (P3) can be
+used to extract (non-)subsumptions from pre-models.
+Example 1. Let O be an ontology that contains the following
+axioms:
+
+SubClassOf(A B)
+SubClassOf(B C)
+SubClassOf(E F)
+
+(9)
+(10)
+(11)
+To check whether A is satisfiable, a (hyper)tableau calculus
+constructs a pre-model that satisfies properties (P1) and (P3). In
+particular, the calculus starts with the set of assertions A0 =
+{ClassAssertion(A s0)}. To satisfy the axioms in O, the calculus
+extends A0 with ClassAssertion(B s0) and ClassAssertion(C s0); let
+An be the resulting pre-model. All practical (hyper)tableau calculi
+we are aware of are sufficiently optimised so as to produce An
+deterministically. We can now use the label LAn
+(s0) to identify
+(non-)subsumers of A as follows. Since E and F are primitive in
+O, from E  LAn
+(s0) we can conclude that
+neither E nor F is a subsumer of A; this is because An is an
+abstraction of a model of O that witnesses the non-subsumption.
+Furthermore, from the fact that all assertions in An were derived
+deterministically, we can conclude that B and C are subsumers
+of A.
+
+(s0) and F  LAn
+
+3. Optimised class classification
+
+In this section we introduce our classification algorithm. We
+discuss the main ideas and present an overview of the algorithm
+in Section 3.1, after which we present the algorithm in full detail
+in Sections 3.2 and 3.3.
+
+3.1. An overview
+
+In order to reuse the (non-)subsumption information from
+satisfiability and subsumption tests, our algorithm maintains two
+binary relations on CO  CO which we denote with K and P.
+Relation K represents the known subsumptions  that is, C, D 
+K implies that O |	 C  D is known for certain. One might be
+tempted to use a dual relation that represents the known non-
+subsumptions; however, such a relation is typically quite large,
+so maintaining it explicitly would be impractical. Our algorithm
+
+3 A class E is said to be primitive in O if O is unfoldable [25] and it does not contain
+an axiom of the form EquivalentClasses(E C).
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+Fig. 2. Eliminating impossible relationships: nodes represent classes, solid edges
+represent pairs in K, and the grey edge represents a pair that can be in P only if the
+pair represented by the dashed edge is in P  K.
+
+therefore manages the non-subsumption information indirectly
+using a relation P of possible subsumptions. More precisely,
+C, D  P and C, D  K implies that O |	 C  D is possible (i.e.,
+no evidence to the contrary has been encountered thus far); thus,
+C, D  P and C, D  K imply that O |	 C  D is known. Apart
+from initialisation and during certain intermediate steps, relations
+K and P are disjoint; thus, P reflects the remaining work needed
+to classify O.
+Given a class C for which another class D exists such that
+C, D  P, our algorithm extracts from K and P a partial hierarchy
+HC of all unknown, but possible subsumers of C, and it then
+inserts C into HC using a variant of the ET algorithm. Class C
+will typically have many known subsumers but few unknown
+and possible subsumers, so HC will usually be small. During the
+insertion of C into HC, our algorithm expands K and prunes P using
+the information obtained in subsumption tests, thus potentially
+reducing the work needed to classify the remaining classes. This
+process is repeated until P becomes empty, at which point the
+transitive closure of K precisely captures the subsumption relation
+between classes in O.
+Our algorithm systematically exploits the transitivity of  to
+extend K and prune P without actual reasoning. For example, if
+{C, D,E, F}  K and a subsumption test requires addingD, E
+to K, then C, F can be added to K as well due to the transitivity of
+. Ideally, our algorithm would maintain the transitive closure of
+K as new subsumptions are discovered. Efficient algorithms for the
+maintenance of transitive closures under updates are available in
+the literature; however, we found them to be memory inefficient,
+which causes problems on large ontologies with many classes,
+such as FMA and SNOMED. Therefore, instead of computing the
+transitive closure of K explicitly, our algorithm uses a graph
+reachability algorithm to identify whether a pair of the formC, D
+belongs to the transitive closure of K.
+
+The transitivity of the subsumption relation can also be used
+to remove obvious non-subsumptions from P. For example, if
+{C, D,E, F}  K and {D, E,C, F}  P, and we discover
+that C, F should be removed from P (because C is not subsumed
+by F), then we can remove D, E from P as well: if D, E were
+later added to K, then C, F would need to be added to K as
+well due to the transitivity of the subsumption relation, which
+contradicts our evidence that C is not subsumed by F. Analogously,
+if {C, D,D, E}  P, E, F  K, and C, F  P  K, and we
+discover that C, D should be added to K, then we can remove
+D, E from P. Such situations are shown schematically in Fig. 2.
+Note, however, that checking conditions from the previous
+paragraph requires several nested loops over potentially very
+large relations K and P; thus, a direct implementation of such a
+scheme, as originally suggested in [1], is unlikely to be efficient in
+practice. Our algorithm therefore uses a different pruning strategy.
+Assume that a subsumption or a class satisfiability test produces
+a pre-model A satisfying property (P2) from Section 2.3. For each
+individual s in a pre-model A and each class D  LA(s), if
+D, E  P but E  LA(s), then we can remove D, E from
+P: if E were a subsumer of D, then s would be an instance of
+E in every pre-model, including A. We present a variant of this
+scheme that is applicable if A satisfies only the weaker property
+(P3). Although such approaches only partially capture the pruning
+scheme from [1], they seem to exhibit a good balance between
+
+efficiency of pruning and reduction of the number of subsumption
+tests.
+
+Before presenting our algorithm, we next introduce several
+definitions. For example, we define precisely what a hierarchy is,
+and we define certain shortcuts for manipulating K and P. In order
+to use the same definitions for class and property hierarchies, we
+present the definitions for a general set U containing elements
+E and E, and a subset S of U. To apply these definitions to
+class classification, one should take U to be the set of all classes
+in an ontology, E and E should be owl:Thing and owl:Nothing,
+respectively, and S should be the set of classes that we want to
+classify.
+
+Definition 2. Let U be a set containing special elements E and E,
+let S be a subset of U, and let R  U  U be a binary relation on U.
+ For C  U, let R|C = {D | C, D  R}.
+ For C, D  U, element D is reachable in R from element C,
+written C R D, if elements E0, . . . , En  U with n  0 exist
+such that E0 = C, En = D and Ei, Ei+1  R for each 0  i < n.4
+The opposite of reachable is written C R D.
+ A hierarchy of S w.r.t. R, E, and E is a triple (V , H, ) whose
+components satisfy the conditions listed below, for T defined as
+
+T = {E, C,C, E | C  S}  {E, E} 
+
+{C, D  S  S | C R D}.
+
+ V is a set that contains, for each D  S  {E, E}, precisely
+one C  S  {E, E} such that C T D and D T C.
+ H is the reflexivetransitive reduction of
+the relation
+{C, D  V  V | C T D}.
+  : V  2S {E,E} is the function on V such that D  (C)
+if and only if C T D and D T C.
+ Function hierarchy(S, R, E, E) returns one arbitrarily chosen
+but fixed hierarchy of S w.r.t. R, E, and E.
+Intuitively, hierarchy(S, R, E, E) arranges the elements of S
+into a hierarchy where E and E are bottom and top elements,
+respectively, and which preserves the order of R; if S contains
+a subset of the elements of R, the result can be understood as a
+projection of R to S. The set V contains a single representative
+C for each strongly connected component of T, and (C) contains
+precisely the vertices of the strongly connected component of
+T that contains C. Note that the result of hierarchy(S, R, E, E)
+is unique up to the choice of the representative for each
+strongly connected component of T; furthermore, relation T
+contains the reflexivetransitive closure of R, but one does not
+necessarily need to materialise the closure in order to determine
+hierarchy(S, R, E, E); finally, if S  {E, E} = U (as is often the
+case in practice), then the definition of T can be simplified to
+
+T = {E, C,C, E | C  S}  {E, E}  R.
+Our classification algorithm uses functions buildPreModel,
+explicitSubsumptions, and possibleSubsumers, which we describe
+next. These functions should be understood as parameters to our
+algorithm: one can use arbitrary functions, provided that they
+satisfy properties specified in Definitions 35.
+Definition 3. Let O be an ontology, and let D and N be sets of
+assertions. Function buildPreModel(D, N , O) should return a set
+of assertions that is either a pre-model of D  N  O, or that
+contains unsatisfiable if D  N  O is unsatisfiable. The result
+should satisfy property (P1) from Section 2.3, and it should be
+constructed by treating the assertions in D and N as having been
+derived deterministically and nondeterministically, respectively.
+
+4 Note that, according to this definition, each C  U is reachable from itself.
+
+Function possibleSubsumers(S, O, C, s, A, K ) should return a
+subset of S that contains all candidate subsumers of C; note that
+this must include C itself. Set K will contain pairs of known
+subsumers in O  that is, if F1 K F2 for some F1, F2  S, then
+O |	 F1  F2. Moreover, the function is called for a class C only if
+some s and E exists such that E  LA(s) and E K C. This condition
+implies that s should be an instance of C in a model constructed
+from A, even if C  LA(s) holds due to various optimisations of the
+calculus used to construct A. Hence, the function can be called to
+determine the possible subsumers for classes that do not explicitly
+appear in A.
+
+In the simplest case, the function can return S; however, one can
+exploit LA(s) and K to return a smaller set of possible subsumers.
+For example, if A satisfies property (P2) from Section 2.3, as it is the
+case in the HermiT system, then we can define possibleSubsumers
+as
+
+possibleSubsumers(S, O, C, s, A, K ) = LA(s)  S.
+
+Set K is not useful in this case: if F  LA(s) and D K F, then
+by property (P2) we have D  LA(s). In contrast, K is useful if A
+satisfies only the weaker property (P3) from Section 2.3: then we
+can define possibleSubsumers as
+
+Function buildPreModel is used to test the satisfiability of a
+class and subsumption between classes using the (hyper)tableau
+calculus. In particular, to check the satisfiability of C, our algorithm
+will call the function with D and N defined as follows, where s0 is
+a fresh individual:
+
+D = {ClassAssertion(C s0)}
+
+N = 
+
+If C is satisfiable, the function should return a pre-model of C with
+root s0. Furthermore, to check whether O |	 C  D holds, our
+algorithm will call the function with D and N as follows:
+
+D = {ClassAssertion(C s0)}
+N = {ClassAssertion(ObjectComplementOf(D s0))}
+
+If the subsumption does not hold, the function should return a
+pre-model. To understand why buildPreModel accepts as input
+two distinct sets of assertions D and N , remember that, as
+discussed in Section 2.3, known subsumers for a class A can
+be identified by performing a satisfiability test for A and then
+checking which assertions involving the root individual were
+derived deterministically. We extend this approach in a way
+that allows us to identify known subsumers during subsumption
+tests as well. To facilitate this, buildPreModel accepts two sets
+of assertions. When constructing a pre-model for D  N 
+O, the assertions in D are treated as having been derived
+deterministically, but the assertions in N are treated as having
+been derived nondeterministically (in practice, one can achieve
+this by associating each assertion in N with a dummy nonempty
+dependency set). Let A be the result of applying buildPreModel to
+D, N , and O; if an assertion   A was derived deterministically,
+then we know that  was deterministically derived from D and
+O only. Thus, when performing a subsumption test C  D, if an
+assertion ClassAssertion(E s0) in A was derived deterministically,
+then we know for certain that E is a subsumer of C. This is possible
+even if C is subsumed by D, so A is not a pre-model. Such a
+technique extends the approaches in [1,2] and, as we discuss in
+Section 6, it significantly improves the performance of classifying
+the GALEN ontology [7].
+
+Definition 4. Let S be a set of classes and let O be an ontology.
+Function explicitSubsumptions(S, O) should return a (possibly
+empty) set of pairs of classes C, D such that C, D  S and
+O |	 C  D.
+
+Function explicitSubsumptions(S, O) is used to extract from
+the ontology O the explicit class subsumptions  that is, subsumptions that can be extracted from O using a lightweight,
+typically syntactic analysis. The result of this function does not
+need to be transitively closed; in fact, transitively closing the
+result might adversely affect the performance of the classification algorithm. In the HermiT system, this function returns
+all pairs of classes C, D such that C, D  S and O contains an axiom of the form SubClassOf(C D) or of the form
+SubClassOf(C ObjectIntersectionOf(D1 . . . Dn)) in which we have
+D = Di for some 1  i  n.
+Definition 5. Let S be a set of classes, let O be an ontology, let C be
+a class, let s be an individual, let A be a pre-model, and let K be a
+set of pairs of classes satisfying the following conditions:
+ O |	 F1  F2 for each F1, F2  K, and
+ a class E exists such that E  LA(s) and E K C.
+Function possibleSubsumers(S, O, C, s, A, K ) should return a
+(not necessarily minimal) subset of S that contains at least each
+class D  S such that O |	 C  D.
+
+possibleSubsumers(S, O, C, s, A, K ) =
+
+{D  S | for each primitive class F in O
+
+such that D K F , we have F  LA(s)}.
+
+The above definition can be intuitively understood as follows.
+By the conditions on the arguments of possibleSubsumers, we
+know that E  L(s) for some class E such that E K C; thus,
+as explained before, s should be an instance of C in a model
+constructed from A. Consider now an arbitrary class D  S. If a
+primitive class F in O exists such that F  LA(s), by property
+(P3) we know that O |	 C  F; but then, if D K F holds as
+well, we clearly have O |	 C  D. Such D need not be included
+in possibleSubsumers(S, O, C, s, A, K ), and so Definition 5 simply
+excludes all D that satisfy this condition.
+
+Example 6. Let O contain axioms (12)(13).
+
+SubClassOf(A ObjectSomeValuesFrom(op
+
+ObjectIntersectionOf(X Y )))
+
+(12)
+
+EquivalentClasses(B ObjectSomeValuesFrom(op X ))
+
+(13)
+Clearly, we have O |	 SubClassOf(A B). Furthermore, assume that
+K = {A, A,B, B}, and that we need to test the satisfiability of A
+by producing a pre-model A for A with root s0.
+If A is produced by a calculus that satisfies property (P2), then
+A contains assertion ClassAssertion(B s0), so we have
+possibleSubsumers(S, O, A, s0, A, K ) = LA(s0)  S = {A, B}.
+Assume now that A is produced by a calculus that satisfies
+only property (P3). Then, A need not contain the assertion
+ClassAssertion(B s0) since B is not a primitive class; however,
+we still have possibleSubsumers(S, O, A, s0, A, K ) = {A, B}.
+This is because no primitive class is reachable from B in
+K, so B vacuously satisfies the condition in the definition of
+possibleSubsumers. Moreover, X and Y are not included into
+the result of possibleSubsumers(S, O, A, s0, A, K ) since both are
+primitive classes that do not occur in LA(s0).
+
+In addition to the above mentioned three parametric func-
+tions, our algorithm uses two fully specified functions called
+knownSubsumers and prune, which are introduced in Definitions 7
+and 8, respectively.
+
+Algorithm 1 Classify(O)
+Input: an ontology O whose set of classes CO should be classified
+1: A := buildPreModel(,, O)
+2: if unsatisfiable  A then
+
+return the trivial hierarchy in which each class C  CO
+
+3:
+
+contains many classes. Moreover, it is likely that many of these
+satisfiability tests will be redundant and could thus be omitted. For
+example, if O |	 C  D and C is satisfiable, then a pre-model A for
+C also witnesses the satisfiability of D, as well as of any other class
+occurring in A. We can thus avoid checking the satisfiability of each
+such D, and we can use A to extract its possible subsumers. In order
+to maximise the effect of this optimisation, we start by checking
+the satisfiability of classes likely to be classified near the bottom of
+the hierarchy: such classes are likely to produce larger pre-models
+that are richer in (non-)subsumption information and that thus
+witness the satisfiability of numerous other classes. The drawback
+of testing only classes near the bottom of the hierarchy is that we
+do not determine any known subsumers for classes that are higher
+in the hierarchy and whose satisfiability can be demonstrated only
+indirectly. Our approach, however, seems to be quite effective in
+practice because a substantial number of classes in an ontology end
+up near the bottom of the hierarchy; furthermore, our strategies for
+updating K often infer the known subsumptions that are missed in
+the initialisation phase.
+These ideas are captured in Algorithm 2. The algorithm takes
+as input an ontology O and a set of classes S  CO to be
+classified. This generality will allow us to reuse the algorithm for
+the classification of object and data properties with only minor
+changes (see Sections 4 and 5).
+First, K is initialised to all pairs of classes C, D for which the
+subsumption is either explicitly stated in O, or whose subsumption
+can be derived by lightweight transformations of the axioms in
+O (line 1). Relation K is next used to extract a hierarchy H (line
+2), which in many practical cases provides a good approximation
+of the final hierarchy; this approximate hierarchy H is used
+next to optimise the order in which the algorithm processes
+classes.6 Note also that the algorithm will only process the selected
+representative classes, but this will indirectly classify all classes
+that are equivalent to the representative. For efficiency reasons, P
+is initialised in line 3 to  rather than all possible pairs of classes
+in S; thus, during the initialisation, P|D =  means the possible
+subsumers of D have not been determined yet rather than there
+are no possible subsumers of D. Then, set ToTest is initialised
+(line 4) to contain the leaves of H (i.e., the classes directly above
+owl:Nothing). A class C is then iteratively removed from ToTest
+(lines 528) and the satisfiability of C is checked (line 8), unless
+the possible subsumers of C were already determined, or C was
+determined to be unsatisfiable (line 7). If C is unsatisfiable (lines
+1016), then each D that reaches C in H is unsatisfiable as well
+(recall that C is reachable from itself); hence, this is recorded in
+K (line 11), D is removed from ToTest (line 12), and each parent
+E of D that is not known to be unsatisfiable is added to ToTest
+(lines 1315). In contrast, if C is satisfiable in a pre-model A with
+root s0 (lines 1825), then the pre-model A is used to identify the
+known subsumers of C (line 18). Furthermore, for each class E for
+which class D and individual s exist such that D  LA(s) and
+D H E, set P is updated with the possible subsumers of E (lines
+1925). If P|E = , this means that the possible subsumers of E
+have not been initialised; therefore, P is modified to ensure that
+P|E contains each class F that is a possible subsumer of E (line
+21). If P|E = , then P is modified by removing those pairs E, F
+such that F is not a possible subsumer of E (line 23). Finally, after
+all possible subsumers of each class in S have been determined,
+each subsumption that holds according to the information in K
+can be removed from P (line 29). This now leaves P to reflect the
+remaining work needed to classify the elements in S.
+Note that, if the pre-model A constructed in line 8 satisfies
+property (P2) from Section 2.3, then the condition in line 19 can
+
+is subsumed by owl:Nothing
+
+4: end if
+5: (K , P) := initialiseRelations(O, CO)
+6: processRemainingClasses(K , P, O, CO)
+7: return hierarchy(CO, K , owl:Nothing, owl:Thing)
+
+Definition 7. Let S be a set of classes, let s0 be an individual, and let
+A be a set of assertions. Then, function knownSubsumers(S, s0, A)
+returns the set containing each D  S for which A contains a
+deterministically derived assertion ClassAssertion(D s0).
+
+Function knownSubsumers(S, s0, A) is called in our algorithm
+with A a pre-model with root s0 for a class C. Since A satisfies
+property (P1) from Section 2.3, from each deterministically derived
+assertion ClassAssertion(D s0) in A we can conclude O |	 C  D.
+let O
+Definition 8. Let P and K be sets of pairs of classes,
+be an ontology, and let A be a set of assertions. Function
+prune(P, O, A, K ) returns the relation obtained from P by
+removing each pairC, D for which an individual s in A and a class
+E exist such that E  LA(s), E K C, and
+
+D  possibleSubsumers(CO, O, C, s, A, K ).
+Function prune(P, O, A, K ) removes from P certain pairs of
+classes C, D for which we have O |	 C  D. Since P
+can be very large, this function requires careful implementation
+in order to obtain an efficient implementation. Assuming that
+possibleSubsumers(S, O, C, s, A, K ) is defined as outlined after
+Definition 5, prune(P, O, A, K ) can be efficiently implemented
+by iteratively considering each individual s in A, each class
+E  LA(s), each class C such that E K C, and each class
+D  P|C; if D does not satisfy the conditions for membership in
+possibleSubsumers(S, O, C, s, A, K ), then C, D is removed from
+P.
+
+Our algorithm for classifying classes is shown in Algorithm
+1. The algorithm first checks whether the given ontology is
+satisfiable; if not, a trivial hierarchy in which all classes are
+subsumed by owl:Nothing is returned. If the ontology is satisfiable,
+then the algorithm proceeds with the classification. The goal is to
+compute a relation K such that, for each class A  CO different
+from owl:Nothing and each class B  CO different from owl:Thing,
+we have O |	 A  B if and only if A K B.5 This is achieved by
+initialising relations K and P as described Section 3.2, and then
+processing possible subsumptions in P using a modified version of
+the ET algorithm as described in Section 3.3. Finally, the algorithm
+returns a hierarchy derived from K.
+
+3.2. The initialisation phase
+
+In [1], relations K and P are initialised by performing a
+satisfiability test for each class to be added to the hierarchy and
+then extracting known and possible subsumers from pre-models
+as discussed in Section 2.3. Although modern reasoners can check
+satisfiability of classes quite efficiently, the time required to test
+satisfiability of all the classes can become large if the ontology
+
+5 Note that the excluded cases of owl:Nothing and owl:Thing are all tautologies,
+whose management during classification can only add unnecessary overhead.
+
+6 Note that V and  are not used in the rest of the initialisation algorithm.
+
+Algorithm 2 initialiseRelations(O, S).
+Input: an ontology O and a set S of classes to be classified
+1: K := explicitSubsumptions(S, O)
+2: (V , H, ) := hierarchy(S, K , owl:Nothing, owl:Thing)
+3: P := 
+4: ToTest := {C | owl:Nothing, C  H}
+5: while ToTest =  do
+
+add D, owl:Nothing to K
+remove D from ToTest
+for all D, E  H with E, owl:Nothing  K do
+end for
+
+add E to ToTest
+
+choose and remove C from ToTest
+if P|C =  and C, owl:Nothing  K then
+
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23:
+24:
+25:
+26:
+end if
+27:
+28: end while
+29: remove each E1, E2 from P such that E1 K E2
+30: return (K , P)
+
+if P|E =  then
+else
+
+end for
+
+end if
+
+end if
+
+A := buildPreModel({ClassAssertion(C s0)},, O)
+if unsatisfiable  A then
+
+for all D such that D H C and D, owl:Nothing  K do
+
+// s0 is fresh
+
+// C is unsatisfiable
+
+else
+
+end for
+add C, D to K for each D  knownSubsumers(S, s0, A)
+for all s in A, all D  LA(s), and all E such that D H E do
+
+add E, F to P for each F  possibleSubsumers(S, O, E, s, A, K )
+remove each E, F from P such that F  possibleSubsumers(S, O, E, s, A, K )
+
+be simplified to consider each s in A and each class E such that
+E  LA(s). This is because, if D  LA(s) and D H E for some
+class D, by the definition of H we have O |	 D  E, and so by
+property (P2) we have E  LA(s). Consequently, if the simplified
+loop considers some class D  LA(s), it will also consider each
+class E for which D H E.
+Also note that, if a class C is unsatisfiable (lines 1016), then
+our algorithm propagates the unsatisfiability of C to each class
+D that reaches C in K. This allows our algorithm to identify
+unsatisfiable classes without performing actual satisfiability tests,
+which significantly reduces the number of satisfiability tests
+needed to classify ontologies with many unsatisfiable classes; for
+example, as we discuss in Section 6 in more detail, this significantly
+improves the performance of classifying the FMA ontology [6].
+Note, however, that such classes are removed from ToTest and are
+never considered again after line 7 since D, owl:Nothing  K.
+Hence, the algorithm might miss the opportunity to create a premodel for a satisfiable parent class E of one of these classes; this, in
+turn, might render the algorithm incomplete since P|E might not
+contain all possible subsumers of E. This issue is solved by adding
+all parents E of an unsatisfiable class D to ToTest in lines 1315.
+Example 9. Let O contain axioms (14)(17).
+
+SubClassOf(C ObjectSomeValuesFrom(op D))
+ObjectPropertyDomain(op E)
+SubClassOf(D ObjectUnionOf(E F ))
+SubClassOf(G ObjectSomeValuesFrom(op2 D))
+
+(14)
+(15)
+(16)
+(17)
+Assume that we want to classify the classes of the ontology using
+Algorithm 1. Since O is satisfiable, the algorithm proceeds by
+calling Algorithm 2 with arguments O and CO.
+
+Algorithm 2 determines that O contains no explicit subsump-
+tions, so it initialises K to the empty relation. Thus, in the extracted hierarchy all classes different from owl:Thing are above
+owl:Nothing, so ToTest initially contains C, D, E, F, and G. Let us
+assume that the algorithm next checks the satisfiability of C by
+producing a pre-model A for C with root s0 that satisfies property (P2). Due to axiom (14), s0 must have an op-successor, say
+s1, that is an instance of D. Since D  LA(s1), the pre-model A
+also witnesses the satisfiability of D. Due to axiom (16), A contains
+ClassAssertion(E s1) or ClassAssertion(F s1); let us assume that the
+former is the case. Using the information from P, our algorithm
+modifies P to ensure P|C = {C} and P|E = P|D = {D, E}. Let us
+assume that D is selected next; now P|D = , which means that a
+pre-model for D has already been encountered, so no test is performed for D. The algorithm then continues processing classes in
+ToTest, and at some point it selects G and constructs a pre-model
+A for G with root s0 that satisfies property (P2). Due to axiom (17),
+s0 has an op2 successor, say s1, that is an instance of D; that is,
+D  LA(s1). Let us assume, however, that axiom (16) is satisfied in A by ClassAssertion(F s1). Now, P|D = , so the classes in
+LA(s1) are used to prune P|D: since E  LA(s1), relation P is modified to ensure E  P|D; thus, P|D is left to contain only D. Conse-
+quently, P|D =  after the final cleanup  that is, all subsumers of
+D are known despite the fact that the satisfiability of D has never
+been tested explicitly by Algorithm 2 in line 8, thus illustrating
+the benefit of exploiting the information generated by satisfiability
+tests. 
+
+Next, we prove the correctness of Algorithm 2.
+
+Lemma 10. When applied to a satisfiable ontology O and a set of
+classes S  CO, Algorithm 2 terminates. Let K and P be the relations
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+produced by the algorithm; then, for all classes A, B  S, the following
+properties hold:
+1. A K B implies O |	 A  B.
+2. If A is unsatisfiable, then A K owl:Nothing.
+3. If A is satisfiable and O |	 A  B, then either A K B or a class A
+
+exists such that A K A, A, B  P, and O |	 A  B.
+
+Proof. We show that the algorithm terminates after a finite
+number of steps. Note that function buildPreModel terminates for
+each set of assertions and each OWL 2 ontology [26]. Moreover,
+for each class C removed from ToTest, the algorithm adds
+C, owl:Nothing to K if C is unsatisfiable, or in line 21 it extends P
+with pairs of the formC, E which makes P|C not empty; note that
+in this case the algorithm also addsC, C to P. Furthermore,C, C
+is never removed from P in line 23, so P|C never becomes empty
+in future iterations of the while-loop. Thus, in the worst case, the
+algorithm considers each class in S once and then terminates.
+(Claim 1) Pair D, owl:Nothing can be added to K in line 11, but
+then D is unsatisfiable. Alternatively, pair C, D can be added to K
+in line 18, but then O |	 C  D by property (P1) from Section 2.3.
+Since these are the only places where pairs are added to K, Claim 1
+clearly holds.
+
+We next show by induction on the iterations of the while-loop
+
+In order to prove Claims 2 and 3, we first prove two useful
+properties. Let H be as specified in line 2 and let A be an arbitrary
+class occurring in H; then, the following properties hold at the
+beginning of each iteration of the while-loop.
+(): If A is satisfiable and P|A = , then, for each class B  S
+such that O |	 A  B, we have B  P|A.
+(): If P|A =  and A K owl:Nothing, then there exists a class
+F  ToTest such that F K owl:Nothing, F H A, and P|G = 
+for each class G such that F H G and G H A.
+For property (), consider an arbitrary class A occurring in
+H. Set P|A can become nonempty in line 21; but then, P|A =
+possibleSubsumers(S, D, s, A, K ) after the change, so P|A clearly
+satisfies property () after the change. Alternatively, set P|A can be
+reduced in line 23 due to the removal of A, B; but then, we have
+O |	 A  B, so set P|A clearly satisfies () after the change.
+that an arbitrary class A occurring in H satisfies property ().
+Base case: At the beginning of the first iteration, ToTest contains
+all classes of H above owl:Nothing; hence, for an arbitrary class
+F  ToTest, we have F H owl:Nothing. Therefore, if P|A =  and
+A H owl:Nothing, then property () is satisfied for F = A.
+Induction step: Assume that property () holds for A at the
+beginning of iteration i. We show that property () also holds for
+A at the end of the iteration  that is, the property holds at the
+beginning of iteration i + 1. The claim is nontrivial only if P|A = 
+and A K owl:Nothing. Since A satisfies the induction hypothesis,
+there exists a class F  ToTest such that F K owl:Nothing, F H A,
+and P|G =  for each class G such that F H G and G H A. Let C be
+an arbitrary class chosen in line 6. If C does not satisfy the condition
+in line 7, then P|C =  or C K owl:Nothing, so C = F, and thus F
+satisfies property () for A at the end of the iteration. If C satisfies
+the condition in line 7, we have two possibilities.
+First, assume that C is satisfiable, and let A be the pre-model
+obtained in line 8. For an arbitrary class D, if P|D =  at the
+beginning, but not at the end of the loop, then by the condition
+in line 19 we have P|E =  at the end of the loop for each class
+E such that D H E. Consequently, if P|G =  at the end of the
+loop for some class G such that F H G and G H A, then P|A = 
+at the end of the loop as well, so property () is satisfied for A in
+line 26. Otherwise, since lines 1726 never add a pair of the form
+F , owl:Nothing to K, class F satisfies property () for A in line 26.
+
+Second, assume that C is unsatisfiable; then, property () can
+be affected only if F H C. To summarise, we have F H C and
+F H A, where H is a directed acyclic relation; but then, a highest
+class D in H exists that occurs on the path from F to C and on the
+path from F to A. More formally, there exists class D such that
+ F H D,
+ D H A,
+ D H C, and
+ for each class D different from D such that D H D and D H A,
+we have D H C.
+Furthermore, since we have F  H owl:Nothing, we also have
+D  K owl:Nothing. Class D will clearly eventually be considered
+in line 10. If D = A, then A, owl:Nothing is added to K in line
+11, so A trivially satisfies property () at the end of the iteration.
+If D = A, a class E exists such that D, E  H and E H A; since
+A K owl:Nothing, for each such E we have E K owl:Nothing;
+furthermore, by property (), we have P|G =  for each class G
+such that E H G and G H A. At least one such E is considered in
+lines 1315 and is added to ToTest in line 14, so E satisfies property
+() for A at the end of the iteration.
+This completes the proof of property () and we next prove
+Claims 2 and 3.
+(Claim 2) Consider an arbitrary unsatisfiable class A  S. By the
+definition of the hierarchy function, a class A occurring in H exists
+such that A  (A). If A occurs in K, then we clearly have A K A
+and A K A. Assume that A does not occur in K. Then, since A is
+unsatisfiable (i.e., A = owl:Thing) and owl:Thing and owl:Nothing
+are the only classes that can occur in H but not in K, we have A =
+owl:Nothing; but then A = A, and so we have A K A and A K A
+(remember that each class is reachable from itself). Class A satisfies
+property (); furthermore, we have ToTest =  upon termination,
+so by the contrapositive of property () either A K owl:Nothing
+= . Note, however, that unsatisfiable classes never appear
+or P|A
+in pre-models, so the algorithm never adds a pair of the form
+A, C to P. Thus, P|A = , so we have A K owl:Nothing, and
+consequently A K owl:Nothing as well.
+(Claim 3) Consider an arbitrary satisfiable class A  S and an
+arbitrary class B  S such that O |	 A  B. By the definition of
+the hierarchy function, a class A occurring in H exists such that
+A  (A). If A occurs in K, then we clearly have A K A and
+A K A. Assume that A does not occur in K; since A is satisfiable
+(i.e., A = owl:Nothing) and owl:Thing and owl:Nothing are the
+only classes that can occur in H but not in K, we have A =
+owl:Thing; but then A = A, and so we have A K A and A K A
+(remember that each class is reachable from itself). Class A satisfies
+property (); furthermore, we have ToTest =  upon termination,
+so by the contrapositive of property () we have that either
+A K owl:Nothing or P|A
+= . By Claim 1 and the fact that A is
+satisfiable the former cannot be the case, so we have P|A
+= . But
+then, by property () we have B  P|A after line 28, so Claim 3
+holds at this point. Pair A, B can be removed from P in line 29,
+but then A K B, and so we have A K B; thus, Claim 3 holds after
+line 29 as well. 
+
+3.3. The classification phase
+
+In the classification phase, our algorithm determines which
+of the possible subsumptions in P actually hold. This is done as
+shown in Algorithm 3. Each class C for which there are possible
+subsumptions is processed iteratively (lines 134). Since K is
+initialised with explicit subsumptions in O, it is often the case that
+no class in P|C is a subsumer of C, so identifying such situations
+quickly can significantly reduce the total number of subsumption
+tests. This is done by trying to construct a pre-model that satisfies C
+
+Algorithm 3 processRemainingClasses(K , P, O, S).
+Input: binary relations K and P, an ontology O and a set of classes S
+1: while some C  S exists such that P|C =  do
+
+further pruned using the information from A (line 22). In contrast,
+if the subsumption holds, this is recorded in K (line 24), and each
+child E of D in HC is added to Q (line 25) in order to continue
+the traversal of HC. In either case, known subsumers of C are read
+off A and P is pruned accordingly (lines 27 and 28). Finally, P is
+pruned as discussed in Section 3.1 for all newly discovered known
+subsumptions (line 32).
+
+Please note that, if the pre-models constructed in lines 3 and
+19 satisfy property (P2) from Section 2.3, then lines 5 and 21 are
+subsumed by lines 6 and 22, respectively. In particular, for each
+ LA(s0),
+class Di removed in line 5, by property (P2) we have Di
+so C, Di is removed from P in line 6. Similarly, for each class E
+removed in line 21, by property (P2) we have E  LA(s0), so C, E
+is removed from P in line 22.
+In contrast to the ET algorithm, our algorithm does not
+include a bottom-up phase. This considerably simplifies the
+implementation, as one does not need data structures that allow
+retrieval of the predecessors of a class C in K and P: the algorithm
+can be efficiently implemented by explicitly keeping track only
+of successor links. Furthermore, unlike in the bottom-up phase
+of the ET algorithm, our algorithm never iterates over the direct
+superclasses of owl:Nothing, which significantly reduces the cost
+of data structure traversal.
+Lemma 11. Let O be a satisfiable ontology, and let K and P be the
+relations obtained by applying Algorithm 2 to O and a set of classes
+S  CO. Then, applying Algorithm 3 to K, P, O, and S terminates.
+Let K be the relation produced by the algorithm; then, for all classes
+A, B  S, the following properties hold:
+
+remove each C, E from P such that E K D
+P := prune(P, O, A, K )
+add C, D to K
+add to the end of Q each E such that E, D  HC
+
+end if
+add C, D to K for each D  knownSubsumers(S, s0, A)
+remove each C, E from P such that C K E
+
+F := ObjectComplementOf(ObjectUnionOf(D1 . . . Dn)) where {D1, . . . , Dn} = P|C
+A := buildPreModel({ClassAssertion(C s0)},{ClassAssertion(F s0)}, O)
+if unsatisfiable  A then
+remove each C, Di from P such that Di  P|C
+P := prune(P, O, A, K )
+K := K  {C, D | D  knownSubsumers(S, s0, A)}
+remove each C, E from P such that C K E
+if P|C =  then
+
+//no Di  P|C subsumes C
+
+else
+
+(VC , HC , C ) := hierarchy(P|C , K , owl:Nothing, owl:Thing)
+initialise a queue Q to contain all D with D, owl:Thing  HC
+while Q =  do
+remove the head D from Q
+if C K D then
+else if D  P|C then
+
+add to the end of Q each E such that E, D  HC
+F := ObjectComplementOf(D)
+A := buildPreModel({ClassAssertion(C s0)},{ClassAssertion(F s0)}, O)
+if unsatisfiable  A then // O |	 C  D
+
+else
+
+end if
+end while
+
+end if
+remove each E1, E2 from P such that E1 K E2
+
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23:
+24:
+25:
+26:
+27:
+28:
+29:
+30:
+31:
+32:
+end if
+33:
+34: end while
+and no Di  P|C (lines 2 and 3); if a pre-model A can be constructed,
+then no Di is a subsumer of C, so all pairs C, Di are removed
+from P (line 5) and P is further pruned using the information
+from A (line 6). If at least one Di  P|C is a subsumer of C, the
+algorithm first reads the known subsumers of C off the returned
+set of assertions A (line 8), and it prunes P by removing the known
+subsumers of C (line 9). As explained earlier, treating assertion
+ClassAssertion(F s0) as being derived nondeterministically allows
+us to identify the known subsumers of C during a subsumption
+test. If C still has possible subsumers, then C is inserted into the
+hierarchy constructed thus far (lines 1130). In order to reduce
+the number of subsumption tests, the classes in P|C are arranged
+into a hierarchy HC that is compatible with K (line 11); then, HC is
+traversed using a variant of the ET algorithm (lines 1230). To this
+end, a queue Q is initialised to contain all children of owl:Thing in
+HC (line 12); this prevents the algorithm from checking the trivial
+subsumption between C and owl:Thing. As long as Q is not empty
+(lines 1330), the head D of Q is popped off Q (line 14) with the
+intention to check whether D subsumes C. The algorithm does not
+process the class D if this subsumption was discovered to be known
+(line 15) or if D was removed from P|C since HC was constructed;
+this can happen if D is added to Q more than once due to the
+presence of several paths from D to owl:Thing in HC or if D was
+discovered to be a subsumer of C in a previously constructed pre-
+model. Otherwise, the subsumption between C and D is tested by
+trying to construct a pre-model satisfying C but not D (line 19). If
+such a pre-model A can be constructed, then C, D together with
+all known subclasses of D are removed from P (line 21), and P is
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+1. A K B implies O |	 A  B.
+2. If A is unsatisfiable, then A K owl:Nothing.
+3. If A is satisfiable and O |	 A  B, then A K B.
+Proof. First, we prove that the algorithm terminates. Consider an
+arbitrary class C selected in line 1. We show that P|C =  at
+the end of the outer while-loop; since the algorithm never adds
+pairs to P, this clearly implies termination. Let A be the pre-model
+obtained in line 3. If A satisfies the condition in line 4, then each
+pair C, Di is removed from P in line 5 thus making P|C empty.
+We next assume that the condition in line 4 is not satisfied, so the
+algorithm proceeds with lines 830. If P|C =  after line 9, the
+algorithm proceeds with lines 1130. In particular, the algorithm
+constructs a hierarchy HC containing each D  P|C, and then it
+traverses HC using breadth-first search. Since HC is acyclic, the
+while loop in lines 1330 terminates: each class D occurring in
+HC can be added to Q only as many times as there are paths from
+owl:Thing to D in HC. We next show that P|C =  in line 34 of
+the outer while loop. Since tuples are never added to P, this clearly
+implies that the algorithm terminates.
+To show that P|C =  in line 34, we first prove that the following
+three properties hold at the end of each iteration of the inner while
+loop  that is, after line 29.
+
+(): For each class E such that C K E, we have E  P|C.
+(): For each class D selected in line 14, we have D  P|C.
+(): For each class F  P|C, a class G  Q exists with F K G.
+For property (), note that the property holds before the while
+loop (i.e., after line 12) due to pruning in line 9; furthermore, K can
+be extended in an iteration only in line 24, but then line 28 ensures
+that property () holds at the end of the iteration.
+For property (), let D be an arbitrary class selected in line 14. If
+the condition in line 15 holds, then D  P|C due to property (). If
+the condition in line 15 does not hold, then eitherC, D is removed
+from P in line 21, or C, D is added to K in line 24 and so C, D is
+removed from P in line 28; either way, D  P|C at the end of the
+iteration.
+For property (), note that the property clearly holds after Q
+is initialised in line 12. Consider now an arbitrary class F such that
+F  P|C at the beginning of the iteration, and let G be the class that
+satisfies property () for F. Furthermore, let D be the class selected
+in line 14. If D = G, then property () clearly holds for F at the end
+of the iteration. If D = G, then we have the following possibilities:
+some E such that F K E is added to Q in line 16 or line 25, orC, F
+is removed from P in line 21. In all cases, property () holds for F
+at the end of the iteration.
+We now complete the proof that P|C =  in line 34. In
+particular, since Q =  after line 30, no F  P|C can exist without
+violating property (). Thus, the algorithm terminates, and we
+have P =  upon termination.
+
+To complete the proof of this lemma, we next show that
+relations K and P satisfy at all times during the algorithms
+execution the following properties for all classes A, B  S.
+1. A K B implies O |	 A  B.
+2. If A is unsatisfiable, then A K owl:Nothing.
+3. If A is satisfiable and O |	 A  B, then either A K B or a class
+
+A exists such that A K A, A, B  P, and O |	 A  B.
+
+Initially, these properties are satisfied as a consequence of
+Lemma 10.
+(Property 1) A pair A, B can be added to K in lines 8 and 27,
+but then O |	 A  B holds since A satisfies property (P1) from
+Section 2.3. Alternatively, a pair A, B can be added to K in line 24,
+but then O |	 A  B holds as a consequence of the subsumption
+check in line 19. Thus, property 1 holds at any point during the
+algorithms execution.
+
+(Property 2) Pairs are never removed from K, so Property 2
+never ceases to hold for an arbitrary unsatisfiable class A  S.
+(Property 3) Consider arbitrary classes A, B  S such that A is
+satisfiable and O |	 A  B. If A K B holds at some point, then
+A K B never ceases to hold because pairs are never removed from
+K. Furthermore, assume that a class A exists such that A K A,
+A, B  P, and O |	 A  B. Property 3 might cease to hold
+for A and B only after a modification of P, so we next consider all
+possible ways in which that could happen.
+ If A, B is removed from P in line 9, 28 or 32, then we have
+A K B; thus, we have A K B, so Property 3 holds after the
+removal.
+ If C, Di is removed from P in line 5, then O |	 C  Di; thus,
+we haveC, Di = A, B, so Property 3 holds after the removal.
+ IfC, E is removed from P in line 21, by O |	 C  D and E K D
+we have O |	 C  E; thus, C, E = A, B, so Property 3 holds
+after the removal.
+ If F1, F2 is removed from P in lines 6 and 22, by the definition
+of prune we have O |	 F1  F2. Thus, we haveF1, F2 = A, B,
+so Property 3 holds after the removal.
+Upon termination we have P = , which together with
+
+Properties 13 clearly implies the claim of this lemma. 
+
+Theorem 12. For each ontology O, Algorithm 1 terminates and it
+correctly computes the class hierarchy of O.
+Proof. The claim holds trivially if O is unsatisfiable, so let
+us assume that O is satisfiable. Termination is an immediate
+consequence of the fact that Algorithms 2 and 3 terminate on O.
+Finally, correctness also follows straightforwardly from Lemma 11
+and the fact that Algorithm 1 produces a hierarchy of CO w.r.t. K,
+owl:Nothing, and owl:Thing.
+
+4. Object property classification
+
+To the best of our knowledge, classification of object properties
+has not been discussed in the literature, and all ontology reasoners
+we are aware of construct the object property hierarchy simply
+by computing the reflexivetransitive closure of the asserted
+object property hierarchy. Such an algorithm requires no complex
+reasoning and it can be easily implemented; however,
+it is
+incomplete even for very simple sublanguages of OWL. We
+demonstrate this by means of an example that uses existential
+restrictions (ObjectSomeValuesFrom), functional properties, and
+property hierarchies. In the rest of this section, we use op(i) to
+denote an object property and ope(i) to denote an object property
+expression.
+
+Example 13. Consider axioms (18)(21).
+
+SubClassOf(
+
+ObjectSomeValuesFrom(op1 owl:Thing)
+ObjectSomeValuesFrom(op2 owl:Thing)
+
+(18)
+
+SubObjectPropertyOf(op1 op3)
+SubObjectPropertyOf(op2 op3)
+FunctionalObjectProperty(op3)
+
+(19)
+(20)
+(21)
+These axioms entail op1  op2: if i2 is an op1-successor of i1 in
+an interpretation I, then axiom (18) requires the existence of an
+op2-successor i3 of i1 in I; since both op1 and op2 are subproperties
+of op3 and op3 is functional, then i3 is equal to i2, so i2 is also an
+op2-successor of i1. This is shown graphically in the left part of
+Fig. 3. 
+
+blocking [26]  a technique used to ensure termination of premodel construction.
+Instead, all calculi known to us use an
+encoding that simulates the effects of axioms such as (26). In
+particular, each negative object property assertion such as (29) is
+replaced with an equivalent axiom (31).
+
+(a) Example 13.
+
+(b) Example 14.
+
+Fig. 3. Graphical illustration of the models created in Examples 13 and 14. Dashed
+arrows indicate inferred relations, and op is the inverse of the object property op.
+
+Furthermore, the following example demonstrates that subsumption relationships between object properties can also be derived due to an interaction between object property chains and inverse properties (ObjectInverseOf).
+
+Example 14. Consider axioms (22)(23).
+
+SubClassOf(owl:Thing
+
+ObjectSomeValuesFrom(op owl:Thing)
+
+SubObjectPropertyOf(
+
+ObjectPropertyChain(op1 op ObjectInverseOf(op))
+op2
+
+(22)
+
+(23)
+
+If i1 has an op1-successor i2 in a model I, axiom (22) ensures that
+i2 has an op-successor i3; hence, i1, i2 is in the interpretation
+of op1, i2, i3 is in the interpretation of op, and i3, i2 is in the
+interpretation of ObjectInverseOf(op). By axiom (23), then i1, i2
+is in the interpretation of op2 so, consequently, the ontology entails
+op1  op2. This is shown graphically in the right part of Fig. 3. 
+One might assume that object properties can be classified
+correctly and efficiently by modifying the classification algorithm
+from Section 3 in the obvious way: to check whether an object
+property op1 subsumes an object property op2, one should
+construct a model satisfying assertions (24) and (25) where a and
+b are fresh individuals; furthermore, to update relations P and
+K, one should consider labels of individual pairs instead of single
+individuals.
+
+ObjectPropertyAssertion(op1 a b)
+NegativeObjectPropertyAssertion(op2 a b)
+
+(24)
+(25)
+Somewhat surprisingly, such an algorithm is incomplete due to
+a problem with complex properties  that is, properties that are
+transitive or are defined using a complex property inclusion
+axiom. In all (hyper)tableau calculi known to us, axioms defining
+complex properties are not handled directly, but via an equisatisfiable encoding [28,27,29]. For example, consider an ontology
+that contains the following axioms:
+
+TransitiveObjectProperty(op)
+ObjectPropertyAssertion(op a b)
+ObjectPropertyAssertion(op b c)
+NegativeObjectPropertyAssertion(op a c)
+
+(26)
+(27)
+(28)
+(29)
+This ontology is clearly unsatisfiable. To determine this, one might
+expect a (hyper)tableau algorithm to derive
+
+ObjectPropertyAssertion(op a c)
+
+(30)
+from (26)(28), and then to derive a contradiction from (29) and
+(30). To the best of our knowledge, however, no (hyper)tableau
+calculus works in such a way. The addition of transitively implied
+object property assertions such as (30) is not compatible with
+
+ClassAssertion(
+
+ObjectAllValuesFrom(op
+
+ObjectComplementOf(ObjectOneOf(c))
+
+(31)
+
+Next, all axioms containing ObjectAllValuesFrom classes are
+transformed in a certain way; for example, axiom (31) is replaced
+with the following axioms, where Q is a fresh class:
+
+ClassAssertion(ObjectAllValuesFrom(op Q ) a)
+SubClassOf(Q ObjectComplementOf(ObjectOneOf(c)))
+SubClassOf(Q ObjectAllValuesFrom(op Q ))
+
+(32)
+(33)
+(34)
+
+Intuitively, axioms (32)(34) ensure that each individual in a premodel reachable via op from a is an instance of
+
+ObjectComplementOf(ObjectOneOf(c)),
+
+which captures the effect of axioms (26) and (31). Thus, axioms
+(26), (27), and (32)(34) imply a contradiction, as required;
+however, note that no axiom forces a (hyper)tableau calculus to
+derive (30). Thus, a pre-model is not guaranteed to contain all
+implied object property assertions for complex properties, which
+adversely affects the completeness of our classification algorithm
+from Section 3: due to missing property assertions, the set of
+possible subsumers P might not be correctly initialised, or certain
+subsumptions might be incorrectly pruned from P. To summarise,
+the modified classification algorithm will correctly classify object
+properties that are not complex, but it might fail to discover certain
+subsumptions involving at least one complex object property.
+
+In order to overcome these issues, we developed a new property
+classification technique that reduces object property classification
+to standard class classification. Any complete class classification
+algorithm (such as the one described in Section 3) can be used to
+classify the resulting ontology.
+
+Definition 15. Let O be an OWL 2 ontology, let Cf be a fresh class
+not occurring in O, let a be a fresh individual not occurring in O,
+and let  be an injective function that maps each object property
+expression ope  OPEO into a class  (ope) as follows:
+  (owl:topObjectProperty) = owl:Thing,
+  (owl:bottomObjectProperty) = owl:Nothing, and
+  (ope) is a fresh distinct class not occurring in CO{Cf} for each
+ope  OPE
+O.
+
+Then, O is the ontology obtained by extending O with assertion
+(35) and an instance of axiom (36) for each ope  OPE
+O.
+
+ClassAssertion(Cf a)
+EquivalentClasses( (ope)
+
+ObjectSomeValuesFrom(ope Cf ))
+
+(35)
+
+(36)
+
+As we show in Theorem 16, the encoding from Definition 15
+allows us to check O |	 ope1  ope2 by equivalently checking
+O |	  (ope1)   (ope2).
+Thus, for O, op1 and op2 defined as in Example 13, we can
+check whether O |	 op1  op2 holds by checking whether
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+O |	  (op1)   (op2) holds, where O is obtained by extending
+O with axioms (37)(38).
+
+EquivalentClasses( (op1)
+
+ObjectSomeValuesFrom(op1 Cf ))
+
+EquivalentClasses( (op2)
+
+ObjectSomeValuesFrom(op2 Cf ))
+
+(37)
+
+(38)
+
+The latter can be checked as usual, by trying to construct a premodel for assertions (39)(40), where s0 is a fresh individual.
+
+ClassAssertion( (op1) s0)
+ClassAssertion(ObjectComplementOf( (op2)) s0)
+
+(39)
+(40)
+Since O contains axiom (37), assertion (39) implies that s0 must
+have an op1-successor s1 that is an instance of Cf ; now, if the axioms
+in O imply that s1 is necessarily an op2-successor of s0 as well, then
+axiom (38) from O implies that s0 is an instance of  (op2), which
+contradicts assertion (40).
+Note that the axioms for complex properties in O are subject
+to the encoding of complex properties described above. The
+additional axioms in O might not look as if they contain an
+ObjectAllValuesFrom class, but this becomes obvious if the axioms
+are normalised. Any (hyper)tableau reasoner will pre-process
+these axioms before applying the actual reasoning calculus. For
+example, axiom (37) is split into the following two axioms:
+
+SubClassOf( (op1) ObjectSomeValuesFrom(op1 Cf ))
+SubClassOf(ObjectSomeValuesFrom(op1 Cf )  (op1))
+
+(41)
+(42)
+
+These are subsequently reformulated as follows:
+
+SubClassOf(owl:Thing
+
+ObjectUnionOf(
+
+ObjectComplementOf( (op1))
+ObjectSomeValuesFrom(op1 Cf )
+
+(43)
+
+(44)
+
+SubClassOf(owl:Thing
+
+ObjectUnionOf(
+
+ObjectComplementOf(
+
+ObjectSomeValuesFrom(op1 Cf )
+
+ (op1)
+
+The latter axiom in finally brought into negation-normal form as
+follows:
+
+SubClassOf(owl:Thing
+
+ObjectUnionOf(
+
+ObjectAllValuesFrom(op1
+
+ObjectComplementOf(Cf )
+
+ (op1)
+
+(45)
+
+These transformations make it clear that axiom (37) contains an
+ObjectAllValuesFrom class expression, which triggers the encoding
+if op1 is a complex property.
+Furthermore, note that, by Definition 15, O does not contain axioms of the form (36) for owl:topObjectProperty and
+owl:bottomObjectProperty. From a theoretical point of view,
+one could map these two properties via  to fresh classes and
+then include the corresponding axioms of the form (36) in O .
+The drawback of such an approach, however, is that O then
+contains owl:topObjectProperty and owl:bottomObjectProperty
+
+even if O does not, and reasoning with these two properties can be difficult. By mapping owl:topObjectProperty and
+owl:bottomObjectProperty to owl:Thing and owl:Nothing, respec-
+tively, and not including in O the corresponding axioms of the
+form (36), we ensure that reasoning with O is usually not more
+difficult than reasoning with O.
+Theorem 16. Let O,  , and O be as in Definition 15, and let ope1
+and ope2 be arbitrary object property expressions in OPEO. Then,
+O |	 ope1  ope2 iff O |	  (ope1)   (ope2).
+Proof. () We prove the contrapositive: if O |	 ope1  ope2,
+then O |	  (ope1)   (ope2). Assume that O |	 ope1  ope2;
+then there exists a model I of O such that I |	 ope1  ope2. Clearly,
+we have
+
+ope1 = owl:bottomObjectProperty and
+ope2 = owl:topObjectProperty
+
+Let i1, i2 be a tuple of objects that is contained in the
+interpretation of ope1 in I, but not in the interpretation of ope2 in I.
+We conservatively extend I to I by interpreting the symbols in O
+that do not occur in O as follows:
+ the interpretation of individual a in I is i2,
+ the interpretation of Cf in I contains only i2, and
+ for each ope  OPE
+O, the interpretation of  (ope) in I contains
+each i such that i, i2 is contained in the interpretation of ope
+in I.
+Interpretation I clearly satisfies O, assertion (35), and all
+axioms of the form (36) in O ; thus, I is a model of O . If ope1 =
+owl:topObjectProperty, then  (ope1) = owl:Thing, so i1 is clearly
+in the interpretation of  (ope1); otherwise, since i1, i2 is in the
+interpretation of ope1 and i2 is in the interpretation of Cf , then
+i1 is in the interpretation of  (ope1) by the construction of I.
+Similarly, if ope2 = owl:bottomObjectProperty, then  (ope2) =
+owl:Nothing, so i2 is clearly not in the interpretation of  (ope2);
+otherwise, since i1, i2 is not in the interpretation of ope2, then
+i1 is not in the interpretation of  (ope2) by the construction of I.
+|	  (ope1)   (ope2), and therefore
+Consequently, we have I
+O |	  (ope1)   (ope2), as required.
+() We prove the contrapositive: if O |	  (ope1)   (ope2),
+then O |	 ope1  ope2. Assume that O |	  (ope1)   (ope2);
+then a model I of O exists where some i1 is an instance of  (ope1)
+but not of  (ope2); furthermore, O contains all axioms of O, so I
+is a model of O; finally, we clearly have
+
+ope1 = owl:bottomObjectProperty and
+ope2 = owl:topObjectProperty
+
+Now, if ope1 = owl:topObjectProperty, due to axiom (35), i2
+exists that is an instance i2 of Cf in I, and, due to the semantics of
+owl:topObjectProperty, i2 is an ope1-successor of i1 in I; otherwise,
+due to axiom (36) for ope1, i2 exists that is an ope1-successor
+in I. But then, subsumption
+of i1 and that is an instance of Cf
+O |	 ope1  ope2 holds trivially for
+ope2 = owl:bottomObjectProperty. Assume now that ope2
+
+owl:bottomObjectProperty and that i2 is an ope2-successor of i1 in
+I. Axiom (36) for ope2 implies that i1 is an instance of  (ope2), so i1 is
+an instance of  (ope2) in I, which is a contradiction. Consequently,
+|	 ope1  ope2  so
+i2 is not an ope2-successor of i1  that is, I
+O |	 ope1  ope2, as required. 
+
+Our procedure for classifying object properties is shown in
+Algorithm 4. As in the case of classification of classes, the
+algorithm first checks whether the given ontology is satisfiable.
+If not, a trivial hierarchy in which all object property expressions
+in O are subsumed by owl:bottomObjectProperty is returned;
+otherwise, the algorithm proceeds with the classification. The
+
+return the trivial hierarchy in which each object property expression ope  OPEO is subsumed by owl:bottomObjectProperty
+
+Algorithm 4 ClassifyObjectProperties(O).
+Input: an ontology O whose set of object property expressions OPEO should be classified
+1: A := buildPreModel(,, O)
+2: if unsatisfiable  A then
+3:
+4: end if
+5: construct a mapping  and the ontology O as in Definition 15
+6: initialise S to the range of 
+7: (K , P) := initialiseOPRelations(O, S,  )
+8: processRemainingClasses(K , P, O , S)
+9: K := mapClassesToProperties(K ,  )
+10: return hierarchy(OPEO, K, owl:bottomObjectProperty, owl:topObjectProperty)
+
+algorithm constructs a mapping  from object properties to
+classes as in Definition 15 (line 5). Algorithm 4 next calls the
+procedure initialiseOPRelations, which is defined analogously to
+procedure initialiseRelations (Algorithm 2), but with the following
+differences:
+1. Instead of calling explicitSubsumptions (line 1 in Algorithm
+initialiseOPRelations extracts from O the explicit object
+2),
+property subsumptions and then initialises K with a tuple
+ (ope1),  (ope2) for all object property expressions ope1 and
+ope2 such that ope1 is explicitly subsumed by ope2.
+2. All remaining steps in initialiseOPRelations are as in Algorithm
+2, but O is used instead of O.
+
+Once K has been computed by processRemainingClasses, Algorithm 4 uses  to map the classes in K back to a relation K over object property expressions (line 9). Finally, the algorithm constructs
+the object property hierarchy based on the subsumptions between
+object property expressions in K (line 10).
+
+5. Data property classification
+
+By a straightforward modification of Example 13, we can
+show that data properties cannot be classified by computing the
+reflexivetransitive closure of the explicitly stated data property
+inclusions; essentially, we just need to replace owl:Thing with
+rdfs:Literal. Thus, reasoning is needed in order to correctly classify
+data properties.
+Interestingly, data property subsumption cannot be easily
+reduced to satisfiability. To test O |	 dp1  dp2 with dp1 and dp2
+data properties, we would need to construct a pre-model satisfying
+assertions
+
+DataPropertyAssertion(dp1 i n)
+NegativeDataPropertyAssertion(dp2 i n)
+
+(46)
+(47)
+for i a fresh individual and n a literal representing an arbitrary
+element of the data domain. In OWL 2, however, there is no such
+thing as a literal with an arbitrary data value: all literals are given
+a fixed interpretation as specified by the OWL 2 datatype map.
+Note that we cannot select n as some fixed literal not occurring
+in the ontology; for example, if we selected n to be an integer
+not occurring in the ontology, we might get a contradiction if the
+ontology axioms state that the range of dp1 is xsd:string.
+
+We can solve this problem by introducing a special datatype
+D that is interpreted as an arbitrary subset of rdfs:Literal. More
+precisely, we define an ontology O containing D to be satisfiable if
+and only if D can be assigned an interpretation such that all axioms
+of O are satisfied. Then, we can reduce the problem of checking
+O |	 dp1  dp2 to the problem of checking whether O extended
+with the following assertions is satisfiable, for i a fresh individual:
+(48)
+
+ClassAssertion(DataSomeValuesFrom(dp1 D) i)
+ClassAssertion(DataAllValuesFrom(dp2
+
+DataComplementOf(D)) i)
+
+(49)
+
+Datatype reasoning is commonly implemented using a procedure such as the one by Motik and Horrocks [30]. This procedure
+represents datatype constraints using assertions of the form dt(s),
+dt(s) and s1  s2, where dt is a datatype, and s, s1 and s2 are
+concrete nodes  placeholders for data values. Given a set of assertions A, the procedure checks whether the concrete nodes occurring in A can be assigned data values that respect all constraints.
+Roughly speaking, for every set of concrete nodes s1, . . . , sn such
+ si+1 for each 1  i < n, the procedure tries
+that A contains si
+to identify distinct data values v1, . . . , vn such that the value vi is
+contained in the interpretation of each datatype dtj that occurs in
+A in an assertion dtj(si), and is not contained in the interpretation
+of any datatype dtk that occurs in A in an assertion dtk(si). This
+procedure can be extended to handle the datatype D as follows:
+1. If A contains assertions D(s1) and D(s2), but not the assertion
+2. Assertions of the form D(s1) and D(s2) are ignored when
+
+s1  s2, then A is extended with s1  s2.
+trying to assign data values to concrete nodes.
+
+The first item ensures that concrete nodes s1 and s2 are not
+accidentally assigned the same value, and the second item ensures
+that D places no additional constraints on the values assigned to
+concrete nodes in A.
+
+Even if a concrete node s is assigned a value from D, the
+procedure from [30] does not necessarily insert an assertion D(s)
+into each pre-model. We therefore cannot read non-subsumptions
+off pre-models, which prevents us from directly applying the
+classification algorithm from Section 3. We can, however, reduce
+data property classification to class classification similarly as in
+Section 4.
+
+Note that, in OWL 2 DL ontologies, owl:topDataProperty can
+occur only in axioms SubDataPropertyOf, in which they can only
+play the role of a super-property [3, Section 11.2]. This ensures that
+owl:topDataProperty occurs only in tautologies, so an axiom of the
+form
+
+EquivalentClasses(Q DataSomeValuesFrom(
+
+owl:topDataProperty D))
+
+(50)
+
+where Q is the class to which owl:topDataProperty is mapped
+is not allowed in OWL 2 DL. Therefore, unlike in the case
+of object properties, we have no choice but to ensure that
+owl:topDataProperty is mapped to owl:Thing. The OWL 2 DL
+specification restricts the usage of owl:topDataProperty in order
+to ensure that consequences of an OWL 2 DL ontology do
+not depend on the choice of a datatype map, as long as the
+datatype map chosen contains all the datatypes occurring in the
+ontology [4, Theorem DS1]. Due to this restriction, however, no
+data property different from owl:topDataProperty can subsume
+owl:topDataProperty, unless the ontology is unsatisfiable. This, in
+turn, ensures that our encoding does not need to include an axiom
+analogous to (35): we need not ensure that the interpretation of D
+is not empty, which simplifies reasoning with D.
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+Definition 17. Let O be an OWL 2 ontology, let D be the special
+datatype as discussed above, and let  be an injective function that
+maps each data property dp  DPO into a class  (dp) as follows:
+  (owl:topDataProperty) = owl:Thing,
+  (owl:bottomDataProperty) = owl:Nothing, and
+  (dp) is a fresh distinct class not occurring in CO for each
+dp  DP
+O.
+
+Then, O is the ontology obtained by extending O with an instance
+of axiom (51) for each dp  DP
+O.
+
+EquivalentClasses( (dp) DataSomeValuesFrom(dp D))
+
+(51)
+
+The following theorem shows that the reduction is indeed
+
+correct.
+Theorem 18. Let O,  , and O be as in Definition 17, and let dp1 and
+dp2 be arbitrary data properties in DPO. Then, O |	 dp1  dp2 if and
+only if O |	  (dp1)   (dp2).
+Proof. () We prove the contrapositive: if O |	 dp1  dp2, then
+O |	  (dp1)   (dp2). Assume that O |	 dp1  dp2; then a
+model I of O exists such that I |	 dp1  dp2. Clearly, we have
+
+dp1 = owl:bottomDataProperty and
+dp2 = owl:topDataProperty
+
+Leti, c be a pair of an individual and a data value contained in the
+interpretation of dp1 in I, but not in the interpretation of dp2 in I.
+We conservatively extend I to I by interpreting the symbols in O
+that do not occur in O as follows:
+ the interpretation of D in I contains only c, and
+ for each dp  DP
+O, the interpretation of  (dp) in I contains
+each i such thati, c is contained in the interpretation of dp in
+I.
+
+The interpretation I clearly satisfies O and all axioms of the
+form (51) in O ; thus, I is a model of O . If we have dp1 =
+owl:topDataProperty, then i is clearly in the interpretation of
+ (dp1); otherwise, since i, c is in the interpretation of dp1 and
+c is in the interpretation of D, then i is in the interpretation of
+ (dp1) by the construction of I. Similarly, if we have dp2 =
+owl:bottomDataProperty, then i is clearly not in the interpretation
+of  (dp2); otherwise, since i, c is not in the interpretation of dp2,
+then i is not in the interpretation of  (dp2) by the construction of I.
+Consequently, I |	  (dp1)   (dp2), so O |	  (dp1)   (dp2),
+as required.
+() We consider the following cases, depending on whether
+dp1 and/or dp2 are equal to owl:topDataProperty.
+1. Assume that dp2 = owl:topDataProperty. Then we have
+ (dp2) = owl:Thing, so O
+|	  (dp1)  owl:Thing, and
+O |	  (dp1)   (dp2), as required.
+= dp1.
+If O is unsatisfiable, then O is unsatisfiable as well, so the
+claim clearly holds. Assume that O is satisfiable in a model I.
+Let I be an interpretation that coincides with I on all symbols
+and the object domain, and whose data domain is obtained by
+extending the data domain of I with an arbitrary constant .
+The proof of [4, Theorem DS1] shows that I is a model of O;
+however, since all symbols are interpreted in I as in I, and
+the interpretation of dp1 = owl:topDataProperty contains the
+new constant , it is not the case that the interpretation of dp1
+is contained in the interpretation of dp2 in I. Consequently,
+O |	 dp1  dp2, and our claim holds vacuously.
+
+2. Assume that dp1 = owl:topDataProperty and dp2
+
+3. In all other cases, we show the contrapositive claim: if
+O |	  (dp1)   (dp2), then O |	 dp1  dp2. Assume that
+O |	  (dp1)   (dp2); then a model I of O exists where
+some i is an instance of  (dp1) but not of  (dp2); since O
+contains all axioms of O, I is a model of O. Furthermore, we
+clearly have
+
+dp1 = owl:bottomDataProperty and
+dp2 = owl:topDataProperty,
+
+and the case dp1 = owl:topDataProperty is covered in Point 2,
+so we assume dp1 = owl:topDataProperty. Since we assume
+i to be an instance of  (dp1), due to axiom (51) for dp1 then
+c exists that is a dp1-successor of i and that is an instance
+of D in I. But then, O |	 dp1  dp2 holds trivially for
+
+dp2 = owl:bottomDataProperty. Assume now that dp2
+owl:bottomDataProperty and that c is a dp2-successor of i in
+I. Axiom (51) for dp2 implies that i is an instance of  (dp2),
+so i is an instance of  (dp2) in I, which is a contradiction.
+Consequently, c is not a dp2-successor of i  that is, we have
+I |	 dp1  dp2  so O |	 dp1  dp2, as required.
+An algorithm for the classification of data properties of an
+ontology can now be obtained by a straightforward modification
+of Algorithm 4.
+
+6. Evaluation
+
+We implemented Algorithms 1 and 4 and the adaptation of 4 for
+data properties in version 1.3.5 of our HermiT reasoner. To evaluate
+the effectiveness of our techniques and to contrast them with the
+ET strategy, we compared the performance of HermiT 1.3.5 with
+that of HermiT 1.2.2a  an earlier version of HermiT that uses
+the ET algorithm for classifying both classes and properties. Both
+HermiT versions implement the hypertableau calculus and satisfy
+properties (P1) and (P2) from Section 2.3. We have not compared
+HermiT with other reasoners, as the source of any difference in
+performance would be difficult or impossible to determine, and so
+such tests would tell us very little about the effectiveness of our
+new classification technique. Moreover, other systems could (and
+we believe should) easily adopt our new technique. We conducted
+our evaluation using 70 well-known and widely-used ontologies.
+All test ontologies, both HermiT versions, the Java programs that
+were used to produce the results, and the test results are available
+online.7
+
+Due to lack of space, we next present the results for 20
+representative ontologies on which we obtained interesting
+results. These include two versions of
+the GALEN medical
+ontology [7],8 several ontologies from the Open Biological
+Ontologies (OBO) Foundry,9 the Food and Wine ontology from the
+OWL Guide, three versions of the Foundational Model of Anatomy
+(FMA) [6], and ontologies from the Gardiner ontology corpus [31].
+For each of these ontologies, Table 1 shows the numbers of classes,
+properties, and assertions, as well as the fragment of OWL 2 DL that
+the ontology is expressed in.10
+
+Each test involved classifying the classes and properties of the
+respective test ontology. We measured the overall classification
+times as well as the number of reasoning (i.e., subsumption
+
+7 http://www.hermit-reasoner.com/2011/clss/Evaluation.zip.
+8 We used the so-called doctored (GALEN-d) and undoctored (GALEN-un)
+versions of GALEN. Both were derived from an original GRAIL ontology, and the
+former is a simplified version of the latter; this simplification was necessary to allow
+early tableau reasoners to classify the ontology [17].
+9 http://www.obofoundry.org/.
+10 We use the standard description logic nomenclature for fragments of OWL 2
+DL [32].
+
+Table 1
+Numbers of classes, properties, and assertions, as well as the DL fragment of test ontologies.
+
+Classes
+
+Object
+properties
+
+Data
+properties
+
+Assertions
+
+GALEN-d
+GALEN-un
+
+CL-EMAPA
+
+chebi
+
+GO_XP
+
+biopax-level2
+biopax-level3
+FoodWine
+ProPreO
+
+substance
+UBERON
+FBbt_XP
+
+FMA 2.0-CNS
+FMA 3.0-noCNS
+FMA 3.0-noMTC
+
+2 748
+2 748
+4 978
+5 952
+8 246
+8 694
+9 164
+20 979
+27 652
+27 883
+
+1 498
+1 721
+4 764
+7 225
+26 017
+41 648
+85 005
+85 005
+
+12 300
+
+39 426
+76 418
+139 447
+243 972
+
+163 136
+
+5 908
+
+55 360
+12 580
+138 902
+
+fragment
+ELHIFR+
+ELHIFR+
+Horn-ALE
+Horn-ALE
+Horn-ALR+
+Horn-ALHR+
+Horn-ALER+
+Horn-ALER+
+Horn-ALE
+Horn-SH
+ALCHN (D)
+SHIN (D)
+SHOIN (D)
+
+SHOIN (D)
+
+ALCOIF(D)
+ALCOIF(D)
+SROIQ(D)
+
+Table 2
+Evaluation results for class and property classification (time in seconds).
+
+Ontology
+
+GALEN-d
+GALEN-un
+
+CL-EMAPA
+
+chebi
+
+GO_XP
+
+biopax-level2
+biopax-level3
+FoodWine
+
+ProPreO
+
+substance
+UBERON
+FBbt_XP
+
+FMA 2.0-CNS
+FMA 3.0-noCNS
+FMA 3.0-noMTC
+
+Classes
+
+1.2.2a
+
+Object properties
+
+1.2.2a
+
+Data properties
+
+1.2.2a
+
+Tests
+2 743
+2 743
+4 535
+5 949
+8 244
+8 692
+9 058
+20 695
+27 651
+27 879
+
+1 393
+7 235
+4 725
+13 361
+7 150
+33 820
+49 851
+107 280
+118 133
+
+Time
+
+<0.1
+<0.1
+
+6 785.6
+10 200.0
+11 673.6
+
+Tests
+2 548
+2 570
+3 852
+3 413
+6 263
+6 904
+7 179
+13 468
+21 377
+19 972
+
+1 045
+
+2 918
+3 594
+5 742
+23 705
+11 001
+23 653
+23 078
+
+Time
+
+<0.1
+<0.1
+
+2 243.5
+2 366.6
+
+Tests
+5 983
+5 985
+
+2 869
+
+9 065
+6 291
+t/o
+
+Time
+
+<0.1
+<0.1
+
+<0.1
+
+<0.1
+
+12 154.1
+25 400.0
+t/o
+
+Tests
+
+Time
+
+<0.1
+<0.1
+<0.1
+
+<0.1
+
+<0.1
+
+<0.1
+<0.1
+
+<0.1
+
+Tests
+
+
+1 297
+1 511
+
+Time
+
+Tests
+
+Time
+
+
+<0.1
+<0.1
+
+and satisfiability) tests performed. Each classification task was
+performed three times and the results were averaged over the
+three runs. All experiments were run on an HS21 XM Blade server
+with two quad core Intel Xeon processors running at 2.83 GHz
+under 64bit Linux. We used Java 1.6, which was allowed 4 GB of
+heap memory per test. Each test was allowed at most six hours to
+complete.
+
+The results for the representative ontologies are summarised
+in Table 2. The upper part of the table shows the results for
+the deterministic ontologies (i.e., the ontologies that do not use
+disjunctive constructors), while the lower part shows the results
+for the nondeterministic ontologies. The data properties columns
+contain  for ontologies without data properties, while (t/o)
+indicates a timeout.
+
+B. Glimm et al. / Web Semantics: Science, Services and Agents on the World Wide Web 14 (2012) 84101
+
+As Table 2 shows, the new classification strategy of HermiT 1.3.5
+is in all cases significantly faster than the ET strategy of HermiT
+1.2.2a, sometimes by one or even two orders of a magnitude. This
+is particularly true for property classification where, as explained
+in Sections 4 and 5, none of HermiTs standard optimisations can
+be applied, and where one must entirely rely on the insertion
+strategy of ET to reduce the number of subsumption tests. In
+contrast, our reductions of property to class classification allow
+one to exploit all optimisations available for the classification of
+classes, which ensures a very good and robust performance. Note,
+however, that in some ontologies (e.g., NCI and biopax-level2)
+HermiT 1.3.5 might need roughly the same number of tests as
+HermiT 1.2.2a to classify the object properties. This is because in
+these ontologies the property hierarchy is relatively flat  that is,
+there are very few asserted subsumption relations between any
+of the object properties, so our classification algorithm performs
+a satisfiability test for almost all the classes that the properties
+are mapped to. Nonetheless, our results clearly demonstrate
+that correct classification of properties is practically feasible and
+preferable to simple but incomplete transitive closure algorithms.
+Finally, note that, although the FoodWine ontology contains only
+one data property, the algorithms still needs to check this property
+with respect to the top and bottom data property in order to insert
+it correctly into the hierarchy.
+
+The results for classification of classes are similar: the new
+algorithm has significantly reduced the classification times in most
+cases. The significant performance gain in the classification of FMA
+is due in part to the heuristic implemented in lines 1016 of
+Algorithm 2, which prevents HermiT from repeatedly testing the
+satisfiability of unsatisfiable classes.
+
+Compared to the initial version of our algorithm presented
+in [2], our revised algorithm requires far fewer reasoning tests
+to classify the GALEN-d and GALEN-un ontologies. This is a
+consequence of identifying known subsumptions in lines 8 and 27
+of Algorithm 3 even after the initialisation phase.
+
+7. Related work
+
+A strategy for the construction of hierarchies that performs well
+for tree-like relations was described by Ellis [33]: elements are
+inserted into the hierarchy one at a time; furthermore, for each
+element, the subsumers are identified using top-down breadthfirst search, and the subsumers are identified using bottomup breadth-first search. Baader et al. [15] further refined this
+technique to avoid redundant subsumption tests in the top-down
+phase: a test O |	 A  B is performed only if O |	 A  C
+holds for each subsumer C of B [15]. Haarslev and Moller [24]
+further improved the traversal of flat hierarchies using a clustering
+technique, in which a single subsumption test can sometimes
+eliminate several potential subsumers. This technique provided us
+with inspiration for the efficient pruning of possible subsumers in
+line 6 of Algorithm 3.
+
+Baader et al. [15] also described techniques for identifying
+subsumption relations between classes by analysing the syntax
+of ontology axioms and without running expensive subsumption
+tests; for example, from an axiom of the form
+SubClassOf(A ObjectIntersectionOf(B C))
+
+(52)
+where A, B and C are classes, one can deduce that B and C are
+told subsumers of A. The various simplification and absorption
+techniques described by Horrocks [17] can increase the likelihood
+of identifying told subsumers syntactically. Haarslev et al. [34]
+further extended these ideas to detect obvious non-subsumptions;
+for example, from axiom
+
+one can deduce that A and B are disjoint, so neither class subsumes
+the other (unless both are unsatisfiable). Tsarkov et al. [25]
+described a technique for precisely determining the subsumption
+relationships between completely defined classes  classes whose
+definitions contain only conjunctions of other completely defined
+classes [25]. All these optimisations can be exploited in the
+initialisation phase of our algorithm, by suitably modifying line 1
+of Algorithm 2.
+
+8. Conclusions
+
+In this paper, we studied the problem of efficiently classifying
+OWL ontologies. Unlike in earlier approaches, we consider all
+classification tasks, including class, object property, and data
+property classification. To the best of our knowledge, property
+classification has not previously been discussed in the literature.
+
+We presented a new classification algorithm that significantly
+improves the performance of the existing class classification
+algorithms. The algorithm is based on the idea of maintaining
+two sets of known and possible subsumptions, which are updated
+appropriately as classification progresses. An advanced pruning
+strategy exploits the transitivity inherent in the subsumption
+hierarchy to prune these two relations and thus reduce the number
+of required subsumption tests.
+
+In addition, by means of several examples, we demonstrated
+that commonly used algorithms for property classification based
+on computing the reflexivetransitive closure of the asserted
+property hierarchy are incomplete even for very weak fragments
+of OWL. Furthermore, we discussed the difficulties of applying our
+classification approach directly to property classification. Finally,
+we showed how to reduce the problems of classifying object
+and data properties to the problem of classifying classes. These
+reductions can be used to classify the property hierarchies while
+reusing all available optimisations.
+
+We implemented all our algorithms in version 1.3.5 of the
+HermiT reasoner, and we compared the performance of HermiT
+1.3.5 with an earlier version of HermiT that uses the standard
+enhanced traversal classification algorithm. Our results are very
+encouraging, showing significant improvements in classification
+times and reductions in the number of subsumption tests. Our
+experiments also show that both correct and efficient classification
+of object and data properties is possible in practice.
+
+We are currently working on extending our algorithm to
+individual realisation  the tasks of computing, for each individual
+i in an ontology, the most specific classes C such that i is an
+instance of C. Our preliminary results suggest that the performance
+of realisation can also be significantly improved by exploiting the
+ideas outlined in this paper.
+
+Acknowledgements
+
+The research presented in this paper was funded by the EPSRC project HermiT: Reasoning with Large Ontologies. The evaluation has been performed on computers of the BadenWurttemberg
+Grid (the bwGRiD project11), member of the German D-Grid ini-
+tiative, funded by the Ministry of Education and Research (Bun-
+desministerium fuer Bildung und Forschung) and the Ministry of
+Science, Research and the Arts BadenWuerttemberg (Ministerium
+fur Wissenschaft, Forschung und Kunst Baden-Wurttemberg).
+Birte Glimm acknowledges the support of the Transregional Collaborative Research Center SFB/TRR 62 Companion-Technology
+for Cognitive Technical Systems funded by the German Research
+Foundation (DFG).
+
+SubClassOf(A
+
+ObjectIntersectionOf(ObjectComplementOf(B) C))
+
+(53)
+

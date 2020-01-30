@@ -1,0 +1,2077 @@
+A Decomposition-Based Approach to Optimizing
+
+Conjunctive Query Answering in OWL DL
+
+Jianfeng Du1,2, Guilin Qi3,4, Jeff Z. Pan5, and Yi-Dong Shen2
+
+1 Institute of Business Intelligence & Knowledge Discovery,
+
+Guangdong University of Foreign Studies, Guangzhou 510006, China
+2 State Key Laboratory of Computer Science, Institute of Software,
+
+Chinese Academy of Sciences, Beijing 100190, China
+
+{jfdu,ydshen}@ios.ac.cn
+
+3 AIFB, Universit at Karlsruhe, D-76128 Karlsruhe, Germany
+
+4 School of Computer Science and Engineering, Southeast University, Nanjing, China
+
+5 Department of Computing Science, The University of Aberdeen, Aberdeen AB24 3UE, UK
+
+Abstract. Scalable query answering over Description Logic (DL) based
+ontologies plays an important role for the success of the Semantic Web. Towards
+tackling the scalability problem, we propose a decomposition-based approach to
+optimizing existing OWL DL reasoners in evaluating conjunctive queries in OWL
+DL ontologies. The main idea is to decompose a given OWL DL ontology into a
+set of target ontologies without duplicated ABox axioms so that the evaluation of
+a given conjunctive query can be separately performed in every target ontology by
+applying existing OWL DL reasoners. This approach guarantees sound and complete results for the category of conjunctive queries that the applied OWL DL
+reasoner correctly evaluates. Experimental results on large benchmark ontologies and benchmark queries show that the proposed approach can significantly
+improve scalability and efficiency in evaluating general conjunctive queries.
+
+1 Introduction
+
+Scalable query answering over Description Logic (DL) based ontologies plays an important role for the success of the Semantic Web (SW). On the one hand, the W3C
+organization proposed the standard Web Ontology Language (OWL)1 to represent ontologies in the SW, which is based on DLs and provides shared vocabularies for different
+domains. On the other hand, ontology query engines are expected to be scalable enough
+to handle the increasing semantic data that the Web provides.
+
+OWL DL is the most expressive species in the OWL family that is decidable in terms
+of consistency checking. Though the decidability of conjunctive query answering in
+OWL DL is still an open problem, many OWL DL reasoners implement decision procedures for some categories of conjunctive queries (CQs) for which decidability is known,
+e.g., for CQs that have a kind of tree-shape or CQs that do not contain non-distinguished
+variables (i.e. existentially quantified variables). To name a few, Pellet [14] is a wellknown OWL DL reasoner that supports general CQs that have a kind of tree-shape
+
+1 http://www.w3.org/TR/owl-semantics/
+
+A. Bernstein et al. (Eds.): ISWC 2009, LNCS 5823, pp. 146162, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+?
+
+?
+
+?
+(i.e. do not contain cycles through non-distinguished variables); KAON2 [11] is another
+well-known OWL DL reasoner that supports CQs without non-distinguished variables.
+These reasoners still suffer from the scalability problem and call for optimizations to
+make them scale to larger ABoxes or more complex TBoxes.
+
+To make existing OWL DL reasoners more scalable, we propose a decompositionbased approach to optimizing conjunctive query answering in OWL DL (see Section 4).
+Basically, the approach computes explicit answers (i.e. facts that satisfy the given CQ)
+first and then identifies candidate answers and target ontologies that are sufficient for
+checking whether candidate answers are indeed answers to the query. Different target
+ontologies have no common ABox axioms but may have common TBox axioms. The
+verification of whether a candidate answer is an answer is delegated to an existing OWL
+DL reasoner. This approach guarantees sound and complete results for the categories of
+CQs that the OWL DL reasoner correctly evaluates. For the categories of CQs that the
+OWL DL reasoner cannot handle, this approach still returns all candidates and results
+in an unsound but complete evaluation.
+
+We implement the proposed approach and conduct experiments on LUBM [8] and
+UOBM [10] ontologies (see Section 5). Experimental results on all benchmark CQs
+given in [8,10] show that the proposed approach can significantly improve scalability
+and efficiency in evaluating general CQs.
+
+Related Work. There are approaches to conjunctive query answering that have certain
+contributions to the scalability problem. Motik et al. [12] propose a resolution-based
+approach, implemented in KAON2 [11], to evaluating CQs without non-distinguished
+variables. This approach reduces the problem of conjunctive query answering to the
+problem of reasoning in disjunctive datalog programs; the latter problem has more scalable solutions for handling large ABoxes. Currently KAON2 does not support nominals,
+which are allowed in OWL DL. Dolby et al. [2] propose a summarization and refinement approach to instance retrieval, which is later adapted to evaluating CQs without
+non-distinguished variables by adding some optimizations for retrieving role instances
+[3]. This approach improves scalability because it works on a summarization of the
+ABox, but it does not support nominals either. Pan and Thomas [13] propose a semantic approximation approach to OWL DL. The approach converts an OWL DL ontology
+to a DL-Lite [1] ontology, which allows CQs to be evaluated in polynomial time. The
+above approaches, however, do not support or may not correctly evaluate CQs with
+non-distinguished variables.
+
+The idea of decomposition has been exploited in managing large ontologies. The
+result of decomposing an ontology is usually a set of subsets of axioms in the ontol-
+ogy. Stuckenschmidt and Klein [15] propose a method for decomposing all concepts in
+an ontology to facilitate visualization of the ontology. This method does not concern
+ontology reasoning. Cuenca Grau et al. [6] propose a method for decomposing an ontology into a set of modules such that all inferences about the signature contained in
+a module can be made locally. The method focuses on TBoxes and does not concern
+conjunctive query answering. Guo and Heflin [7] propose a method for decomposing an
+ABox into possibly overlapped subsets. Only instance retrieval of atomic concepts/roles
+can be correctly performed in separate resulting subsets together with the whole TBox.
+Compared with the above methods, the primary distinction of our proposed approach is
+
+J. Du et al.
+
+that it yields target ontologies without duplicated ABox axioms and ensures conjunctive
+query answering to be correctly performed in separate target ontologies.
+
+2 Preliminaries
+
+I  
+
+I  
+
+x ,
+
+,I) consists of a domain 
+
+We briefly introduce the direct model-theoretic semantics for an OWL DL
+and a function I
+I  
+
+, every atomic role R to a binary
+. I is called a model of O
+I  
+
+, and every individual a to a
+y .conj(
+x )  
+
+x ,
+y ,
+
+OWL DL and Conjunctive Query Answering. OWL DL corresponds to DL
+SHOIN . We assume that the reader is familiar with OWL DL and thus we do not
+describe it in detail, but recall that an OWL DL ontology O = (OT ,OA) consists of a
+terminological box (TBox) OT and an assertional box (ABox) OA. The TBox OT consists of a finite set of concept inclusion axioms C  D, transitivity axioms Trans(R)
+and role inclusion axioms R  S, where C and D are OWL DL concepts, and R and S
+roles. The ABox OA consists of a finite set of concept assertions C(a), role assertions
+R(a, b), equality assertions a  b and inequality assertions a  b, where C is an OWL
+DL concept, R a role, and a and b individuals.
+ontology O. An interpretation I = (
+
+that maps every atomic concept A to a set A
+relation R
+if every axiom in O is satisfied by I. O is consistent or satisfiable iff it has a model.
+A conjunctive query (CQ) is of the form q(
+
+
+c ) or simply
+
+q(
+x )  conj(
+
+c ), where q(
+
+x ) is the head of q, conj(
+y ,
+c ) is the body of
+q, 
+x are distinguished variables, 
+y are non-distinguished variables, 
+y ,
+x ,
+c are individuals,
+and conj(
+
+
+c ) is a conjunction of atoms of the form A(v) or R(v1, v2) for A an
+atomic concept, R an atomic role, and v, v1 and v2 variables in 
+x and 
+y ,
+y or individuals
+in 
+c . Here allowing only atomic concepts/roles is not a big issue in practice as querying
+against named relations is usual when people query over relational databases [13]. A
+
+CQ is called a Boolean conjunctive query (BCQ) if it has no distinguished variables.
+t of individuals in an ontology O is called an answer of q(
+x ) in O, denoted
+x  
+by O |= q[
+t ], if every model of O satisfies q[
+
+t ], i.e. the body of q
+with every variable in 
+t . A BCQ
+q()  conj(
+
+c ) is said to have an answer  in O if O |= q[  ] (simply
+denoted by O |= q). The problem of evaluating a CQ in O, i.e. computing all answers
+of the CQ in O, is called a problem of conjunctive query answering.
+First-order Logic. We use the standard clausal form to represent a first-order logic
+program. Terms are variables, constants or functional terms of the form f(t1, . . . , tn),
+where f is a function symbol of arity n and t1, ..., tn are terms. Throughout this paper,
+we use (possibly with subscripts) x, y, z for variables, a, b, c for constants, and s, t for
+terms. We only consider unary function symbols because only unary function symbols
+occur in first-order logic programs that are translated from OWL DL ontologies. Atoms
+are of the form T (t1, . . . , tn) where T is a predicate symbol of arity n and t1, . . . , tn
+are terms. A literal is a positive or negative atom and a clause is a disjunction of literals.
+Terms, atoms and clauses that do not contain variables are called ground.
+A first-order logic program is a set of clauses in which all variables are universally
+quantified. For a clause cl = A1  . . .  An  B1  . . .  Bm, the set of atoms
+
+x substituted by its corresponding individual in
+
+A tuple
+
+y ,
+
+x ,
+
+x  
+?
+
+?
+
+?
+{A1, . . . , An} is denoted by cl
+cl+. By |S| we denote the cardinality of a set S. A clause cl is called a fact if |cl
+and said to be definite if |cl+| = 1.
+
+, whereas the set of atoms {B1, . . . , Bm} is denoted by
+| = 0,
+
+
+
+A propositional program  is a first-order logic program consisting of only ground
+
+clauses. The set of ground atoms occurring in  is denoted by atoms().
+?
+
+?
+
+?
+x ,
+
+of P such that M
+
+t ], if every model of P satisfies q[
+
+
+t of constants is called an answer of q(
+
+For a first-order logic program P , the set of ground terms (resp. ground atoms)
+defined from the first-order signature of P is called the Herbrand universe (resp. Herbrand base) of P , denoted by HU(P ) (resp. HB(P )). The set of ground clauses obtained by replacing all variables occurring in each clause in P with ground terms from
+HU(P ) is called the primary grounding of P , denoted by G(P ). An interpretation M
+of P is a set of ground atoms in HB(P ); it is a model of P if for any ground clause
+  M , cl+  M = ; it is a minimal model of P if there is
+cl  G(P ) such that cl
+  M . P is satisfiable iff it has a model. Given a CQ
+no model M
+x )  conj(
+
+q(
+
+x  
+x ) in P ,
+c ), a tuple
+denoted by P |= q[
+y ,
+The first-order logic program P translated from a SHOIN ontology may contain
+the equality predicate , which is interpreted as a congruence relation and different
+from ordinary predicates. This difference is not captured by the above first-order seman-
+tics. However, the equality predicate  can be explicitly axiomatized via a well-known
+transformation from [5]. Let E(P ) denote the first-order logic program consisting of the
+following clauses: (1) t  t, for each ground term t  HU(P ); (2) (x  y)  y  x;
+(3) (x  y)(y  z) x  z; (4) (x  y) f(x)  f(y), for each function symbol f occurring in P ; (5) T (x1, . . . , xi, . . . , xn)(xi  yi)T (x1, . . . , yi, . . . , xn),
+for each predicate symbol T other than  occurring in P and each position i. Appending E(P ) to P allows to treat  as an ordinary predicate, i.e., M is a model of P that
+interprets  as a congruence relation, iff for any ground clause cl  G(P  E(P )) such
+that cl
+
+  M , cl+  M = .
+
+x  
+t ].
+
+3 The Proposed Decomposition-Based Approach
+Throughout this section, by O = (OT ,OA) we denote a given OWL DL ontology. We
+assume that the given ontology O is consistent and treat O as a set of axioms.
+
+3.1 The Basic Idea of the Proposed Approach
+
+y1,
+
+yn,
+
+
+c1)  ...  pn(
+
+
+c1)  ...  pn(
+
+We use a BCQ Q : q()  p1(
+
+cn) to show the basic idea of our
+approach. The approach to checking if O |= q consists of two phases.
+In the first phase, we first translate O to a first-order logic program P such that
+O |= q iff P  {p1(
+
+cn)} is unsatisfiable (see Subsection 3.2),
+
+then consider transforming P to a proposition program  such that P {p1(
+c1)
+
+...  pn(
+cn)} is unsatisfiable iff   InstBCQ(, Q)  {wQ()} is unsatisfiable,
+where wQ a new predicate symbol corresponding to Q and not occurring in , and
+InstBCQ( , Q) is a set of ground clauses instantiated from the clause p1(
+
+c1) 
+
+...pn(
+cn) wQ() based on . We develop a basic method for extracting a target
+ontology Orel  O such that   InstBCQ(, Q)  {wQ()} is unsatisfiable only if
+
+yn,
+
+yn,
+
+yn,
+
+y1,
+
+y1,
+
+y1,
+
+J. Du et al.
+
+Orel |= q (note that this implies O |= q only if Orel |= q). Since  may be infinite due
+
+to presence of function symbols in P , we instead transform P to a finite variant 
+of
+ (see Subsection 3.3), such that the target ontology O
+ 
+ O extracted from 
+
+Inst
+BCQ(
+rel, where
+
+BCQ is a variant of InstBCQ. It should be noted that P and 
+Inst
+are independent of
+any given query, so this phase (i.e., computing P and 
+
+, Q)  {wQ()} by using a similar method satisfies Orel  O
+
+) can be performed offline.
+
+rel
+?
+
+?
+
+?
+y1,
+
+yn,
+
+
+c1), ..., pn(
+
+In the second phase (see Subsection 3.4), we check if there exists a ground sub-
+
+stitution  such that {p1(
+cn)} is a set of ground atoms occurring
+in definite ground facts in P . If such ground substitution exists, we conclude that
+ 
+O |= q; otherwise, we extract the aforementioned target ontology O
+|= q.
+
+Inst
+BCQ(
+From the above descriptions, we can see that our approach is correct, i.e., O |= q
+c1), ..., pn(
+iff there is a ground substitution  such that {p1(
+
+
+cn)} is a set of
+yn,
+|= q.
+ground atoms occurring in definite ground facts in P , or O
+
+, Q)  {wQ()} and conclude that O |= q iff O
+
+rel from 
+
+y1,
+
+rel
+?
+
+?
+
+?
+rel
+
+Due to the space limitation, we do not provide proofs of lemmas and theorems in
+
+this paper, but refer the interested reader to our technical report2.
+?
+
+?
+
+?
+Throughout this section, we use O
+
+3.2 Translating to First-Order Logic
+Since a direct translation from SHOIN to first-order clauses may incur exponential
+blowup [9], we apply the well-known structural transformation [11,9] to O before
+translating O to first-order clauses. By (ax) we denote the result of applying structural
+transformation to an axiom ax, and by (O) we denote
+axO (ax). As structural
+transformation is well-known, we do not give its definition here but refer the reader to
+[11,9] or our technical report2.
+to denote (O) if not otherwise specified and
+treat O
+as a set of axioms as well. By (ax) we denote the result of translating an
+axiom ax in O
+to a set of first-order clauses using the standard methods (see [9] or our
+technical report2 for details). By (O) we denote
+(O) we
+denote (O)  E((O)) if some equational atom s  t occurs positively in (O),
+or (O) otherwise. Recall that E((O)) is used to axiomatize the equality predicate
+in (O) (see Section 2).
+The following lemma shows that the problem of evaluating a BCQ in O can be
+(O). This lemma is similar to existing
+
+axO (ax), and by 
+?
+
+?
+
+?
+reduced to a satisfiability problem about 
+results given in [11,9].
+
+y1,
+
+y1,
+
+yn,
+
+yn,
+
+
+c1)  ...  pn(
+
+c1)  ...  pn(
+
+
+
+cn)} is unsatisfiable.
+
+
+cn) in O, O |= q iff 
+
+Lemma 1. For a BCQ q()  p1(
+{p1(
+Example 1. In our running example, we consider an ontology O = {Man 1
+hasFather hasFather.Man  Human, Man(a1), hasFather(a1, a2)}. By applying
+the structural transformation, we obtain O = {Man 1 hasFather, Man  
+hasFather.Man, Man  Human, Man(a1), hasFather(a1, a2)}. By translating O
+to
+2 http://www.aifb.uni-karlsruhe.de/WBS/gqi/DecomBaR/
+
+(O) 
+
+decompose-long.pdf
+?
+
+?
+
+?
+(O) = {cl1, ..., cl13}  {t  t | t  HU((O))}.
+
+first-order clauses, we obtain (O) = {cl1, ..., cl6}. Since y1  y2 occurs positively
+in (O), we have 
+cl1 : Man(x)  hasFather(x, y1)  hasFather(x, y2)  y1  y2
+cl2 : Man(x)  hasFather(x, f(x))
+cl4 : Man(x)  Human(x)
+cl7 : (x  y)  y  x
+cl10 : Man(x)  (x  y)  Man(y)
+cl12 : hasFather(x, y)  (y  z)  hasFather(x, z) cl13 : Human(x)  (x  y)  Human(y)
+
+cl11 : hasFather(x, y)  (x  z)  hasFather(z, y)
+
+cl3 : Man(x)  Man(f(x))
+cl6 : hasFather(a1, a2)
+
+cl8 : (x  y)  (y  z)  x  z
+
+cl9 : (x  y)  f(x)  f(y)
+
+cl5 : Man(a1)
+
+3.3 Approximate Grounding of the First-Order Logic Program
+
+(O). This
+According to Lemma 1, we need to address a satisfiability problem about 
+(O)
+can be done by considering a propositional program that is transformed from 
+(O) has. We extend the well-known
+and has the same set of minimal models as 
+intelligent grounding (IG) technique [4] which computes, in a fixpoint-evaluation man-
+ner, a semantically equivalent propositional program containing only derivable ground
+atoms from a function-free first-order logic program. By generalizing the idea of the IG
+technique, we define a method for grounding a general first-order logic program, called
+reduced grounding and defined below.
+
+
+
+
+
+Definition 1 (Reduced Grounding). For a first-order logic program P , the reduced
+grounding of P , denoted by Gr(P ), is the union of two sets of ground clauses 1  2,
+where 1 = {cl  P | cl is a definite ground fact}, and 2 is the least fixpoint of (n)
+such that (0) =  and for n > 0, (n) = {cl  | cl  P,  is a ground substitution
+  atoms((n1)  1), cl+  HB(P ) and cl+  atoms(1) = }.
+such that cl
+Lemma 2. Let P be a first-order logic program in which the equality predicate  has
+been axiomatized. Then Gr(P ) is a subset of G(P ) and has the same set of minimal
+models as P has.
+(O)) to check if O |= q
+In the following theorem, we show a method that uses Gr(
+
+c1)  ...  pn(
+
+for a BCQ Q : q()  p1(
+cn). By InstBCQ(, Q) we denote the
+
+
+result of instantiating the clause cl : p1(
+c1)  ...  pn(
+yn,
+cn)  wQ() based on
+a propositional program , i.e., InstBCQ(, Q) = {cl  |  is a ground substitution
+  atoms()}, where wQ is a predicate symbol corresponding to Q
+such that cl
+and not occurring in . The introduction of InstBCQ(Gr(
+(O)), Q) enables the
+checking of O |= q to be performed in a propositional program, while the introduction
+of wQ facilitates extracting a target ontology w.r.t. Q.
+Theorem 1. For a BCQ Q : q()  p1(
+
+cn) in O, O |= q iff
+(O)), Q)  {wQ()} is unsatisfiable.
+Gr(
+Based on the above theorem, we develop a basic method that could improve the performance in evaluating a BCQ Q : q()  p1(
+c1)  ...  pn(
+
+
+cn) in O. This method
+y1,
+first extracts a relevant subset rel of Gr(
+(O))  InstBCQ(Gr(
+(O)), Q) 
+{wQ()} such that rel is unsatisfiable iff Gr(
+(O)), Q) 
+(O))  InstBCQ(Gr(
+{wQ()} is unsatisfiable, then identifies a subset Orel of axioms in O
+from rel such
+
+(O))  InstBCQ(Gr(
+
+
+c1)  ...  pn(
+
+yn,
+
+yn,
+
+yn,
+
+y1,
+
+y1,
+
+y1,
+
+J. Du et al.
+
+However, the basic method cannot be realized in general as Gr(
+
+that rel is unsatisfiable only if Orel |= q, and finally checks if Orel |= q. By Theorem
+1, we have O |= q only if Orel |= q. Since Orel  O
+and O |= q iff O |= q, we also
+have O |= q if Orel |= q.
+(O)) can be infi-
+nite. We therefore consider a mapping function on ground terms occurring in a propositional program  such that the range of this function is finite. We call a mapping
+function  : terms()  terms(), where terms() is the set of ground terms
+occurring in , an equality-and-functional-term-collapsed mapping function (simply
+eft-mapping function) for , if for every functional term f1(...fn(a)) (where n > 1)
+occurring in , (f1(...fn(a))) = (fn(a)), and for every equational atom s  t
+occurring positively in , (s) = (t).
+We naturally extend a mapping function  on ground terms to other first-order ob-
+jects, i.e., by (), (cl), (A) and (P ) we respectively denote the results obtained
+from an atom , a clause cl, a set A of atoms and a first-order logic program P by
+replacing every ground term t occurring in it with (t).
+
+It is clear that, when a propositional program  is infinite but the number of con-
+stants, predicate symbols and function symbols occurring in  is finite, () is finite
+for any eft-mapping function  for . Even when  is finite, () can be much smaller
+than  because the subset of ground clauses in  that form a congruence relation is
+collapsed in ().
+BCQ(, Q, ) we denote the result of instantiating the clause cl : p1(
+By Inst
+y1,
+
+c1)...pn(
+
+cn)wQ() based on a propositional program  and a mapping func-
+yn,
+) 
+BCQ(, Q, ) = {cl  |  is a ground substitution such that (cl
+tion , i.e., Inst
+atoms()}, where wQ is a predicate symbol corresponding to Q and not occurring in
+. We revise the basic method by replacing Gr(
+(O)) with a finite superset sup
+of (Gr(
+(O)). The revised
+method first extracts a relevant subset rel of supInst
+BCQ(sup, Q, ){wQ()},
+such that (cl )  rel for some clause
+then computes the set Orel of axioms ax in O
+cl  (ax) and some ground substitution , and finally checks if Orel |= q.
+
+(O))), where  is an eft-mapping function for Gr(
+
+Consider the extraction of a relevant subset rel mentioned above. Our extraction
+method is based on the notion of connected component (see Definition 2 below). Simply
+speaking, a connected component of a propositional program  is a subset of  such
+that any two clauses in it have common ground atoms. This notion has been used to
+confine the search space in solving SAT problems because an unsatisfiable propositional
+program must have a maximal connected component that is unsatisfiable.
+?
+
+?
+
+?
+Definition 2 (Connected Component). Let  be a propositional program. Two
+are called connected in  if there exists a sequence of clauses
+ground clauses cl and cl
+in  such that cli1 and cli have common ground atoms
+cl0 = cl, cl1, . . . , cln = cl
+for any 1  i  n. A connected component c of  is a subset of  such that any
+two clauses cl and cl
+in c are connected in c. c is called maximal if there is no
+c of  such that c  
+
+connected component 
+The basic idea for extracting rel is that when supInst
+BCQ(sup, Q, ){wQ()}
+is unsatisfiable, the maximal connected component of sup  Inst
+BCQ(sup, Q, ) 
+{wQ()} where wQ() occurs is also unsatisfiable. To obtain a smaller unsatisfiable
+?
+
+?
+
+?
+c.
+?
+
+?
+
+?
+(O))) and 
+?
+
+?
+
+?
+
+c1)  ...  pn(
+
+yn,
+
+y1,
+
+(O)), sup be a superset of (Gr(
+BCQ(sup, Q, )  {wQ()}. Let ur be a subset of 
+
+subset, we extend the basic idea by removing a subset ur from sup first and then
+extracting the maximal connected component rel of (sup  Inst
+BCQ(sup, Q, )
+{wQ()}) \ ur where wQ() occurs. The detailed description and the correctness of
+the method are shown in the following theorem.
+Theorem 2. Let Q : q()  p1(
+
+cn) be a BCQ,  be an eftmapping function for Gr(
+ =
+sup  Inst
+such that for all
+ \ ur
+clauses cl  ur, cl+ contains at least one ground atom not occurring in 
+ \ ur where wQ() occurs. Let
+and rel be the maximal connected component of 
+Orel = {ax  O | there exists a clause cl  (ax) and a ground substitution  such
+that (cl )  rel}. Then O |= q iff Orel |= q.
+Based on the above theorem, we develop an algorithm to compute a superset of
+(Gr(
+(O))) for some eft-mapping function . This algorithm, denoted by Approx-
+Ground(O), accepts O
+and returns a triple (,Sdf ,S), where Sdf and S are two sets
+(O))) for some eft-mapping
+of sets of ground atoms and  is a superset of (Gr(
+function  that can be constructed from Sdf and S. Since the algorithm is rather techni-
+cal, we only explains the basic idea here and refer the interested reader to our technical
+report2 for technical details.
+The output Sdf is actually the set of sets of constants such that for any constant a in
+for some constant b  C. The
+any C  Sdf , there exists an equality assertion a  b in O
+output S is actually the set of sets of ground terms whose functional depth is at most
+one, such that for any ground term s in any C  S, there exists a ground term t  C
+such that the equational atom s  t appears in the execution of the algorithm. Both
+Sdf and S are used to merge ground terms that may occur in the same equational atom
+occurring positively in Gr(
+(O)), making the output  smaller. We call an element
+of Sdf or S a congruence class.
+(O)),
+because such mapping function can be constructed from Sdf and S. By map(t, Sdf , S)
+(O)) based on Sdf and S, recursively
+we denote a function HU(
+defined as follows, where a and b are constants, and s and t ground terms.
+ map(f1(...fn(a)),Sdf ,S) = map(fn(a),Sdf ,S), where n > 1;
+ map(f(a),Sdf ,S) = map(f(b),, S), where b = min(C) if a  C for some C  Sdf , or
+ map(a,Sdf ,S) = map(b,,S), where b = min(C) if a  C for some C  Sdf , or b = a
+ map(s,,S) = t, where t = min(C) if s  C for some C  S, or t = s otherwise.
+We naturally extend the function map to other first-order objects, i.e., by map(, Sdf ,
+S), map(cl, Sdf , S), map(A, Sdf , S) and map(P , Sdf , S) we respectively denote the
+results obtained from an atom , a clause cl, a set A of atoms and a first-order logic
+program P by replacing every ground term t occurring in it with map(t,Sdf ,S).
+((O)) induced from
+the function map w.r.t. Sdf and S if (t) = map(t,Sdf ,S) for all ground terms
+t  HU(
+(O)). The first goal of the algorithm is to ensure the mapping function
+ induced from map w.r.t. Sdf and S to be an eft-mapping function for Gr(
+(O)),
+
+The algorithm does not directly compute an eft-mapping function  for Gr(
+
+We call a mapping function  : HU(
+
+(O))  HU(
+
+b = a otherwise;
+
+otherwise;
+
+(O))  HU
+?
+
+?
+
+?
+J. Du et al.
+
+input
+O
+
+merge constants occurring
+
+in equality assertions in O
+
+getSdf
+
+instantiate clauses from (O)
+
+in a fixpoint-evaluation manner
+
+getS,
+
+Fig. 1. The main steps for approximately grounding (O)
+
+
+
+
+
+
+
+.
+
+
+
+and A(a)  O
+
+
+
+; and (5) a  b  O
+
+Let 1 denote the set of definite ground facts in 
+
+
+
+and b  c  O
+
+
+and R(c, a)  O
+
+. We call O
+imply A(b)  O
+
+; (2) a  b  O
+
+
+In the second step, the algorithm instantiates clauses from 
+
+imply a  c  O
+imply R(c, b)  O
+
+i.e., ensure map(s,Sdf ,S) = map(t,Sdf ,S) for all equational atoms s  t occurring
+positively in Gr(
+(O)). The second goal of the algorithm is to return a superset of
+(Gr(
+(O))). To achieve the above two goals, the algorithm works in two main steps,
+as shown in Figure 1.
+In the first step, the algorithm places any two constants a and b that occur in the same
+into the same congruence class C and adds C to Sdf . After this
+equality assertion in O
+step, Sdf will not be changed anymore.
+(O) in a fixpoint-
+(O))), where  denotes a mapping
+evaluation manner to generate a superset of (Gr(
+function induced from map w.r.t. Sdf and S.
+Before giving a fixpoint-like characterization of a superset of (Gr(
+(O))), we
+congruence-complete if (1) a  b 
+need to introduce a restriction on O
+implies b  a  O
+
+; (3)
+
+; (4) a  b  O
+and R(a, c)  O
+a  b  O
+
+imply R(b, c)  O
+(O). By induction on the level n
+(O))) such
+of (n) given in Definition 1, we can show that, if  is a subset of (G(
+that (*) (cl )   for any clause cl  
+(O) and any ground substitution  such
+)  atoms((1)) and every ground atom in (cl+)atoms((1))
+that (cl
+contains ground terms that are functional or occur in S, then   (1) is a superset
+of (Gr(
+(O))) when O
+is congruence-complete. We refer the interested reader to
+our technical report2 to see the proof of the above conclusion, a counterexample on why
+the restriction on congruence-completeness is needed, as well as a simple method for
+congruence-complete when (O) is not congruence-complete.
+making O
+is congruence-complete. Under this assumption,
+we refine the second goal of the algorithm to finding a subset  of (G(
+(O))) that
+satisfies the above condition (*). To achieve this goal, the second step of the algorithm
+(O) and ground substitution  such that (i)
+adds (cl ) to  for any clause cl  
+)  atoms(P (1)) and (ii) every ground atom in (cl+)atoms((1))
+(cl
+contains ground terms that are functional or occur in S. Meanwhile, any equational
+atom s  t occurring positively in cl  is handled by placing s and t into the same congruence class C and by adding C to S. In order to achieve the first goal of the algorithm,
+f(s) and f(t) for f a function symbol occurring in (O) are merged similarly as s
+and t, because the clause (s  t)  f(s)  f(t), instantiated from the clause of the
+form (4) in Section 2, may belong to Gr(
+
+We in what follows assume that O
+
+(O)).
+
+
+
+
+
+
+
+The following lemma shows the correctness and the complexity of the algorithm.
+
+Lemma 3. Let (,Sdf ,S) be returned by ApproxGround(O) and  be a mapping
+function induced from the function map w.r.t. Sdf and S. Then: (1) (Gr(
+(O)))  
+?
+
+?
+
+?
+and  is an eft-mapping function for Gr(
+(O)); (2) ApproxGround(O) works in
+time polynomial in sm and || is polynomial in s, where m is the maximum number in
+number restrictions in O and s is the size of O.
+Based on the above lemma, we can use the result (,Sdf ,S) of ApproxGround(O)
+to compute a subset Orel of O
+such that O |= q iff Orel |= q for a BCQ q() 
+conj(
+Before ending this subsection, we show the result of ApproxGround(O) for the
+ontology O
+Example 2 (Example 1 continued). ApproxGround(O) returns a triple (,Sdf ,S),
+where  = {cl
+
+given in Example 1 (note that O
+
+1, ..., cl
+
+
+c ), by applying the method given in Theorem 2.
+
+30}, Sdf =  and S = {{a2, f(a1)}}.
+?
+
+?
+
+?
+is congruence-complete).
+
+y ,
+?
+
+?
+
+?
+1 : Man(a1) cl
+2 : hasFather(a1, a2)
+cl
+3 : Man(a1)  hasFather(a1, a2)  hasFather(a1, a2)  a2  a2
+
+cl
+4 : Man(a2)  hasFather(a2, f(a2))  hasFather(a2, f(a2))  f(a2)  f(a2)
+
+cl
+5 : Man(f(a2))  hasFather(f(a2), f(a2))  hasFather(f(a2), f(a2))  f(a2)  f(a2)
+
+cl
+6 : Man(a1)  hasFather(a1, a2)
+7 : Man(a2)  hasFather(a2, f(a2))
+?
+
+?
+
+?
+cl
+cl
+8 : Man(f(a2))  hasFather(f(a2), f(a2)) cl
+9 : Man(a1)  Man(a2)
+?
+
+?
+
+?
+cl
+10 : Man(a2)  Man(f(a2))
+11 : Man(f(a2))  Man(f(a2))
+?
+
+?
+
+?
+cl
+cl
+12 : Man(a1)  Human(a1) cl
+14 : Man(f(a2))  Human(f(a2))
+13 : Man(a2)  Human(a2) cl
+?
+
+?
+
+?
+cl
+15 : a1  a1
+16 : a2  a2
+17 : f(a2)  f(a2)
+?
+
+?
+
+?
+cl
+cl
+cl
+18 : (a2  a2)  a2  a2
+19 : (a2  a2)  f(a2)  f(a2)
+?
+
+?
+
+?
+cl
+cl
+21 : (a2  a2)  (a2  a2)  a2  a2
+20 : (f(a2)  f(a2))  f(a2)  f(a2) cl
+?
+
+?
+
+?
+cl
+22 : (f(a2)  f(a2))  (f(a2)  f(a2))  f(a2)  f(a2)
+
+cl
+23 : Man(a2)  (a2  a2)  Man(a2) cl
+24 : Man(f(a2))  (f(a2)  f(a2))  Man(f(a2))
+?
+
+?
+
+?
+cl
+25 : hasFather(a1, a2)  (a2  a2)  hasFather(a1, a2)
+
+cl
+26 : hasFather(a2, f(a2))  (a2  a2)  hasFather(a2, f(a2))
+
+cl
+27 : hasFather(a2, f(a2))  (f(a2)  f(a2))  hasFather(a2, f(a2))
+
+cl
+28 : hasFather(f(a2), f(a2))  (f(a2)  f(a2))  hasFather(f(a2), f(a2))
+
+cl
+29 : Human(a2)  (a2  a2)  Human(a2)
+
+cl
+30 : Human(f(a2))  (f(a2)  f(a2))  Human(f(a2))
+
+cl
+
+3.4 Computing All Answers with the Help of the Grounding
+
+x1,
+
+xn,
+
+
+y1,
+
+
+cn), where 
+
+In this subsection, we present a method for computing all answers of a general CQ by
+using (O) and the result of ApproxGround(O).
+For a propositional program , two sets Sdf and S of sets of ground terms occurring
+
+
+c1)  ...  pn(
+x )  p1(
+
+in , and a CQ Q : q(
+x is the
+union of 
+
+yn,
+y1,
+xn,
+xn, by InstCQ(, Q,Sdf ,S) we denote the result of instantiating the
+clause cl : p1(
+cn)  wQ(
+
+c1)  ...  pn(
+
+
+x ) based on , Sdf and
+yn,
+x1,
+S, where wQ is a predicate symbol corresponding to Q and not occurring in , i.e.,
+InstCQ(, Q,Sdf ,S) = {cl  |  is a ground substitution such that all ground atoms
+x  is a tuple of constants}. For example, for
+in map(cl
+,Sdf and S given in Example 2 and a CQ Q : q(x)  Man(x)  hasFather(x, y),
+InstCQ(, Q,Sdf ,S) = {Man(a1)hasFather(a1, a2) wQ(a1)}{Man(a2)
+hasFather(a2, f(a2))  wQ(a2)}. With the above denotation, the following lemma
+gives a necessary condition that an answer of a CQ in O should satisfy.
+Lemma 4. Let (,Sdf ,S) be returned by ApproxGround(O). For a CQ Q :
+
+q(
+x )  conj(
+t is an answer of Q in O only if
+
+t ), Sdf , S) occurs in InstCQ(, Q,Sdf ,S).
+map(wQ(
+
+,Sdf ,S)  occur in  and 
+
+
+c ) in O, a tuple of constants
+
+
+y ,
+
+x1, ...,
+
+
+
+x ,
+
+J. Du et al.
+
+The following lemma gives a sufficient condition that ensures a tuple
+
+
+x  
+t of constants to
+
+be an answer of a CQ Q : q(
+
+y  
+
+c ) in O, where q[
+s ]
+x and 
+denotes the body of q with every variable in 
+y ,
+y respectively substituted by its
+
+x ,
+
+t ,
+
+x ,
+
+
+y ,
+
+
+c ) in O, a tuple
+
+
+t of constants is an
+s of ground terms such that every ground atom
+(O).
+
+s ] is satisfied by all models of 
+
+s .
+
+corresponding ground terms in
+
+x )  conj(
+
+t and 
+Lemma 5. For a CQ Q : q(
+x )  conj(
+answer of Q in O if there exists a tuple 
+occurring in q[
+
+x  
+x )  conj(
+Q : q(
+
+t , compute a subset of axioms in O
+
+
+y  
+
+
+y ,
+
+x ,
+
+t ,
+
+to check if O |= q[
+
+
+t ),Sdf ,S) | 
+ =  InstCQ(, Q,Sdf ,S){map(wQ(
+) first filters the largest subset 0 of 
+
+Based on the above two lemmas, we can identify a set of candidate answers of a CQ
+
+c ) in O. Afterwards, we may, for every candidate an-
+x  
+t ] by ap-
+swer
+
+plying the method given in Theorem 2. However, handling candidate answers one by
+
+one is inefficient because it needs to extract, for each candidate answer
+t , a rele-
+t ),Sdf ,S)}; such compuvant subset of   InstCQ(, Q,Sdf ,S)  {map(wQ(
+
+t ),Sdf ,S) | 
+tation is quite costly. To improve the efficiency, we extract all relevant subsets from
+  InstCQ(, Q,Sdf ,S)  {map(wQ(
+t is a candidate answer} in
+one pass, then from each extracted subset, identify a subset Orel of axioms in O
+and
+evaluate Q over Orel by applying an OWL DL reasoner.
+The algorithm for query answering is given in Figure 2, where the input A can be the
+set of ground atoms occurring in definite ground facts in (O). We explain how the
+algorithm works. Lines 12 respectively compute a set Ans of explicit answers and a
+set Cands of candidate answers of Q in O based on Lemma 5 and Lemma 4. Line 3 de-
+t  Cands}
+composes 
+to a set of disjoint subsets from which target ontologies can be extracted. The subprocedure Decompose(
+such that for all clauses
+cl  0, cl+ has at least one ground atom not occurring in 
+ \ 0, then returns
+ \ 0. Basically, 0 is the greatest
+the set of maximal connected components of 
+|
+(n1)
+(n)
+fixpoint of 
+?
+
+?
+
+?
+) = } (see our technical report2 for how to realize the
+cl+ \ atoms(
+decomposition process). Lines 46 handle every maximal connected component rel
+ \ 0: if any ground atom over wQ does not occur in rel, rel is irrelevant
+of 
+to Q and thus neglected; otherwise, a subset Orel of O
+is extracted from rel, and
+all answers of Q in Orel are added to Ans (the evaluation of Orel of O
+is realized
+in TraditionalEvaluate, which applies an OWL DL reasoner). Note that different extracted ontologies have no common ABox axioms because ABox axioms correspond
+ \ 0
+to ground atoms in 
+have no common ground atoms.
+Example 3 (Example 2 continued). Given a CQ Q : q(x)  Man(x) hasFather(x, y)
+in O given in Example 1, we show how DecompBasedEvaluate(Q,A, ,Sdf ,S)
+works, where A is the set of ground atoms occurring in definite ground facts in (O),
+i.e., A = {Man(a1), hasFather(a1, a2)}, and ,Sdf ,S are given in Example 2.
+Line 1 in Figure 2 sets Ans as {a1}. Line 2 sets Cands as {a2}. Line 3 computes
+
+t ),Sdf ,S) | 
+ =   InstCQ(, Q,Sdf ,S)  {map(wQ(
+t  Cands} = {cl
+
+1,
+
+?
+
+?
+
+?
+. . . , cl
+1, . . . , cl
+31 is
+
+ \ 0 and different maximal connected components of 
+
+33} and calls Decompose(
+?
+
+?
+
+?
+30 are given in Example 2, cl
+
+0 = {cl  
+
+and for n > 0, 
+
+such that 
+ \ 
+
+(n1)
+
+), where cl
+
+(0)
+0 = 
+
+(n)
+
+
+
+
+?
+
+?
+
+?
+
+
+(O
+
+) and the results , Sdf , S returned by ApproxGround(O
+
+Algorithm 1. DecompBasedEvaluate(Q,A, ,Sdf , S)
+In: A CQ Q : q(x )  p1(x1, y1, c1)  ...  pn(xn, yn, cn), a set A of ground atoms satisfied by all models of
+Out: The set of answers of Q in O.
+1. Ans := {x  |  is a ground substitution such that {p1(x1, y1, c1), . . . , pn(xn, yn, cn)}  A} and x 
+is a tuple of constants};
+Cands := {x  |  is a ground substitution such that map(wQ(x ), Sdf , S) occurs in InstCQ(, Q, Sdf ,
+S) and x  is a tuple of constants} \ Ans;
+for each rel  RSets such that some ground atoms over wQ occur in rel do
+:= {ax  O
+map(cl , Sdf , S)  rel};
+
+2.
+3. RSets := Decompose(  InstCQ(, Q, Sdf , S)  {map(wQ(
+4.
+5.
+
+| there exists a clause cl  (ax) and a ground substitution  such that
+
+Orel
+Ans := Ans  TraditionalEvaluate(Q, Orel);
+
+
+t ), Sdf , S) | 
+
+t  Cands});
+
+).
+
+return Ans;
+
+Fig. 2. A decomposition-based algorithm for evaluating a CQ
+?
+
+?
+
+?
+6.
+7.
+
+
+?
+
+?
+
+?
+29, cl
+?
+
+?
+
+?
+14, cl
+
+is {cl
+
+) returns {{rel}}, where rel = 
+
+33 is wQ(a2). It can be checked that the filtered set 0 of 
+?
+
+?
+
+?
+30, cl
+
+Man(a1)hasFather(a1, a2)wQ(a1), cl
+32 is Man(a2)hasFather(a2, f(a2))
+?
+
+?
+
+?
+wQ(a2) and cl
+12,
+31} and the remaining set has a single maximal connected compo-
+?
+
+?
+
+?
+13, cl
+cl
+\0. Since wQ(a2)
+nent. Hence Decompose(
+occurs in rel, line 5 in Figure 2 is executed, yielding Orel = {Man 1 hasFather,
+Man  hasFather.Man, Man(a1), hasFather(a1, a2)}. Note that Orel is a subset of
+O+ from which the axiom Man  Human is removed. By applying an OWL DL rea-
+soner, we can check that a2 is the unique answer of Q in Orel, so Ans is updated to
+{a1, a2} in line 6 and finally returned by DecompBasedEvaluate(Q, A, , Sdf , S).
+In the remainder of this section, we assume that the OWL DL reasoner applied in
+our approach is sound and complete for the category of given CQs, i.e., the subprocedure TraditionalEvaluate is correct. The following theorem shows the correctness
+of DecompBasedEvaluate.
+Theorem 3. Let Q : q(
+
+c ) be a CQ, A be a set of ground atoms
+(O), (,Sdf ,S) be returned by ApproxGround(O).
+satisfied by all models of 
+Then DecompBasedEvaluate(Q,A, ,Sdf ,S) returns the set of answers of Q in O.
+
+x )  conj(
+
+
+y ,
+
+x ,
+
+3.5 Optimization by Computing More ABox Entailments
+
+Based on Figure 2 (line 1), we can see that if we obtain more definite ground facts of
+(O), we can compute more explicit answers of a given CQ; thus, we can further improve the performance of our approach. We therefore present an important optimization
+that computes more entailments of O
+Basically, the optimization computes a set A of ground atoms from the set of
+definite clauses in ((O)) such that the functional depth of every ground term
+occurring in A is at most one. Recall that (O) is the result of applying structural transformation to O. We call such subset A the bounded entailment set of
+(O), which is defined as the least fixpoint of A(n) such that A(0) =  and for
+n > 0, A(n) =
+((O))),  is a ground substitution such that
+
+{cl+ | cl  DS(
+
+before calling ApproxGrounding(O).
+
+J. Du et al.
+
+
+
+((O))) denotes the set of all definite clauses in 
+((O)) and the least model of DS(
+
+  A(n1), cl+  HB(((O))) and depth(cl )  1}, where depth(cl)
+cl
+denotes the maximum functional depth of all ground terms occurring in a ground clause
+((O)).
+cl, and DS(
+Let A be the bounded entailment set of (O). Since A is a set of ground atoms in
+((O))) is a subset
+the least model of DS(
+((O)), every ground atom in A is satisfied by all models of
+of every model of 
+((O)). Let AC be the subset of A that contains only constants. When (O)  AC
+
+has equality assertions, some equational atoms must occur positively in ((O)), so
+((O)). It follows that (O)  AC is congruence-complete.
+E(((O)))  DS(
+In the remainder of this section, we assume that O = (O)AC . Since every ground
+atom in AC is satisfied by all models of (O), Lemma 1 and whatever follows from
+Lemma 1 still hold when O = (O)  AC .
+To evaluate a CQ Q in O, we now call DecompBasedEvaluate(Q, A, ,
+Sdf , S), where A is the bounded entailment set of (O) and (,Sdf ,S) are returned
+by ApproxGround(O). Theorem 4 shows that the optimization also guarantees sound
+and complete results. Example 4 illustrates that the optimization does take effect in our
+running example.
+
+
+y ,
+
+x ,
+
+((O))) = 
+
+x )  conj(
+
+Theorem 4. Let Q : q(
+
+c ) be a CQ, A be the bounded entailment
+set of (O), (,Sdf ,S) be returned by ApproxGround(O) and Ans be returned by
+DecompBasedEvaluate(Q,A, ,Sdf ,S). Then Ans is the set of answers of Q in O.
+Example 4 (Example 3 continued). For the ontology O given in Example 1, since
+((O)) = {cl1, ..., cl13}  {t  t | t  HU((O))}, where cl1, ..., cl13 are
+
+((O)). We can compute the
+given in Example 1, we have DS(
+bounded entailment set A of (O) as {Man(a1), Man(f(a1)), Man(a2), Man(f(a2)),
+Human(a1), Human(f(a1)), Human(a2), Human(f(a2)), hasFather(a1, a2),
+hasFather(a1, f(a1)), hasFather(a2, f(a2)), hasFather(f(a1), f(a2)), a2  f(a1),
+f(a1)  a2, a1  a1, f(a1)  f(a1), a2  a2, f(a2)  f(a2)}. By appending to (O) the set AC of ground atoms in A that contains only constants, we
+obtain O = {Man 1 hasFather, Man  hasFather.Man, Man  Human,
+Man(a1), Man(a2), Human(a1), Human(a2), hasFather(a1, a2), a1  a1, a2  a2}.
+ApproxGround(O) returns (,Sdf ,S), where  = {cl
+30}
+
+30 in Example 2), Sdf =  and S = {{a2, f(a1)}}. Consider again
+
+(see cl
+the CQ Q : q(x)  Man(x)  hasFather(x, y) given in Example 3. By calling
+DecompBasedEvaluate(Q, A, , Sdf , S), we get Ans = {a1, a2} in line 1 and
+Cands =  in line 2, thus we obtain the set of answers of Q in O without calling OWL
+DL reasoners.
+?
+
+?
+
+?
+1, . . . , cl
+?
+
+?
+
+?
+11, cl
+?
+
+?
+
+?
+13, . . . , cl
+?
+
+?
+
+?
+1, ..., cl
+
+To summarize, our decomposition-based approach to conjunctive query answering
+works as follows. In the offline phase, we compute the bounded entailment set A
+as (O)  {ax  A | ax contains only constants}, then
+of (O) and set O
+call ApproxGround(O), obtaining (,Sdf ,S). In the online phase, for every coming CQ Q, we call DecompBasedEvaluate(Q, A, , Sdf , S), obtaining all answers
+of Q.
+?
+
+?
+
+?
+4 Experimental Evaluation
+
+We implemented the proposed approach in GNU C++, using MySQL as the back-end
+SQL engine. The implemented system3 is called DecomBaR (abbr. for DecompositionBased Reasoner). It maintains ABox axioms and ground atoms in the approximate
+grounding in databases, maintains ground clauses in the approximate grounding in disk
+files, and calls Pellet [14] (version 2.0.0-rc6)4 to evaluate CQs over extracted ontolo-
+gies. All our experiments were conducted on a machine with 2GHz Intel Pentium Dual
+CPU and 2GB RAM, running Windows XP, where the maximum Java heap size was
+set to (max) 1312MB.
+
+4.1 Experimental Setup
+
+We conducted experiments on Lehigh University Benchmark (LUBM) [8] and University Ontology Benchmark (UOBM) [10] (including UOBM-Lite and UOBM-DL)
+ontologies. We used the above benchmark ontologies because they all come with benchmark CQs, which can provide a reasonable assessment on the effectiveness of our proposed approach. By LUBMn, UOBM-Liten and UOBM-DLn we respectively denote
+the instances of LUBM, UOBM-Lite and UOBM-DL that contain axioms about n uni-
+versities. We specifically tested on LUBM1, LUBM10, UOBM-Lite1, UOBM-Lite10,
+UOBM-DL1 and UOBM-DL10, where the former two were generated by the LUBM
+data generator5, and the latter four were all downloaded from the UOBM Website6.
+
+Before testing our approach we stored ABoxes to MySQL databases. Table 1 lists
+
+the characteristics of the six test ontologies.
+
+Table 1. The characteristics of test ontologies and the execution time in the offline phase
+
+LUBM1
+LUBM10
+
+UOBM-Lite1
+UOBM-Lite10
+UOBM-DL1
+UOBM-DL10
+?
+
+?
+
+?
+|NC| |NR|
+
+|A| |T |
+100,543 105
+
+|NI| |T |
+100,543
+16 50,253 94
+16 629,568 94 1,272,575 105 1,272,575
+43 95,010 130
+245,864
+43 820,208 130 2,096,973 151 2,096,973
+44 96,081 151
+260,587
+44 825,455 151 2,217,302 210 2,217,349
+
+|A| Offline(sec)
+?
+
+?
+
+?
+245,864 151
+
+260,540 210
+
+Note: O = (T ,A) is a test ontology and (O) = (T ,A). NC, NR and NI are respectively
+the sets of concept names, role names and individuals in O.
+
+4.2 Experimental Results
+
+We compared DecomBaR with the original Pellet reasoner (simply Pellet) and the
+KAON2 reasoner (simply KAON2) on evaluating benchmark CQs given in [8,10]. We
+
+3 http://www.aifb.uni-karlsruhe.de/WBS/gqi/DecomBaR/
+4 http://clarkparsia.com/pellet/
+5 http://swat.cse.lehigh.edu/projects/lubm/index.htm
+6 http://www.alphaworks.ibm.com/tech/semanticstk/
+
+J. Du et al.
+
+DecomBaR
+
+Pellet
+
+KAON2
+
+Q1
+
+Q2
+
+Q3
+
+Q4
+
+Q5
+
+Q6
+
+Q7
+
+Q8
+
+Q9
+
+Q10
+
+Q11
+
+Q12
+
+Q13
+
+Q14
+
+Q1
+
+Q2
+
+Q3
+
+Q4
+
+Q5
+
+Q6
+
+Q7
+
+Q8
+
+Q9
+
+Q10
+
+Q11
+
+Q12
+
+Q13
+
+Q14
+
+Benchmark Queries for LUBM1
+
+Benchmark Queries for LUBM10
+
+M M M
+
+M M M M
+
+M M
+
+M M M
+
+0.1
+
+0.01
+
+#ont
+
+0.1
+
+0.01
+
+#ont
+|T |m
+|A|m
+
+Q1
+
+
+
+
+Q2
+
+
+
+
+0.1
+
+0.01
+
+#ont
+|T |m
+|A|m
+
+Q1
+
+
+
+
+Q2
+
+
+
+
+Q4
+
+
+
+
+Q10
+
+Q5
+
+
+
+
+Q6
+
+
+
+
+Q3
+?
+
+?
+
+?
+
+
+
+
+Benchmark Queries for UOBM-Lite1
+
+Q8
+
+
+
+
+Q7
+
+
+
+
+
+
+
+Q9
+?
+
+?
+
+?
+Q11
+
+Q12
+
+
+
+
+Q13
+
+
+
+
+Q1
+
+
+
+
+Q2
+
+
+
+
+Q3
+
+
+
+
+Q4
+
+
+
+
+Q5
+
+
+
+
+Q6
+
+
+
+
+Q7
+
+
+
+
+Q8
+
+
+
+
+Q9
+?
+
+?
+
+?
+Q10
+
+
+
+
+Q11
+
+Q12
+
+
+
+
+
+
+
+Q13
+
+
+
+
+Benchmark Queries for UOBM-Lite10
+
+M M
+
+M M
+M M M M M
+
+Q4
+
+
+
+
+Q5
+
+
+
+
+Q3
+?
+
+?
+
+?
+
+
+
+
+Benchmark Queries for UOBM-DL1
+
+Q8
+?
+
+?
+
+?
+50K
+?
+
+?
+
+?
+55K
+
+Q7
+
+
+
+
+Q6
+
+
+
+
+
+
+
+
+
+
+35K
+
+Q10
+
+Q9
+?
+
+?
+
+?
+Q12
+
+Q11
+
+Q13
+
+Q14
+?
+
+?
+
+?
+81K
+
+Q15
+?
+
+?
+
+?
+50K
+
+Q1
+
+
+
+
+Q2
+
+
+
+
+Q4
+
+
+
+
+Q5
+
+
+
+
+Q3
+?
+
+?
+
+?
+
+
+
+
+Benchmark Queries for UOBM-DL10
+
+Q7
+
+
+
+
+Q6
+
+
+
+
+Q8
+?
+
+?
+
+?
+
+
+
+
+
+
+467K
+
+420K
+?
+
+?
+
+?
+40K
+
+Q10
+
+Q9
+?
+
+?
+
+?
+Q12
+
+Q11
+
+Q13
+
+Q14
+?
+
+?
+
+?
+Q15
+?
+
+?
+
+?
+572K
+
+420K
+
+Fig. 3. The execution time (in seconds) for evaluating all benchmark CQs
+
+implemented an interface to allow Pellet or KAON2 to read ABoxes from databases.
+We did not test KAON2 on UOBM-DLn ontologies nor CQs with non-distinguished
+variables as they are not supported by KAON2.
+
+The execution time (in seconds) in the offline phase of DecomBaR is shown in the
+last column of Table 1. The results for evaluating every benchmark CQ are shown in
+Figure 3. The execution time about DecomBaR is the total evaluation time in the online
+phase, including the time for decomposing the propositional program compiled in the
+offline phase and the time for loading extracted ontologies to the called reasoner, waiting the called reasoner to return and handling the returned results. The execution time
+about Pellet or KAON2 is the time for query answering only, excluding the time for
+ontology loading and consistency checking (as we assume that the ontology is loaded
+and checked consistency offline) and the time for writing results.
+Below the horizontal axis in Figure 3, #ont denotes the number of extracted ontologies over which Pellet is called to evaluate a test query, and |T |max (resp. |A|max)
+denotes the maximum number of axioms in the TBox (resp. the ABox) of every extracted ontology. The name of a CQ is framed iff the CQ has non-distinguished vari-
+ables. Above a bar, M means running out of memory after the displayed time, T
+means exceeding the time limit of 1000s, and E means that the set of computed answers is incorrect; we call any of these cases an unsuccessful evaluation. For every
+benchmark CQ that both DecomBaR and Pellet (resp. KAON2) successfully evaluate,
+the answers computed by DecomBaR and Pellet (resp. KAON2) coincide.
+?
+
+?
+
+?
+Comparing DecomBaR with Pellet, DecomBaR is more efficient than Pellet except
+for Q8 and Q15 on UOBM-DL1.7 Such exception is due to that sometimes decomposition and interaction with the called reasoner introduce a significant overhead in the
+execution of DecomBaR. However, when DecomBaR does not generate any candidate
+answer (i.e. when #ont = 0), DecomBaR works very fast because it only needs to extract explicit and candidate answers by accessing the database through a SQL query.
+For example, DecomBaR spends about 0.1s for evaluating Q8 on both UOBM-Lite1
+and UOBM-Lite10, while for evaluating the same CQ Pellet spends about 180s on
+UOBM-Lite1 and runs out of memory on UOBM-Lite10. Moreover, DecomBaR is
+more scalable than Pellet against increasing size of ABoxes. This is because accessing databases through SQL queries is relatively scalable (in case #ont = 0) and extracted ontologies could have similar sizes for different size of ABoxes (in case #ont
+> 0). For example, the UOBM-Lite benchmark query Q9 has an individual in the query
+body, which forces InstCQ (defined in Subsection 3.4) to return similar ground clauses
+and then forces the extracted ontologies to have similar sizes for UOBM-Lite1 and
+UOBM-Lite10.
+
+Comparing DecomBaR with KAON2, DecomBaR is generally more efficient (esp.
+for UOBM-Liten ontologies, by orders of magnitude more efficient) than KAON2.
+Moreover, the scalability of DecomBaR is comparable with that of KAON2 on
+LUBMn ontologies, and is much better than that of KAON2 on UOBM-Liten on-
+tologies. This shows that DecomBaR is much more scalable than KAON2 against
+increasing complexity of TBoxes. It should also be mentioned that DecomBaR supports more expressive CQs than KAON2 does. In particular, KAON2 may not correctly evaluate CQs involving datatypes (e.g. the LUBM benchmark queries Q4
+and Q8); this is a limitation of the resolution-based query mechanism [11] exploited
+in KAON2.
+
+5 Conclusion and Future Work
+
+In this paper, we have proposed a decomposition-based approach to optimize conjunctive query answering in OWL DL ontologies. The basic idea of the approach is to evaluate a CQ with the help of a precompiled propositional program: it computes explicit
+answers first and then computes other answers over separate ontologies that are extracted from the precompiled propositional program. Experimental results demonstrate
+the advantages of the proposed approach.
+
+The proposed approach still has some limitations. First, it only works well on ontologies that rarely change as the offline phase is somewhat costly. We plan to upgrade the
+compilation method to an incremental one to copy with ontology changes. Second, the
+approach fails when some extracted ontologies are still too large to be handled by the
+called reasoner. This is the reason why our implemented system DecomBaR does not
+successfully evaluate six benchmark CQs in our experiments (see Figure 3). We will
+tackle this limitation by exploiting the idea of summarization [2,3].
+
+7 Here we do not compare DecomBaR and Pellet for those CQs that both DecomBaR and Pellet
+
+do not successfully evaluate.
+
+J. Du et al.
+
+Acknowledgments. Thanks all anonymous reviewers for their useful comments. Jianfeng Du is supported in part by NSFC grants 60673103 and 70801020. Yi-Dong Shen
+is supported in part by NSFC grants 60673103, 60721061, and by the 863 Program.

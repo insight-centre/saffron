@@ -1,0 +1,1557 @@
+Pay-as-you-go Approximate Join Top-k
+
+Processing for the Web of Data
+
+Andreas Wagner1, Veli Bicer2, and Thanh Tran1
+
+1 Karlsruhe Institute of Technology, Germany
+
+2 IBM Research Centre Dublin, Ireland
+
+{a.wagner,thanh.tran}@kit.edu, velibice@ie.ibm.com
+
+Abstract. For effectively searching the Web of data, ranking of results
+is a crucial. Top-k processing strategies have been proposed to allow
+an efficient processing of such ranked queries. Top-k strategies aim at
+computing k top-ranked results without complete result materialization.
+However, for many applications result computation time is much more
+important than result accuracy and completeness. Thus, there is a strong
+need for approximated ranked results. Unfortunately, previous work on
+approximate top-k processing is not well-suited for the Web of data.
+In this paper, we propose the first approximate top-k join framework
+for Web data and queries. Our approach is very lightweight  necessary
+statistics are learned at runtime in a pay-as-you-go manner. We conducted extensive experiments on state-of-art SPARQL benchmarks. Our
+results are very promising: we could achieve up to 65% time savings,
+while maintaining a high precision/recall.
+
+Keywords: #eswc2014Wagner.
+
+Introduction
+
+With the proliferation of the Web of data, RDF has become an accepted standard
+for publishing data on the Web. RDF data comprises a set of triples {s, p, o},
+which forms a data graph, cf. Fig. 1-a.
+
+User-/Query-Dependent Ranking. For web-scale data, queries often produce a large number of results (bindings). Given large result sets, result ranking
+becomes a key factor for an effective search. However, ranking functions often
+need to incorporate query or user characteristics [1,4,19]:
+Example 1. Find movies with highest ratings, featuring an actress Audrey Hep-
+burn, and playing close to Rome, cf. Fig. 1.
+
+Exp. 1 would require a ranking function to incorporate the movie rating, quality of keyword matches for Audrey Hepburn, and distance of the movies location to Rome. While one may assume that a higher rating value is preferred
+by any user and query, scores for keyword and location constraint dependent
+on query and user characteristics. For instance, in order to rank a binding for
+Audrey Hepburn, a function may measure the edit distance between that keyword and the bindings attribute value, Fig. 1-c. Notice, given another keyword
+
+V. Presutti et al. (Eds.): ESWC 2014, LNCS 8465, pp. 130145, 2014.
+ Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+(a)
+
+New York
+
+Location
+
+Movie
+
+type
+
+type
+
+-74.006
+40.7146
+
+41.8947
+12.4839
+
+type
+name
+
+long
+
+lat
+lat
+long
+
+l2
+name
+
+Rome
+
+8.1
+
+l1
+loc
+ll
+
+rating
+
+type
+
+m3
+
+rating
+
+starring
+
+type
+
+loc
+7.7 rating
+starring
+
+title
+m2
+
+starring
+
+m1
+
+title
+Roman 
+Holiday
+
+Breakfast at 
+
+title
+Tiffany's
+
+8.5
+Audrey 
+Tautou
+
+(b)
+
+(c)
+
+tp1 
+
+tp3 
+
+r
+
+rating
+
+m
+
+l
+
+loc
+starring
+
+Audrey 
+Hepburn
+
+tp2 
+
+scoreQ(b) = rating(r) + (1 - editDistance(s,Audrey 
+Hepburn)) + (IF [distance(l,(41.8947,12.4839))   
+100km] 1 ; ELSE 0)
+with b = (<m,rating,r>,<m,starring,s>,<m,loc,l>)
+
+Amelie
+
+Audrey K. 
+Hepburn
+
+Fig. 1. (a) RDF data graph about the movies Roman Holiday, Breakfast at
+Tiffanys, and Am elie. (b) Query graph asking for a movie starring Audrey Hep-
+burn. (c) Scoring function that aggregates scores for triple pattern bindings (bold):
+movie ratings, edit distance w.r.t. Audrey Hepburn, and distance of the movies
+location to Rome (lat: 41.8947, long: 12.4839)  100 km.
+
+(e.g., only Audrey), the very same attribute value would yield a different score.
+Further, depending on the users geographic knowledge of Italy, she may have
+different notions of closeness to Rome, e.g., distance  100 km, cf. Fig. 1-c.
+Join Top-k Processing. Top-k processing aims at computing k top-ranked
+bindings without full result materialization [7,8]. That is, after computing some
+bindings, the algorithm can terminate early, because it knows that no binding
+with higher ranking score exists. For efficiently processing ranked queries over
+Web data, two recent works employed top-k processing techniques [9,22].
+
+However, many applications do not require a high result accuracy or com-
+pleteness. In fact, result computation time is often the key factor. Thus, there is
+a strong need for approximated ranked results. That is, a system should be able
+to trade off result accuracy and completeness for computation time.
+
+Approximate Join Top-k Processing. Unfortunately, existing approaches for top-k processing over RDF data compute only exact and complete results [9,22]. Moreover, previous works for approximate top-k processing over
+relational databases [2,3,12,18,20] are not suitable for Web queries/data. This is
+because these works assume complete ranking score statistics at offline time:
+
+(P.1) Web Queries. Query-/user-dependent ranking functions are employed for many important Web queries, e.g., keyword, spatial or temporal
+queries [1,4,19]. However, such ranking scores are only known at runtime. Consider tp2 and tp3 in Fig. 1-b: binding scores are decided by query (i.e., edit
+distance to query keyword Audrey Hepburn) or user characteristics (i.e., the
+user-defined distance to Rome). So, no offline score statistics can be computed
+for tp2 or tp3.
+
+(P.2) Web Data. Web data is commonly highly distributed and frequently up-
+dated. For instance, movie ratings for pattern tp1 (Fig. 1-b) may be spread across
+multiple data sources  some of them even hidden behind SPARQL endpoints.
+Moreover, these sources may feature constantly updated rating scores. Thus,
+while constructing an offline statistic for rating scores is feasible, it comes with
+great costs in terms of maintenance. This problem is exacerbated by the fact that
+RDF allows for very heterogeneous data. For example, the rating predicate in tp1
+
+A. Wagner, V. Bicer, and T. Tran
+
+could be used to specify the rating of movies as well as products, restaurants etc.
+Thus, score statistics may grow quickly and become complex.
+
+Contributions. (1) This is the first work towards approximate top-k join processing for the Web of data. That is, we propose a lightweight approach, which
+addresses problem P.1 and P.2: (P.1) We learn score distributions in a pay-
+as-you-go manner at runtime. (P.2) Our score statistics have a constant space
+complexity and a computation complexity bounded by the result size. (2) We
+conducted experiments on two SPARQL benchmarks: we could achieve time
+savings of up to 65%, while still allowing for a high precision/recall.
+
+Outline. We outline preliminaries in Sect. 2 and present the approximate top-k
+join in Sect. 3. In Sect. 4, we discuss evaluation results. Last, we give an overview
+over related works in Sect. 5 and conclude with Sect. 6.
+
+2 Preliminaries
+
+Data and Query Model. We use RDF as data model:
+Definition 1 (RDF Graph). Given a set of edge labels 3, a RDF graph is a
+directed labeled graph G = (V,E, 3), where V = VE  VA with entity nodes as VE
+and attribute nodes as VA. Edges E = {s, p, o} are called triples, with s  VE
+as subject, p  3 as predicate, and o  VE  VA as object.
+
+V  VQ
+V  VQ
+
+,EQ
+V and constants VQ
+are called triple patterns. Triple pattern tp = s, p, o with s  VQ
+
+An example is depicted in Fig. 1-a. Further, we employ basic graph patterns
+(BGPs) as query model:
+Definition 2 (BGP Query). A BGP query Q is a directed labeled graph Q =
+(VQ
+C as union of variables VQ
+), with VQ
+= VQ
+C . Edges
+
+V  VQ
+C ,
+V , and o  VQ
+C . We write Q as set of its triple patterns: Q = {tpi}.
+p  3  VQ
+Example 2. In Fig. 1-b, pattern m, starring, Audrey Hepburn has m as
+variable, constant Audrey Hepburn as object, and starring as predicate.
+Given a query Q, a binding b is a vector (t1, . . . , tn) of triples such that: each
+triple ti matches exactly one pattern tpi in Q and triples in b form a subgraph of
+the data graph, G. We say b binds variables to nodes in the data via the matching
+of patterns in Q. Formally, for binding b there is a function b : VQ
+V  V that
+maps every variable in Q to an entity/attribute node in the data.
+
+Partial bindings (featuring some patterns with no matching triple) occur during query processing. For a partial binding b, we refer to a pattern
+
+tpi with no matching triple as unevaluated and write  in bs i-th position:
+(t1, . . . , ti1,, ti+1, . . . , tn). We denote the set of unevaluated patterns for partial binding b as Qu(b)  Q. A binding b comprises a binding b
+
+b
+Example 3. Given Fig. 1-b, a partial binding b31 = (,, t31 = m1, loc, l2)
+in Fig. 2-a matches pattern tp3, while Qu(b31) = {tp1, tp2} are unevaluated.
+b31 binds variable m and l to entity m1 and l1. Further, the complete binding
+b = (t12, t21, t31) comprises partial binding b31 = (,, t31). b31 contributes to b.
+
+contributes to b.
+
+are also contained in b. If b comprises b
+
+, we say binding b
+?
+
+?
+
+?
+, if all triples in
+?
+
+?
+
+?
+(a)
+
+Tree of Approximate Top-k Joins
+
+score samples 
+
+O1+2+3
+
+complete bindings: tp1+ tp2 + tp3
+
+score
+
+(b)
+
+Sufficient Statistics
+Stat1: Offline sample 
+mean and variance 
+for rating ranking
+
+(8.1, 0.16)
+
+Stat2: Runtime sample 
+mean and variance for 
+edit distance ranking
+(0.7, 0.12)
+Stat3: Runtime mean 
+and variance (based on 
+uniform distribution)  
+for location ranking 
+
+(0.5, 0.08)
+
+A-PBRJ  j2
+
+A3
+
+m
+
+partial bindings 
+
+H3
+
+b31 = (*, *, t31 = <m1,loc,l2>)
+
+Hyperpara
+meters: 3
+score
+
+A4
+
+Hyperpara
+meters: 4
+
+A1
+
+Hyperpara
+meters: 1
+
+H1
+
+H1+2
+
+O1+2
+
+score
+
+Input i4
+score
+
+partial bindings: tp1+ tp2
+
+A-PBRJ  j1
+
+partial bindings 
+
+m
+
+score
+8.5
+
+b11 = (t11 = <m3,rating,8.5>, *, *)
+
+Sorted 
+Access
+Pointer 
+at next 
+match-
+ing triple
+
+Input i1
+
+sa1: <m,rating,r>
+
+Offline Index: Rating
+t11:<m3,rating,8.5>, 8.5
+t12:<m1,rating,8.1>, 8.1
+t13:<m2,rating,7.7>, 7.7
+
+A2
+
+Hyperpara
+meters: 2
+
+H2
+
+score
+
+0.9
+
+b21 = (*, t21 = <m1,starring, 
+Audrey K. Hepburn>, *)
+Input i2
+
+sa2: <m,starring,Audrey 
+
+<<
+
+Hepburn>
+Sorted List at Runtime:
+
+Input i3
+
+sa3: <m,loc,l>
+
+R-Tree Offline Index: 
+
+Location
+
+     l2: (41.8947,12.4839)
+     l1: (40.7146,-74.006)
+
+Triples containing Audrey or Hepburn
+       t21:<m1,starring,Audrey K. Hepburn>,  0.9
+       t22:<m2,starring,Audrey K. Hepburn>,  0.9
+       t23:<m3,starring,Audrey Tautou>, 0.3
+
+Fig. 2. (a) A-PBRJ tree for Fig. 1-b. Two information flows occur in the tree: partial
+bindings (green) and score samples (blue). (b) Sufficient statistics based on scores
+observed at indexing time (stat1) and runtime (stat2 and stat3).
+
+Ranking Function. To quantify the relevance of a binding b w.r.t. a query/user,
+we employ a ranking function: scoreQ : BQ  R, with BQ
+as set of all partial/-
+complete bindings for Q. That is, scoreQ(b) is defined as aggregation over bs
+t  b scoreQ(t), with  as monotonic aggregation func-
+triples: scoreQ(b) =
+tion. A ranking function for our example is in Fig. 1-c. Note, scoreQ could be
+defined as part of the query, e.g., by means of the ORDER BY clause in SPARQL.
+Sorted Access. For every pattern tpi in query Q, a sorted access sai retrieves
+?
+
+?
+
+?
+matching triples in descending score order. Previous works on join top-k processing over Web data introduced efficient sorted access implementations for RDF
+stores [9,22]. Let us present simple approaches for our example (Fig. 2-a):
+
+Example 4. Given the keyword pattern tp2 = m, starring, Audrey Hepburn,
+
+a sorted access must materialize all triples, which have a value that contains
+Audrey or Hepburn. After materialization, these triples are sorted with descending similarity w.r.t. that keyword (e.g., measured via edit distance). On the
+other hand, for pattern m, loc, l, an R-tree on the attribute pair (lat, long)
+may be used. This offline computed index yields two hits: l1 and l2. While l2 is
+an exact match (thus, triple t31 has max. score 1), l1 is more distant from Rome.
+Last, an index for attribute rating can be constructed offline: triples are stored
+with descending rating value. Then, sorted access sa1 can iterate over this list.
+Partial bindings retrieved from sorted accesses are combined via joins. That
+is, an equi-join combines two (or more) inputs. This way, multiple joins form a
+tree. For instance, three sorted accesses are combined via two joins in Fig. 2-a.
+
+Problem. Our goal is to compute k high-ranked query bindings that may differ
+from the true top-k results in terms of false positives/negatives. These approximations aim at saving computation time. For this, we use a top-k test: given
+
+A. Wagner, V. Bicer, and T. Tran
+
+a partial binding, we estimate its probability for contributing to the final top-k
+results and discard such bindings that have only a small a probability.
+
+We exploit conjugate priors for learning necessary probability distributions.
+
+Bayesian Inference. Let  be a set of parameters. One may model prior
+beliefs about these parameters in the form of probabilities:   P ( | ) with
+   [6]. Here,  is a vector of hyperparameters allowing to parametrize the
+prior distribution. Suppose we observe relevant data x = {x1, . . . , xn} w.r.t. ,
+where each xi  P (xi | ). Then, the dependency between observations x and
+prior parameters  can be written as P (x | ). Using the Bayes theorem we
+can estimate a posterior probability, which captures parameters  conditioned
+on observed events x. In simple terms, a posterior distribution models how likely
+parameters  are, in light of the seen data x and the prior beliefs [6]:
+
+P ( | x, )  P (x | )  P ( | ) =
+
+P (x | )  P ( | )
+ P (x | )P ()
+?
+
+?
+
+?
+(1)
+
+Example 5. For pattern tp1 in Fig-2-a, scores are based on rating values. So,
+we can compute sufficient statistics (mean  x1 = 8.1 and variance s2
+1 = 0.16)
+for these scores at offline time, cf. stat1 in Fig-2-b. Such statistics represent
+prior beliefs about the true distribution, which is capturing only those scores
+for bindings of tp1 that are part of a complete binding. Only triple t12 and t13
+contribute to complete bindings. Thus, only their scores should be modeled via a
+distribution. We update the prior beliefs using scores samples x observed during
+query processing, thereby learning the true (posterior) distribution as we go.
+
+
+As we are interested in unobserved events x
+
+, we need the posterior predictive
+
+distribution, i.e., the distribution of new events given observed data x:
+
+ | x, ) =
+
+P (x
+?
+
+?
+
+?
+
+
+ | )P ( | x, )
+
+P (x
+
+(2)
+
+An important kind of Bayesian priors are the conjugate priors. Intuitively, conjugate priors require the posterior and prior distribution to belong to the same
+distribution family. In other words, these priors provide a computational conve-
+nience, because they give a closed-form of the posterior distribution [6]. Thus,
+posterior computation is easy and efficient for conjugate priors.
+
+3 Approximate Top-k Join
+
+We now present an approximate top-k processing for the Web of data. In contrast
+to existing works [2,3,12,18,20], we follow a lightweight approach: (1) We learn
+all necessary score statistics at runtime, cf. Algo. 2 (P.1, Sect. 1). (2) We show
+our score distribution learning to have a constant space complexity and a runtime
+complexity bounded by the result size, cf. Thm. 1 (P.2, Sect. 1).
+
+3.1 Approximate Rank Join Framework
+We follow [17] and define an approximate Pull/Bound Rank Join (A-PBRJ)
+framework that comprises three parts: a pulling strategy PS, a bounding strategy BS, and a probabilistic component PC. PS determines the next join input
+?
+
+?
+
+?
+to pull from [17]. The bounding strategy BS gives an upper bound, , for the
+maximal possible score of unseen join results [17]. Last, we use PC to estimate
+a probability for a partial binding to contribute to the final top-k result.
+
+Approximate Pull/Bound Rank Join. The A-PBRJ is depicted in Algo. 1.
+Following [17], on line 4 we check whether output buffer O comprises k complete
+bindings and if there are unseen bindings with higher scores (measured via bound
+). If both conditions hold, the A-PBRJ terminates and reports O. Otherwise,
+PS selects an input i to pull from (line 5) and produces a new partial binding
+b from the sorted access on input i, line 6. After materialization, we update 
+using bounding strategy BS.
+Example 6. In Fig. 2-a, join j2 decides (via strategy PS) to first pull on sa3 and
+load partial binding t31. Then, join j2 pulls on input i4 (join j1), which in turn
+pulls on its input i1 (sa1) loading binding t11 and afterwards on input i2 (sa2)
+loading t21. The join attempt t11  t21 in join j1 fails, because entity m3 = m1.
+
+Algorithm 1. Approx. Pull/Bound Rank Join (A-PBRJ).
+Param.: Pulling strategy PS, bounding strategy BS, probabilistic comp. PC.
+Index : Sorted access sai and saj for input i and j, respectively.
+Buffer : Output buffer O. Hi and Hj for seen bindings from sai and saj.
+Input : Query Q, result size k, and top-k test threshold  .
+Output: Approximated top-k result.
+
+1 begin
+
+  
+
+  ,
+PC.initialize()
+while | O |< k or minb  O scoreQ(b
+
+) <  do
+
+i  PS.input() // choose next input via pulling strategy PS
+b  next partial binding from sorted access sai
+  BS.update(b) // update  via bounding strategy BS
+// top-k test, cf. Algo. 3
+if PC.probabilityTopK(b,) >  then
+O  Hj  {b}
+b  Hi // add b to buffer Hi
+if #new bindings b in O  training threshold then
+
+// score distribution learning, cf. Algo. 2
+
+PC.train(b)
+Retain only k top-ranked bindings in O
+
+if | O|  k then   minb  O scoreQ(b
+
+)
+
+// return approximated top-k results
+return O
+
+In line 8, PC estimates the probability for partial binding b leading to a
+complete top-k binding: the top-k test. If b fails this test, it will be pruned. That
+is, we do not attempt to join it and do not insert it in Hi. Hi is a buffer that
+holds seen bindings from input i. Otherwise, if the top-k test holds, b is further
+
+A. Wagner, V. Bicer, and T. Tran
+
+processed (lines 9 - 14). That is, we join b with seen bindings from the other
+input j and add results to O. Further, b is inserted into buffer Hi, line 10. For
+learning the necessary probability distributions, PC trains on seen bindings/-
+scores in O, line 12. Notice, we continuously train PC throughout the query
+processing  every time enough new bindings are in O, line 11. PC requires
+parameter  for its pruning decision.  holds the the smallest currently known
+top-k score (line 14). On line 2,  is initialized as .
+Choices for BS and PS. Multiple works proposed bounding strategies,
+e.g., [5,7,10,17] as well as pulling strategies, e.g., [7,11]. Commonly, the corner
+bound [7] is employed as bounding strategy BS:
+Definition 3 (Corner Bound). For a join operator, we maintain ui and li
+for each input i. ui is the highest score observed from i, while li is the lowest
+observed score on i. If input i is exhausted, li is set to . The bound for scores
+of unseen join results is  := max{u1  l2, u2  l1}.
+In example Fig. 2-a, join j1 currently has  = max{8.5 + 0.9, 0.9 + 8.5}, with
+u1 = l1 = 8.5 and u2 = l2 = 0.9. On the other hand, the corner-bound-adaptive
+strategy [7] is frequently used as pulling strategy PS:
+Definition 4 (Corner-Bound-Adaptive Pulling). The corner-bound-adap-
+tive pulling strategy chooses the input i such that: i = 1 iff u1  l2 > u2  l1 and
+
+i = 2 otherwise. In case of a tie, the input with less unseen bindings is chosen.
+
+For instance, in join j1 (Fig. 2-a) either input may be selected, because 8.5+0.9 =
+0.9 + 8.5 and both inputs have two unseen partial bindings.
+3.2 Probabilistic Component PC
+Given a partial binding b, we wish to know how likely b will contribute to the final
+top-k results. For this, the top-k test exploits two probabilities: (1) The probability that b contributes to a complete binding (binding probability). (2) The
+probability that complete bindings comprising b have higher scores than the
+current top-k bindings (score probability).
+
+Binding Probability. To address the former probability, we use a selectivity
+estimation function sel. Simply put, given a query Q, sel(Q) estimates the probability that there is at least one binding for Q [14,15]. For example, selectivity of
+pattern tp3 = m,loc, l is sel(tp3) = 2
+3 , because out of the three movie entities
+only two have a loc predicate, cf. Fig. 1-a.
+
+Further, we define a complete binding indicator for a partial binding b:
+?
+
+?
+
+?
+if sel(Qu(b) | b) > 0
+otherwise
+
+1{Qu(b) | b} :=
+
+(3)
+Intuitively, for a partial binding b, 1{Qu(b) | b} models whether matching
+triples for bs remaining unevaluated patterns can exist, given variable assignments dictated by b. That is, Qu(b) | b is a set of patterns {tpi}, such that pattern
+tpi  Qu(b) and each variable v in tpi that is bound by b is replaced with its
+assignment in b, b(v), which results in a new pattern tpi.
+?
+
+?
+
+?
+(a) Predictive Dist.
+
+Input i1
+
+Input i2
+
+Input i3
+
+Input i4
+
+P (X s
+
+i1 )
+
+i2 )
+
+P (X s
+
+Qu = {tp2, tp3}
+Qu = {tp1, tp3}
+Qu = {tp1, tp2}
+P (X s
+i4 )
+Qu = {tp3}
+
+P (X s
+
+i3 )
+
+(0.7 + 0.5, 0.12 + 0.08)
+
+(8.1 + 0.5, 0.16 + 0.08)
+
+(b) Priors
+stat2 stat3:
+stat1 stat3:
+stat1 stat2:
+
+stat3:
+
+(0.5, 0.08)
+
+(8.1 + 0.7, 0.16 + 0.12)
+
+Fig. 3. (a) Given joins in Fig. 2-a,
+we train four predictive score distributions (one for each input). For
+instance, X s
+i1 models scores for bindings of tp2  tp3. (b) Priors are based
+on sufficient statistics in Fig. 2-b. The
+aggregation function  is a summation in Fig. 1-c. Thus, e.g., stat1 
+stat3 = (8.1 + 0.5, 0.16 + 0.08) =
+(8.6, 0.24).
+
+Example 7. Consider partial binding b11 = (t11 = m3, rating, 8.5, , ) in
+Fig. 2-a. Qu(b11) | b11 = {m3, starring, Audrey Hepburn, m3, loc, l},
+because variable m in pattern tp2 and tp3 is replaced with its assignment in b11,
+b11(m) = m3. 1{Qu(b11) | b11} = 0, as selectivity for both patterns is 0.
+
+Notice, any selectivity estimation implementation may be used for the com-
+
+plete binding indicator. We employed [14,15] for our experiments.
+
+Score Probability. For a partial binding b, let scores for bindings of bs un-
+
+evaluated patterns, Qu(b), be captured via a random variable X sQu(b).
+Example 8. In Fig. 2-a, partial binding b31 currently has a score of 1. However,
+scores for bindings to tp1 and tp2 are unknown and modeled via X sQu(b31).
+that has a score  x as:
+
+Then, we can obtain the probability for b contributing to a complete binding
+?
+
+?
+
+?
+X sQu(b)
+
+ (x, b)
+?
+
+?
+
+?
+(4)
+where (x, b) := x  scoreQ(b). Note, partial binding b has a current score,
+scoreQ(b), and only the score for its unevaluated patterns is unknown. So, (x, b)
+is the delta between bs current score and a desired score x.
+
+Top-k Test. Finally, we use (1) the complete binding indicator to determine
+whether b might contribute to any complete binding. Further, (2) the score
+probability to estimate how likely a complete binding comprising b has a score
+that is larger than the smallest known top-k score,  (cf. Algo. 1 line 14):
+
+1(Qu(b) | b)
+
+ P (X sQu(b)
+
+ (, b))
+
+> 
+
+(5)
+
+with   [0, 1] as top-k test threshold.
+
+(1)
+?
+
+?
+
+?
+(2)
+?
+
+?
+
+?
+3.3 Score Distribution Learning
+Distributions for random variables X sQu(b) may be obtained by learning a score
+distribution P (X s
+i ) for each join input i. Note, partial bindings, which come
+from the same input, have the same set of unevaluated triple patterns. Thus, X s
+i
+captures scores of the unevaluated patterns from its partial bindings.
+Example 9. In Fig. 2-a, all partial bindings from input i1 have Qu = {tp2, tp3}
+as unevaluated patterns. Thus, P (X sQu(b11)) = P (X s
+i1 ), as binding b11 is produced
+
+A. Wagner, V. Bicer, and T. Tran
+
+by input i1. In fact, all bindings from i1 follow the same distribution, P (X s
+i1 ),
+which captures scores of tp2  tp3. Overall, we learn four distributions, cf. Fig. 3.
+i . In such a case, a common
+i , cf. Eq. 6a. We employ a
+
+assumption is to use a Gaussian distribution for X s
+conjugate prior to train its unknown mean and variance, respectively.
+
+We do not know the true distribution for X s
+
+As shown in [6], the mean of X s
+
+the variance of X s
+i
+rameters 0 = (0, 0, 2
+mean with quality 0, and 2
+
+i follows a Gaussian distribution (Eq. 6b) and
+follows an inverse-Gamma distribution (Eq. 6c). Hyperpa-
+0, 0) parameterize both distributions, where 0 is prior
+
+0 is prior variance with quality 0 [6]:
+?
+
+?
+
+?
+i  normal
+X s
+ | 2  normal
+
+, 2 
+2
+0
+2  inverse-gamma
+
+0,
+?
+
+?
+
+?
+0.5  0, 0.5  02
+
+(6a)
+
+(6b)
+
+(6c)
+?
+
+?
+
+?
+Algorithm 2. PC.train()
+Params: Weight w  1 for score sample x.
+Buffer : Buffer A storing hyperparameters .
+: Complete bindings B  O and join j.
+Input
+1 begin
+
+foreach input i in join j do
+n, n)  Ai
+
+) to score sample x
+
+// compute sample mean and variance
+
+// load prior hyperparameters for input i
+n = (n, n, 2
+// get scores of bindings for input is unevaluated patterns
+foreach complete binding b  B do
+get binding b comprised in b, which matches unevaluated patterns
+add scoreQ(b
+ x  mean(x) = 1
+s2  var(x) = 1
+(n1)
+// compute posterior hyperparameters
+n+1  n + w,
+n+1  1
+ (nn + w x)
+ 
+n+1  1
+2
+// store new (posterior) hyperparameters for input i
+Ai  n+1 = (n+1, n+1, 2
+
+xi
+
+(xi   x)2
+n+1  n + w
+
+n + (w  1)s2 + nw
+
+ ( x  n)2
+
+n+1, n+1)
+
+n2
+
+n+1
+
+n+1
+
+n+1
+?
+
+?
+
+?
+n
+?
+
+?
+
+?
+Prior Distribution. Prior initialization is called on line 3 in Algo. 1. For each
+input i we specify a prior distribution for X s
+i via prior hyperparameters 0.
+For 0 we require sufficient score statistics in the form of a sample mean,  x =
+xi  x(xi x)2, with x as sample.
+
+n
+There are multiple ways to obtain the necessary score samples:
+
+xi  x xi, and a sample variance s2 = 1
+
+(n1)
+?
+
+?
+
+?
+Example 10. Fig. 2-b depicts three sufficient statistics based on information from
+the sorted accesses: (1) Offline information in the case of sa1. That is, scores
+are known before runtime, thus,  x1 = 8.1 and s2
+1 = 0.16 can be computed offline.
+(2) Online information for access sa2. Recall, the list of matching triples for
+keywords Audrey and Hepburn must be fully materialized. So,  x2 = 0.7 and
+s2
+2 = 0.12 may be computed from runtime score samples. (3) Last, given access
+sa3, we have neither offline scores, nor a fully materialized list of triples (sa3
+loads a triple solely upon a pull request). In lack of more information, we assume
+each score to be equal likely, i.e., a uniform distribution. With min. score as 0
+and max. score as 1:  x3 = 0.5 and s2
+
+3 = 0.08.
+
+We initialize hyperparameters 0 with 0 as sample mean, 2
+
+0 as sample vari-
+ance, and 0 = 0 as sample quality. For every input, we aggregate necessary
+sample means/variances for 0/2
+0. For example, given input i1 with unevaluated
+pattern {tp2, tp3}, we sum up (aggregate) statistics stat2 and stat3:  x2 +  x3 for
+0 and s2
+0, cf. Fig. 3. Note, 0 and 0 are used to quantify the prior
+quality. For instance, stat1 and stat2 are exact statistics, while stat3 relies on a
+uniform distribution. So, weighting reflects the priors trustworthiness.
+
+3 for 2
+
+2 + s2
+
+Posterior Distribution. Having estimated a prior distribution, we continuously update the distribution with scores seen during query processing.
+
+Intuitively, each time new complete bindings are produced, all prior distributions could be trained, cf. Algo. 1 line 11 and Algo. 2. That is, complete binding
+scores are used to update hyperparameters from the previous n-th training it-
+eration, n, resulting in new posterior hyperparameters, n+1. For this, we use
+standard training on lines 10-11 (Algo. 2) [6]. In simple terms, the prior mean
+n is updated with the new sample mean  x, line 10, and the prior variance 2
+n
+is updated with the sample variance s2, line 11. Note, each input computes its
+own score sample x (Algo. 2, lines 5-6).
+
+Prior hyperparameters are weighted via n and n. Further, for each hyperparameter update, a parameter w is used as weight (indicating the quality of
+samples x). Finally, new hyperparameters n+1 are stored on line 12, Algo. 2.
+Example 11. Given input i1 and 0 = 0 = 1 in Fig. 3. Then, its prior is
+0 = (1.2, 1, 0.2, 1). We observe scores x = {x1, x2} from B = {(t12, t21, t31),
+(t13, t22, t32)}, with w = |x| = 2, x1 = 1.9 = scoreQ(t21) + scoreQ(t31), and
+x2 = 0.9 = scoreQ(t22) + scoreQ(t32). So, s2 = 0.5,  x = 1.4, which leads to
+posterior hyperparameters: 1 = 1 = 1 + 2 = 3 and
+
+(1.4  1.2)2
+?
+
+?
+
+?
+= 0.71
+
+0.2 + (2  1)  0.5 +
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+(1.2 + 2  1.4)
+
+= 1.33
+
+2
+1 =
+
+1 =
+
+After each such update only posterior hyperparameters are stored, thereby
+
+making the learning highly time and space efficient:
+Theorem 1 (Score Distribution Learning Time/Space Complexity).
+Given an A-PRBJ operator j, at any time during query processing, we require
+O(1) of space for score distribution learning. Further, given B complete bindings,
+score learning time complexity is bounded by O(|B|).
+
+A. Wagner, V. Bicer, and T. Tran
+
+Proof. A proof can be found in our report [21].
+Algorithm 3. PC.probabilityTopK()
+
+Buffer : Buffer A storing hyperparameters.
+Input
+Output: Probability that b will result in one (or more) final top-k bindings.
+
+: Partial bindings b, input i, and join j.
+
+1 begin
+
+n, n)  Ai
+?
+
+?
+
+?
+x | n, 2
+
+// load hyperparameters n for input i
+n = (n, n, 2
+// posterior predictive distribution based on hyperparam. n
+// in closed-form as Students t-distribution
+i  t(n)
+X s
+// compute score probability
+pS  P
+= P (X s
+// compute binding probability
+pB  1{Qu(b) | b}
+// probability that b contributes to top-k results
+return pS  pB
+
+X sQu(b)  (, b)
+
+i  (, b))
+?
+
+?
+
+?
+n(n+1)
+
+n
+?
+
+?
+
+?
+Predictive Distribution. In Algo. 3, we provide an implementation of the
+top-k test. At any point during query processing, one may need to perform this
+test, Algo. 1 line 8. Thus, our approach allows to always give a distribution for
+X s
+i based on the currently known hyperparameters n (Algo. 3, line 2). Since
+hyperparameters are continuously trained, the distributions improve over time.
+More specifically, we use the posterior predictive distribution. This distribution estimates probabilities for new scores, based on observed scores and the
+prior distribution. For a Gaussian conjugate prior, this distribution can be easily
+obtained in a closed form as non-standardized Students t-distribution with n
+degrees of freedom [6], cf. Algo. 3, line 3. Then, we compute P (X sQu(b)) = P (X s
+i )
+by means of the posterior predictive distribution on line 4. Last, we compute the
+binding probability via a selectivity estimation function (Eq. 3) on line 5 and
+return bs top-k test probability, cf. line 6.
+
+4 Evaluation
+Benchmarks. We used two SPARQL benchmarks: (1) The SP2 benchmark
+featuring synthetic DBLP data [16]. (2) The DBpedia SPARQL benchmark
+(DBPSB), which holds real-world DBpedia data and queries [13]. For both
+benchmarks we generated datasets with 10M triples. We translated the SPARQL
+benchmark queries to our query model (BGPs). Queries featuring no BGPs were
+discarded, i.e., we omitted 12 and 4 queries in DBPSB and SP2. We generated
+DBPSB queries as proposed in [13]: Overall, used 8 seed queries with 15 random
+bindings, which led to a total of 120 DBPSB queries. For SP2 we employed 13
+queries. In total, we had a comprehensive load of 133 queries. Query statistics
+and a complete query listing is given in [21].
+?
+
+?
+
+?
+Systems. We randomly generated bushy query plans. For a given query, all
+systems rely on the same plan. We implemented three systems that solely differ
+in their join operator: (1) A system with join-sort operator, JS, which does
+not employ top-k processing, but instead produces all results and then sorts
+them. (2) An exact and complete top-k join operator, PBRJ, featuring the cornerbound in Def. 3 and the corner-bound-adaptive pulling strategy in Def. 4. PBRJ
+is identical to Algo. 1, however, no top-k test is applied. Note, PBRJ resembles
+previous approaches for top-k processing over RDF data [9,22]. (3) Last, we
+implemented our approximate operator, A-PBRJ, see Algo 1 in Sect. 3.
+
+Score learning and top-k test implementation for the A-PBRJ operator follows
+Algo. 2 and Algo. 3, cf. Sect. 3.3. Further, we used sufficient statistics based on
+a uniform distribution over [0, 1], as discussed in Exp. 10 for sorted access sa3.
+Prior weights 0 and 0 are both 1, Algo. 2. Weight w in Algo. 2 is the sample
+size, |x|. We reused the selectivity estimation implementation from [14,15] for
+our binding probabilities.
+
+Hypothesis (H.1): We expect that JS is outperformed by PBRJ, as it computes
+all results for a query. Further, we expect A-PBRJ to outperform JS and PBRJ.
+A-PBRJs savings come at the cost of effectiveness.
+
+We implemented all systems in Java 6. Experiments were run on a Linux server
+with two Intel Xeon 5140 CPUs at 2.33GHz, 48GB memory (16GB assigned to
+the JVM), and a RAID10 with IBM SAS 148GB 10K rpm disks. Before each
+query execution, all operating system caches were cleared. The presented values
+are averages collected over five runs.
+Ranking Function. We chose triple pattern binding scores, scoreQ(t), at random with distribution d  {u, n, e} (uniform, normal, and exponential distri-
+bution). We employed a summation as aggregation function, . By means of
+varying distributions, we aim at an abstraction from a particular ranking function and examine performance for different classes of functions. We employed
+standard parameters for all distributions and normalized scores to be in [0, 1].
+Hypothesis (H.2): A-PBRJs efficiency and effectiveness is not influenced by the
+score distribution.
+Parameters. We vary the number of results k  {1, 5, 10, 20}. Hypothesis
+(H.3): We predict efficiency to decrease in parameter k for A-PBRJ and PBRJ.
+Further, we used top-k test thresholds   [0, 0.8] for inspecting the trade-off
+between efficiency and effectiveness.
+
+Metrics. We measure efficiency via: (1) #Inputs processed. (2) Time needed
+for result computation. As effectiveness metrics we use: (1) Precision: fraction
+of approximated top-k results that are exact top-k results. (2) Recall: fraction
+of exact top-k results, which are reported as approximate results. Notice, precision and recall have identical values, as both share the same denominator k.
+We therefore discuss only precision results in the following. Further, precision is
+given as average over our query load (so-called macro-precision). (3) Score er-
+ror: approximate vs. exact top-k score: 1
+k
+score
+
+
+Q(b) and scoreQ(b) as approximated and exact score for binding b [20].
+?
+
+?
+
+?
+b=1,...,k |score
+
+Q(b) scoreQ(b)|, with
+
+
+A. Wagner, V. Bicer, and T. Tran
+
+3.2E+06 
+
+3.0E+06 
+
+(a) 
+
+A-PBRJ 
+
+8.5E+04 
+
+7.5E+04 
+
+(b) 
+
+ 
+)
+s
+
+m
+
+(
+ 
+e
+m
+
+i
+
+6.5E+04 
+
+5.5E+04 
+
+4.5E+04 
+?
+
+?
+
+?
+A-PBRJ 
+
+Threshold  
+
+0  0.1  0.2  0.4  0.6  0.8 
+
+(e) 
+
+3.5E+04 
+
+1.2E+04 
+
+Threshold  
+0.1  0.2  0.4  0.6  0.8 
+
+(f) 
+?
+
+?
+
+?
+A-PBRJ 
+
+1.0E+04 
+
+8.0E+03 
+
+6.0E+03 
+
+ 
+)
+s
+
+m
+
+(
+ 
+e
+m
+
+i
+?
+
+?
+
+?
+A-PBRJ 
+
+ 
+s
+t
+u
+p
+n
+
+#
+
+2.8E+06 
+
+2.6E+06 
+
+2.4E+06 
+
+2.2E+06 
+
+2.0E+06 
+
+7.0E+05 
+
+6.0E+05 
+
+5.0E+05 
+
+4.0E+05 
+
+ 
+s
+t
+u
+p
+n
+
+#
+?
+
+?
+
+?
+0.95 
+0.9 
+0.85 
+0.8 
+0.75 
+0.7 
+0.65 
+0.6 
+
+ 
+
+n
+o
+i
+s
+i
+c
+e
+r
+
+-
+o
+r
+c
+a
+
+0.95 
+
+0.9 
+
+0.85 
+
+0.8 
+
+0.75 
+
+ 
+
+n
+o
+i
+s
+i
+c
+e
+r
+
+-
+o
+r
+c
+a
+
+(c) 
+
+A-PBRJ (E) 
+A-PBRJ (N) 
+A-PBRJ (U) 
+
+Threshold  
+0.1  0.2  0.4  0.6  0.8 
+
+(g) 
+
+7E-02 
+6E-02 
+5E-02 
+4E-02 
+3E-02 
+2E-02 
+1E-02 
+0E+00 
+
+ 
+r
+o
+r
+r
+
+e
+r
+o
+c
+
+3E-02 
+
+3E-02 
+
+2E-02 
+
+2E-02 
+
+1E-02 
+
+ 
+r
+o
+r
+r
+
+e
+r
+o
+c
+
+5E-03 
+
+A-PBRJ (E) 
+A-PBRJ (N) 
+A-PBRJ (U) 
+Threshold  
+
+0.1  0.2  0.4  0.6  0.8 
+
+(d) 
+
+A-PBRJ (E) 
+A-PBRJ (N) 
+A-PBRJ (U) 
+
+Threshold  
+0.1  0.2  0.4  0.6  0.8 
+
+(h) 
+
+A-PBRJ (E) 
+A-PBRJ (N) 
+A-PBRJ (U) 
+Threshold  
+
+0.1  0.2  0.4  0.6  0.8 
+
+3.0E+05 
+
+2.0E+05 
+
+Threshold  
+
+4.0E+03 
+
+2.0E+03 
+
+Threshold  
+
+0  0.1  0.2  0.4  0.6  0.8 
+
+0.1  0.2  0.4  0.6  0.8 
+
+0.7 
+
+Fig. 4. Evaluation results for SP2/DBPSB: (a)/(e) Efficiency: #inputs vs. threshold
+ . (b)/(f) Efficiency: time vs. threshold  . (c)/(g) Effectiveness: macro-precision vs.
+threshold  . (d)/(h) Effectiveness: score error vs. threshold  .
+
+Efficiency Results. Efficiency results are depicted in Fig. 4-a/e (b/f) for SP2
+(DBPSB). As expected in hypothesis H.1, we observed A-PBRJ to save #inputs
+and computation time. For SP2 (DBPSB), A-PBRJ needed up to 25% (23%) less
+inputs vs. baseline PBRJ and 30% (67%) vs. JS. We explain these gains with
+pruning of partial bindings via our top-k test, thereby omitting unnecessary
+joins and join attempts. In fact, we were able to prune up to 40% (90%) of the
+inputs, given SP2 (DBPSB). Fewer #inputs translated to time savings of 35%
+(65%) vs. PBRJ and 47% (80%) vs. JS, given SP2 (DBPSB).
+Interestingly, we saw an increase in #inputs for   [0.2, 0.4] in SP2 and
+  [0.4, 0.8] in DBPSB, cf. Fig. 4-a/e. For instance, comparing  = 0.2 and
+ = 0.4 in SP2, A-PBRJ read 8% more inputs. DBPSB was less affected: we
+noticed a marginal increase of 2% for  = 0.4 vs.  = 0.6. We explain the
+increase in both benchmarks with a too aggressive pruning  too many partial
+bindings were pruned wrongfully. That is, many pruned bindings would have led
+to a larger or even a complete binding. In turn, this led to more inputs being read,
+in order to produce the desired k results. In fact,   [0.6, 0.8] was even more
+aggressive. However, the ratio between pruned bindings and read inputs was
+high enough to compensate for the extra inputs. Overall, we saw a sweet spot
+at   0.2 for SP2 and DBPSB. Here, we noted pruning to be fairly accurate,
+i.e., only few partial bindings were wrongfully pruned. In fact, we observed high
+precision (recall) values for both benchmarks given   0.2: 88% (95%) in SP2
+(DBPSB)  as discussed below. With regard to computation time for SP2 and
+DBPSB queries, we noticed similar effects as for the #inputs, cf. Fig. 4-b/f. In
+particular, the sweet spot at   0.2 is also reflected here.
+
+As expressed by hypothesis H.3, we observed #inputs and time to increase in
+k for A-PBRJ and PBRJ. For instance, comparing k = 1 and k = 20, A-PBRJ
+needed a factor of 1.2 (5.7) more time, given SP2 (DBPSB). Similarly, 1.2 (6.8)
+times more inputs were consumed by A-PBRJ for SP2 (DBPSB). We explain
+this behavior with more inputs/join attempts being required to produce a larger
+result. PBRJ leads to a similar performance decrease. For instance given k = 1
+?
+
+?
+
+?
+vs. k = 20 in SP2, PBRJ needed a factor of 1.3 (1.2) more inputs (time). Note,
+as baseline JS simply computed all results, this system was not affected by k.
+
+Furthermore, we can confirm our hypothesis H.2 with regard to system ef-
+ficiency: we cloud not find a correlation between system performance and score
+distributions. In other words, score distributions (ranking functions) had no impact on A-PBRJs performance. For instance given DBPSB queries, A-PBRJ resulted in the following gains vs. PBRJ w.r.t. #inputs (time): 27% (65%) for e
+distribution, 23% (64%) given u distribution, and 21% (64%) for n distribution.
+Last, with regard to parameter  , we noted A-PBRJs efficiency to increase
+with   [0, 0.2], given SP2 and DBPSB. However, as outlined above, too aggressive pruning let to inverse effects. An important observation is, however,
+that our approach was already able to achieve performance gains with a very
+small  < 0.1. Here, partial bindings were pruned primarily due to their low
+binding probability. In fact, A-PBRJ could even save time for  = 0: 26% (60%)
+with SP2 (DBPSB). We inspected queries leading to such saving and saw that
+many of their partial bindings had a binding probability  0. We argue that this
+a strong advantage of A-PBRJ: even for low error thresholds (leading to a minor
+effectiveness decrease), we could achieve efficiency gains.
+
+Effectiveness Results. Next, we analyze A-PBRJ in terms of its accuracy. Baselines PBRJ and JS always compute exact and complete results. So, we restrict our
+attention to the A-PBRJ system and different score distributions d  {u, n, e}.
+Fig. 4-c/g (d/h) depicts the macro-precision (score error) for varying score
+distributions. We observed high precision values of up to 0.98 for both bench-
+marks, see Fig. 4-c/g. More precisely, we saw best results for a small  < 0.1 and
+the exponential distribution. However, differences are only marginal. That is,
+given  < 0.1, all distributions led to very similar precision results  [0.8, 0.95]
+and [0.90, 0.98] for SP2 and DBPSB, respectively. In other words, A-PBRJs effectiveness is not affected by a particular score distribution. We explain these
+good approximations with accurate score/binding probabilities.
+Moreover, even for large   [0.6, 0.8] A-PBRJ achieved a high macro-precision
+in [0.75, 0.8] on DBPSB queries. This is because DBPSB queries featured selective patterns and had only a small result cardinality  10. Thus, chances of
+pruning a final top-k binding were quite small  even for a large  . Moreover,
+A-PBRJ let to a very effective pruning via binding probabilities, as many partial
+bindings had a binding probability  0 (due to the high query selectivity). This
+way, A-PBRJ pruned up to 97% of the total inputs for some DBPSB queries.
+
+In order to quantify how bad false positive/negative results are, we employed the score error metric, see Fig. 4-d/h. For both benchmarks, we observed
+that score error was  [0.07, 0.11] for a small  < 0.1. We explain this with our
+high precision (recall). That is, A-PBRJ led to only few false positive/negative
+top-k results given  < 0.1. As expected, score error increased in  , due to more
+false positives/negatives top-k results. Overall, however, score error results were
+very promising: we saw an average score error of 0.03 (0.02), given SP2 (DBPSB).
+With regard to parameter k, we observed that k does not impact A-PBRJs
+effectiveness. Given SP2, we saw A-PBRJ to be fairly stable in different values for
+parameter k. For instance, macro-precision was in [0.8, 0.85] as average over all k
+
+A. Wagner, V. Bicer, and T. Tran
+
+and  = 0.1. Also for the DBPSB benchmark, we noted only minor effectiveness
+fluctuations: macro-precision varied around 7% with regard to different k.
+
+We noticed A-PBRJs effectiveness to not be influenced by varying score dis-
+tributions, see Fig. 4-c/g/d/h. Given SP2, we saw a macro-precision of: 0.79 for
+u distribution, 0.79 for e distribution, and 0.80 for n distribution. Also for the
+DBPSB benchmark, we observed only minor changes in macro-precision: 0.87
+for u distribution, 0.85 for e as well as n distribution.
+
+With regard to the effectiveness of A-PBRJ versus parameter  , we noticed
+that metrics over both benchmarks decreased with increasing  . For instance,
+macro-precision decreased for  = 0 versus  = 0.8 with 27% (23%), given
+SP2 (DBPSB). Such a behavior can be expected, since chances of pruning the
+wrong bindings increase with higher  values. Overall, this confirms H.1: A-
+PBRJ trades off effectiveness for efficiency, as dictated by threshold  .
+
+5 Related Work
+
+There is a large body of work on top-k query processing for relational databases [8]. Most recently, such approaches have been adopted to RDF data and
+SPARQL queries [9,22]. These works aim at exact and complete top-k results.
+However, for many applications result accuracy and completeness is not impor-
+tant. Instead, result computation time is the key factor.
+
+To foster an efficient result computation, approximate top-k techniques have
+been proposed [2,3,12,18,20]. Most notably, [20] used score statistics to predict the highest possible complete score of a partial binding. Partial results are
+discarded, if they are not likely to contribute to a top-k result. Focusing on
+distributed top-k queries, [12] employed histograms to predict aggregated score
+values over a space of data sources. Anytime measures for top-k processing have
+been introduced by [2,3]. For this, the authors used offline score information, e.g.,
+histograms, to predict complete binding scores at runtime. In [18], approximate
+top-k processing under budgetary has been addressed.
+
+Unfortunately, all such approximate top-k approaches heavily rely on score
+statistics at offline time. That is, scores must be known at indexing time for
+computing statistics, e.g., histograms. However, offline statistics lead to major
+drawbacks in a Web setting  as outlined in problem (P.1) and (P.2), cf. Sect. 1.
+In contrast, we propose a lightweight system: we learn our score distributions
+in a pay-as-you-go manner at runtime. In fact, our statistics cause only minor
+overhead in terms of space and time, cf. Thm. 1.
+
+6 Conclusion
+
+In this paper, we introduced an approximate join top-k algorithm, A-PBRJ,
+well-suited for the Web of data (P.1+P.2, Sect. 1). For this, we extended the
+well-known PBRJ framework [17] with a novel probabilistic component. This
+component allows to prune partial bindings, which are not likely to contribute
+to the final top-k result. We evaluated our A-PBRJ system by means of two
+SPARQL benchmarks: we could achieve times savings of up to 65%, while maintaining a high precision/recall.
+?
+
+?
+

@@ -1,0 +1,1423 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+A bootstrapping approach to entity linkage on the Semantic Web
+Wei Hu a,b,, Cunxin Jia b
+
+a National Key Laboratory for Novel Software Technology, Nanjing University, China
+b Department of Computer Science and Technology, Nanjing University, China
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 4 December 2014
+Received in revised form
+14 July 2015
+Accepted 23 July 2015
+Available online 4 August 2015
+
+Keywords:
+Entity linkage
+Bootstrapping
+Discriminative property
+Linked data
+Semantic Web
+
+In the Big Data era, ever-increasing RDF data have reached a scale in billions of entities and brought challenges to the problem of entity linkage on the Semantic Web. Although millions of entities, typically
+denoted by URIs, have been explicitly linked with owl:sameAs, potentially coreferent ones are still nu-
+merous. Existing automatic approaches address this problem mainly from two perspectives: one is via
+equivalence reasoning, which infers semantically coreferent entities but probably misses many poten-
+tials; the other is by similarity computation between property-values of entities, which is not always accurate and do not scale well. In this paper, we introduce a bootstrapping approach by leveraging these two
+kinds of methods for entity linkage. Given an entity, our approach first infers a set of semantically coreferent entities. Then, it iteratively expands this entity set using discriminative property-value pairs. The
+discriminability is learned with a statistical measure, which does not only identify important propertyvalues in the entity set, but also takes matched properties into account. Frequent property combinations
+are also mined to improve linkage accuracy. We develop an online entity linkage search engine, and show
+its superior precision and recall by comparing with representative approaches on a large-scale and two
+benchmark datasets.
+
+ 2015 Elsevier B.V. All rights reserved.
+
+1. Introduction
+
+Over the past years, the rapid development of the Semantic Web
+(SW) impels the proliferation of RDF data. Due to the distributed
+essence of SW, it frequently happens that many different entities,
+typically denoted by URIs from distributed data sources, refer
+to the same real-world thing (called coreferent entities in this
+paper). Such examples exist in the fields of personal profiling,
+publication, biomedicine, multimedia, geography, etc.
+
+Entity linkage, also known as coreference resolution or entity
+matching [13], is the process to link different entities that refer to
+the same resource. Driven by the Linked Open Data (LOD) Initiative,
+millions of entities have been explicitly linked using owl:sameAs
+statements. But compared with billions of entities on the current
+SW, there are still a significant number of entities that potentially
+refer to the same resource but have not been interlinked yet. For
+instance, more than 70 entities retrieved in the Falcons search
+engine [4] appear to refer to Tim Berners-Lee (the inventor of the
+Web), but merely six have been linked with owl:sameAs. A report
+
+ Corresponding author at: National Key Laboratory for Novel Software
+
+Technology, Nanjing University, China. Tel.: +86 25 89680923.
+
+E-mail addresses: whu@nju.edu.cn (W. Hu), jiacunxin@smail.nju.edu.cn (C. Jia).
+
+http://dx.doi.org/10.1016/j.websem.2015.07.003
+1570-8268/ 2015 Elsevier B.V. All rights reserved.
+
+about LOD [5] also shows that, out of 31 billion RDF statements
+less than 500 millions represent links across data sources; most
+just link to one another.
+
+In the SW area, conventional automatic approaches tackle entity linkage mainly from two perspectives: one is based on equivalence reasoning mandated by OWL semantics, e.g., owl:sameAs and
+other special properties [6,7]; the other is based on the intuition
+that entities refer to the same resource if they share some similar property-values in their descriptions [8,9]. Roughly speaking,
+the semantics-based approaches can infer explicitly coreferent en-
+tities, but they probably miss many potential candidates; while the
+similarity-based ones are often inaccurate due to heterogeneous
+ways to describe the same thing, and do not scale well as exhaustively pairwise comparison is needed [10]. Recent work uses machine learning to improve linkage performance [5,11,12]. However,
+it can be time-consuming and labor-intensive to build a large-scale,
+high-quality training set. Hence, a critical question to entity linkage is: How to combine the two kinds of approaches to bridge the
+gap between entity links that we already have and potential can-
+didates?
+
+In this paper, we propose a bootstrapping approach, called
+ObjectCoref, by leveraging the semantics-based and similaritybased approaches. Bootstrapping [13] is a technique used to
+iteratively improve the performance of a classifier and suitable for
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+entity linkage problem in distributed data sources; (2) We propose
+a new discriminability measure based on information gain,
+which incorporates both coreferent and non-coreferent entities
+to improve linkage accuracy; (3) We comprehensively investigate
+various vocabularies for kernel generation and refine the filtering
+rules for frequent property combinations; and (4) We verify our
+approach on more available datasets and extensively compare it
+with more representative approaches at larger scale. The newly
+introduced aspects lead to 7% increase in precision without losing
+recall.
+
+Also, the difference between the early version of ObjectCoref
+published in [15] and the approach proposed in this paper is
+significant. Although the early version used equivalence reasoning
+to build a kernel, it only expanded the kernel using the same
+labels without any bootstrapping iterations nor frequent property
+combinations (see Section 8 for more details).
+
+The rest of this paper is organized as follows. The preliminaries
+on entity linkage are introduced in Section 2. The bootstrapping
+framework is shown in Section 3. In Section 4, we introduce the
+method for building kernels. In Section 5, we describe the bootstrapping algorithm and the discriminability measure. Section 6
+presents the discovery of frequent property combinations. The experiments are reported in Section 7 and related work is discussed
+in Section 8. Finally, we conclude with future work in Section 9.
+
+2. Preliminaries
+
+An entity on the SW is typically denoted by a URI and described
+with a set of properties and values. An RDF statement is an
+entity, property, value triple, where the value can be a literal, an
+entity or a blank node.
+The semantics of owl:sameAs dictates that two entities linked
+with it should be the same, such as dbpdia:Semantic_Web,
+owl:sameAs, fb:m.076k0.
+
+Inverse functional property (IFP), e.g., foaf:homepage, is a special
+kind of property that has high discriminability for equivalence
+reasoning. The semantics of IFP defines that different entities can
+be indirectly linked to be the same by holding the same value
+for that property. IFPs can be inferred in many ways in terms
+of OWL semantics. As an example, the work in [16] conducted
+reasoning over pD* that included rules to deal with owl:sameAs,
+owl:InverseFunctionalProperty, etc. However, anyone can declare
+anything on the SW, inferring IFPs across sources may bring
+errors and inconsistency. For instance, it is incorrectly inferred
+that foaf:name is an IFP in Falcons. The work in [7] addressed
+the hijacking problem of new ontologies published on the SW
+redefining the semantics of other existing ontologies. It suggested
+to use dereferenceable URIs1 to avoid this problem.
+
+Functional property (FP) is a kind of property that can only have
+one (unique) value for an entity, which can be used to infer equivalence among entities. Also, only dereferenceable FPs are used. The
+cardinality constraint owl:cardinality (or owl:maxCardinality) is a
+built-in OWL property that links a restriction class to a data value.
+The restriction using owl:cardinality (or owl:maxCardinality) constrains a class of all entities that holds exactly (at most) N semantically distinct values for the property, where N is the value of the
+cardinality constraint. When N = 1, its semantics is similar to FPs,
+but is localized to a particular class.
+
+For example, let us assume that a country is limited to have
+exactly one capital using FP. For a country like China, if it had two
+
+1 URI dereference is a resource retrieval mechanism that uses any of the Internet
+protocols (e.g., HTTP) to obtain a representation of the resource it identifies. The
+representation retrieved by dereferencing a URI is the authoritative definition of
+that URI [7].
+
+Fig. 1. Running example.
+
+entity linkage, since there are abundant unresolved entities, but
+the amount of existing links is limited.
+
+Specifically, given an entity, we begin with building a kernel au-
+tomatically, which consists of a set of semantically coreferent enti-
+ties, via equivalence reasoning on several widely-used OWL/SKOS
+vocabulary elements. Then, we iteratively expand the kernel using discriminative property-value pairs to query new coreferent en-
+tities. The discriminability of each property-value pair is learned
+with a statistical measure, which does not only reveal the importance of this property-value pair for characterizing the coreferent
+entities, but also considers matched properties by comparing the
+values of these entities. Moreover, we mine frequent property combinations (i.e., the properties often used together) to enhance the
+property selection criterion in bootstrapping, so that the linkage
+accuracy can be further improved.
+
+Example 1. To help understanding the bootstrapping process,
+please consider the four data sources in Fig. 1, each of which
+contains a candidate entity to be linked. Let us begin with dbpe-
+dia:Nanjing. Through owl:sameAs, geo:1799962 can be inferred as
+coreferent and added into the kernel.
+
+During expansion, (rdfs:label,
+
+Nanjing) and (geo:alternate
+Name,
+Nanjing) are learned in the first iteration as two discriminative property-value pairs, in which rdfs:label and geo:
+alternateName are two matched properties. Consequently, fb:m.
+05gqy is linked due to holding the same property-value and added
+in the training set. In the second round, (geo:lat, 32 N) is the most
+discriminative property-value pair, but it causes a non-coreferent
+entity ex:NationalCity being incorrectly linked.
+
+If we already mined a frequent property combination {geo:lat,
+geo:long}, ex:NationalCity would not be selected any more, because
+the values of geo:long are different (118 E versus 117 W). 
+We developed an online, open source entity linkage search
+engine for ObjectCoref (http://ws.nju.edu.cn/entity-linkage/), and
+evaluated its performance on a large-scale, real-world dataset
+from the 2011 Billion Triples Challenge (BTC) and two benchmark
+datasets provided in the Ontology Alignment Evaluation Initiative
+(OAEI). Our experimental results show that, by comparing with
+11 representative entity linkage approaches, ObjectCoref achieved
+superior precision and recall on all the three datasets.
+
+The proposed approach substantially improves our previous
+work [14] in four aspects: (1) We formalize the query-driven
+
+Fig. 2. Methodological steps of ObjectCoref.
+
+capital values, e.g., dbpedia:Beijing and fb:m.01914, the equivalence
+relation between them can be inferred indirectly.
+
+Besides, there are other properties that can be used for entity
+linkage, e.g., skos:exactMatch. We describe them later in Section 4.
+There exist a lot of works addressing the entity linkage problem,
+which lead to different viewpoints and definitions. In this paper,
+we formalize this problem in a query-driven way with multiple
+data sources [17], rather than pairwise data sources (e.g., [5]).
+Let D = {D1, D2, . . . , Dn} be a set of data sources on the SW.
+Each data source Di  D consists of a set of RDF statements. We
+first define three operations on D to simplify our notations in the
+rest of this paper:
+
+Subj(D) = 
+Pred(D, sk) = 
+Obj(D, sk, pj) = 
+
+DiD
+
+{s | s, p, o  Di},
+{p | sk, p, o  Di},
+{o | sk, pj, o  Di}.
+
+(1)
+
+(2)
+
+(3)
+
+DiD
+
+DiD
+
+All the entities in D are denoted by U, while all the literals in D
+are represented by L. Unless otherwise specified, data sources are
+assumed to be distributed and accessible at existing triple stores,
+SPARQL endpoints, etc.
+
+Generally, entity linkage is computationally expensive. In the
+worst case, it requires O(m2) comparison w.r.t. an entity set of
+size m; the comparison method can also be very complex [10]. In
+this paper, our goal is to figure out which entities in D refer to
+the same resource as does an input entity. Our motivation is for
+SW search/browsing, where a system knows what to link only at
+query time. Another use scenario is when a small organization is
+in possession of a very large dataset, but typically needs to analyze
+small portions of it to answer on-demand analytical queries.
+Therefore, we give a new definition of entity linkage to meet our
+motivation.
+
+Definition 1 (Entity Linkage). Let U be the set of entities in a set D
+of data sources. Given an entity u  U, the entity linkage for u is to
+query a subset E(u)  U of entities for which a relation E holds:
+E(u) = {v  U | (u, v)  E},
+(4)
+where E links all the entities in U that refer to the same resource
+as u does, i.e., are coreferent with u.
+
+Similarly, N(u) denotes the set of entities for which E does not
+hold with u (i.e., non-coreferent entities). Typically, the cardinality
+of N(u) is far more than that of E(u), i.e., |N(u)|  |E(u)|. In some
+cases, a subset of E(u) or N(u) has already been known ahead of
+time as training data.
+
+3. Framework
+
+According to our definition of entity linkage, we propose a
+bootstrapping approach, which accepts an entity, denoted by u,
+as input. We describe the methodological steps for our approach
+diagrammed in Fig. 2 .
+1. Build a kernel. We automatically infer a set of semantically coreferent entities for u, referred to as the kernel of
+u, by using owl:sameAs, (inverse) functional properties and
+skos:exactMatch. These vocabulary elements are often used for
+equivalence reasoning (e.g., [6,7,18,19]), and combining them
+usually initializes an accurate training set (the inferred entities
+in the kernel are assumed to be correct). However, noisy data
+can cause error accumulation in the bootstrapping process.
+
+2. Learn discriminative property-value pairs. This is an iterative
+step. In accordance with previous studies (e.g., [8,11,20]), we
+make the assumption that coreferent entities share some similar property-value pairs, and a few property-value pairs are
+more important for linking entities. Given a set of (initially)
+coreferent entities w.r.t. u, we also approximate a set of noncoreferent entities online in terms of the coreferent ones. The
+coreferent and non-coreferent entities together constitute the
+training set of u. In each iteration, we first choose a pair of
+matched properties holding the highest discriminability (mea-
+sured with information gain [21]). Then, we assign the most
+distinguishing value to each property in this pair. Note that
+property matching is involved in the iteration. For the entities
+in the training set, we extract their property-value pairs and
+compare them with a string matching algorithm I-Sub [22]. If
+the similarity between two values is larger than a threshold,
+the related two properties are matchable. The property-value
+comparison has the highest computational cost in the bootstrapping process. The learned property-value pairs reflect important characteristics for their denoted resource, and would
+be used to query new coreferent entities holding the same
+property-value pairs.
+
+3. Exploit frequent property combinations. Some properties are
+more natural to be used together to characterize an entity,
+e.g., longitude and latitude for a coordinate. If we only picked
+up one of them to link entities, e.g., longitude, the result would
+not be accurate. To this end, we employ association rule mining to find frequent property combinations and refine them using heuristic rules beforehand. In each learning iteration, when
+a property is chosen and it belongs to some frequent property
+combination, its counterpart in the combination (e.g., latitude)
+with the most distinguishing value is complemented. As a re-
+sult, the properties in the combination with their associated values would be used together to obtain new links.
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+After the three processing steps, the approach links a set of
+
+coreferent entities that refer to the same resource as u does.
+
+4. Kernel
+
+Let U be the set of entities in a set D of distributed data sources.
+The same-as relation, denoted by S, is defined as the minimal reflexive and symmetric relation on U, satisfying that: (1) u 
+U, (u, u)  S; (2) u, v  U, if there is an RDF statement
+u, owl:sameAs, v, then (u, v)  S and (v, u)  S. For simplic-
+ity, u, owl:sameAs, v is called a same-as statement.
+For an IFP, the value of an RDF statement involving this IFP
+uniquely determines the entity. Formally, let U be the set of entities
+in a set D of data sources. The IFP relation, denoted by I, is defined
+as the minimal reflexive and symmetric relation on U, satisfying
+that: (1) u  U, (u, u)  I; (2) u, v  U, if there exist an IFP
+p and two IFP statements u, p, o,v, p, o, then (u, v)  I and
+(v, u)  I.
+The manner of using FPs for equivalence reasoning is similar.
+The RDF statement involving an FP is called an FP statement, and
+the FP relation is denoted by F . We omit the formalization here.
+
+In addition to OWL, SKOS is a popular data model to share and
+link knowledge organization systems on the Web. skos:exactMatch
+is defined for linking two entities, which implies a high degree
+of confidence that the two entities can be used interchangeably
+across a wide range of IR applications. skos:exactMatch is reflexive
+and symmetric. An RDF statement that involves skos:exactMatch
+is referred to as an exact-match statement. The exact-match relation
+between two entities is denoted by X.
+
+Based on the same-as, IFP, FP and exact-match relations, we
+
+now define the equivalence relation.
+
+Definition 2 (Equivalence Relation). Let S, I, F , X be the same-as,
+IFP, FP and exact-match relations on the set U of entities in a set
+D of data sources, respectively. The equivalence relation, denoted
+by K, is defined as the transitive closure on S  I  F  X,
+i.e., K = (S  I  F  X)+.
+
+Because S, I, F , X are all reflexive and symmetric, and by
+definition K is transitive, therefore K is the equivalence relation
+on U.
+
+Our reasons to select these four vocabulary elements are that
+they are significant in number and frequently used to infer the
+equivalence relation in many works [6,7,12,18,19]. Furthermore,
+our goal here is to automatically generate a highly-accurate kernel
+for learning discriminative properties and values, rather than infer
+as many links as the semantics-based approaches do. Regarding
+the cardinality constraint owl:cardinality (owl:maxCardinality),
+we found in our experiments that the number of cardinality
+statements for equivalence reasoning (N = 1) is little (only 148
+cardinality statements in the BTC2011 dataset), so we ignore them
+in our approach. We also investigate a number of OWL2 properties
+that can be used to obtain equivalence relations, e.g., owl:hasKey.
+However, they are quite rare at present (see Section 7.1 for more
+details). With more and more ontologies being popularized, we
+will use more properties in future.
+
+In terms of the equivalence relation K, we define the kernel of
+
+an entity.
+
+Definition 3 (Kernel). Let U be the set of entities in a set D of data
+sources. For an entity u  U, its equivalence class K(u) = {v  U |
+(u, v)  K}, under the equivalence relation K, is called the kernel
+of u.
+The Floyd algorithm is widely used to obtain the transitive
+closure, and its time complexity is O(|U|3). In practice, an entity
+
+is typically coreferent with only a small amount of others
+via equivalence reasoning, so the actual computational cost of
+constructing the kernel for an entity is low. For those entities that
+have never been interlinked yet, we can use some existing SW
+search engines (e.g., Falcons) to query a few entities with the same
+names [23,15] to build kernels. However, this alternative method
+would decrease the accuracy of kernels since it probably involves
+wrong links.
+
+5. Bootstrapping
+
+5.1. Main algorithm
+
+The main algorithm for bootstrapping entity linkage is depicted
+in Algorithm 1, which follows the so-called self-supervised or selftraining fashion [13,24] (a kind of semi-supervised learning).
+
+Given the kernel K(u) of an entity u,2 and a set X of (unresolved)
+entities from distributed data sources D, the goal of our algorithm
+is to iteratively learn the most discriminative property-value pairs
+(Lines 6 and 8), and to use them to continue linking entities in X
+and retraining itself on an expanded training set (Lines 1118). This
+algorithm terminates when all discriminative properties have been
+checked (Line 7) or the iteration times exceeds the maximum value
+T (Line 20). To avoid that there exist too many coreferent entities
+in the training set, the algorithm can randomly sample a subset of
+E to reduce the computational cost. Based on the computational
+capability of our personal computers, the sample size, denoted by
+M, is set to 100. The time complexity of the algorithm is O(T  M2),
+since in an iteration at most O(M) entities need to be pairwise
+compared, which is the most time-consuming step in the algorithm
+and the main issue of our approach.
+
+Like many bootstrapping algorithms, some key measures and
+thresholds need to be determined, including: (1) How to measure
+the discriminability of property-value pairs? (2) How to design the
+termination criteria? and (3) How to eliminate error accumulation
+during iterations? We answer them in the rest of this paper.
+
+5.2. Discriminability measure
+
+We propose a three-step method to measure the discriminability of each property-value pair. The intuition that underpins is as
+follows: The more a property-value pair is shared by a set of coreferent entities rather than non-coreferent entities, the more likely
+it implies certain discriminative characteristics for the denoted re-
+source. Thus, information gain [21] is a good measure, which computes the change in information entropy from the original state of
+the training set to the state using some property-values to link en-
+tities. Note that information gain has been widely used for classifi-
+cation.
+
+Also, different entities tend to use heterogeneous properties to
+express the same meaning, e.g., foaf:name and rdfs:label can interchange for a partys name. To handle this, we use an ontology
+matching approach [25] that finds matched properties by comparing their values in coreferent entities. The discriminative, matched
+properties and values would be considered as the important features learned from the training set to link new entities.
+
+5.2.1. Discriminability of a property pair
+
+To achieve property matching, let pi, pj be two properties
+in a set D of data sources,
+instantiated by two entities ui, uj
+respectively. The similarity of pi, pj w.r.t. ui, uj is defined as the
+
+2 Without confusion, for an entity u, its kernel K(u) is abbreviated as K, and in the
+algorithm by this analogy.
+
+Algorithm 1: Bootstrapping entity linkage
+Input: The kernel K of an entity u, and a set X of unresolved
+
+entities in a set D of data sources.
+
+Output: A set E of coreferent entities for u.
+
+1 begin
+
+Initialize two empty checklists PP and PV ;
+Copy K to E;
+repeat
+
+For u, approximate a set N of non-coreferent entities,
+s.t. N  X,|N|  |E|;
+Select the most discriminative property pair
+(pi, pj) / PP by Eq. (7), s.t.
+
+sEN
+
+Pred(D, s), pj  
+
+pi  
+respectively by Eq. (14), s.t. oi 
+oj 
+
+tEN
+t=s
+if (pi, pj) = NULL then break
+Assign the most highly-supported values oi, oj to pi, pj
+
+Obj(D, t, pj), while (pi, oi) / PV or
+
+Obj(D, s, pi),
+
+Pred(D, t);
+
+sE
+
+tE
+
+(pj, oj) / PV ;
+if oi = NULL and oj = NULL then
+if oi = NULL then
+
+Push (pi, pj) in PP; go back to Line 6;
+
+Use (pi, oi) to query out a set V of candidate
+entities, s.t. V  {v  X | v, pi, oi  D};
+if (pi, oi) is discriminative by Eq. (15) then
+
+Add V to E, and remove V from X;
+
+if oj = NULL then
+
+Use (pj, oj) to query out a set W of candidate
+entities, s.t. W  {w  X | w, pj, oj  D};
+if (pj, oj) is discriminative by Eq. (15) then
+
+Add W to E, and remove W from X;
+
+Push (pi, oi), (pj, oj) in PV ;
+
+until iteration_times > T;
+return E;
+
+maximum similarity between their values (because a property for
+an entity can have more than one values):
+sim(pi, pj | ui, uj) = max
+
+I-Sub(oi, oj),
+
+(5)
+
+oiObj(D,ui,pi)
+ojObj(D,uj,pj)
+
+I-Sub(oi, oj) = Comm(Desc(oi), Desc(oj))
+ Diff (Desc(oi), Desc(oj))
++ Winkler(Desc(oi), Desc(oj)),
+
+(6)
+
+where I-Sub is a refined edit distance based comparison method
+[22], whose value is in the [1, 1] range and novelty is that the
+similarity of two strings is related to both their commonalities and
+differences. Winkler() is a correction coefficient. If the value oi is
+an entity, Desc() gets its local name, which is the string after the
+last hash # or slash / of the entitys URI; If oi is a literal, Desc()
+extracts its lexical form. Blank nodes are ignored for simplicity and
+string normalization like cases is preprocessed. Also, pi, pj can be
+the same property instantiated by different entities. A systematic
+evaluation on string comparison methods [26] showed that I-Sub
+is among the best for ontology matching.
+Let T be the training set being the union of coreferent (T+ =
+E E) and non-coreferent (T = N N) entity pairs. We measure
+the discriminability of (pi, pj) in terms of its information gain IG()
+
+on T [12], which computes the supporting confidence of using
+(pi, pj) to link entities:
+Discr(pi, pj) = IG(pi, pj) = E(T)  E(T(pi,pj)),
+|T|
+|T| ,
+
+log
+
+log
+
+(8)
+
+(7)
+
+|T+|
+|T|  |T|
+E(T) = |T+|
+|T|
+|T|
+|T| E(P) + |Q|
+E(T(pi,pj)) = |P|
+|T| E(Q),
+E(P) = |P+|
+|P+|
+|P|  |P|
+|P|
+|P|
+|Q+|
+E(Q) = |Q+|
+|Q|  |Q|
+|Q|
+|Q|
+
+log
+
+log
+
+|P|
+|P| ,
+|Q|
+|Q| ,
+
+log
+
+log
+
+P = {(u, v)  T(pi,pj) | sim(pi, pj | u, v)  },
+Q = T  P,
+
+(13)
+where  is a predefined threshold for property matching. E(T) measures the information entropy of the original training set T, and
+E(T(pi,pj)) measures the information entropy that uses (pi, pj) to
+classify entity pairs in T. P+ and P denote the sets of coreferent
+resp. non-coreferent entity pairs with the similarities of (pi, pj) no
+lower than . Q+ and Q represent the remaining sets of coreferent
+resp. non-coreferent entity pairs, including the ones that do not instantiate (pi, pj). The greater the value of Discr(pi, pj) is, the more
+discriminative to use (pi, pj) for entity linkage.
+
+(9)
+
+(10)
+
+(11)
+
+(12)
+
+5.2.2. Non-coreferent entity approximation
+
+To measure the information gain of a property pair, the noncoreferent entity pairs that do not hold the equivalence relations
+are useful as well. According to our analysis, there are only a few
+entities that have been defined as semantically different using
+owl:differentFrom or owl:AllDifferent (see Section 7.1). This rare
+quantity is inadequate to constitute a balanced training set for
+information gain measurement.
+
+In this paper, we approximate the non-coreferent entities in
+terms of the prefound coreferent entities. Specifically, for any two
+entities, if they are not identified as coreferent, we consider them
+as an almost non-coreferent pair. This approximation can involve
+wrong results to some extent, because coreferent entities are inferred using equivalence reasoning, which may cause false nega-
+tives. But in consideration of the significant difference between the
+sizes of coreferent and non-coreferent entities, the approximation
+is usually precise [5]. Moreover, unlabeled entities participate in
+training, which is important for semi-supervised learning. This is
+also known as learning from positive and unlabeled data [27].
+
+In case that there are too many entities being non-coreferent,
+and most of them are not useful to learn discriminative properties
+because they are totally orthogonal on types and property-values,
+we reuse the filtering rules in [12] to eliminate definitively noncoreferent entities, in order to achieve the balance between the
+coreferent and non-coreferent entities, in other words, to keep
+the sizes of E and N (Line 5 in the algorithm) at the same order
+of magnitude. The first rule is to constrain the non-coreferent
+entities from the same classes and namespaces as the coreferent
+entities, and the second rule is to constrain the non-coreferent
+entities sharing a common prefix of length l in local names
+with the coreferent entities. For instance, dbpedia:Beijing and
+dbpedia:Berlin have the same type dbpedia:Place and namespace
+dbpedia:, and they also share the first two letters of their local
+names be. However, unlike [12], the non-coreferent entities are
+only related to the current input and generated on-demand during
+iterations.
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+5.2.3. Discriminability of a value pair
+
+In the second step (Line 8 in Algorithm 1), we assign the
+most highly-supported value to each property in the most
+discriminative property pair, as a property can involve multiple
+values, but some values for the property are little supported by
+the training set (e.g., typos). For a pair of discriminative properties
+(pi, pj) w.r.t. a set E of coreferent entities in a set D of data sources,
+the most highly-supported value pair (oi, oj) for (pi, pj) is obtained
+by counting the occurrence:
+(oi, oj) = arg max
+(o,o)
+
+|{(s, s)  E  E | I-Sub(o, o)  ,
+
+s, pi, o  D,s, pj, o  D}|.
+
+(14)
+This equation allows oi, oj being the same value. We set  = 0.65
+based on the recommendation of the I-Sub developers [22]. Note
+that these similarities between values have been computed in the
+measurement of the discriminability of property pairs (Eq. (5)).
+Moreover, the similarities obtained in previous iterations can be
+cached for reuse. So, the time for pairwise comparison can be
+largely reduced.
+
+5.2.4. Discriminability of a property-value pair
+
+In the third step (Line 13 or 17), the discriminability of a
+property-value pair is measured w.r.t. the amount of potentially
+coreferent entities that can be found by using that property-value
+pair. The discriminability of values is now taken into account. Let
+pi, oi be the discriminative property and value selected from a set
+D of data sources respectively, the discriminability of the propertyvalue pair (pi, oi) is computed as follows:
+Discr(pi, oi) = |{s  E | s, pi, oi  D}|
+|{s  X | s, pi, oi  D}| ,
+
+(15)
+
+where E, X are the coreferent and unresolved entity sets in D,
+respectively. We set a threshold  according to our experiments
+to determine whether a property-value pair is discriminative
+enough or not. The selection of discriminative property-value pairs
+prevents improper expansion (e.g., some names like Tim for a
+property are too prevalent in the real world), which eventually
+alleviates error accumulation.
+
+To summarize our bootstrapping algorithm, it links entities
+in a query-driven way rather than by training some complex
+classifiers, because (1) our goal is to link entities in distributed
+data sources or even for the whole SW, the involved properties
+and values (i.e., the feature space) are often sparse and massive,
+which make training complex classifiers not easy [11]; and (2)
+even if we learned a complex classifier, it is still hard to conduct it
+to classify entities in large-scale, untrained datasets. For example,
+many data sources on the current SW only offer SPARQL endpoints
+to query limited amount of data, and do not support complex
+operations and heavy loads. A recent investigation [28] showed
+that, for 427 public SPARQL endpoints registered in DataHub, only
+two explicitly provide offline RDF files, which make training and
+applying complex classifiers difficult.
+
+In bootstrapping,
+
+Example 2. Let us see Fig. 1, the kernel is constituted by dbpedia:
+Nanjing and geo:1799962.
+(rdfs:label, geo:
+alternateName) is learned as the most discriminative property pair
+in the first iteration, where some non-coreferent entities can be
+approximated. For example, if we considered other cities in geo
+whose geo:alternateName is different from Nanjing but have
+at least two common prefix letters na, the entity geo:5376200
+holding (geo:alternateName, National City) would be guessed
+as a non-coreferent entity of dbpedia:Nanjing. Next, Nanjing is
+the most supported value for them, and (rdfs:label, Nanjing) and
+(geo:alternateName, Nanjing) form two discriminative propertyvalue pairs, then fb:m.05gqy would be queried out and added to the
+training set for the next iteration.
+
+6. Frequent property combinations
+
+(16)
+
+During ontology development, some properties are intended to
+be used simultaneously, e.g., geo:lat and geo:long; merely using
+any part of them cannot cover their interdependent semantics. In
+order to improve the accuracy of our entity linkage approach, we
+mine this kind of property combinations and use them as external
+knowledge to enhance the selection criterion of discriminative
+property pairs.
+
+We refine the association rule mining technique to focus on binary associations between properties, i.e., a property combination
+is constituted by exactly two different properties. We argue that
+binary associations widely exist in real world and are easy to be
+understood, although association rule mining is naturally applicable for multi-ary associations.
+
+A binary association rule expresses that the occurrence of a
+property statistically indicates the presence of another property for
+the same entity with certain confidence, which can be transformed
+to a conditional probability. We prefer the co-occurrence relation
+to the binary associations, which requires that not only the
+occurrence of one property implies the other, but vice versa. The
+co-occurrence relation can be interpreted as the indicator for
+inter-dependency of two properties. Formally, let pi, pj be two
+properties instantiated in a set D of data sources, the co-occurrence
+confidence of pi, pj is defined as follows:
+Conf (pi, pj) = min{Pr(pj | pi), Pr(pi | pj)},
+Pr(pj | pi) = Pr(pi  pj)
+
+= |{s  Subj(D) | pi, pj  Pred(D, s)}|
+|{s  Subj(D) | pi  Pred(D, s)}|
+
+(17)
+When Conf (pi, pj) is larger than a predefined threshold, {pi, pj}
+is called a frequent property combination, in order to reflect its
+significance in statistics. Different from the goal of traditional
+association rule mining, we prefer a high threshold, which is
+likely to exploit common combinations in data, rather than some
+surprising or obscure patterns.
+
+Pr(pi)
+
+Previous work [29] demonstrated that standard association
+rule mining algorithms like Apriori may generate considerable
+spurious patterns when being performed on real-world data
+or random data. We observed a similar phenomenon on the
+SW. Several social networking sites, e.g., hi5.com and livejour-
+nal.com, exported a large volume of RDF data about their users,
+which brought many spurious frequent property combinations,
+e.g., {foaf:age, foaf:mbox}. These combinations are not tightly corelated in semantics, and combining them together can result in
+overfitting. Therefore, we propose three filtering rules to exclude
+these spurious combinations.
+
+Semantics-based filtering. We investigate the namespaces of
+properties and their value ranges defined in their dereferenced
+documents. We argue that two properties in a frequent property
+combination are co-related more in semantics if they are defined
+by the same data provider and their semantics is compatible.
+Interestingly, the work in [11] found that the domain compatibility
+has little effect. We divide a value range to one of six general
+categories according to the XSD specification [20]: a URI, a string,
+an integer, a float, a datetime and a thing, in which thing is
+compatible with the other five disjoint categories. As an example,
+the ranges of foaf:age and foaf:name can be categorized into
+integer and string, respectively. We also remove the frequent
+property combinations that contain built-in properties in RDF(S),
+OWL and DC, because they exist in nearly all data sources.
+
+Statistics-based filtering. We conduct statistical analysis on
+the real use of properties and their values. The intuition that
+underpins is as follows: irrelevant properties probably exhibit
+divergence in numbers of assigned values along with entities. For
+
+example, a book usually has one publisher but several authors.
+Formally, let pi be a property instantiated in a set D of data sources,
+AC() measures the average cardinality in which pi is instantiated,
+while AV () measures the average number of unique values that pi
+has:
+
+
+|Obj(D, s, pi)|
+
+AC(pi) =
+
+AV (pi) =
+
+sSubj(D)
+
+|{s  Subj(D) | pi  Pred(D, s)}| ,
+
+sSubj(D)
+
+Obj(D, s, pi)|
+|Obj(D, s, pi)| .
+
+sSubj(D)
+
+(18)
+
+(19)
+
+If AV (pi)  1, pi is called an almost key property [30]. When
+two properties are statistically co-related, we assume that they
+should have close values between ACs and between AV s. Similar
+measures are used in [10]. It is difficult and time-consuming to
+analyze billions of RDF statements and obtain accurate ACs and
+AV s for all properties. For approximation, we extract 1.2 million
+entities by the class-based balanced sampling technique [14], and
+use them to mine frequent property combinations (see Section 7.1
+for some exploited frequent property combinations).
+
+Example 3. Let us see the example in Fig. 1 again, the average
+cardinality and the average number of values for geo:lat are:
+AC(geo:lat) = 1,
+
+AV (geo:lat) = 0.33. 
+
+Similarity-based filtering. It is also natural that the textual
+descriptions of properties indicate some kind of co-occurrence.
+In consideration of this aspect, we use I-Sub to calculate the
+similarities between properties labels. We keep the frequent
+property combinations such that the involved two properties have
+at least a low similarity. Although this filter would discard a
+few correct combinations, it works as a complement with the
+semantics-based and statistics-based rules. Based on our empirical
+observation, we set the similarity threshold to 0.1 and used the
+rule for the properties that have no range definitions and are
+instantiated by less than 10 entities.
+
+Besides, we manually verified that the frequent property
+combination mining algorithm and the three filtering rules (and
+related parameters) performed well on the DBpedia 3.9 dataset
+for faceted entity browsing. We refer interested readers to our
+technical report [31] for more information.
+
+i, p
+
+i, p
+
+We store these refined frequent property combinations prior
+to linkage. During executing Algorithm 1, when a highlydiscriminative property pair (pi, pj) is selected (see Line 6 in the
+algorithm), we immediately search the frequent property combinations for pi, pj, respectively. Assuming p
+j being the counterparts of pi, pj in two frequent property combinations respec-
+tively, the discriminability of (pi, pj) is refined to max{IG(pi, pj),
+i, p
+IG(p
+j) (if exists) are
+j} with their values
+also extracted. Consequently, {pi, p
+would be jointly used to query coreferent entities (Lines 12 and 16).
+It often happens that, when pi, pj are the same property, p
+j are
+probably the same as well. Recall the example shown in Fig. 1. In
+the second iteration, assume that the discriminability of geo:lat is
+0.72, and the discriminability of geo:long in the frequent property
+combination is 0.7, the overall discriminability of the two properties is 0.72 and they would be used together to query new entities.
+
+j)}. Then, the most supported values of (p
+i} and {pj, p
+
+i, p
+
+7. Evaluation
+
+We implemented an online entity linkage search engine for
+the proposed approach ObjectCoref. In this section, we describe
+our experimental results on the large-scale, real-world BTC2011
+
+Table 1
+Statistical data of the BTC2011 dataset.
+
+Entities
+RDF statements
+Same-as statements
+IFP statements
+FP statements
+Exact-match statements
+Cardinality statements
+Has-key statements
+Different-from statements
+All-different statements
+
+>100 million
+>2 billion
+3,446,029
+1,799,976
+2,279,474
+
+Table 2
+Summary of 50 testing entities.
+
+People
+Technical terms
+Universities
+Publications
+
+Places
+Music/movies
+Companies
+Other domains
+
+dataset and the benchmark datasets NYT and PR. Our tests were
+performed on a personal desktop with an Intel Core i5 3.1 GHz CPU,
+4 GB memory, Ubuntu 11.10 and Java 7. The datasets were stored
+on a server with two Xeon Quad 2.4 GHz CPUs, 64 GB memory,
+CentOS 6.4 and MySQL 5.6. The source code and experimental
+results can be downloaded from http://ws.nju.edu.cn/entity-
+linkage/.
+
+7.1. Evaluation on the BTC2011 dataset
+
+Dataset and evaluation goals. Our objective in this test is to
+link entities in various data sources and domains. We selected the
+BTC2011 dataset as it is large-scale, real-world and retrieved from
+plenty of data sources. Since 2012, the BTC dataset is extracted
+from a few fixed sources (e.g., DBpedia, Freebase, Datahub, Rest
+and Timbl in 2012), and partially overlaps the NYT dataset that we
+selected from OAEI (i.e., DBpedia and Freebase), so we did not use
+the versions later than 2011 in this test.
+
+The statistical data of the BTC2011 dataset is depicted in Table 1.
+This dataset contains over 100 million entities involved in two
+billion RDF statements. By parsing it, 3.4 million (unique) sameas statements were obtained, representing 0.17% of the total
+amount of statements. From overall 48 thousand properties, 45
+dereferenceable IFPs and 423 dereferenceable FPs were identified.
+But the actual number of equivalence relations derived from the
+IFP and FP statements is not much. We also counted the number of
+statements using new OWL2 properties to construct equivalence
+relations, e.g., owl:qualifiedCardinality and owl:hasKey, but it
+turned out that they are quite few in the BTC2011 dataset. Also,
+the quantity of statements to semantically infer non-coreferent
+entities is rare.
+
+Experimental methodology. We analyzed 364 thousand query
+logs in the Falcons search engine and chose 50 most frequently
+queried entities for testing. These entities come from nine different
+sources, e.g., DBpedia, SW Dog Food, Freebase and Last.fm, and
+cover a wide range of domains (see Table 2). To the best of our
+knowledge, there is still a lack of testing entities and reference links
+for our intended test.
+
+We followed the evaluation procedure in [32] and measured
+precision and relative recall. For precision, we invited 30 graduate
+students in our group, who have been familiar with entity linkage,
+to review the results generated by all systems. Each entity link
+was reviewed by two students, and a student was asked to review
+280 links in average. A student first decided whether an entity is
+coreferent with the testing entity, and scored it 1 for correct,
+1 for wrong or 0 for not sure. Then, because two students may
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+Table 3
+Examples of frequent property combinations.
+
+Frequent property combinations
+{time:hasBeginning, time:hasEnd}
+{ecs:hasGivenName, ecs:hasFamilyName}
+{dbpedia:height, dbpedia:weight}
+{geo:lat, geo:long}
+{foaf:givenName, foaf:surname}
+
+ACs
+{1.00, 1.00}
+{1.00, 1.00}
+{1.03, 1.05}
+{1.13, 1.12}
+{1.13, 1.00}
+
+AV s
+{1.00, 1.00}
+{0.92, 0.90}
+{0.12, 0.30}
+{0.88, 0.91}
+{0.64, 0.70}
+
+(a) Different components.
+
+(b) ObjectCoref vs. others.
+
+Fig. 3. Precision and relative recall comparison on BTC2011.
+
+have conflicts about the correctness of an entity link (i.e., the sum
+of their scores equals 0), we employed a third arbitrator to finally
+determine it. But, only a small portion (<3%) used arbitration.
+
+The union of correct entity links from all systems forms the
+golden standard for evaluating relative recall, which is defined
+as the number of correct entity links in one system divided by
+the total correct number of unique entity links from all systems.
+Relative recall provides an approximate solution to the situation
+that the total number of results is unknown.
+
+In overall, our golden standard contains 1472 reference links.
+It is worth mentioning that this evaluation procedure was timeconsuming and tedious. A student spent nearly 2.5 h averagely
+to complete her review. The level of agreement between the 30
+students on the results, measured by Fleisss  [32], is 0.80, which
+indicates sufficient agreement among them.
+
+Frequent property combinations. By executing the Apriori
+association rule mining algorithm, we mined 7473 frequent
+property combinations with confidence greater than 0.98 (we set
+this high threshold based on our observation). Then, we used the
+three heuristic rules to filter 6599 spurious combinations, where
+35% were by the semantics-based rule, 37% were by the statisticsbased rule and 28% were by the similarity-based, demonstrating
+the effectiveness of all the three filtering rules. We employed the
+remaining 874 combinations as external knowledge to enhance
+the property selection criterion. Table 3 lists five frequent property
+combinations, where the average cardinality of a property close to
+1.0 reflects that it is used once in average for a single entity, e.g., a
+person usually has only one family name. The average number of
+values for a property smaller than 1.0 reveals that a part of entities
+hold the same value of that property.
+
+We also found that 13 alternative combinations were lost
+due to the incompleteness of samples. For instance, though
+we identified {foaf:givenName, foaf:surname} as a combination,
+another {foaf:givenName, foaf:lastName} was not covered by the
+sample set. Nevertheless, we show shortly these frequent property
+combinations can help improve the linkage accuracy.
+
+Linkage accuracy. First, we tested each component in ObjectCoref to verify its contribution to the whole system. Fig. 3(a) shows
+the precision and relative recall comparison. The kernel achieved
+the highest precision but the lowest relative recall, because some
+coreferent entities cannot simply be identified via equivalence
+
+reasoning. During bootstrapping, ObjectCoref approximated noncoreferent entities to measure discriminability and employed frequently property combinations to enhance the selection criterion
+of properties. Both of them contributed to the precision, leading
+to the best overall accuracy of ObjectCoref. For example, the noncoreferent entities took effect on the testing entity referring to
+Jens Lehmann (an SW researcher), if they were not considered,
+we would link a wrong person (a German football player with
+the same name). For another example, without the combination
+{foaf:givenName, foaf:surname}, different people with the same
+given name (e.g., Frank or Tim) would be wrongly linked. In
+overall, 61% correct links were inferred from the kernel, and 39%
+correct links were found during bootstrapping, in which 3% were
+from frequent property combinations.
+
+Second, we made a comparison between ObjectCoref and
+four different systems, each representing a type of automatic
+approaches suitable for large-scale data sources. Note that these
+systems can have several variations and it is hard to cover them
+all in our test. Still, we believe that this empirical comparison is
+helpful to make progress towards the solution of our problem.
+ sameas.org3 is a purely semantics-based system. It makes
+use of at least seven properties that can explicitly infer the
+equivalence relations, such as owl:sameAs, skos:exactMatch,
+skos:closeMatch, obo:hasExactSynonym, rkb:coreferenceData,
+umbel:isLike and voc:similarTo. Because sameas.org runs on its
+own dataset, we deployed it on BTC2011 by ourselves.
+ Indexing + similarity computation. This kind of approaches
+leverages indexing techniques on a few important properties to
+locate candidate entities, and then combines various matchers
+to compute similarities between these candidates. SLINT+ [20]
+and Zhishi.links [11] used this framework, enabling them to
+scale to large datasets. In our evaluation, we indexed the labels
+and local names of all the entities in BTC2011, and used the TFIDF model to compute the similarities between the descriptions
+of entities. The similarity threshold was set to 0.24 based on the
+best accuracy in our test.
+
+3 http://sameas.org/.
+
+Table 4
+Statistical data of the OAEI datasets.
+
+No. of entities in NYT
+New York Times
+DBpedia
+Freebase
+Geonames
+No. of entities in PR
+Data source 1
+Data source 2
+
+Locations
+
+Persons1
+
+Organizations
+
+People
+
+Persons2
+
+Restaurants
+
+a sample entity with 11.3 coreferent ones. However, this time
+varied between cases and the time spent on a few entities was
+much longer than the average (mainly caused by the abuse of
+owl:sameAs as rdfs:seeAlso). This demonstrates that ObjectCoref
+is relatively efficient for linking a majority of entities. Also, the
+average number of entities in the kernels is 1.5, which reflects a
+significant gap between the sizes of existing coreferent entities and
+potential candidates.
+
+7.2. Evaluation on the OAEI datasets
+
+Datasets and evaluation goals. Our main goal in this test
+is to compare ObjectCoref with other competitors on the same
+benchmark datasets. Additionally, a few key parameters can be
+refined based on the given reference links. We used the NYT dataset
+from OAEI2011 and the PR dataset from OAEI2010 for our intended
+test [3335]. The statistical data of the two datasets are listed in
+Table 4. The datasets were separated to 10 random partitions, and
+asked to conduct 10-fold cross-validation.
+Experimental methodology. We employed the conventional
+precision, recall and F-score to assess accuracy, where F-score =
+2precisionrecall
+precision+recall . For 10-fold cross-validation, we first picked up one
+fold in each validation and used it as the training set to learn discriminative property pairs. Then, we used the learned discriminative property pairs to link entities and measure average accuracy
+in the remaining nine folds. We also approximated non-coreferent
+entities complementing to the reference links (i.e., coreferent en-
+tities) for each fold. Furthermore, since the datasets were fixed,
+only two frequent property combinations mined in the previous
+test were reused: {geo:lat, geo:long} and {given_name, surname}.
+Linkage accuracy. We compared ObjectCoref with seven participants in OAEI: AgreementMaker, SERIMI, Zhishi.links, ASMOV,
+CODI, LN2R and RiMOM. We used them due to the availability of
+their entity links on these datasets, where the former three offered
+their results on NYT, while the latter four presented their results
+on PR. We generally introduce these OAEI participants as follows:
+ AgreementMaker [36], SERIMI [9], RiMOM [8] and Zhishi.
+links [11] are purely similarity-based systems. Zhishi.links
+created indexes on user-defined properties, which enabled it
+more scalable to larger datasets. Domain knowledge was also
+utilized by Zhishi.links for property-value matching.
+ LN2R [18] integrated a knowledge-based matcher (L2R) to
+find semantically equivalent entities and used a similarity
+propagation algorithm (N2R) to generate similarities among
+entities.
+ ASMOV [37] and CODI [38] used similarity-based methods
+to link entities and conducted logical reasoning to resolve
+inconsistent results.
+The comparison results on F-score are shown in Fig. 5. On the
+NYT dataset, ObjectCoref performed best on the domains of Locations and People. Specifically, ObjectCoref outperformed in precision since it often learned highly discriminative property pairs
+(see Table 5 for the numbers). We found that the discriminative
+
+Fig. 4. Precision and relative recall w.r.t. number of iterations on BTC2011.
+ Name expansion. This kind of methods uses the name descriptions of entities like their labels and local names, and
+expands to other entities with similar names. Two representatives are [23,15], where [23] also integrated homonyms to
+exploit more results. In our implementation, we used all the labels and local names of the entities in the kernel and WordNet
+3.1 for homonym lookup. We queried those entities with the
+same name, which was similar to the early version of ObjectCoref [15].
+ Class-based learning. This kind of approaches identifies discriminative properties statically w.r.t. different classes, and matches
+other entities under the same classes using the learned prop-
+erties. We chose [12] in the test, which conducted equivalence
+reasoning to create a large-scale training set offline and ranked
+properties w.r.t. the information gain in different classes. Value
+similarities from top-5 properties were linearly aggregated
+with equal weighting, and the threshold was fixed to 0.14 according to the best accuracy.
+Fig. 3(b) shows the precision and relative recall comparison
+between ObjectCoref and the other four systems. We saw that
+ObjectCoref achieved the best overall accuracy, while sameas.org
+obtained the best precision but unsurprisingly missed many
+potentially coreferent entities. The second best system in overall is
+class-based learning, which largely depended on the sufficiency of
+training sets, causing its accuracy varied between testing entities.
+The system based on indexing+ similarity computation performed
+largely worse than the others, because it generated too many
+candidate entities with diverse property-values, and failed to
+decide a uniform threshold to eliminate wrong ones. The system
+based on name expansion found many correct entity links, but in
+some cases only using name descriptions resulted in missing links
+or wrong links.
+
+Bootstrapping curve. Fig. 4 depicts the average precision
+and relative recall on the 50 testing entities w.r.t. the number
+of iterations, where the relative recall continuously rises up at
+the beginning, and ascends slowly later. This result suggests
+that a small amount of discriminative properties is accurate
+enough for entity linkage. If bootstrapping continues, some nondiscriminative properties would be chosen and cause a decrease
+in precision. Based on the figure, we set the maximum number of
+iterations T = 4.
+
+We tried various values for the discriminability threshold 
+of property-values. But the numbers of entity links varied, and it
+was difficult to obtain a uniform value for . As an entity involves
+20 statements in average and only a small portion contributes
+to entity linkage, we set  = 1
+20 , constraining that if the size
+of candidate entities in the next round is 20 times more than
+that of current round, the learned property-value is probably non-
+discriminative. We will study the way to adjust  flexibly in future.
+Running time. We randomly selected 5000 sample entities
+from the dataset and repeated the experiment 10 times to count
+the average running time. It took about 12.6 s in average to link
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+(a) NYT Locations.
+
+(b) NYT Organizations.
+
+(c) NYT People.
+
+(d) PR.
+
+Fig. 5. F-score comparison on OAEI.
+
+Table 5
+Number of discriminative property pairs and running time on OAEI.
+
+No. of discr. property pairs
+Running time (min)
+
+Locations
+
+Organizations
+
+People
+
+properties that we learned largely overlap with those manually
+specified in Zhishi.links, which verified the effectiveness of Ob-
+jectCoref. However, Zhishi.links only calculated the name/alias and
+geographical similarities, which made it more precise but missed
+some potentials. The recall of the remaining systems was not very
+stable, because they only used rdfs:label as the main discriminative
+property and missed many candidate links in some cases. Besides,
+the frequent property combinations improved 2% F-score on the
+domains of Locations and People.
+
+the PR dataset, ObjectCoref achieved the highest
+F-score in average. Two discriminative properties, soc_sec_id and
+phone_number, were used mostly to link entities. Compared with
+other systems, ObjectCoref identified non-discriminative proper-
+ties, e.g., category on the domain of Restaurants, which brought
+wrong links to the similarity-based systems.
+
+For
+
+Running time. Table 5 also lists the average time of learning
+discriminative properties in one fold and linking entities in the
+other nine, which varied between domains and was mainly
+affected by the quantity of entities (and their property-values) to
+be compared. For instance, ObjectCoref spent four times longer
+to link entities for the domain of People than Locations, since the
+entities for People are more and some properties have long textual
+values. Considering the size of the datasets, the average running
+time is less than 1 s per entity, which is relatively efficient.
+
+Parameter sensitivity. We observed the F-score with the
+variation of  for determining whether two properties are similar
+or not. In Fig. 6, the F-score is stable when   0.5, which
+shows that the discriminative property learning is insensitive to
+
+this threshold. We suggest  = 0.8 to achieve a balance between
+the accuracy and coverage of matched properties.
+
+Additionally, we analyzed the average precision and recall
+curves w.r.t. the number of iterations. We observed a similar
+phenomenon that the best accuracy can be achieved in about four
+iterations.
+
+8. Related work
+
+Entity linkage is important to enable semantic interoperability
+and actualize data integration [39]. Conventionally, researchers in
+the SW field tackle this problem by using equivalence reasoning
+and similarity computation. The approaches based on equivalence
+reasoning mainly make use of owl:sameAs [6] and other special
+properties [7,19], while the approaches based on similarity
+computation compare the property-values of entities to see how
+similar they can refer to the same resource [8,9,36]. Recent studies
+also use machine learning to improve the accuracy of similarity
+computation [5,11,12]. Usually, the similarity-based approaches
+assume pairwise datasets as input and their computational costs
+are high, so it is hard to directly conduct them on massive data
+sources or even the whole SW.
+
+For combining the semantics-based and the similarity-based
+approaches, Gracia et al. [23] dedicated large-scale clustering
+to ontology terms, which looked up synonyms to construct a
+kernel and expanded the kernel to other entities having similar
+labels and local names. The early version of ObjectCoref [15]
+used equivalence reasoning to build the kernel given an entity,
+
+(a) NYT Locations.
+
+(b) NYT Organizations.
+
+(c) NYT People.
+
+(d) PR.
+
+Fig. 6. F-score w.r.t. variation of .
+
+and expanded the kernel to others with the same labels. It
+also ranked candidate entities according to their trustworthiness
+and similarities to the given entity. These two approaches
+can be considered as bootstrapping in some sense, but they
+only conducted the expansion process once. Furthermore, the
+expansion was executed only based on labels and local names.
+Unlike them, our bootstrapping framework is adaptive to a variety
+of properties, and our experimental results show that our iterative
+expansion improved the name expansion approach with 23%
+relative recall.
+In recent years, crowdsourcing attracts many
+attentions in entity linkage, and active learning is often integrated
+to make the best use of human efforts in a semi-supervised
+way, in which a learning algorithm is able to interactively query
+humans to improve itself. See SILK [5] and ZenCrowd [40] as
+two representatives. Different from them, user interaction is not
+involved in our bootstrapping process.
+
+A vital component in our bootstrapping algorithm is measuring
+the discriminability of properties and values. The works in
+[10,20] selected domain-independent important properties for
+entity linkage. They both calculated the global distribution of
+properties to measure their discriminability and coverage without
+considering existing entity links and the discriminability of values.
+SAKey [30] introduced an efficient approach to identify almost key
+properties where erroneous data or duplicates exist. The studies in
+[11,12] used offline equivalence reasoning to build global training
+sets and solved the problem of entity linkage as the binary
+classification problem using the features learned from the
+training sets. Differently, our approach is dynamic to different
+entities and incorporates property matching within iterations,
+because a property in different entities tends to have different
+discriminability, and various properties can express a similar
+meaning. We also exploited frequent property combinations and
+designed three filtering rules.
+
+Outside the SW, identifying duplicate entities, also known as
+record linkage, coreference resolution, de-duplication and many
+
+others, have been broadly studied in database [13]. The kind of
+work is generally categorized as similarity-based due to lacking
+formal semantics to infer equivalence explicitly. Besides, the
+relational model
+is different from RDF/OWL. Some candidate
+selection schemes (e.g., [41]) are given to identify key attributes to
+reduce pairwise comparison, and we modified a simple common
+prefix based scheme to guess non-coreferent entities. We believe
+that our bootstrapping framework can be applied to database once
+we had a set of record links.
+
+9. Conclusion
+
+The main contributions of this paper are summarized as
+
+follows:
+ We proposed a bootstrapping approach to entity linkage on the
+SW. Given an entity, it first infers a kernel of semantically coreferent entities, and then iteratively expands this kernel with
+discriminative property-values. Additionally, it mines frequent
+property combinations as external knowledge. Our bootstrapping framework bridges the gap between semantically coreferent entities and potential candidates.
+ We designed a statistical measurement
+to compute the
+discriminability of properties and values, which does not only
+identify key characteristics for entities, but also considers
+matched properties by comparing the values of entities. The
+discriminability measure is accurate for linking heterogeneous
+entities from distributed data sources.
+ We used association rule mining to discover frequent property
+combinations, and refined them by comparing the semantics,
+statistics and similarity of properties. These frequent property
+combinations alleviate error accumulation in bootstrapping
+and improve linkage accuracy.
+
+W. Hu, C. Jia / Web Semantics: Science, Services and Agents on the World Wide Web 34 (2015) 112
+
+ We evaluated our approach on both the BTC2011 dataset and
+the NYT and PR benchmark datasets in OAEI. The experimental
+results show that our approach achieved superior precision and
+recall by comparing with 11 representative competitors.
+In future, we look forward to designing other semi-supervised
+learning approaches for entity linkage and comparing them
+systematically. We will also study novel entity linkage methods to
+support frequently updated RDF data or data streams.
+
+Acknowledgments
+
+This work was funded by the National Natural Science Foundation of China (Nos. 61370019 and 61223003). Part of this work
+was done during the first authors visit to the Stanford Center for
+Biomedical Informatics Research. We appreciate our students participation in the experiments. We also thank the editor and reviewers for their valuable comments.
+
+Appendix A. Supplementary data
+
+Supplementary material related to this article can be found
+
+online at http://dx.doi.org/10.1016/j.websem.2015.07.003.

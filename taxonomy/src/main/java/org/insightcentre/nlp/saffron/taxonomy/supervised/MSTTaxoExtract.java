@@ -93,7 +93,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
             }
         }
         double linkScore = parent == null ? Double.NaN : matrix[term.indexOf(parent)][term.indexOf(node)];
-        return new Taxonomy(node, termMap.get(node).getScore(), linkScore, "", "", children, Status.none);
+        return new Taxonomy(node, termMap.get(node).getScore(), linkScore, children, Status.none);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

@@ -1,0 +1,1228 @@
+Interest-Based RDF Update Propagation
+
+Kemele M. Endris(B), Sidra Faisal, Fabrizio Orlandi,
+
+S oren Auer, and Simon Scerri
+
+University of Bonn & Fraunhofer IAIS, Bonn, Germany
+
+{endris,faisals,orlandi}@cs.uni-bonn.de
+
+Abstract. Many LOD datasets, such as DBpedia and LinkedGeoData,
+are voluminous and process large amounts of requests from diverse appli-
+cations. Many data products and services rely on full or partial local LOD
+replications to ensure faster querying and processing. Given the evolving
+nature of the original and authoritative datasets, to ensure consistent
+and up-to-date replicas frequent replacements are required at a great
+cost. In this paper, we introduce an approach for interest-based RDF
+update propagation, which propagates only interesting parts of updates
+from the source to the target dataset. Effectively, this enables remote
+applications to subscribe to relevant datasets and consistently reflect
+the necessary changes locally without the need to frequently replace the
+entire dataset (or a relevant subset). Our approach is based on a formal definition for graph-pattern-based interest expressions that is used
+to filter interesting parts of updates from the source. We implement the
+approach in the iRap framework and perform a comprehensive evaluation based on DBpedia Live updates, to confirm the validity and value
+of our approach.
+
+Keywords: Change propagation  Dataset dynamics  Linked data 
+
+Replication
+
+1 Introduction
+
+In recent years, there has been an increasing number of structured data published
+on the Web as Linked Open Data (LOD). As of 2014, the size of the LOD
+cloud consisted of more than 1.000 published datasets comprising almost 100
+Billion triples1. Many of these datasets are huge and process large amount of
+requests from diverse applications. Providing services on top of these datasets is
+becoming a challenge due to the lack of service levels regarding the availability of
+datasets [11] and restrictions imposed by the publisher on the type of query forms
+and number of results2. Replication of Linked Data datasets enhances flexibility
+of information sharing and integration infrastructures. Since hosting a replica of
+large datasets is costly, organizations might want to host only a relevant subset
+
+1 http://linkeddatacatalog.dws.informatik.uni-mannheim.de/state/
+2 https://lists.w3.org/Archives/Public/public-lod/2011Aug/0028.html
+c Springer International Publishing Switzerland 2015
+M. Arenas et al. (Eds.): ISWC 2015, Part I, LNCS 9366, pp. 513529, 2015.
+DOI: 10.1007/978-3-319-25007-6 30
+
+K.M. Endris et al.
+
+Fig. 1. Changeset propagation approaches: left part (a)  Live mirror approach; right
+part (b) Interest-based approach
+
+of the data, for example, using approaches such as RDFSlice [4]. However, due
+to the evolving nature of these datasets, maintaining a consistent and up-to-date
+replica of the relevant data is a major challenge. Resources in a dataset might
+be added, updated, or removed. Applications consuming these datasets should
+be capable of dealing with such updates to keep their local copies consistent.
+
+Typically, dataset mirror applications propagate updates published by the
+source dataset to a target dataset (replica). For instance, the DBpedia Live
+mirror tool 3 propagates all changes to a target dataset, so that at any point of
+time the target dataset contains the same triples as the DBpedia Live dataset.
+However, for example, an application interested in athletes uses only 268,773 out
+of 4,584,616 instances of the English DBpedia 2014 dataset4. In this paper, we
+present an approach for interest-based update propagation, which is based on
+the specification of data interests by a target application. Based on such interest
+expressions all updates are evaluated and only those changes satisfying target
+applications interest are shipped to the target dataset. An interest-based update
+propagation could significantly reduce the amount of data to be shipped and
+managed at the application side and thus lower the barrier for the deployment of
+Linked Data applications. We provide a thorough formalization of our approach.
+Figure 1 shows the propagation of unfiltered data from a source to a target,
+referred to as Live Replica (part (a) on the left). This approach propagates all
+the updates irrespective of the relevance or usefulness of the data. Whereas,
+using iRap (interest-based RDF update propagation) framework the source-to-
+target data propagation (iRap-based Replica in Figure 1 part (b) on the right) is
+filtered. With this interest-based approach only relevant data is being transfered.
+Our evaluation shows, that the data required to be transfered and handled by
+applications can be reduced by several orders of magnitude thus substantially
+lowering the Linked Data re-use barrier.
+
+3 https://github.com/dbpedia/dbpedia-live-mirror
+4 http://wiki.dbpedia.org/services-resources/datasets/dataset-statistics
+?
+
+?
+
+?
+Fig. 2. Formalization overview of the interest-based RDF update propagation.
+
+The article is structured as follows: section 2 extensively describes the formalization for our framework. section 3 and section 4 discusses the implementation
+and evaluation of the iRap framework in detail. section 5 describes the related
+work. Finally, section 6 concludes and proposes directions for future work.
+
+2 Formalization of Interest-Based RDF Updates
+
+Figure 2 illustrates the overall interest-based RDF Update Propagation app-
+roach; summarizing the concepts defined through the formalization. Interest
+evaluation takes place over the input set of deleted (Dt1t0) and added (At1  t0)
+triples from the source dataset (Vt1) in between time interval (t0, t1). Since
+updates do not only contain interesting and uninteresting parts, but also triples
+which can become interesting along with subsequent updates. We have to compute and store these sets of potentially interesting triples (see Definition 8) and
+take them in subsequent update assessments into account.
+
+For our formalization we will use the standard notations I, B, L and Var
+for the disjoint sets of all IRIs, blank nodes, literals (typed and untyped) and
+variables respectively. An RDF graph V is a finite set of RDF triples, i.e, V 
+(IB)  I  (IBL). In this paper we use the terms RDF graph, RDF dataset,
+and dataset interchangeably. An evolving dataset V g is a dataset identified using
+the persistent IRI g whose content changes over time. V g
+t denotes a specific
+revision of V g at a particular time t. For simplicity, we will just refer to Vt
+instead of V g
+t .
+Definition 1 (BGP). A SPARQL basic graph pattern (BGP) expression is
+defined recursively as follows:
+1. a triple pattern tp  (I  B  Var)  (I  Var)  (I  B  L  Var) is a
+
+2. the expression (P1 AND P2) is a BGP, where P1 and P2 are themselves
+
+BGPs
+
+K.M. Endris et al.
+
+3. the expression (P FILTER E) is a BGP, where P is a BGP and E is a
+
+SPARQL filter expression that evaluates to boolean value.
+
+Definition 2 (Non-disjoint BGP). A non-disjoint BGP is a BGP that represents a connected graph.
+
+An optional graph pattern (OGP) is syntactically specified with the OPTIONAL
+keyword applied to a graph pattern. A set of triple patterns in a BGP must
+match for there to be a solution whereas triple patterns in OGP may extend the
+solution but their non-binding nature means that they cannot reject it [1].
+Definition 3 (Partial Matches). Partial matches are a set of triples that does
+not fully match the BGP but matches at least one triple pattern in BGP or OGP
+of a query.
+
+Triples added to, and removed from, an evolving dataset within a time-frame
+are called changeset for a dataset within that time-frame.
+Definition 4 (Changeset). Let Vt1 be an evolving dataset at time t1. A
+changeset (Vt1), between Vt0 and Vt1, where t0 < t1, is defined as:
+
+(Vt1) = Dt1t0 , At1t0
+
+where: Dt1t0 is a set of removed triples from Vt0 between time-points t0 and t1,
+and At1t0 is a set of added triples to Vt0 between time-points t0 and t1.
+Changesets can be computed using the difference between two versions of the
+RDF dataset. The result of this computation gives the removed triples, Dt1t0 =
+V0 \ V1, and added triples, At1t0 = V1 \ V0, between given dataset revisions Vt0
+and Vt1. Datasets can be accompanied with a tool that publishes changesets at
+real-time, so that users can download these changesets and synchronize their
+local replicas. For instance, DBpedia publishes updates in a public changesets
+folder (http://live.dbpedia.org/changesets/).
+
+Example 1. Let us assume two files ( Listing 1.1 and Listing 1.2) are being
+published by the DBpedia Live extractor for the changes made on Feb 06, 2015
+between 05:00 PM (t0) and 05:02 PM (t1). A changeset (Vt1) for the DBpedia
+Live dataset between t0 and t1, contains D05:0205:00 = 000001.removed.nt and
+A05:0205:00 = 000001.added.nt.
+
+That is, (V05:02) = 000001.removed.nt, 000001.added.nt.
+
+Definition 5 (Changeset Propagation). A changeset propagation is a function  that transforms a given dataset Vt0 to a new dataset Vt1 by applying a
+changeset, (Vt1). That is: (Vt0 , (Vt1)) = Vt0\Dt1t0  At1t0 = Vt1
+for example, deletes the triples in
+The changeset propagation function ,
+000001.removed.nt from the target dataset and then inserts all triples from
+000001.added.nt. This order of operation (deleted first) ensures that inserted
+triples are not removed again immediately. If an organization maintaining a
+replica wants to host only a subset of the original dataset, it needs to obtain
+?
+
+?
+
+?
+dbr:Marcel
+dbr:Marcel
+dbr:Tim%02
+
+dbp:goals
+dbo:team
+foaf:name
+
+1 .
+dbr:FNFT .
+
+"Tim Berners-Lee" .
+
+dbr:Cristiano_Ronaldo dbo:goals
+
+96 .
+
+Listing (1.1) File 000001.removed.nt
+
+dbr:Cristiano_Ronaldo dbo:goals 216 .
+dbr:Barack_Obama
+dbr:Barack_Obama
+
+foaf:name "Barack Obama" .
+foaf:homepage
+
+"http://www.barackobama.com/" .
+
+dbr:Rio_Ferdinand
+dbr:Rio_Ferdinand
+dbr:Rio_Ferdinand
+dbr:Arvid_Smit
+
+foaf:Person .
+dbo:Athlete .
+
+a
+a
+dbp:goals 2 .
+a
+
+dbo:Athlete .
+
+Listing (1.2) File 000001.added.nt
+
+Fig. 3. Changeset files published by DBpedia Live extractor
+
+only relevant updates for this subset. For that purpose, we specify interests to
+subscribe to interesting changes only. During interest registration, an organization provides information about the source dataset to synchronize with, a
+target dataset endpoint that supports SPARQL Update to propagate interesting
+changes, and an interest query to select relevant parts of a changeset.
+Definition 6 (Interest Expression). An interest expression over an evolving
+dataset, Vt, is defined as: ig = , b, op where g is an IRI identifying an evolving
+RDF dataset Vt,  is an IRI identifying the target dataset endpoint, b is a nondisjoint BGP, and op is an optional graph pattern (OGP) connected to b.
+
+Example 2. An interest expression for a list of an athlete with information about
+goals scored, and optionally their homepage, is expressed as follows:
+
+ g = http://live.dbpedia.org/changesets
+  = http://localhost:3030/target/sparql
+ b = { ?a a dbo:Athlete . ?a dbp:goals ?goals . }
+ op = { ?a foaf:homepage ?page . }
+The equivalent interest expression SPARQL query will be:
+SELECT * WHERE { ?a a dbo:Athlete . ?a dbp:goals ?goals . OPTIONAL { ?a foaf:homepage ?page . } }
+
+In order to initialize a local data store, i.e., the target dataset, SPARQL CONSTRUCT queries can be used by employing the interest expressions BGPs to
+extract and load a subset of the source dataset. Then interest expressions are
+registered with our iRap framework to retrieve interesting updates from the
+source dataset. iRap evaluates interest expressions over changesets being published along with the source dataset. Without a restriction of generality, we
+assume interest expressions here to be static for the lifetime of a target dataset,
+since an evolution of interest expressions can be simulated by removal and addi-
+tion. The result of executing an interest evaluation for an interest expression
+against a changeset are three sets or triples: 1. interesting, 2. potentially inter-
+esting, and 3. uninteresting triples.
+
+K.M. Endris et al.
+
+Definition 7 (Interesting Triples). Interesting triples are all triples comprised in full matches of the BGP and possibly OGP of an interest expression,
+ig, against the sets of added or deleted triples of a changeset. Interesting triples
+originating from the first element (i.e., removed triples (Dt1t0)) of a change-
+set, (Vt1), are called interesting-removed triples. Interesting triples originating
+from the second element (i.e., added triples (At1t0)) of a changeset, (Vt1), are
+called interesting-added triples.
+
+In addition to parts of an changeset for which the interestingness can be
+immediately decided, there might also be parts, which are potentially interesting
+since, i) the missing parts to render them as interesting are already contained in
+the target knowledge base or ii) they will be propagated in subsequent updates.
+Definition 8 (Potentially Interesting Triples). Potentially interesting
+triples are triples comprised in partial matches of the BGP or in OGP of interest
+expression, ig:
+
+ Potentially interesting triples originating from the first element (i.e.,
+removed triples (Dt1t0)) of a changeset (Vt1), are called potentially
+interesting-removed triples.
+
+ Potentially interesting triples originating from the second element (i.e.,
+added triples (At1t0)) of a changeset, (Vt1), are called potentially
+interesting-added triples.
+
+Potentially interesting triples can become interesting if triples missing in the
+changeset, but required for a full BGP match, are found in the target dataset
+or in subsequent changesets. Finally, there are triples in the changeset that are
+neither interesting nor potentially interesting.
+Definition 9 (Uninteresting Triples). Uninteresting triples are triples that
+do not match any triple pattern in a BGP or OGP of any interest expression,
+ig, against the sets of added or deleted triples of a changeset.
+
+Uninteresting triples are not interesting at the moment and can never become
+interesting with subsequent changesets. iRap uses an interest query to select
+candidate triples from a changeset and to assert from a target dataset. These
+candidates are retrieved in decreasing order of number of matching BGP triple
+patterns of interest expressions and triples that match any part of optional graph
+patterns.
+Definition 10 (Interest Candidate Generation). An interest candidate
+generation is the extraction of matching triples from a changeset for a nondisjoint combination of triple patterns in BGP of an interest expression, ig. The
+result of this extraction is an (n + 1)-tuple with decreasing order of matching:
+
+(ig, M) = c0, c1, ..., cn1, cop
+?
+
+?
+
+?
+where:
+
+ M is a set of removed (respectively added) triples in a changeset,
+ n is the number of triple patterns in the BGP of interest expression, ig,
+ ck is a set of candidate triples in M that match n  k (0  k < n) triple
+patterns of the BGP of the interest expression, ig, and
+
+ cop is a set of candidate triples in M that match at least one triple pattern
+in the OGP of interest expression, ig, but none of the triple patterns in the
+BGP.
+
+Example 3. An interest candidate generation for the interest expression ig
+from Example 2 over the changeset from Example 1 gives the following result:
+1. (ig, D05:0205:00) = c0, c1, cop where:
+
+2. (ig, A05:0205:00) = c0, c1, cop where:
+
+c0 = 
+c1 = dbr:Marcel dbp:goals 1. dbr:Cristiano Ronaldo dbo:goals 96.
+cop = 
+c0 = dbr:Rio Ferdinand a dbo:Athlete . dbr:Rio Ferdinand dbp:goals 10.
+c1 = dbr:Cristiano Ronaldo dbp:goals 216 . dbr:Arvid Smit a dbo:Athlete.
+cop = dbr:Barack Obama foaf:homepage "http://www.barackobama.com".
+
+Now an interest candidate assertion verifies candidate triples with respect to all
+triple patterns in the BGP of an interest expression.
+Definition 11 (Interest Candidate Assertion). The candidate assertion
+function extracts missing triples for the candidate, ci of (ig, M) of an interest expression ig from the target dataset, t0:
+
+
+
+(ig, M) =
+?
+
+?
+
+?
+c
+
+op
+
+, c
+
+n1
+
+, ..., c
+?
+
+?
+
+?
+, c
+
+where:
+
+ M is a set of removed (respectively added) triples in a changeset,
+ n is the number of triple patterns in the BGP of interest expression, ig,
+ c
+ c
+ c
+
+op is a set of triples from target dataset, , that matches the missing optional
+graph patterns for candidate c0, of (ig, M),
+k is a set of triples from target dataset, , that matches the missing triple
+patterns for candidate cnk, where 0 < k < n, of (ig, M), and
+0 is a set of triples from target dataset, , that matches all triple patterns
+in BGP of interest expression for candidate cop, of (ig, M).
+
+Example 4. Let the target dataset, t0, at time t0 contains the following triples:
+
+#Target dataset at time t0 = 05:00 PM Feb 06, 2015
+dbr:Marcel
+dbr:Marcel
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+
+a
+dbp:goals
+a
+dbo:goals
+foaf:homepage "http://cristianoronaldo.com" .
+
+dbo:Athlete .
+1 .
+dbo:Athlete .
+96 .
+
+An interest candidate assertion for interest candidates generated in Example 3
+yields the following result:
+
+K.M. Endris et al.
+?
+
+?
+
+?
+1. 
+(ig, D05:0205:00) =
+op = 
+c
+c
+1 = dbr:Marcel a dbo:Athlete .
+
+c
+op, c
+
+1, c
+
+where:
+
+dbr:Cristiano Ronaldo a dbo:Athlete .
+dbr:Cristiano Ronaldo foaf:homepage "http://cristianoronaldo.com" .
+?
+
+?
+
+?
+c
+op, c
+
+0 = 
+c
+2. 
+(ig, A05:0205:00) =
+op = 
+c
+c
+1 = dbr:Cristiano Ronaldo a dbo:Athlete .
+0 = 
+c
+
+where:
+
+1, c
+?
+
+?
+
+?
+dbr:Cristiano Ronaldo foaf:homepage "http://cristianoronaldo.com" .
+
+The interest evaluation over a changeset (Vt1) is performed in two steps.
+First, interest expressions are evaluated against removed triples of a changeset as d(ig, Dt1t0), see Definition 12. Second, interest expressions are evaluated
+against added triples of a changeset as (ig, At1t0), see Definition 13. During interest evaluation, added triples are combined with potentially interesting
+triples from previous changesets (i.e., It1t0 = At1t0  t0) to check their potential promotion to interesting triples.
+Definition 12 (Interest Evaluation over Deleted Triples). Interest evaluation over deleted triples is a function, d(ig, Dt1t0), that returns a 3-element
+tuple5:
+
+d(ig, Dt1t0) = (ig, Dt1t0)  
+
+(ig, Dt1t0) =
+?
+
+?
+
+?
+rt1t0 , ri(t1t0), r
+
+t1t0
+?
+
+?
+
+?
+where:
+ (ig, Dt1t0) is an interest candidate generation against deleted triples,
+ (ig, Dt1t0) is an interest candidate assertion against deleted triples,
+
+ rt1t0 = {c0  ck  cop| c0, ck, cop  (ig, Dt1t0) and c
+, c
+nk
+(ig, Dt1t0)} is the set of interesting removed triples, i.e., no longer inter-
+esting,
+ (ig, Dt1t0)}
+ ri(t1t0) = {ck  cop|ck, cop  (ig, Dt1t0) and c
+is the set of potentially interesting removed triples (existing only in removed
+triples of a changeset) and
+|c
+t1t0 = {c
+ (ig, Dt1t0) and cop, cnk, c0 
+ r
+(ig, Dt1t0)} is the set of triples that become potentially interesting after
+removing rt1t0.
+
+ c
+
+ c
+
+nk
+
+, c
+
+, c
+
+, c
+
+op
+
+k
+
+op
+
+k
+
+Example 5. An interest evaluation over deleted triples in our running example
+(using the results of Example 3 and Example 4, respectively) is as follows:
+
+d(ig, D05:0205:00) = (ig, D05:0205:00)  
+?
+
+?
+
+?
+=
+
+r05:0205:00, ri(05:0205:00), r
+
+05:0205:00
+
+(ig, D05:0205:00)
+?
+
+?
+
+?
+5 Note: 
+indicates that after the component-wise union of the two sets the results are
+combined to three categories of the resulting 3-tuple, namely, (i) elements from left
+that have matching right elements, (ii) elements from left that do not have matching
+right elements, and (iii) element from right that have a match left.
+?
+
+?
+
+?
+1. r05:0205:00 = c1 (in Example 3)
+
+dbr:Marcel
+dbr:Cristiano_Ronaldo
+
+dbp:goals
+dbo:goals
+
+1 .
+96 .
+
+2. ri(05:0205:00) =  (Since all the potentially interesting removed triples of c1
+3. r
+
+in Example 3 becomes interesting and no other triples in cop)
+05:0205:00 = c
+
+dbr:Marcel
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+
+a
+a
+foaf:homepage "http://cristianoronaldo.com" .
+
+dbo:Athlete .
+dbo:Athlete .
+
+Definition 13 (Interest Evaluation over Added Triples). Interest evaluation over added triples is a function, (ig, At1t0), that returns 3 element tuple
+as:
+
+(ig, At1t0) = (ig, It1t0)  
+
+(ig, It1t0) =
+?
+
+?
+
+?
+at1t0 , ai(t1t0), a
+
+t1t0
+?
+
+?
+
+?
+where:
+ It1t0 = At1t0  t0 is a set of added triples and potentially interesting
+triples dataset,
+
+ (ig, It1t0) is an interest candidate generation over It1t0,
+ (ig, It1t0) is an interest candidate assertion over It1t0,
+ (ig, It1t0)}
+ at1t0 = {c0ckcop|c0, ck, cop  (ig, It1t0) and c
+, c
+is the set of interesting added triples,
+ (ig, It1t0)} is
+ ai(t1t0) = {ck  cop|ck, cop  (ig, It1t0) and c
+the set of potentially interesting added triples that do not have related triples
+in target dataset, and
+ c
+ (ig, It1t0) and cop, cnk, c0 
+t1t0 = {c
+respectively} is the set of triples from target dataset that are
+(ig, It1t0)
+related to ai(t1t0).
+
+nk
+, c
+
+ a
+
+ c
+
+nk
+
+, c
+
+, c
+
+|c
+
+k
+
+op
+
+k
+
+op
+
+Example 6. An interest evaluation over added triples in our running example
+(using the results of Example 3 and Example 4, respectively) is as follows:
+
+(ig, A05:0205:00) = (ig, I05:0205:00)  
+?
+
+?
+
+?
+a05:0205:00, ai(05:0205:00), a
+
+(ig, I05:0205:00)
+
+05:0205:00
+
+1. a05:0205:00 = c1  c
+
+=
+ c0
+
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+dbr:Rio_Ferdinand
+dbr:Rio_Ferdinand
+
+2. ai(05:0205:00) =
+
+216 .
+dbo:Athlete .
+
+dbo:goals
+a
+foaf:homepage "http://cristianoronaldo.com" .
+a
+dbp:goals
+
+dbo:Athlete .
+10 .
+
+dbr:Arvid_Smit
+dbr:Barack_Obama
+
+3. a
+
+05:0205:00 = 
+
+a
+foaf:homepage
+
+dbo:Athlete .
+"http://www.barackobama.com" .
+
+K.M. Endris et al.
+
+Now, we will use the results from Definition 12 and Definition 13 to compute
+interesting and potentially interesting changesets.
+Definition 14 (Interest Evaluation). An interest evaluation over a changeset (Vt1) at time t1 is a function e(ig, (Vt1)) that combines the results from
+an interest evaluation over deleted triples, d(ig, Dt1t0), and an interest evaluation over added triples, (ig, It1t0), to return an interesting changeset and
+potentially interesting changeset as follows:
+
+e(ig, (Vt1)) = d(ig, Dt1t0)  (ig, It1t0) = (t1), (t1)
+
+where ig is an interest expression over an evolving dataset, (t1) is an interesting changeset (see Definition 15), and (t1) is potentially interesting changeset
+(see Definition 16).
+Definition 15 (Interesting Changeset). Let t0 be a target dataset at time
+t0. An interesting changeset, (t1), for t0 at time t1 is defined as:
+
+(t1) =
+?
+
+?
+
+?
+rt1t0  r
+
+t1t0
+?
+
+?
+
+?
+, at1t0
+
+where:
+
+ r
+
+ rt1t0 is the set of interesting removed triples, interesting removed optional
+triples and potentially interesting removed triples with match found in target
+dataset during candidate generation, (ig, Dt1t0),
+t1t0 is the set of triples from target dataset that are related to potentially
+interesting removed triples computed by (ig, Dt1t0), and
+
+ at1t0 is the set of interesting added triples, interesting optional triples and
+potentially interesting added triples with match found in target dataset during
+candidate generation, (ig, At1t0).
+?
+
+?
+
+?
+Example 7. An interesting changeset for our running example is as follows:
+(05:02) =
+1. interesting removed triples  r05:0205:00  r
+
+r05:0205:00  r
+
+, a05:0205:00
+
+05:0205:00
+
+05:0205:00 :
+
+a
+dbr:Marcel
+dbr:Marcel
+dbp:goals
+dbr:Cristiano_Ronaldo dbo:goals
+dbr:Cristiano_Ronaldo a
+dbr:Cristiano_Ronaldo foaf:homepage "http://cristianoronaldo.com" .
+
+dbo:Athlete .
+1 .
+96 .
+dbo:Athlete .
+
+2. interesting added triples  a05:0205:00 :
+
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+dbr:Cristiano_Ronaldo
+dbr:Rio_Ferdinand
+dbr:Rio_Ferdinand
+
+216 .
+dbo:Athlete .
+
+dbo:goals
+a
+foaf:homepage "http://cristianoronaldo.com" .
+a
+dbp:goals
+
+dbo:Athlete .
+10 .
+
+Triples that were interesting will be downgraded to potentially interesting and
+stored in t1, if deletion involves triples matching at least one triple pattern from
+interest expression BGP.
+?
+
+?
+
+?
+Definition 16 (Potentially Interesting Changeset). Let t0 be a potentially
+interesting dataset for interest expression ig at time t0. A changeset, (t1), for
+t0 at time t1 is defined as:
+?
+
+?
+
+?
+ri(t1t0), ai(t1t0)  r
+
+t1t0
+
+(t1) =
+?
+
+?
+
+?
+where:
+
+ ri(t1t0) is a set of potentially interesting removed triples,
+ ai(t1t0) is a set of potentially interesting added triples computed on added
+triples of a changeset and related triples extracted from target while removing
+potentially interesting removed triples, and
+t1t0 is the set of triples from target dataset that are related to potentially
+interesting removed triples computed by (ig, Dt1t0).
+
+ r
+?
+
+?
+
+?
+Example 8. Potentially interesting changeset for our running example is as fol-
+lows: (05:02) =
+05:0205:00
+1. Potentially interesting removed triples  ri(05:0205:00) = 
+2. Potentially interesting added triples  ai(05:0205:00)  r
+
+ri(05:0205:00), ai(05:0205:00)  r
+
+05:0205:00
+?
+
+?
+
+?
+dbr:Arvid_Smit
+dbr:Barack_Obama foaf:homepage "http://www.barackobama.com" .
+dbr:Marcel
+
+dbo:Athlete .
+
+dbo:Athlete .
+
+a
+
+a
+
+05:0205:00 are added back to target dataset, they are
+
+Note: since all triples in r
+no longer stored in the potentially interesting dataset.
+Definition 17 (Interesting Update Propagation). An interesting changeset propagation is an update operation that transforms the target dataset t0 to
+the new dataset t1 and t0 to new dataset t1 by applying the result of interest
+evaluation, e(ig, (Vt1)). That is:
+
+ (ig, (Vt1)) = (t0 , (t1))  (t0 , (t1)) = t1  t1
+
+ (Vt1) is a changeset at time t1,
+ (t0 , (t1)) = t0\[rt1t0  r
+interesting changeset, and
+ (t0 , (t1)) = t0\ri(t1t0)  ai(t1t0)  r
+of potentially interesting changeset.
+
+t1t0]  at1t0 is changeset propagation of
+is changeset propagation
+
+t1t0
+
+Example 9. Propagation of an interesting changeset of Example 7 to the target
+dataset, t0 and potentially interesting changeset of Example 8 to the potentially
+interesting datasett0 transforms the datasets to:
+More details on the formalization and implementation of the approach can be
+found here: http://eis.iai.uni-bonn.de/Projects/iRap.html.
+
+3 iRap RDF Update Propagation Framework
+
+In this section we describe the architecture of our interest-based update propagation framework, iRap, and its implementation. iRap was implemented in Java
+
+K.M. Endris et al.
+
+dbr:Cristiano_Ronaldo dbo:goals
+dbr:Cristiano_Ronaldo a
+dbr:Cristiano_Ronaldo foaf:homepage
+
+216 .
+dbo:Athlete .
+
+dbr:Rio_Ferdinand
+dbr:Rio_Ferdinand
+
+"http://cristianoronaldo.com" .
+dbo:Athlete .
+10 .
+
+a
+dbp:goals
+
+Listing (1.3) Resulting target dataset
+(t1 )
+
+dbr:Arvid_Smit
+dbr:Barack_Obama foaf:homepage
+
+a
+
+dbo:Athlete .
+
+dbr:Marcel
+
+a
+
+dbo:Athlete .
+
+"http://www.barackobama.com" .
+
+Listing (1.4) Potentially interesting
+dataset after change propagation (t1 )
+
+Fig. 4. State of t1 and t1 after propagation
+
+Fig. 5. Architecture of the iRap interest-based RDF update propagation framework.
+
+using Jena-ARQ. It is available as open-source and consists of three modules:
+(1) Interest Manager (IM), (2) Changeset Manager (CM) and (3) Interest Evaluator (IE), each of which can be extended to accommodate new or improved
+functionality.
+
+Changeset evaluation starts after a user registers an interest expression using
+the IM service, as shown in Figure 5. The CM module fetches a list of changeset folders from interest expressions and regularly (configurable) checks for new
+changesets. After downloading and decompressing new changesets, the CM notifies the IE, which then imports a list of interest expressions registered for this
+particular changeset through the IM and initiates the evaluation. Resulting interesting triples are propagated to the target dataset whereas potentially interesting triples are stored in the potentially interesting dataset (). After all interest
+expressions have been evaluated over the changeset, the IE notifies the CM to
+clean the downloaded files.
+
+4 Evaluation
+
+To evaluate the proposed approach, we performed experiments on the iRap
+framework using changesets published by DBpedia and compared the results
+with the DBpedia Live Mirror tool. The comparison considers two cases: using
+iRap to update a previously-established local replica of i) an entire remote
+?
+
+?
+
+?
+Table 1. Distribution of DBpedia Live changesets published October 01-15, 2014.
+
+Date
+
+Oct 01 Oct 02 Oct 03 Oct 04-12 Oct 13 Oct 14 Oct 15
+
+Total Changesets
+
+1,621
+
+1,755
+
+5,352
+
+2,578
+
+CONSTRUCT WHERE {
+?footballer a
+?footballer foaf:name
+?footballer dbo:team
+?team
+
+dbo:SoccerPlayer .
+
+?name.
+?team .
+
+rdfs:label ?teamName.
+
+}
+
+Listing (1.5) I1  Football
+query
+
+interest
+
+CONSTRUCT WHERE {
+
+?location a
+?location wgs:long
+?location wgs:lat
+?location rdfs:label
+?location dbo:abstract ?abstract .
+OPTIONAL { ?location dcterms:subject ?subject }
+
+?type .
+?long .
+?lat .
+?label .
+
+}
+
+Listing (1.6) I2  Location interest
+query
+
+dataset ii) a subset of a remote dataset. These two cases simulate two ways
+in which iRap can be used: i) using interest-based changeset propagation for
+future updates of a local copy of a large dataset or ii) starting with a new subset
+of the large dataset.
+
+Experimental Setting. In order to test our approach we used the DBpedia
+dump6 of September 30, 2014 for the initial setup of the target datasets for two
+different application domains, namely, Location and Football datasets. Changesets published between October 01 and October 15, 2014 were used for evaluation
+(see Table 1). Changesets are not sequential with modified date but with extraction from DBpedia Live, as discussed in the DBpedia mailing list. Initially we set
+up two Jena TDB datasets for each target dataset from the DBpedia dump. We
+loaded all triples from the dump to the Location dataset, whereas for the Football dataset we only loaded a slice corresponding to interesting triples matching
+Listing 1.5.
+
+Initially, the Location dataset contains all triples from DBpedia yielding a
+total of 3 billion triples, whereas the Football dataset contains only 265,622
+triples. A total of 12,057 changesets (pairs of removed and added .nt.gz files)
+have been published in the evaluation timeframe.
+
+The evaluation comprises two interest expressions, I1 and I2. I1 comprises a
+non-disjoint BGP containing 4 triple patterns with a maximum of two variables
+per triple pattern (object-subject join), Listing 1.5. I2 comprises a non-disjoint
+BGP containing 5 triple patterns with a maximum of two variables per triple
+pattern (subject-subject joins) and one an OGP containing one triple pattern,
+Listing 1.6.
+
+We set up two target datasets and potentially interesting dataset using Jena
+TDB and jena-fuseki for each dataset. The potentially interesting dataset stores
+potentially interesting triples for each interest expression within a named graph.
+All experiments were carried out on a 64-bit machine with Windows 7, Intel(R)
+Core i7-4770 CPU, 16GB RAM and 1TB HD.
+
+6 http://live.dbpedia.org/dumps/dbpedia 2014 09 30 00 00.fixed.ttl.gz
+
+K.M. Endris et al.
+
+Table 2. Comparison of results for Football App
+
+Day Total
+
+Interesting Total
+Removed Removed Added
+2,051,976
+1,895,179
+2,384,232
+1,748,511
+10,728,855
+1,522,939
+5,234,788
+
+1,716
+
+1,677
+
+9,065
+4,865
+?
+
+?
+
+?
+Interesting Potentially
+
+Elapsed
+
+Added
+
+Interesting (in minutes)
+?
+
+?
+
+?
+45,429
+7,970
+19,598
+
+169,554
+168,856
+684,491
+97,300
+333,232
+
+15.18
+20.85
+69.86
+10.17
+60.06
+?
+
+?
+
+?
+Table 3. Comparison of results for Location App
+
+Day Total
+
+Interesting Total
+Removed Removed Added
+2,051,976
+1,895,179
+2,384,232
+1,748,511
+10,728,855
+1,522,939
+5,234,788
+
+1,716
+
+1,677
+
+77,377
+82,461
+?
+
+?
+
+?
+Interesting Potentially
+
+Elapsed
+
+Added
+
+Interesting (in minutes)
+
+7,093
+7,301
+
+259,587
+27,292
+100,073
+
+430376
+509,972
+2,002,271
+280,718
+972,284
+
+166.59
+242.62
+417.87
+64.41
+176.78
+
+Evaluation Results and Discussion. Figure 7 summarizes our experimental
+results for two target datasets shows the growth of the potentially interesting
+dataset. Results of the interest evaluation for the Football dataset are presented
+in Table 2. From the overall changesets considered for this evaluation, in Table 1,
+only 0.38% of the removed and 0.335% of the added triples were identified as
+interesting for the Football dataset. The average changeset publication interval
+was 18.81s and average time required for a changeset evaluation is 0.87s. This
+shows that iRap efficiently performs changeset propagations way before the next
+changeset is published.
+
+Results of the interest evaluation for the Location dataset are shown
+in Table 3. From the overall changesets considered for this evaluation, in Table 1,
+only 4.38% of the removed and 1.81% of the added triples were interesting for the
+Location dataset. The average time spent for a changeset evaluation is 5.31s. The
+interest evaluation for the Location dataset takes longer than Football dataset,
+because of the number of triples in the target dataset was the full DBpedia.
+Figure 7a shows the number of triples published per day and the number of interesting triples and potentially interesting triples found from interest evaluation
+for Football dataset. Figure 7b shows the dataset growth comparison between
+iRap and a full mirror approach. As the figure clearly shows, iRap managed
+datasets are almost two orders of magnitude smaller and grow much slower than
+with a mirror approach. Note that the growth for each datasets is calculated
+by subtracting the number of removed triples from and adding the number of
+added triples to the total number of triples in the dataset.
+
+We observed a logarithmic growth of the potentially interesting dataset for
+Location and Football datasets. This is due to the number of variables used in
+triple patterns, and the number and type of triple patterns in interest expression.
+For example, the Football dataset interest query contains the common predicates
+foaf:name and rdfs:label which are used in almost all resources and thus result
+in many potentially interesting triples. Again, the average processing time per
+changeset is always way below the average time between two changesets. The
+?
+
+?
+
+?
+(a) Football dataset changes per day
+
+(b) Football dataset growth
+
+(c) Location dataset changes per day
+
+(d) Location dataset growth
+
+Fig. 7. Evaluation results
+
+correctness of the resulting triples from the first changesets, for Football dataset
+interest expression, was checked by manual inspection.
+
+5 Related Work
+
+Most related work on dataset change detection and propagation focuses on distributed publish/subscribe systems [3,7], resource link maintenance [8,10], target synchronization [5], partial replicas [9], data-shipping [12], lazy updates [2],
+and real-time update notification [6,10]. In [7], the authors propose a peer-to-
+peer publish/subscribe system for events described in RDF. By avoiding the
+use of multiple indexes for the same publication they manage to reduce storage
+space. Similarly, [3] provide an implementation with publish/subscribe capabilities in an RDF-based peer-to-peer system to manage digital resources. As for
+resource link maintenance, DSNotify [8] offers a change-detection framework to
+detect and fix broken links between resources in two datasets while, Semantic Pingback [10] proposes a notification system for the creation of new links
+between Web resources. To note that this approach is suitable for relatively
+static resources, i.e. RDF documents or RDFa annotated Web pages. In contrast,
+SparqlPuSH [6] offers a real-time notification framework for data updates in a
+
+K.M. Endris et al.
+
+RDF store using a semantic PubSubHubbub-based protocol (PuSH). SparqlPuSH
+allows users to subscribe for changes updates of a subset of content in a RDF
+store using SPARQL. However, notification and broadcasting are only available
+as RSS and Atom feeds. As regards target synchronization, RDFSync [5] performs update synchronization by merging source and target graphs to get the
+updated target RDF graph. Alternatively, [9] has designed an approach to repli-
+cate, modify, and write-back parts of an RDF graph on devices with low computing power. In distributed databases, where data is replicated on different sites,
+Lazy update protocols [2] disseminate updates to replicas to ensure consistency.
+These protocols guarantee serializable execution as well as high performance.
+
+6 Conclusion and Future Work
+
+In this paper we presented a novel approach for interest-based RDF update propagation that can consistently maintain a full or partial replication of large LOD
+datasets. We have demonstrated the validity of the approach through detailed
+formalizations and their application in a reference implementation of the iRap
+Framework. A thorough evaluation of the approach indicates that our method
+can significantly cut down on both the size of the data updates required to consistently maintain a localized dataset replication up-to-date, as well as the speed
+by which such updates can take place. Future work will focus on extending the
+iRap Framework with a publish/subscribe distributed architecture. The framework will be improved also from the usability point of view, including a user
+interface and making the initial generation of RDF slices easier and more effi-
+cient. An extensive evaluation of scalability and performance of the framework
+will be performed and a benchmark dataset for future reference will be made
+available to the research community.
+
+Acknowledgments. This work is supported by LinDA project, funded by the European Unions Seventh Framework Programme for research, technological development
+and demonstration under grant agreement number 610565.

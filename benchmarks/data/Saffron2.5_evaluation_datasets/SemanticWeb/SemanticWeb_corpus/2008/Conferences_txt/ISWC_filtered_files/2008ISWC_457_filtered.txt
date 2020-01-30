@@ -1,0 +1,1426 @@
+Description Logic Reasoning with Decision Diagrams
+
+Compiling SHIQ to Disjunctive Datalog
+
+Sebastian Rudolph, Markus Krotzsch, and Pascal Hitzler
+
+Institut AIFB, Universitat Karlsruhe, Germany
+{sru,mak,phi}@aifb.uni-karlsruhe.de
+
+Abstract. We propose a novel method for reasoning in the description logic
+SHIQ. After a satisfiability preserving transformation from SHIQ to the description logic ALCIb, the obtained ALCIb Tbox T is converted into an ordered binary decision diagram (OBDD) which represents a canonical model for
+T . This OBDD is turned into a disjunctive datalog program that can be used for
+Abox reasoning. The algorithm is worst-case optimal w.r.t. data complexity, and
+admits easy extensions with DL-safe rules and ground conjunctive queries.
+
+1 Introduction
+
+In order to leverage intelligent applications for the Semantic Web, scalable reasoning
+systems for the standardised Web Ontology Language OWL1 are required. OWL is
+essentially based on description logics (DLs), with the DL known as SHIQ currently
+being among its most prominent fragments. State-of-the art OWL reasoners, such as
+Pellet, FaCT++, or RacerPro use tableau methods with good performance results, but
+even those successful systems are not applicable in all practical cases. This motivates
+the search for alternative reasoning approaches that build upon different methods in
+order to address cases where tableau algorithms turn out to have certain weaknesses.
+Successful examples are recent works based on resolution and hyper-tableau calculi, as
+realised by the systems KAON2 and HermiT.
+
+In this paper, we pursue a new DL reasoning paradigm based on the use of ordered binary decision diagrams (OBDD). These reasoning tools have been successfully applied
+in the domain of large-scale model checking and verification, but have hitherto seen
+only little investigation in DLs [1]. Our work bases on a recent adoption of OBDDs
+for terminological reasoning in SHIQ [2]. This approach, however, is inherently inapt
+of dealing with assertional knowledge directly. We therefore adopt the existing OBDD
+method for terminological reasoning, but use its output for generating a disjunctive datalog program that can in turn be combined with Abox data to obtain a correct reasoning
+procedure. The main technical contribution of the paper is to show this adoption to be
+sound and complete based on suitable model constructions. Considering possible appli-
+cations, the work establishes the basis for applying OBDD-based methods for SHIQ
+reasoning, including natural support for DL-safe rules and ground queries.
+
+ Supported by the European Commission under contracts 027595 NeOn and 215040 ACTIVE,
+
+and by the Deutsche Forschungsgemeinschaft (DFG) under the ReaSem project.
+
+1 http://www.w3.org/2004/OWL/
+
+A. Sheth et al. (Eds.): ISWC 2008, LNCS 5318, pp. 435450, 2008.
+c Springer-Verlag Berlin Heidelberg 2008
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+The structure of the paper is as follows. In Section 2, we recall some essential definitions and results on which we base our approach. Section 3 then discusses the decomposition of models into sets of dominoes, which are then computed with OBDDs
+in Section 4. The resulting OBDD presentation is transformed to disjunctive datalog in
+Section 5, where we also show the correctness of the approach. Section 6 concludes.
+
+2 The Description Logics SHIQ and ALCI b
+
+We first recall some basic definitions of DLs (see [3] for a comprehensive treatment of
+DLs) and introduce our notation. Next we define a rather expressive description logic
+SHIQb that extends SHIQ with restricted Boolean role expressions [4]. We will not
+consider SHIQb knowledge bases, but the DL serves as a convenient umbrella logic
+for the DLs used in this paper.
+Definition 1. A SHIQb knowledge base is based on three disjoint sets of concept
+names NC, role names NR, and individual names NI. A set of atomic roles R is defined
+as R  NR  {R
+)  R, and
+we will extend this notation also to sets of atomic roles. In the sequel, we will use the
+symbols R, S to denote atomic roles, if not specified otherwise.
+
+ | R  NR}. In addition, we set Inv(R)  R
+
+
+
+and Inv(R
+
+
+
+The set of Boolean role expressions B is defined as
+
+B  R | B | B  B | B  B.
+
+We use  to denote standard Boolean entailment between sets of atomic roles and role
+expressions. Given a set R of atomic roles, we inductively define:
+ For atomic roles R, R  R if R  R, and R  R otherwise,
+ R  U if R  U, and R  U otherwise,
+ R  U  V if R  U and R  V, and R  U  V otherwise,
+ R  U  V if R  U or R  V, and R  U  V otherwise.
+A Boolean role expression U is restricted if   U. The set of all restricted role expressions is denoted T, and the symbols U and V will be used throughout this paper
+to denote restricted role expressions. A SHIQb Rbox is a set of axioms of the form
+U  V (role inclusion axiom) or Tra(R) (transitivity axiom). The set of non-simple roles
+(for a given Rbox) is inductively defined as follows:
+
+ If there is an axiom Tra(R), then R is non-simple.
+ If there is an axiom R  S with R non-simple, then S is non-simple.
+ If R is non-simple, then Inv(R) is non-simple.
+
+A role is simple if it is atomic (simplicity of Boolean role expressions is not relevant in
+this paper) and not non-simple. Based on a SHIQb Rbox, the set of concept expressions C is the smallest set containing NC, and all concept expressions given in Table 1,
+where C, D  C, U  T, and R  R is a simple role. Throughout this paper, the symbols
+C, D will be used to denote concept expressions. A SHIQb Tbox (or terminology) is
+a set of general concept inclusion axioms (GCIs) of the form C  D. A SHIQb Abox
+(containing assertional knowledge) is a set of statements of the form C(a) or R(a, b),
+where a, b  NI. We assume throughout that all roles and concepts occurring in the
+?
+
+?
+
+?
+Table 1. Semantics of constructors in SHIQb for an interpretation I with domain I
+?
+
+?
+
+?
+Syntax Semantics
+
+Name
+I}
+{x, y  I  I | y, x  R
+
+inverse role R
+{x, y  I  I | x, y  U
+I}
+role negation U
+U  V U
+I  V
+role conj.
+U  V U
+I  V
+role disj.
+
+I
+top
+
+
+bottom
+I \ C
+C
+
+negation
+conjunction C  D C
+I  D
+
+I  D
+disjunction C  D C
+
+I}
+implies y  C
+U.C {x  I | x, y  U
+univ. rest.
+, y  C
+I}
+U.C {x  I | y  I
+: x, y  U
+
+exist. rest.
+I}  n}
+, y C
+n R.C {x  I | #{y I|x, y R
+
+qualified
+number rest. n R.C {x  I | #{y I|x, y R
+, y C
+I}  n}
+
+Abox are atomic (which can be done without loss of generality). A SHIQb knowledge
+base KB is a triple A,R,T, where A is an Abox, R is an Rbox, and T is a Tbox.
+As mentioned above, we will consider only fragments of SHIQb. In particular, a
+SHIQ knowledge base is a SHIQb knowledge base without Boolean role expres-
+sions, and an ALCIb knowledge base is a SHIQb knowledge base that contains no
+Rbox axioms and no number restrictions (i.e. axioms n R.C or n R.C). Consequently,
+an ALCIb knowledge base only consists of a pair A,T, where A is an Abox and T
+is a Tbox. The related DL ALCQIb has been studied in [4].
+An interpretation I consists of a set I
+called domain (the elements of it being called
+individuals) together with a function I
+mapping individual names to elements of I
+,
+. The function I
+concept names to subsets of I
+is extended to role and concept expressions as shown in Table 1. An interpretation I
+satisfies an axiom  if we find that I |= , where
+I  V
+ I |= U  V if U
+ I |= Tra(R) if R
+
+is a transitive relation,
+ I |= C  D if C
+I  D
+
+I satisfies a knowledge base KB, I |= KB, if it satisfies all axioms of KB. Satisfiability,
+equivalence, and equisatisfiability of knowledge bases are defined as usual.
+For convenience of notation, we abbreviate Tbox axioms of the form   C by
+writing just C. Statements such as I |= C and C  KB are interpreted accordingly. Note
+that C  D can thus be written as C  D.
+Finally, we will often need to access a particular set of quantified and atomic subformulae of a DL concept. These specific parts are provided by the function P : C  2C:
+
+, and role names to subsets of I  I
+
+ I |= C(a) if a
+ I |= R(a, b) if (a
+
+I  C
+
+,
+
+I, b
+
+,
+
+,
+
+)  R
+
+.
+
+P(C) 
+
+
+
+
+
+
+P(D)
+P(D)  P(E) if C = D  Eor C = D  E
+{C}  P(D)
+{C}
+
+if C = D
+if C = QU.D with Q  {,,n,n}
+otherwise
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+We generalise P to DL knowledge bases KB by defining P(KB) to be the union of the
+sets P(C) for all Tbox axioms C in KB.
+
+We will usually express all Tbox axioms as simple concept expressions as explained
+above. Given a knowledge base KB we obtain its negation normal form NNF(KB) by
+converting every Tbox concept into its negation normal form as usual. It is well-known
+that KB and NNF(KB) are equivalent.
+For ALCIb knowledge bases KB, we will usually require another normalisation
+step that simplifies the structure of KB by flattening it to a knowledge base FLAT(KB).
+This is achieved by transforming KB into negation normal form and exhaustively applying the following transformation rules:
+ Select an outermost occurrence of QU.D in KB, such that Q  {,} and D is a
+non-atomic concept.
+
+ Substitute this occurrence with QU.F where F is a fresh concept name (i.e. one not
+occurring in the knowledge base).
+ Add F  D to the knowledge base.
+Obviously, this procedure terminates yielding a flat knowledge base FLAT(KB) all Tbox
+axioms of which are Boolean expressions over formulae of the form A, A, or QU.A
+with A an atomic concept name. As shown in [2], any ALCIb knowledge base KB is
+equisatisfiable to FLAT(KB). This work also detailed a reduction of SHIQ knowledge
+bases to ALCIb that we summarise as follows:
+Theorem 2. Any SHIQ knowledge base KB can be transformed in polynomial time
+into an equisatisfiable ALCIb knowledge base KB
+It is easy to see that the algorithm from [2] is still applicable in the presence of Aboxes,
+and that ground Abox conclusions are preserved  with the exception of entailments of
+the form R(a, b) for non-simple roles R which fall victim to the standard elimination of
+transitivity axioms.
+?
+
+?
+
+?
+.
+
+3 Building Models from Domino Sets
+Our approach towards terminological reasoning in ALCIb exploits the fact that models
+for this DL can be decomposed into small parts, which we call dominoes. Intuitively,
+each domino abstractly represents two individuals in an ALCIb interpretation, based
+on their concept properties and role relationships. We will see that suitable sets of such
+two-element pieces suffice to reconstruct models of ALCIb Tboxes, and satisfiability
+of ALCIb terminologies can thus be reduced to the existence of suitable sets.
+
+We first introduce the basic notion of a domino set, and its relationship to interpreta-
+tions. Given a DL language with concepts C and roles R, a domino is an arbitrary triple
+A,R,B, where A,B  C and R  R. We will generally assume a fixed language and
+refer to dominoes over that language only. Interpretations can be deconstructed into sets
+of dominoes as follows:
+Definition 3. Given an interpretation I = I,I, and a set C  C of concept expres-
+sions, the domino projection of I w.r.t. C, denoted by C(I) is the set that contains for
+all ,   I
+
+the triple A,R,B with
+?
+
+?
+
+?
+I},
+
+I},
+ A = {C  C |   C
+ R = {R  R | ,   R
+ B = {C  C |   C
+I}.
+An inverse construction of interpretations from arbitrary domino sets is as follows:
+Definition 4. Given a set D of dominoes, the induced domino interpretation I(D) =
+I,I is defined as follows:
+1. I
+consists of all finite nonempty words over D where, for each pair of subsequent
+2. For  = A1,R1,A2A2,R2,A3 . . .Ai1,Ri1,Ai a word and A  NC a concept
+3. For each R  NR, we set 1, 2  R
+if either 2 = 1A,R,B with R  R or
+
+letters A,R,B and A,R,B in a word, we have B = A
+name, we define tail()  Ai, and set   A
+iff A  tail(),
+1 = 2A,R,B with Inv(R)  R.
+
+.
+
+Mark that  following the intuition  the domino interpretation is constructed by conjoining matching dominoes. This process is also similar to the related method of un-
+ravelling models in order to obtain tree-like interpretations.
+
+Domino projections do not faithfully represent the structure of the interpretation that
+they were constructed from, yet they capture enough information to reconstruct models
+of a Tbox T , as long as C is chosen to contain at least P(T ). Indeed, it was shown in [2]
+that, for any ALCIb terminology T , J |= T iff I(P(T )(J)) |= T . This observation
+allows us to devise an algorithm that directly constructs a suitable domino set from
+which one could obtain a model that witnesses the satisfiability of some knowledge
+base. The following algorithm therefore considers all possible dominoes, and iteratively
+eliminates those that cannot occur in the domino projection of any model:
+Definition 5. Consider an ALCIb terminology T , and define C = P(FLAT(T )). Sets
+Di of dominoes based on concepts from C are constructed as follows:
+kb: for every concept C  FLAT(T ), we have that
+ex: for all U.A  C, if A  B and R  U then U.A  A,
+uni: for all U.A  C, if U.A  A and R  U then A  B.
+
+D0 consists of all dominoes A,R,B which satisfy:
+
+DA D  C is a tautology2,
+
+R  U and A  B
+R  U but A  B
+
+Given a domino set Di, the set Di+1 consists of all dominoesA,R,B  Di satisfying
+the following conditions:
+delex: for every U.A  C with U.A  A, there is some A,R,B  Di such that
+deluni: for every U.A  C with U.A  A, there is some A,R,B  Di such that
+sym: B, Inv(R),A  Di.
+DT  Di+1 defines the canonical domino set of T .
+2 Note that formulae in FLAT(T ) and in A  C are such that this can easily be checked by
+evaluating the Boolean operators in C as if A was a set of true propositional variables.
+
+The construction of domino sets Di+1 is continued until Di+1 = Di. The final result
+?
+
+?
+
+?
+,
+
+,
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+Note that the algorithm must terminate, since it starts from a finite initial set D0 that
+is reduced in each computation step. Intuitively, the algorithm implements a kind of
+greatest fixed point construction that yields the domino projection of the largest possible
+model of the terminological part of an ALCIb knowledge base. The following result
+makes this intuition more explicitly:
+Lemma 6. Consider an ALCIb terminology T and an arbitrary model I of T . Then
+the domino projection P(FLAT(T ))(I) is contained in DT .
+Proof. The claim is shown by a simple induction. In the following, we use A,R,B
+to denote an arbitrary domino of P(FLAT(T ))(I). For the base case, we must show that
+P(FLAT(T ))(I)  D0. Let A,R,B to denote an arbitrary domino of P(FLAT(T ))(I) which
+was generated from elements, . Then A,R,B satisfies condition kb, since   C
+
+for any C  FLAT(T ). The conditions ex and uni are obviously satisfied.
+For the induction step, assume that P(FLAT(T ))(I)  Di, and let A,R,B again denote an arbitrary domino of P(FLAT(T ))(I) which was generated from elements , .
+ For delex, note that U.A  A implies   (U.A)
+. Thus there is an individual
+. Clearly, the domino generated by , 
+
+satisfies the conditions of delex.
+ For deluni, note that U.A  A implies   (U.A)
+. Thus there is an individual
+. Clearly, the domino generated by , 
+
+satisfies the conditions of deluni.
+ The condition of sym for A,R,B is clearly satisfied by the domino generated
+from , .
+
+We will also exploit this observation in the later construction of models for knowledge
+bases with individual assertions. The following was again shown in [2]:
+Theorem 7. An ALCIb terminology T is satisfiable iff its canonical domino set DT is
+non-empty. Definition 5 thus defines a decision procedure for satisfiability of ALCIb
+terminologies.
+
+such that ,   U
+
+such that ,   U
+
+and   A
+
+and   A
+
+4 Sets as Boolean Functions
+
+The algorithm of the previous section may seem to be of little practical use, since it requires the computations on an exponentially large set of dominoes. The required computation steps, however, can also be accomplished with a more indirect representation of
+the possible dominoes based on Boolean functions. Indeed, any propositional logic formula represents a set of interpretations for which the function evaluates to true. Using
+a suitable encoding, each interpretation can be understood as a domino, and a propositional formula can represent a domino set.
+
+In order for this approach to be more feasible than the naive algorithm given above,
+an efficient representation of propositional formulae is needed. For this we use binary
+decision diagrams (BDDs), that have been applied to represent complex Boolean functions in model-checking (see, e.g., [5]). A particular optimisation of these structures are
+ordered BDDs (OBDDs) that use a dynamic precedence order of propositional variables
+to obtain compressed representations. We provide a first introduction to OBDDs below.
+A more detailed exposition and pointers to the literature are given in [6].
+?
+
+?
+
+?
+Boolean Functions and Operations. We first explain how sets can be represented
+by means of Boolean functions. This will enable us, given a fixed finite base set S , to
+represent every family of sets S  2S by a single Boolean function.
+A Boolean function on a set Var of variables is a function  : 2Var  {true, false}.
+The underlying intuition is that (V) computes the truth value of a Boolean formula
+based on the assumption that exactly the variables of V are evaluated to true. A simple
+example are so-called characteristic functions of the form v for some v  Var, which
+are defined as v(V)  true iff v  V, or the functions true and false mapping
+any input to true or false, respectively.
+
+Boolean functions over the same set of variables can be combined and modified in
+several ways. Firstly, there are the obvious Boolean operators for negation, conjunc-
+tion, disjunction, and implication. By slight abuse of notation, we will use the common (syntactic) operator symbols , , , and  to also represent such (semantic)
+operators on Boolean functions. Given, e.g., Boolean functions  and , we find that
+(  )(V) = true iff (V) = true and (V) = true. Note that the result of the application of  results in another Boolean function, and is not to be understood as a
+syntactic formula. Another operation on Boolean functions is existential quantification
+over a set of variables V  Var, written as V. for some function . Given an input set
+W  Var of variables, we define (V.)(W) = true iff there is some V
+  V such that
+  (W \ V)) = true. In other words, there must be a way to set truth values of vari-
+(V
+ables in V such that  evaluates to true. Universal quantification is defined analogously,
+and we thus have V.  V. as usual. Mark that our use of  and  overloads
+notation, and should not be confused with role restrictions in DL expressions.
+
+Ordered Binary Decision Diagrams. Binary Decision Diagrams (BDDs), intuitively,
+are a generalisation of decision trees which allow the reuse of nodes. Structurally, BDDs
+are directed acyclic graphs whose nodes are labelled by variables from some set Var.
+The only exception are two terminal nodes that are labelled by true and false, respec-
+tively. Every non-terminal node has two outgoing edges, corresponding to the two possible truth values of the variable.
+
+Definition 8. A BDD is a tuple O = (N, nroot, n true, n false, low, high, Var, ) where
+ N is a finite set called nodes,
+ nroot  N is called the root node,
+ n true, n false  N are called the terminal nodes,
+ low, high : N \ {n true, n false}  N are two child functions assigning to every nonterminal node a low and a high child node. Furthermore the graph obtained by
+iterated application has to be acyclic, i.e. for no node n exists a sequence of applications of low and high resulting in n again.
+ Var is a finite set of variables.
+  : N \{n true, n false}  Var is the labelling function assigning to every non-terminal
+node a variable from Var.
+
+OBBDs are a particular realisation of BDDs where a certain ordering is imposed on
+variables to achieve more efficient representations. We will not require to consider the
+background of this optimisation in here. Now every BDD based on a variable set Var =
+{x1, . . . , xn} represents an n-ary Boolean function  : 2Var  {true, false}.
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+Definition 9. Given a BDD O =(N, nroot, n true, n false, low, high, Var, ) the Boolean function O : 2Var  {true, false} is defined recursively as follows:
+
+O  nroot
+
+(n)  low(n)
+
+= true
+
+n true
+  
+(n)  high(n)
+
+= false
+
+n false
+
+for n  N \ {n true, n false}
+
+n =
+
+In other words, the value (V) for some V  Var is determined by traversing the BDD,
+beginning from the root node: at a node labelled with v  Var, the evaluation proceeds
+with the node connected by the high-edge if v  V, and with the node connected by the
+low-edge otherwise. If a terminal node is reached, its label is returned as a result.
+
+BDDs for some Boolean formula might be exponentially large in general, but often
+there is a representation which allows for BDDs of manageable size. Finding the optimal representation is NP-complete, but heuristics have shown to yield good approximate solutions. Hence (O)BDDs are often conceived as efficiently compressed representations of Boolean functions. In addition, many operations on Boolean functions 
+such as the aforementioned point-wise negation, conjunction, disjunction, implication
+as well as propositional quantification  can be performed directly on the corresponding
+OBDDs by fast algorithms.
+
+P(T )  {1, 2}
+
+Translating Dominos into Boolean Functions. To apply the above machinery to DL
+reasoning, consider a flattened ALCIb terminology T = FLAT(T ). A set of propositional variables Var is defined as Var  R  
+. We thus obtain an
+obvious bijection between sets V  Var and dominoes over the set P(T ) given as
+A,R,B  (A  {1})  R  (B  {2}). Hence, any Boolean function over Var represents a domino set as the collection of all variable sets for which it evaluates to true.
+We can use this observation to rephrase the construction of DT in Definition 5 into an
+equivalent construction of a function T .
+We first represent DL concepts C and role expressions U by characteristic Boolean
+functions over Var as follows. Note that the application of  results in another Boolean
+function, and is not to be understood as a syntactic formula.
+V
+V  W if U = V  W
+V  W if U = V  W
+U
+
+D
+D  E if C = D  E
+D  E if C = D  E
+if C  P(T )
+C, 1
+
+if C = D
+
+if U = V
+
+if U  R
+
+U 
+
+C 
+
+
+
+
+
+
+
+
+
+
+
+We can now define an inferencing algorithm based on Boolean functions.
+Definition 10. Given a flattened ALCIb terminology T and a variable set Var defined
+as above, Boolean functions T i are constructed based on the definitions in Fig. 1:
+ T 0  kb  uni  ex,
+ T i+1  T i  delex
+The construction terminates as soon as T i+1 = T i, and the result of the construction is then defined as T   T i. The algorithm returns unsatisfiable if
+T (V) = false for all V  Var, and satisfiable otherwise.
+As shown in [2], the above algorithm is a correct procedure for checking consistency of
+terminologicalALCIb knowledge bases. Moreover, all required operations and checks
+
+ deluni
+
+ sym
+
+i
+
+i
+
+i
+?
+
+?
+
+?
+kb 
+
+uni 
+
+delex
+
+i
+?
+
+?
+
+?
+deluni
+
+i
+?
+
+?
+
+?
+CT
+?
+
+?
+
+?
+C
+U.C, 1  U  C, 2
+R  C{2}
+U.C, 1  
+U.C, 1  
+R  C{2}
+D, 1 | D, 2  V
+  
+
+.
+
+U.CP(T )
+?
+
+?
+
+?
+U.CP(T )
+?
+
+?
+
+?
+U.CP(T )
+
+ex 
+?
+
+?
+
+?
+C, 2  U  U.C, 1
+
+U.CP(T )
+?
+
+?
+
+?
+T i  U  C, 2
+T i  U  C, 2
+
+.
+?
+
+?
+
+?
+(V)  T i
+
+sym
+
+i
+
+Inv(R) | R  V
+
+  D, 2 | D, 1  V
+?
+
+?
+
+?
+Fig. 1. Boolean functions for defining the canonical domino set in Definition 10
+
+PhDStudent  has.Diploma
+.Graduate
+
+Diploma  has
+
+Diploma  Graduate  
+
+Diploma(laureus)
+
+PhDStudent(laureus)
+Fig. 2. An example ALCIb knowledge base
+
+are provided by standard OBDD implementations, and thus can be realised in practice.
+Correctness follows from the next observation, which is also relevant for extending
+reasoning to Aboxes below:
+Proposition 11. For any ALCIb terminology T and variable set V  Var as above,
+we find that T (V) = true iff V represents a domino in DT as defined in Definition 5.
+
+In the remainder of this section, we illustrate the above algorithm by an extended ex-
+ample, to which we will also come back to explain the later extensions of the inference
+algorithm. Therefore, consider the ALCIb knowledge base given in Fig. 2. For now,
+we are only interested in the terminological axioms, the consistency of which we would
+like to establish. As a first transformation step, all Tbox axioms are transformed into
+the following universally valid concepts in negation normal form:
+PhDStudenthas.Diploma Diplomahas
+
+.Graduate DiplomaGraduate
+
+The flattening step can be skipped since all concepts are already flat. Now the relevant
+concept expressions for describing dominoes are as follows given by the set P(T ) =
+{has.Diploma,has
+.Graduate, Diploma, Graduate, PhDStudent}. We thus obtain the
+following set Var of Boolean variables (though Var is just a set, our presentation follows
+the domino intuition):
+
+.Graduate, 1 has
+
+has.Diploma, 1
+has
+Diploma, 1
+Graduate, 1
+PhDStudent, 1
+
+has has.Diploma, 2
+.Graduate, 2
+
+ has
+Diploma, 2
+Graduate, 2
+PhDStudent, 2
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+h
+
+i
+PhDStudent,1
+
+h
+
+Graduate,1
+
+i
+
+h
+
+i
+Graduate,2
+
+has
+
+-
+
+h9 has.Diploma,1i
+
+h8
+
+has .Graduate,1i
+
+-
+
+h8
+
+has .Graduate,1i
+
+-
+
+h
+
+i
+Diploma,1
+
+h
+
+i
+PhDStudent,1
+
+h
+
+i
+Diploma,1
+
+h8has .Graduate,1i
+
+-
+
+h9
+
+has.Diploma,1i
+
+h9
+
+has.Diploma,1i
+
+h
+
+Graduate,1
+
+i
+
+h
+
+i
+Diploma,2
+
+has
+
+Fig. 3. OBDDs arising when processing the terminology of Fig. 2. Following traditional BDD
+notation, solid arrows indicate high successors, and dashed arrows indicate low successors.
+
+We are now ready to construct the OBDDs as described. Figure 3 (left) displays an
+OBDD corresponding to the following Boolean function:
+
+kb  (PhDStudent, 1  has.Diploma, 1)
+.Graduate, 1)
+
+(Diploma, 1  has
+(Diploma, 1  Graduate, 1)
+
+and in Fig. 3 (right) shows the OBDD representing the function T 0 obtained from
+kb by conjunctively adding
+= Diploma, 2  has  has.Diploma, 1 and
+  Graduate, 2.
+= has
+Then, after the first iteration of the algorithm, we arrive at an OBDD representing T 1
+which is displayed in Fig. 4. This OBDD turns out to be the final result T  .
+
+.Graduate, 1  has
+
+ex
+uni
+
+5 Abox Reasoning with Disjunctive Datalog
+
+The above algorithm does not yet take any assertional information about individuals
+into account. Now the proof of Theorem 7 given in [2] hinges upon the fact that the
+constructed domino set DT induces a model of the terminology T , and Lemma 6 states
+that this is indeed the greatest model in a certain sense. This provides some first intuition
+of the problems arising when Aboxes are to be added to the knowledge base: ALCIb
+knowledge bases with Aboxes do generally not have a greatest model.
+
+We thus employ disjunctive datalog as a paradigm that allows us to incorporate
+Aboxes into the reasoning process. The basic idea is to forge a datalog program that
+ depending on two given individuals a and b  describes possible dominoes that may
+?
+
+?
+
+?
+h9
+
+has.Diploma,1i
+
+h
+
+PhDStudent,1
+
+i
+
+has
+
+h8
+
+has .Graduate,2i
+
+-
+
+h8
+
+has .Graduate,2i
+
+-
+
+h8
+
+has .Graduate,2i
+
+-
+
+h
+Graduate,2
+
+i
+
+h
+
+i
+Graduate,2
+
+h
+Graduate,2
+
+i
+
+h
+
+i
+Graduate,2
+
+h
+
+i
+Diploma,2
+
+h
+Diploma,2
+
+i
+
+h
+Diploma,2
+
+i
+
+h
+Diploma,2
+
+i
+
+h9
+
+has.Diploma,2i
+
+h9
+
+has.Diploma,2i
+
+h9
+
+has.Diploma,2i
+
+h9
+
+has.Diploma,2i
+
+h
+
+i
+PhDStudent,2
+
+h
+PhDStudent,2
+
+i
+
+h
+
+i
+PhDStudent,2
+
+h
+
+PhDStudent,2
+
+i
+
+has
+
+-
+
+has
+
+-
+
+has
+
+-
+
+h
+
+i
+Graduate,1
+
+h
+
+i
+Graduate,1
+
+h
+
+i
+Graduate,1
+
+h
+
+i
+Diploma,1
+
+h
+
+i
+Diploma,1
+
+h
+
+i
+Diploma,1
+
+h8
+
+has .Graduate,1i
+
+-
+
+h8has .Graduate,1i
+
+-
+
+Fig. 4. Final OBDD obtained when processing Fig. 2, using notation as in Fig. 3. Arrows to the 0
+node have been omitted for better readability.
+
+connect a and b in models of the knowledge base. There might be various, irreconcilable
+such dominoes in different models, but disjunctive datalog supports such choice since it
+admits multiple minimal models. As long as the knowledge base has some model, there
+is at least one possible domino for every pair of individuals (possibly without connecting roles)  only if this is not the case, the datalog program will infer a contradiction.
+In earlier sections, we have already reduced terminological reasoning in ALCIb to
+iterative constructions of Boolean formulae, and one might be tempted to directly cast
+these constructions into datalog. However, the terminological reasoning must take into
+account all possible individuals occurring in the constructed greatest model. If we want
+to represent individuals by constants in datalog, this would require us to declare exponentially many individuals in datalog. This would give up on the possible optimisation
+of using OBDDs, and basically just mirror the naive domino set construction in datalog.
+So we use the OBDD computed from the terminology as a kind of pre-compiled
+version of the relevant terminological information. Abox information is then considered
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+as a kind of incomplete specification of dominoes that must be accepted by the OBDD,
+and the datalog program simulates the OBDDs evaluation for each of those.
+Definition 12. Consider an ALCIb knowledge base KB = A,T such that A contains only atomic concepts, and let O = (N, nroot, n true, n false, low, high, Var, ) denote an
+OBDD obtained as a representation of FLAT(T ) as in Definition 10. A disjunctive
+datalog program DD(KB) is defined as follows. DD(KB) uses the following predicate
+symbols:
+ a unary predicate S C for every concept expression C  P(FLAT(T )),
+ a binary predicate S R for every atomic role R  NR,
+ a binary predicate An for every OBDD node n  N.
+The constants in DD(KB) are just the individual names used in A. The disjunctive
+datalog rules of DD(KB) are defined as follows:
+(1) DD(KB) contains rules  Anroot(x, y) and An false(x, y) .
+(2) If C(a)  A then DD(KB) contains  S C(a).
+(3) If R(a, b)  A then DD(KB) contains  S R(a, b)
+(4) If n  N with (n) = C, 1 then DD(KB) contains rules
+S C(x)  An(x, y)  Ahigh(n)(x, y) and An(x, y)  Alow(n)(x, y)  S C(x).
+(5) If n  N with (n) = C, 2 then DD(KB) contains rules
+S C(y)  An(x, y)  Ahigh(n)(x, y) and An(x, y)  Alow(n)(x, y)  S C(y).
+(6) If n  N with (n) = R for some R  NR then DD(KB) contains rules
+S R(x, y)  An(x, y)  Ahigh(n)(x, y) and An(x, y)  Alow(n)(x, y)  S R(x, y).
+for some R  NR then DD(KB) contains rules
+(7) If n  N with (n) = R
+S R(y, x)  An(x, y)  Ahigh(n)(x, y) and An(x, y)  Alow(n)(x, y)  S R(y, x).
+
+
+
+Note that the number of variables per rule in DD(KB) is bounded by 2. The semantically
+equivalent grounding of DD(KB) thus is a propositional program of quadratic size, and
+the worst-case complexity for satisfiability checking is NP, as opposed to the NExpTime
+complexity of disjunctive datalog in general. Note that, of course, DD(KB) may still be
+exponential in the size of KB in the worst case. It remains to show the correctness of
+the datalog translation.
+Lemma 13. Given an ALCIb knowledge base KB such that I is a model of KB,
+there is a model J of DD(KB) such that I |= C(a) iff J |= S C(a), and I |= R(a, b) iff
+J |= S R(a, b), for any a, b  NI, C  NC, and R  NR.
+Proof. Let KB = (A,T ). We define an interpretation J of DD(KB). The domain of J
+is the domain of I, i.e. I = J
+. The interpretation
+of predicate symbols is now defined as follows (note that An is defined inductively):
+   S
+ 1, 2  S
+ 1, 2  A
+ 1, 2  An for n  nroot if there is a node n
+the following is the case:
+
+R iff 1, 2  R
+
+nroot for all 1, 2  J
+
+such that 1, 2  An, and one of
+
+. For individuals a, we set a
+
+C iff   C
+
+J  a
+
+,
+
+,
+
+,
+?
+
+?
+
+?
+ (n
+ (n
+ (n
+ (n
+?
+
+?
+
+?
+) = C, i, for some i  {1, 2}, and n = low(n
+
+) = C, i, for some i  {1, 2}, and n = high(n
+
+) = R and n = low(n
+) = R and n = high(n
+
+) and 1, 2  R
+
+) and 1, 2  R
+?
+
+?
+
+?
+) and i  C
+) and i  C
+?
+
+?
+
+?
+n false
+
+we define V1,2
+
+Finally, for case (1), we need to show that A
+
+ {C, n | C  P(FLAT(T )), n  C
+
+, and, using the preconditions of (4), we conclude that 1, 2  A
+
+Mark that, in the last two items, R is any role expression from Var, and hence is a role
+name or its inverse. Also note that due to the acyclicity of O, the interpretation of the
+A-predicates is indeed well-defined. We now show that J is a model of DD(KB). To
+this end, first note that the extensions of predicates S C and S R in J were defined to
+coincide with the extensions of C and R in I. Since I satisfies A, all ground facts of
+DD(KB) are satisfied by J. This settles cases (2) and (3) of Definition 12.
+Similarly, we find that the rules of cases (4)(7) are satisfied by J. Consider the first
+rule of (4), S C(x) An(x, y)  Ahigh(n)(x, y), and assume that 1  S
+C and 1, 2  A
+?
+
+?
+
+?
+n .
+Thus 1  C
+
+follows from the definition of J. The second rule of case (4) covers the analogous
+high(n)
+negative case, and all other cases can be treated similarly.
+= . For that, we first explicate
+the correspondence between domain elements of I and sets of variables of O: Given
+I}  {R |
+elements 1, 2  I
+1, 2  R
+I}, the set of variables corresponding to the I-domino between 1 and 2.
+=  clearly is a consequence of the following claim: for all 1, 2  I
+
+Now A
+and all n  N, we find that 1, 2  An implies n(V1,2) = true (using the notation
+n false
+of Definition 9). The proof proceeds by induction. For the case n = nroot, we find that
+= T . Since V1,2 represents a domino of I, the claim thus follows by combining
+nroot
+Proposition 11 and Lemma 6.
+For the induction step, let n be a node such that 1, 2  An follows from the
+inductive definition of J based on some predecessor node n
+for which the claim has
+may not be unique. The cases in the definition of
+already been established. Note that n
+J must be considered individually. Thus assume n
+, n, and 1 satisfy the first case, and
+that 1, 2  An. By induction hypothesis, n(V1,2) = true, and by Definition 9 the
+
+given case yields n(V1,2) = true as well. The other cases are similar.
+Lemma 14. Given an ALCIb knowledge base KB such that J is a model of DD(KB),
+there is a model I of DD(KB) such that I |= C(a) iff J |= S C(a), and I |= R(a, b) iff
+J |= S R(a, b), for any a, b  NI, C  NC, and R  NR.
+Proof. Let KB = (A,T ). We construct an interpretationI whose domain I
+consists of
+all sequences starting with an individual name followed by a (possibly empty) sequence
+of dominoes from DT such that, for every   I
+ if  begins with aA,R,B, then {C | C  P(FLAT(T )), a
+ if  contains subsequent letters A,R,B and A,R,B, then B = A
+.
+For a sequence  = aA1,R1,A2A2,R2,A3 . . .Ai1,Ri1,Ai, we define tail() 
+Ai, whereas for a  = a we define tail()  {C | C  P(FLAT(T )), a
+J  S
+}. Now the
+mappings of I are defined as follows:
+ for a  NI, we have a
+I  a,
+ for A  NC, we have   A
+
+iff A  tail(),
+
+J  S
+?
+
+?
+
+?
+} = A, and
+?
+
+?
+
+?
+,
+?
+
+?
+
+?
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+ for R  NR, we have 1, 2  R
+
+ 1 = a  NI and 2 = b  NI and a, b  S
+ 2 = 1A,R,B with R  R, or
+ 1 = 2A,R,B with Inv(R)  R.
+
+R , or
+
+if one of the following holds
+?
+
+?
+
+?
+J , b
+
+J , b
+
+J  A
+
+J , b
+
+J  S
+
+J  A
+J , b
+
+}  {Inv(R) | b
+
+J , a
+
+J  S
+
+Thus, intuitively, I is constructed by extracting the named individuals as well their
+concept (and mutual role) memberships from J, and appending an appropriate dominoconstructed tree model to each of those named individuals. We proceed by showing that
+I is indeed a model of KB.
+We begin with the following auxiliary observation: For every two individual names
+a, b  NI, and Rab := {R | a
+}, the domino
+tail(a),Rab, tail(b) is contained in DT (Claim ). Using Proposition 11, it suffices to
+show that the Boolean function T  if applied to Va,b  {tail(a){1}Rabtail(b){2}}
+yields true. Since T  = nroot , this is obtained by showing the following: For any
+a, b  NI, we find that a
+
+J , b
+n implies n(Va,b) = true. Indeed, the intended
+J  A
+claim follows since we have a
+
+nroot due to the first rule of (1) in Definition 12.
+We proceed by induction, starting at the leaves of the OBDD. The case a, b  A
+
+n true is
+immediate, and a, b  A
+
+n false is excluded by the second rule of (1). For the induction
+  N such that either (n)  Va,b and n
+ = high(n), or (n) 
+step, consider nodes n, n
+ = low(n). We assume that a
+
+Va,b and n
+n , and, by induction, that the claim
+. If n = C, 1, then one of the rules of case (4) applies to a
+
+holds for n
+. In
+J  A
+both cases, we can infer a
+
+n , and hence n(Va,b) = true. Together with the
+assumptions for this case, Definition 9 implies that n(Va,b) = true as required. The
+other cases are analogous.
+It is easy to see that I satisfies all Abox axioms from KB by definition, due to the
+ground facts in DD(KB) (case (2) and (3) in Definition 12). To show that the Tbox is
+also satisfied, we need to show that all individuals of I are contained in the extension
+of each concept expression of FLAT(T ). To this end, we first show that   C
+iff
+C  tail() for all C  P(FLAT(T )). If C  NC is atomic, this follows directly from the
+definition of I. The remaining cases that may occur in P(FLAT(T )) are C = U.A and
+C = U.A.
+,   U
+cases:
+ ,   NI and R  U and A  tail(
+satisfies condition ex of Definition 5, and thus C  tail() as required.
+  = tail(),R, tail(
+tail(),R, tail(
+  = tail(
+DT contains the domino tail(), Inv(R), tail(
+conclude C  tail().
+
+). Now by , the domino tail(),R, tail(
+)
+). Since DT  D0, we find that
+
+with
+. The construction of the domino model admits three possible
+
+) satisfies condition ex, and thus C  tail() as required.
+
+),R, tail() with Inv(R)  U and A  tail(
+
+First consider the case C = U.A, and assume that   C
+
+). By condition sym,
+), and we can again invoke ex to
+
+) with R  U and A  tail(
+
+. Thus there is   I
+
+and   A
+
+and b
+
+For the converse, assume that U.A  tail(). So DT contains a domino A,R, tail().
+This is obvious if the sequence  ends with a domino. If  = a  NI, then it follows
+by applying  to a with the first individual being arbitrary. By sym DT also contains
+the domino tail(),R,A. By condition delex, the latter implies that DT contains a
+
+and   A
+
+. But then   (U.A)
+
+, and we obtain   (U.A)
+
+For the second case, consider C = U.A and assume that   C
+
+domino tail(),R,A such that R  U and A  A
+. Thus  = tail(),R,A is an
+I-individual such that ,   U
+as claimed.
+. As above, we find
+that DT contains some domino A,R, tail(), where  is needed if   NI. By sym
+we find a domino tail(),R,A. For a contradiction, suppose that U.A  tail(). By
+condition deluni, the latter implies that DT contains a domino tail(),R,A such that
+R  U and A  A
+. Thus  = tail(),R,A is an I-individual such that ,   U
+
+and   A
+For the other direction, assume that U.A  tail(). According to the construction of
+I, for all elements 
+, there are three possible cases:
+ ,   NI and R  U. Now by , the domino tail(),R, tail(
+dition uni, whence A  tail(
+  = tail(),R, tail(
+satisfy condition uni, and thus A  tail(
+  = tail(
+domino tail(), Inv(R), tail(
+
+) satisfies con-
+) must
+),R, tail() with Inv(R)  U. By condition sym, DT also contains the
+), and we can again use uni to conclude A  tail(
+).
+
+) with R  U. Since DT  D0, tail(),R, tail(
+
+, which is the required contradiction.
+
+with ,   U
+
+).
+
+).
+
+Description Logic Reasoning with Decision Diagrams
+?
+
+?
+
+?
+as claimed.
+
+, the axiom
+
+of , and hence   (U.A)
+
+To finish the proof, note that any domino A,R,B  DT satisfies condition kb.
+Dtail() D  C is a tautology for
+. Hence
+?
+
+?
+
+?
+Thus, A  tail(
+) for all U-successors 
+Using sym, we have that for any   I
+all C  FLAT(T ). As shown above,   D
+for all D  tail(), and thus   C
+every individual of I is an instance of each concept of FLAT(T ) as required.
+Lemma 13 and 14 show that DD(KB) faithfully captures both positive and negative
+ground conclusions of KB, and in particular that DD(KB) and KB are equisatisfiable.
+As discussed in Section 2, SHIQ knowledge bases can be transformed into equisatisfiable ALCIb knowledge bases, and hence the above algorithm can also be used to decide satisfiability in the case of SHIQ. The transformations used to convert SHIQ to
+ALCIb, however, do not preserve all ground consequences. In particular, SHIQ consequences of the form R(a, b) with R being non-simple may not be entailed by DD(KB).
+Such positive non-simple role atoms are the only case where entailments are lost, and
+thus DD(KB) behaves similar to the disjunctive datalog program created by the KAON2
+approach [7].
+
+The above observation immediately allow us to add reasoning support for DL-safe
+rules [8], simply by adding the respective rules to DD(KB) after replacing C and R
+by S C and S R. A special case of this are DL-safe conjunctive queries, i.e. conjunctive
+queries that assume all variables to range only over named individuals. It is easy to
+see that, as a minor extension, one could generally allow for concept expressions R.A
+and R.A in queries and rules, simply because DD(KB) represents these elements of
+P(FLAT(T )) as atomic symbols in disjunctive datalog.
+
+6 Discussion
+We have presented a new reasoning algorithm for SHIQ knowledge bases that compiles SHIQ terminologies into disjunctive datalog programs, which are then combined
+
+S. Rudolph, M. Krotzsch, and P. Hitzler
+
+with assertional information for satisfiability checking and (ground) query answering.
+The approach is based on our earlier work on terminological SHIQ reasoning with
+ordered binary decision diagrams (OBDDs), which fails when introducing Aboxes as it
+hinges upon a form of greatest model property [2]. OBDDs now are still used to process terminologies, but are subsequently transformed into disjunctive datalog programs
+that can incorporate Abox data. The generation of disjunctive datalog may require exponentially many computation steps, the complexity of which depends on the concrete
+OBDD implementation at hand  finding optimal encodings is NP-complete but heuristic approximations are often used in practice. Querying the disjunctive datalog program
+then is co-NP-complete w.r.t. the size of the Abox, so that the data complexity of the
+algorithm is worst-case optimal [7].
+The presented method exhibits similarities to the algorithm underlying the KAON2
+reasoner [7]. In particular, pre-transformations are first applied to SHIQ knowledge
+bases, so that the resulting datalog program is not complete for querying instances of
+non-simple roles. Besides this restriction, extensions with DL-safe rules and ground
+conjunctive queries are straightforward. The presented processing, however, is very different from KAON2. Besides using OBDDs, it also employs Boolean role constructors
+that admit an efficient binary encoding of number restrictions [2].
+
+For future work, the algorithm needs to be evaluated in practice. A prototype implementation was used to generate the examples within this paper, but this software is
+not fully functional yet. It is also evident that redundancy elimination techniques are
+required to reduce the number of generated datalog rules, which is also an important
+aspect of the KAON2 implementation. Another strand for future development is the
+extension of the approach to take nominals into account  significant revisions of the
+model-theoretic considerations are needed for that case.

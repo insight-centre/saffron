@@ -1,0 +1,1137 @@
+SYRql: A Dataflow Language for Large Scale
+
+Processing of RDF Data
+
+Fadi Maali1, Padmashree Ravindra2, Kemafor Anyanwu2, and Stefan Decker1
+
+1 Insight Centre for Data Analytics, National University of Ireland Galway
+
+{fadi.maali,stefan.decker}@insight-centre.org
+
+2 Department of Computer Science, North Carolina State University, Raleigh, NC
+
+{pravind2,kogan}@ncsu.edu
+
+Abstract. The recent big data movement resulted in a surge of activity
+on layering declarative languages on top of distributed computation plat-
+forms. In the Semantic Web realm, this surge of analytics languages was
+not reflected despite the significant growth in the available RDF data.
+Consequently, when analysing large RDF datasets, users are left with
+two main options: using SPARQL or using an existing non-RDF-specific
+big data language, both with its own limitations. The pure declarative
+nature of SPARQL and the high cost of evaluation can be limiting in
+some scenarios. On the other hand, existing big data languages are designed mainly for tabular data and, therefore, applying them to RDF
+data results in verbose, unreadable, and sometimes inefficient scripts. In
+this paper, we introduce SYRql, a dataflow language designed to process
+RDF data at a large scale. SYRql blends concepts from both SPARQL
+and existing big data languages. We formally define a closed algebra that
+underlies SYRql and discuss its properties and some unique optimisation
+opportunities this algebra provides. Furthermore, we describe an implementation that translates SYRql scripts into a series of MapReduce jobs
+and compare the performance to other big data processing languages.
+
+Introduction
+
+Declarative query languages have been a corner stone of data management since
+the early days of relational databases. The initial proposal of relational algebra
+and relational calculus by Codd [8] was shortly followed by other languages such
+as SEQUEL [7] (predecessor of SQL) and QUEL [34]. Declarative languages simplified programming and reduced the cost of creation, maintenance, and modification of software. They also helped bringing the non-professional user into
+effective communication with a database. Database languages design continued
+to be an active area of research and innovation. In 2008, the Claremont Report
+on Database Research identified declarative programming as one of the main
+research opportunities in the data management field [2].
+
+There is, indeed, a large number of examples of publications describing design
+and implementation of query languages that embed queries in general purpose
+programming languages [19,37,30], for semi-strucutred data [25,1], for Semantic
+
+P. Mika et al. (Eds.) ISWC 2014, Part I, LNCS 8796, pp. 147163, 2014.
+c Springer International Publishing Switzerland 2014
+
+F. Maali et al.
+
+Web data [12,3], for graphs [6,17] and for network analysis [10,27,26] to name a
+few. Furthermore, the recent big data movement resulted in a surge of activity
+on layering declarative languages on top of distributed computation platforms.
+Examples include PIG Latin from Yahoo [20], DryadLINQ from Microsoft [39],
+Jaql from IBM [4], HiveQL [35] from Facebook and Meteor/Sopremo [13]. This
+paper focuses on declarative languages for large Semantic Web data represented
+in RDF.
+
+In fact, there has been a significant growth in the available RDF data and
+distributed systems have been utilised to support larg-scale processing of the
+RDF data [36,15,16]. Nevertheless, the surge of analytics languages was not
+reflected in the Semantic Web realm. To analyse large RDF datasets, users are
+left mainly with two options: using SPARQL [12] or using an existing non-RDF-
+specific big data language.
+
+SPARQL is a graph pattern matching language that provides rich capabilities
+for slicing and dicing RDF data. The latest version, SPARQL 1.1, supports
+also aggregation and nested queries. Nevertheless, the pure declarative nature
+of SPARQL obligates a user to express their needs in a single query. This can
+be unnatural for some programmers and challenging for complex needs [18,11].
+Furthermore, SPARQL evaluation is known to be costly [22,29].
+
+The other alternative of using an existing big data language such as Pig Latin
+or HiveQL has also its own limitations. These languages were designed for tabular
+data mainly, and, consequently, using them with RDF data commonly results in
+verbose, unreadable, and sometimes inefficient scripts. For instance, listings 1.1
+and 1.2 show a basic SPARQL graph pattern and an equivalent Pig Latin script,
+respectively. Listing 1.2 has double the number of lines compared to listing 1.1
+and is, arguably, harder to read and understand.
+
+Listing 1.1. SPARQL
+basic pattern
+
+
+
+? p r o d a : PoductType .
+
+: r e v i e w F o r ? p r o d .
+: r e v i e w e r ? r e v
+
+? r
+? r
+
+
+
+Listing 1.2. Corresponding Pig Latin script
+
+
+
+
+
+r d f = LOAD  data  USING P i g S t o r a g e ( 
+SPLIT r d f INTO r e v i e w e r s I F P =  : r e v i e w e r  ,
+
+ ) AS ( S , P , O ) ;
+
+r e v i e w s I F P =  : r e v i e w F o r  ,
+p r o d s I F P =  a  and O =  ProductT y pe  ;
+
+
+
+tmp1 = JOIN p r o d s BY S ,
+tmp2 = JOIN tmp BY r e v i e w s : : S ,
+
+r e v i e w s BY O ;
+
+r e v i e w e r s BY S ;
+?
+
+?
+
+?
+
+
+
+
+
+
+In this paper we present SYRql, a declarative dataflow language that focuses
+on the analysis of large-scale RDF data. Similar to other big data processing lan-
+guages, SYRql defines a small set of basic operators that are amenable to parallelisation and supports extensibility via user-defined custom code. On the other
+hand, SYRql adopts a graph-based data model and supports pattern matching
+as in SPARQL.
+
+SYRql could not be based on SPARQL Algebra [22] as this algebra is not
+fully composable. The current SPARQL algebra transitions from graphs (i.e.
+the initial inputs) to sets of bindings (which are basically tables resulting from
+pattern matching). Subsequently, further operators such as Join, Filter, and
+Union are applied on sets of bindings. In other words, the flow is partly hard-
+coded in the SPARQL algebra and a user cannot, for instance, apply a pattern
+?
+
+?
+
+?
+matching on the results of another pattern matching or join two graphs. In a
+dataflow language, the dataflow is guided by the user and cannot be limited to the
+way SPARQL imposes. We, therefore, define a new algebra that underpins the
+SYRql language. In particular, this paper provides the following contributions:
+
+ We define the syntax and semantics of a compositional RDF algebra (sec-
+tions 2.2). The algebra achieves composability by always pairing graphs and
+bindings together. We relate the defined algebra to SPARQL algebra (sec-
+tion 2.3) and report some of its unique properties that can be useful for
+optimising evaluation (section 2.4).
+
+ We describe SYRql, a dataflow language based on the defined algebra (sec-
+tion 3.1). An open source implementation of SYRql that translates scripts
+into a series of MapReduce jobs is also described (section 3.2).
+
+ We present a translation of an existing SPARQL benchmark into a number of popular big data languages (namely Jaql, HiveQL, and Pig Latin).
+The performance of equivalent SYRql scripts is compared with the other big
+data languages (section 4). The comparable results that SYRql implementation showed are encouraging giving its recency relative to the compared
+languages. Nevertheless, a number of improvements are still needed to ensure
+a good competitiveness of SYRql.
+
+2 RDF Algebra
+
+The goal of this algebra is to define operators similar to those defined in SPARQL
+algebra but that are fully composable. To achieve such composability, the algebra
+operators input and output are always a pair of a graph and a corresponding
+table. We next provide the formal definitions and description.
+
+2.1 Preliminaries
+
+We use N to denote the set of all natural numbers. We assume the existence
+of two disjoint infinite sets: U (URIs) and L (literals). The set of all terms is
+from N. An RDF triple1 is a triple (s, p, o)  U  U  T . In this triple, s is the
+subject, p is the predicate and o is the object. An RDF graph is a set of RDF
+triples. We use G to refer to the set of all RDF graphs. Furthermore, we assume
+the existence of the symbol ? such that ?  T and define a triple pattern as
+
+denoted by T (i.e. T = UL). We also assume that both U and L are disjoint
+any triple in (T {?})  (T {?})  (T {?}).
+
+Definition 1. A binding is a sequence of RDF terms (URIs or literals).
+
+Bindings are used to represent results of some operator over RDF graphs.
+Notice that our notion of binding is similar to that of SPARQL. However, in
+SPARQL a binding is a function that maps variable names to values. Our definition of binding obviates the need for variable names by using an ordered
+
+1 We only consider ground RDF graphs and therefore we do not consider blank nodes.
+
+F. Maali et al.
+
+sequence. A common way to represent a set of bindings is by using a table. We
+use subscript to access binding elements based on their position in the sequence
+(i.e. The ith element of a binding S is Si). The length of a binding S is denoted
+as |S| and the empty binding is denoted as () (notice that |()| = 0).
+
+The concatenation of two bindings S = (a1, a2, ..., an) and T = (b1, b2, ..., bm)
+is the binding (a1, a2, ..., an, b1, b2, ..., bm). We denote concatenation by a dot (i.e.
+S . T ).
+
+2.2 RDF Algebra Expressions
+
+Syntax. An RDF expression e is defined inductively as follows:
+1. Atomic: if g is an RDF graph (i.e. g  G) then g is an RDF expression.
+2. Projection: if e is an RDF expression and (a1, ..., an) is a sequence of natural
+numbers, then (e|(a1,...,an)) is an RDF expression. For example (e|(4,2)) is a
+
+projection RDF expression.
+3. Extending bindings: if e is an RDF expression, h is an n-ary function
+that takes n RDF terms and produces an RDF term (i.e. h : T n  T ) and
+a1, ..., an is a sequence of natural numbers then
+(e (a1,...,an) h) is also an RDF expression.
+
+4. Extending graphs: if e is an RDF expression, a1, a2, a3 are three natural
+
+numbers or RDF terms (i.e. a1, a2, a3  T 
+
+(e  (a1, a2, a3)) is also an RDF expression.
+
+N) then
+
+5. Triple pattern matching: If e is an RDF expression and t is a triple
+6. Filtering: if e is an RDF expression, a, b  N and u, v  T then the following
+
+pattern then (e[t]) is also an RDF expression.
+
+are valid RDF expressions:
+(e[ a  b ]), (e[ a  u ]) and (e[ u  v ])
+Where  is =, =, < or . For example, (e[ 1  2]) and (e[ 1 =label ]) are
+two filtering RDF Expressions.
+
+7. Cross product: if e1 and e2 are RDF expressions, then so is (e1  e2).
+
+8. Aggregation: we define aggregate functions that take a set of terms and
+return a single value2. Therefore, the signature of an aggregate function is
+f : 2T  N. If e is an RDF expression, a and b are two natural numbers and
+f is an aggregate function then (ea, f, b) is an RDF expression.
+?
+
+?
+
+?
+Semantics. We now define the semantics of the previous expressions. For each
+expression e the value of it is denoted as
+. The value is always a set of pairs of a
+graph and a binding. The graph and binding components of
+are, respectively,
+.b. To depict the values in this paper, we denote each
+denoted as
+pair by drawing a graph and a table close to each other. The table represents a
+binding and uses the order of elements in the binding as columns headers. The
+set of pairs that constitute an expression value are surrounded by curly brackets.
+?
+
+?
+
+?
+.g and
+?
+
+?
+
+?
+e
+
+e
+
+e
+
+e
+
+2 For simplicity of the presentation here, we restrict aggregate functions to those that
+take a set of single values and return an integer. Generalising this is straightforward.
+?
+
+?
+
+?
+In the figures, sub-figure (a) is the input while sub-figure (b) shows the result of
+applying an operator to the input (see figure 1 for an example).
+?
+
+?
+
+?
+= {(g, ())}
+?
+
+?
+
+?
+(e|(a1,...,an))
+
+1. Atomic:
+
+g
+?
+
+?
+
+?
+The value of an atomic expression gives an empty binding.
+, S = (S
+
+= {(g, S) |(g, S
+
+)  
+
+2. Projection:
+
+e
+?
+
+?
+
+?
+a1 , ..., S
+
+an )}
+?
+
+?
+
+?
+e
+
+(a)
+?
+
+?
+
+?
+(e|(3,1))
+?
+
+?
+
+?
+(b)
+
+Fig. 1. Projection example
+
+Projection allows choosing a sub-sequence of the bindings while leaves the
+graph component in each pair unaffected. Figure 1 provides an example of
+a projection expression value.
+
+3. Extending bindings:
+?
+
+?
+
+?
+(e (a1,...,an) h)
+
+= {(g, S . (h(Sa1, ..., San ))) |(g, S)  
+
+e
+
+}
+
+These expressions allow extending the binding with a new value that is calculated based on existing values in the binding. See Figure 2 for an example.
+Notice that h can be viewed as a Skolem function arising from the quantifi-
+
+Sa2...Sanc : c = h(Sa1 , ..., San )
+
+cation Sa1
+4. Extending graphs: We use the convention that Sa = a for some binding
+S and a term a  T . Notice that T and N are disjoint and therefore the
+?
+
+?
+
+?
+previous convention does not cause any ambiguity.
+(e  (a1, a2, a3) )
+
+{(Sa1 , Sa2, Sa3)}, S) |(g, S)  
+
+= {(g
+
+}
+
+e
+
+These expressions are similar to the extending bindings expressions defined
+before but they allow extending the graph. An example evaluation of such
+expression can be seen in Figure 3.
+
+F. Maali et al.
+?
+
+?
+
+?
+(a)
+
+e
+?
+
+?
+
+?
+(e (2) h2)
+?
+
+?
+
+?
+Notice that h2 is
+(b)
+a function that doubles its input (i.e.
+h2(x) = x  2
+
+Fig. 2. Defining a new variable example (extending bindings)
+
+5. Triple pattern matching:
+
+We discuss each possible triple pattern separately assuming s, p, o  T
+?
+
+?
+
+?
+(e[ (s, p, o) ])
+?
+
+?
+
+?
+(e[ (s, p, ?) ])
+?
+
+?
+
+?
+(e[ (s, ?, o) ])
+?
+
+?
+
+?
+(e[ (s, ?, ?) ])
+?
+
+?
+
+?
+(e[ (?, p, o) ])
+?
+
+?
+
+?
+(e[ (?, p, ?) ])
+?
+
+?
+
+?
+(e[ (?, ?, o) ])
+(e[ (?, ?, ?) ])
+
+= {( {(s, p, o)}, () ) |(g, S)  
+= {( {(s, p, o)}, (o) |(g, S)  
+= {( {(s, p, o)}, (p) ) |(g, S)  
+= {( {(s, p, o)}, (p, o) ) |(g, S)  
+= {( {(s, p, o)}, (s) ) |(g, S)  
+= {( {(s, p, o)}, (s, o) ) |(g, S)  
+= {( {(s, p, o)}, (s, p) ) |(g, S)  
+= {( {(s, p, o)}, (s, p, o) ) |(g, S)  
+
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+  (s, p, o)  g}
+
+e
+e
+
+e
+e
+
+e
+
+e
+
+e
+
+e
+
+Triple pattern matching expressions filter graphs to only triples matching
+the provided pattern and introduces the corresponding bindings. A key difference from SPARQL pattern evaluation is retaining the matching triples
+in addition to the bindings. Figure 4 shows an example. Notice that a triple
+pattern matching expression yields a graph with only one triple and eliminates previous bindings. Notice also that one can still apply further pattern
+matching on the results, something that is not possible in SPARQL.
+?
+
+?
+
+?
+= {(g, S)  
+
+= {(g, S)  
+?
+
+?
+
+?
+6. Filtering:
+
+(e[ a  b ])
+
+(e[ a  u ])
+(e[ u  v ])
+
+= { (g1  g2, S . T ) |(g1, S)  
+(e1  e2)
+
+  (g2, T )  
+
+e2
+
+}
+
+e1
+
+ |Sa  Sb}
+ |Sa  u}
+
+7. Cross product:
+
+ Otherwise
+
+if u  v
+
+e
+e
+?
+
+?
+
+?
+=
+?
+
+?
+
+?
+e
+
+8. Aggregation:
+
+See figure 5 for an example.
+the expression (ea, f, b) groups by the ath element in the binding, then
+?
+
+?
+
+?
+(a)
+
+e
+?
+
+?
+
+?
+(e  (a, p2, 2))
+?
+
+?
+
+?
+(b)
+
+Fig. 3. Defining a new triple (extending graphs)
+?
+
+?
+
+?
+(ea, f, b)
+
+apply the aggregate function f on the values of the bth element in each
+group.
+See Figure 6 for an example and notice that the resulting RDF graphs are
+empty (absence of graph in the figure indicates empty graph component).
+
+= {(,{k, f ({Sb |(g, S)  
+
+  Sa = k})})}
+
+e
+
+2.3 Relationship to SPARQL
+
+Lemma 1. RDF Algebra expressions can express SPARQL 1.1 basic graph patterns with filters, aggregations and assignments.
+
+Proof. SPARQL filters, aggregation and assignments can be directly mapped to
+filtering, aggregation and extending bindings expressions in RDF Algebra.
+SPARQL individual triple patterns can be expressed by triple pattern match-
+ing expressions. Basic graph patterns in SPARQL imply a join on common
+variables among individual triple patterns. These expressions can be expressed
+by a sequence of cross products and filtering expressions in the same way
+
+that natural join is defined in relational algebra.
+
+We provide next a couple of example SPARQL queries along with their equiv-
+
+alent RDF Algebra expressions:
+ The SPARQL query: SELECT ?s ?v WHERE { ?s :p ?o . ?o :p2 ?v }
+
+ The SPARQL query:
+
+evaluated on the RDF graph g is equivalent to the expression:
+
+((( (g[(?, : p, ?)])  (g[(?, : p2, ?)]) )[2 = 3])|(1,4))
+SELECT ?s ?z WHERE { ?s :p ?o . ?o :p2 ?v BIND(?v * 1.1) AS ?z }
+evaluated on the RDF graph g is equivalent to the expression:
+(( ((( (g[(?, : p, ?)])  (g[(?, : p2, ?)]) )[2 = 3]) (4) 1.1 )|(1,5))
+Where 1.1(x) = x  1.1
+
+F. Maali et al.
+?
+
+?
+
+?
+(a)
+
+e
+?
+
+?
+
+?
+(b)
+
+( e[ (?, p1, ?) ] )
+
+Fig. 4. Triple pattern matching example
+
+2.4 Algebraic Properties
+
+Algebraic laws are important for query optimisation. RDF Algebra shares some
+operators with SPARQL algebra and therefore related properties and laws defined in SPARQL algebra carry along. We focus here on triple patterns properties
+that are unique to our algebra. First, we define a partial ordering relationship
+between triple patterns.
+
+Definition 2. x, y  T {?} : x  y iff one of the following holds:
+
+ Both x and y are ?.
+ x and y are equal RDF terms (i.e. x, y  T  x = y).
+ x is a term and y is ? (i.e. x  T  y =?).
+We generalise  to triple patterns.
+
+Definition 3. For two triple patterns (x1, x2, x3) and (y1, y2, y3) we say that
+(x1, x2, x3)  (y1, y2, y3) iff x1  y1, x2  y2, and x3  y3.
+The defined partial ordering relationship between triple patterns () can be
+thought of as a more specific relationship. The following list contains a number
+of algebraic properties that use this relationship. We also highlight potential
+optimisation opportunities of each of these algebraic property.
+?
+
+?
+
+?
+((e[t1])[t2])
+Applying a less specific triple pattern does not change the resulting graph.
+
+It can nevertheless change the binding. For example,
+
+.g if t1  t2
+
+((e[(?, : p, : o)])[(?, ?, : o)])
+?
+
+?
+
+?
+(e[(?, : p, : o)])
+?
+
+?
+
+?
+(e[t1])
+?
+
+?
+
+?
+1.
+
+.g =
+
+.g =
+
+.g
+?
+
+?
+
+?
+e1
+
+  
+
+e2
+?
+
+?
+
+?
+(a)
+?
+
+?
+
+?
+(e1  e2)
+?
+
+?
+
+?
+(b)
+
+Fig. 5. Cross product example
+
+=
+?
+
+?
+
+?
+2.
+
+3.
+?
+
+?
+
+?
+if t1  t2
+?
+
+?
+
+?
+((e[t2])[t1])
+?
+
+?
+
+?
+(e[t1])
+Therefore to calculate the results of matching expression e to the pattern t1
+one can instead try matching t1 against the results of matching t2 against e.
+?
+
+?
+
+?
+This can be advantageous if the e[t2] is cached.
+((e1  e2)[t])
+for all t1, t2 such
+that t  t1 and t  t2. This can cut down the cost of a cross product between
+?
+
+?
+
+?
+(((e1[t1])  (e2[t2]))[t])
+
+More generally
+?
+
+?
+
+?
+(((e1[t])  (e2[t]))[t])
+?
+
+?
+
+?
+((e1  e2)[t])
+?
+
+?
+
+?
+=
+?
+
+?
+
+?
+=
+
+two expressions by substituting them with further matched expressions.
+
+The list above is not comprehensive by any means. Further study of other
+algebraic properties of triple patterns is one of our current research focus. We
+believe that studying this triple algebra can yield fruitful results that can
+further be applied in tasks like caching RDF query results, views management
+and query results re-use.
+
+F. Maali et al.
+?
+
+?
+
+?
+(a)
+
+e
+?
+
+?
+
+?
+(e 1, SU M, 2)
+?
+
+?
+
+?
+(b)
+
+Fig. 6. Aggregate expression example
+
+3 A Data flow Language for RDF
+
+3.1 SYRql Language
+
+SYRql is a dataflow language that is grounded in the algebra defined before.
+A SYRql script is a sequence of statements and each statement is either an
+assignment or an expression. The core set of operators in SYRql are those defined
+by the algebra in sections 2.2.
+The syntax of SYRql borrows the use of  > syntax to explicitly show the
+data flow. According to the designers of Jaql, the  > syntax, inspired by
+the Unix pipes, makes scripts easier to read and debug [4]. It allows eliminating
+the need for defining variables (as in PIG) or for a WITH clause (as in SQL)
+in each computational step. It is worth mentioning that Meteor [13] language
+dropped the pipe notation of Jaql to support operators with multiple inputs and
+outputs. In SYRql, operators with multiple inputs or outputs are not common
+and therefore we decided to adopt the pipe syntax. However, SYRql does support
+multi-input operators such as multi-way joins.
+
+Pattern matching in SYRql uses identical syntax to basic graph patterns of
+SPARQL. SPARQL syntax for patterns is intuitive, concise and well-known to
+many users in the Semantic Web field. We hope that this facilitates learning
+SYRql for many users.
+
+Listing 1.3 shows an example SYRql script that performs pattern matching,
+filtering, and aggregation. Notably, line 10 in the script provides an example of
+composability that is not directly available in SPARQL. In line 10, a pattern
+matching is applied to the results of another pattern matching. We believe that
+such capabilities are useful for complicated scripts, specifically for exploratory
+tasks, and for reusing previous scripts as well as previously computed results.
+?
+
+?
+
+?
+Further description and examples of the SYRql language is available online3.
+The BNF grammar defining the syntax can also be found on SYRql website.
+
+
+
+Listing 1.3. Example SYRql script
+
+$ r d f = l o a d (  h d f s : / / m a s t e r : 9 0 0 1 / bsbm20k  ) ;
+
+$ j a n R e v i e w e r s = $ r d f > p a t t e r n (  ? r e v i e w r e v : r e v i e w e r ? r e v i e w e r
+
+.
+
+> f i l t e r ( ? d a t e >= 20080101  && ? d a t e <  2 0 0 8 0 2  0 1  ) ;
+
+? r e v i e w dc : d a t e ? d a t e .
+? r e v i e w e r bsbm : c o u n t r y ? c n t r y .  )
+
+$ j a n R e v i e w e r s > g r o u p by ? c n t r y i n t o j a n R e v i e w e r s C o u n t : c o u n t ( ? r e v i e w ) ;
+
+$ i r e l a n d J a n R e v i e w e r s = $ j a n R e v i e w e r s > p a t t e r n (  ? r e v bsbm : c o u n t r y : IE  ) ;
+?
+
+?
+
+?
+
+?
+
+?
+
+?
+
+
+
+
+3.2 SYRql Implementation
+
+The current implementation4 translates SYRql scripts into a series of MapReduce [9] jobs. We use Java and Apache Hadoop 2 API5 in our implementation.
+
+Data Representation: JSON6 is used for internal representation of the data.
+Particularly, we use JSON arrays for bindings and JSON-LD [31] to represent
+graphs. JSON-LD is a recent W3C recommended serialisation of RDF. It has
+attracted good adoption so far and this can be expected to grow. Consequently,
+by using JSON-LD a large amount of RDF data can be directly processed using
+SYRql. Furthermore, existing works such as NTGA [24] have demonstrated the
+benefit of manipulating RDF graphs as groups of triples that share the same
+subject. In this work, we utilize JSON-LDs ability to represent star subgraphs as
+single JSON objects, thus eliminating the need for joins when evaluating star-join
+queries. This particular way of encoding RDF in JSON-LD is referred to as the
+flattened document form7 and it is the format used in SYRql implementation.
+Moreover, we provide a MapReduce implementation that converts RDF data
+serialised as N-Triple format8 into flattened JSON-LD.
+
+Parsing, Compiling and Evaluation: We use ANTLR9 to parse SYRql
+scripts and build the abstract syntax tree. Each node in the tree represents
+an expression and the children of the node are its inputs. For triple matching
+expressions, triple patterns are grouped by subject to utilise the data stored as
+star-structured subgraphs, thus reducing the number of required joins. The tree
+is then translated into a directed acyclic graph (DAG) of MapReduce jobs. Sequences of expressions that can be evaluated together are grouped into a single
+MapReduce job. Finally, the graph is topologically sorted and the MapReduce
+
+https://gitlab.insight-centre.org/Maali/syrql-jsonld-imp/wikis/home
+https://gitlab.insight-centre.org/Maali/syrql-jsonld-imp
+http://hadoop.apache.org/
+http://json.org
+http://www.w3.org/TR/json-ld/#flattened-document-form
+http://www.w3.org/TR/2014/REC-n-triples-20140225/
+http://www.antlr.org/
+
+F. Maali et al.
+
+jobs are scheduled to execute on the cluster. It is worth mentioning that for join
+expressions we implemented the optimised repartition join [14].
+
+4 Evaluation
+
+We conducted a performance evaluation of SYRql. Our goal of this evaluation
+is two-fold:
+
+ Compare performance of SYRql to other popular alternatives, namely Jaql,
+Pig Latin, and HiveQL. Our thesis is that SYRqls features and syntax can
+improve user productivity when processing RDF data and help generating
+scripts that are easier to understand and debug. Therefore, we want to measure the loss in performance, if any, that an early adopter of the language
+might have to tolerate.
+
+ In the same spirit of Pig Mix10 that is developed as part of Pig, we want this
+benchmark to measure performance on a regular basis so that the effects of
+individual code changes on performance could be understood.
+
+We based our benchmark on the Berlin SPARQL Benchmark (BSBM) [5] that
+defines an e-commerce use case. Specifically, we translated a number of queries in
+the BSBM Business Intelligence usecase (BSBM BI)11 into equivalent programs
+in a number of popular big data languages. In particular, we provide programs
+in the following languages:
+
+Jaql. A scripting language designed for Javascript Object Notation (JSON).
+Pig Latin. A dataflow language that provides high-level data manipulation
+
+constructs that are similar to relational algebra operators.
+
+HiveQL. A declarative language that uses a syntax similar to SQL.
+
+The programs were written by the authors of this paper who have intermediate to high expertise in those languages. We believe that they reflect what an
+interested user would write given a reasonable amount of time. We evaluated
+four queries from BSBM BI that cover all core operators i.e., filters, patterns,
+joins and aggregation. We plan to evaluate other benchmark queries as part of
+the near future work.
+
+4.1 Setup
+
+Environment: The experiments were conducted on VCL12, an on-demand computing and service-oriented technology that provides remote access to virtualised
+resources. Nodes in the clusters had minimum specifications of single or duo core
+Intel X86 machines with 2.33 GHz processor speed, 4G memory and running
+
+https://cwiki.apache.org/confluence/display/PIG/PigMix
+http://wifo5-03.informatik.uni-mannheim.de/bizer/berlinsparqlbenchmark/
+spec/BusinessIntelligenceUseCase/index.html
+https://vcl.ncsu.edu/
+?
+
+?
+
+?
+Jaql
+Pig Latin
+HiveQL
+SYRql
+
+s
+e
+t
+u
+n
+m
+n
+
+i
+
+i
+
+e
+m
+
+i
+t
+
+y
+r
+e
+u
+
+Query1
+
+Query2
+
+Query3
+
+Query5
+
+Fig. 7. Query processing times
+
+Red Hat Linux. We used a 10-node cluster and the following software versions:
+Apache Hadoop 2.3.0, Jaql 0.5.1, Pig 0.12.1, and Hive 0.12.0.
+
+Dataset and Queries: We generated BSBM data for 400K products in N-
+triple format. The size of the data was about 35GB containing approximately
+140 million triples. As mentioned before, the queries are the scripts corresponding
+to BSBM BI queries.
+
+4.2 Results and Discussion
+
+Figure 7 shows corresponding response time for each of the scripts. Jaql and
+SYRql required pre-processing of the data to convert the N-Triple RDF data into
+JSON-LD. The conversion, which took 40 minutes, is only needed once and then
+the data can be used by all the queries. In general, our SYRql implementation
+shows encouraging results. It is comparable to the times that Jaql and Pig Latin
+showed. However, Hive outperformed all the other four systems significantly. The
+superior performance of Hive was also reported in [33].
+
+Both SYRql and Jaql can evaluate triple patterns that share the same subject
+together due to their underlying data model and their use of JSON-LD. Pig, on
+the other hand, evaluates each triple pattern individually and then joins the
+results. We believe that this is the main reason for the better performance that
+Jaql and SYRql generally achieved in comparison to Pig despite the maturity
+and the larger developers community that Pig enjoys.
+
+Examining the generated MapReduce jobs, it was observed that Jaql and
+SYRql generated similar sequences of jobs. However, SYRql computes results
+for both graphs and bindings as specified in the underlying algebra. This results
+in more computation to be done. Nevertheless, separating bindings and graphs
+helped speeding up some operators through reading and processing less data.
+For example, filters operate only on the bindings and do not need to process the
+graphs. Similarly, joins are calculated based on the bindings and then joining the
+corresponding graphs is a simple union of the matched graphs (see the semantics
+of the cross product operator in Section 2.2).
+
+F. Maali et al.
+
+We speculate that the superior performance of Hive is mostly due to its efficient join performance. Hive join optimisations such as conversion to map-joins
+can be applicable when the joining relations are small in size. Additionally, for
+grouping queries, Hive computes map-side partial aggregations using a Com-
+biner, an optimisation we plan to integrate in our next version.
+
+In summary, SYRql implementation showed a good performance that will
+hopefully encourage users to try it. Moreover, SYRql scripts contained 50% less
+lines than Pig scripts and 42% less than Jaql scripts. Evaluating the language
+ease-of-use and readability is planned for future work.
+
+5 Related Work
+
+A large number of declarative languages were introduced recently as part of the
+big data movement. These languages vary in their programming paradigm, and in
+their underlying data model. Pig Latin [20] is a dataflow language with a tabular
+data model that also supports nesting. Jaql [4] is a declarative scripting languages
+that blends in a number of constructs from functional programming languages
+and uses JSON for its data model. HiveQL [35] adopts a declarative syntax
+similar to SQL and its underlying data model is a set of tables. Other examples
+of languages include Impala13, Cascalog14, Meteor [13] and DryadLINQ [39]. [33]
+presented a performance as well as a language comparison of HiveQL, Pig Latin
+and Jaql. [28] also compared a number of big data languages but focuses on their
+compilation into a series of MapReduce jobs.
+
+In the semantic web field, SPARQL is the W3C recommended querying
+language for RDF. A number of extensions to SPARQL were proposed in the
+literature to support search for semantic associations [3], and to add nested regular expressions [23] for instances. However, these extensions do not change the
+pure declarative nature of SPARQL. There are also a number of non-declarative
+languages that can be integrated in common programming languages to provide
+support for RDF data manipulation [21,32]. In the more general context of graph
+processing languages, [38] provides a good survey.
+
+6 Conclusions and Future Work
+
+RDF Algebra, a fully composable algebra that is similar to SPARQL algebra,
+was presented in this paper. The composabilty of RDF Algebra is obtained by
+pairing graphs and bindings together. A number of unique algebraic properties
+were presented. Further study of these properties is at the top of our research
+agenda. We believe that this is a fruitful direction that can have impact in a
+number of related research problems.
+
+Based on RDF Algebra, we presented SYRql, a dataflow language for large
+scale processing of RDF data. An implementation of SYRql on top of MapReduce platform was described. This paper also reported some initial results on a
+
+https://github.com/cloudera/impala
+http://cascalog.org/
+?
+
+?
+
+?
+performance comparison between SYRql implementation and other existing big
+data languages. Our future work includes refining SYRql syntax and improving
+its performance. In particular, we plan to provide an implementation that runs
+SYRql scripts on top of Apache Spark15 and to use binary representation of the
+JSON-LD RDF data instead of the textual one currently used.
+
+Acknowledgements. This publication has emanated from research supported
+in part by a research grant from Science Foundation Ireland (SFI) under Grant
+Number SFI/12/RC/2289. Fadi Maali is funded by the Irish Research Coun-
+cil, Embark Postgraduate Scholarship Scheme. We thank Aidan Hogan, Marcel
+Karnstedt and Richard Cyganiak for valuable discussions.

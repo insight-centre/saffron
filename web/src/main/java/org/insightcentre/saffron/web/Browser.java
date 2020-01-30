@@ -2,38 +2,28 @@ package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import static java.lang.Integer.min;
-import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-
-import com.mongodb.client.FindIterable;
 import org.apache.jena.rdf.model.Model;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.data.Author;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TaxonomyWithSize;
 import org.insightcentre.nlp.saffron.data.Term;
@@ -41,10 +31,8 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
-import org.insightcentre.saffron.web.api.BaseResponse;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.insightcentre.saffron.web.rdf.RDFConversion;
-import org.json.JSONObject;
 
 /**
  * Handles the interface if there is a corpus loaded

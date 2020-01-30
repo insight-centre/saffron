@@ -119,5 +119,20 @@ public class ChangeLog3_3_rc2To3_4 {
         }
         topicCollection.drop();
     }
+
+
+    @ChangeSet(order = "006", id = "removeOriginalParentAndOriginalTerm", author = "andy_donald")
+    public void removeOriginalParentAndOriginalTerm(DB db) throws JsonParseException, JsonMappingException, IOException {
+        final DBCollection taxoCollection = db.getCollection("saffron_runs_taxonomy");
+        DBCursor taxoDocs = taxoCollection.find();
+
+        while (taxoDocs.hasNext()) {
+            DBObject obj = taxoDocs.next();
+            obj.removeField("originalParent");
+            obj.removeField("originalTerm");
+
+            taxoCollection.save(obj);
+        }
+    }
 	
 }

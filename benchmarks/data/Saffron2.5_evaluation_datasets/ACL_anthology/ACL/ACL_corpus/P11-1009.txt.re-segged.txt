@@ -1,0 +1,236 @@
+Proceedings of the 49th Annual Meeting of the Association for Computational Linguistics , pages 83?92,
+Portland , Oregon , June 1924, 2011. c?2011 Association for Computational Linguistics
+Jigs and Lures : Associating Web Queries with Structured Entities
+Patrick Pantel
+Microsoft Research
+Redmond , WA , USA
+ppantel@microsoft.com
+Ariel Fuxman
+Microsoft Research
+Mountain View , CA , USA
+arielf@microsoft.com
+Abstract
+We propose methods for estimating the probability that an entity from an entity database is associated with a web search query . Association is modeled using a query entity click graph , blending general query click logs with vertical query click logs . Smoothing techniques are proposed to address the inherent data sparsity in such graphs , including interpolation using a query synonymy model . A largescale empirical analysis of the smoothing techniques , over a 2-year click graph collected from a commercial search engine , shows significant reductions in modeling error . The association models are then applied to the task of recommending products to web queries , by annotating queries with products from a large catalog and then mining query-product associations through web search session analysis . Experimental analysis shows that our smoothing techniques improve coverage while keeping precision stable , and overall , that our top-performing model affects 9% of general web queries with 94% precision.
+1 Introduction
+Commercial search engines use query associations in a variety of ways , including the recommendation of related queries in Bing , ? something different ? in Google , and ? also try ? and related concepts in Yahoo . Mining techniques to extract such query associations generally fall into four categories : ( a ) clustering queries by their co-clicked url patterns ( Wen et al , 2001; Baeza-Yates et al , 2004); ( b ) leveraging cooccurrences of sequential queries in web search query sessions ( Zhang and Nasraoui , 2006; Boldi et al ., 2009); ( c ) pattern-based extraction over lexicosyntactic structures of individual queries ( Pas?ca and Durme , 2008; Jain and Pantel , 2009); and ( d ) distributional similarity techniques over news or web corpora ( Agirre et al , 2009; Pantel et al , 2009). These techniques operate at the surface level , associating one surface context ( e.g ., queries ) to another.
+In this paper , we focus instead on associating surface contexts with entities that refer to a particular entry in a knowledge base such as Freebase , IMDB , Amazon?s product catalog , or The Library of Congress . Whereas the former models might associate the string ? Ronaldinho ? with the strings ? AC Milan ? or ? Lionel Messi ?, our goal is to associate ? Ronaldinho ? with , for example , the Wikipedia entity page ? wiki/AC Milan ? or the Freebase entity ? en/lionel mess ?. Or for the query string ? ice fishing ?, we aim to recommend products in a commercial catalog , such as jigs or lures.
+The benefits and potential applications are large.
+By knowing the entity identifiers associated with a query ( instead of strings ), one can greatly improve both the presentation of search results as well as the clickthrough experience . For example , consider when the associated entity is a product . Not only can we present the product name to the web user , but we can also display the image , price , and reviews associated with the entity identifier . Once the entity is clicked , instead of issuing a simple web search query , we can now directly show a product page for the exact product ; or we can even perform actions directly on the entity , such as buying the entity on Amazon.com , retrieving the product?s oper-for friends that own the product . This is a big step towards a richer semantic search experience.
+In this paper , we define the association between a query string q and an entity id e as the probability that e is relevant given the query q , P ( e|q ). Following Baeza-Yates et al (2004), we model relevance as the likelihood that a user would click on e given q , events which can be observed in large query-click graphs . Due to the extreme sparsity of query click graphs ( Baeza-Yates , 2004), we propose several smoothing models that extend the click graph with query synonyms and then use the synonym click probabilities as a background model.
+We demonstrate the effectiveness of our smoothing models , via a largescale empirical study over realworld data , which significantly reduce model errors.
+We further apply our models to the task of query-product recommendation . Queries in session logs are annotated using our association probabilities and recommendations are obtained by modeling session-level query-product cooccurrences in the annotated sessions . Finally , we demonstrate that our models affect 9% of general web queries with 94% recommendation precision.
+2 Related Work
+We introduce a novel application of significant commercial value : entity recommendations for general Web queries . This is different from the vast body of work on query suggestions ( Baeza-Yates et al , 2004; Fuxman et al , 2008; Mei et al , 2008b ; Zhang and Nasraoui , 2006; Craswell and Szummer , 2007; Jagabathula et al , 2011), because our suggestions are actual entities ( as opposed to queries or documents ). There is also a rich literature on recommendation systems ( Sarwar et al , 2001), including successful commercial systems such as the Amazon product recommendation system ( Linden et al , 2003) and the Netflix movie recommendation system ( Bell et al , 2007). However , these are entity-to-entity recommendations systems . For example , Netflix recommends movies based on previously seen movies ( i.e ., entities ). Furthermore , these systems have access to previous transactions ( i.e ., actual movie rentals or product purchases ), whereas our recommendation system leverages a different resource , namely query sessions.
+In principle , one could consider vertical search engines ( Nie et al , 2007) as a mechanism for associating queries to entities . For example , if we type the query ? canon eos digital camera ? on a commerce search engine such as Bing Shopping or Google Products , we get a listing of digital camera entities that satisfy our query . However , vertical search engines are essentially rankers that given a query , return a sorted list of ( pointers to ) entities that are related to the query . That is , they do not expose actual association scores , which is a key contribution of our work , nor do they operate on general search queries.
+Our smoothing methods for estimating association probabilities are related to techniques developed by the NLP and speech communities to smooth ngram probabilities in language modeling . The simplest are discounting methods , such as additive smoothing ( Lidstone , 1920) and GoodTuring ( Good , 1953). Other methods leverage lower-order background models for low-frequency events , such as Katz ? backoff smoothing ( Katz , 1987), WittenBell discounting ( Witten and Bell , 1991), Jelinek-Mercer interpolation ( Jelinek and Mercer , 1980), and Kneser-Ney ( Kneser and Ney , 1995).
+In the information retrieval community , Ponte and Croft (1998) are credited for accelerating the use of language models . Initial proposals were based on learning global smoothing models , where the smoothing of a word would be independent of the document that the word belongs to ( Zhai and Lafferty , 2001). More recently , a number of local smoothing models have been proposed ( Liu and Croft , 2004; Kurland and Lee , 2004; Tao et al , 2006). Unlike global models , local models leverage relationships between documents in a corpus . In particular , they rely on a graph structure that represents document similarity . Intuitively , the smoothing of a word in a document is influenced by the smoothing of the word in similar documents . For a complete survey of these methods and a general optimization framework that encompasses all previous proposals , please see the work of Mei , Zhang et al (2008a).
+All the work on local smoothing models has been applied to the prediction of priors for words in documents . To the best of our knowledge , we are the first to establish that query-click graphs can be used to 3 Association Model Task Definition : Consider a collection of entities E . Given a search query q , our task is to compute P ( e|q ), the probability that an entity e is relevant to q , for all e ? E.
+We limit our model to sets of entities that can be accessed through urls on the web , such as Ama-zon.com products , IMDB movies , Wikipedia entities , and Yelp points of interest.
+Following Baeza-Yates et al (2004), we model relevance as the click probability of an entity given a query , which we can observe from click logs of vertical search engines , i.e ., domain-specific search engines such as the product search engine at Amazon , the local search engine at Yelp , or the travel search engine at Bing Travel . Clicked results in a vertical search engine are edges between queries and entities e in the vertical?s knowledge base . General search query click logs , which capture direct user intent signals , have shown significant improvements when used for web search ranking ( Agichtein et al , 2006). Unlike for general search engines , vertical search engines have typically much less traffic resulting in extremely sparse click logs.
+In this section , we define a graph structure for recording click information and we propose several models for estimating P ( e|q ) using the graph.
+3.1 Query Entity Click Graph
+We define a query entity click graph , QEC(Q?U ? E,Cu ? Ce ), as a tripartite graph consisting of a set of query nodes Q , url nodes U , entity nodes E , and weighted edges Cu exclusively between nodes of Q and nodes of U , as well as weighted edges Ce exclusively between nodes of Q and nodes of E . Each edge in Cu and Ce represents the number of clicks observed between query-url pairs and query-entity pairs , respectively . Let wu(q , u ) be the click weight of the edges in Cu , and we(q , e ) be the click weight of the edges in Ce.
+IfCe is very large , then we can model the association probability , P ( e|q ), as the maximum likelihood estimation ( MLE ) of observing clicks on e given the query q:
+P?mle(e|q ) = we(q,e )? e??E we(q,e ?) (3.1) Figure 1 illustrates an example query entity graph linking general web queries to entities in a large commercial product catalog . Figure 1a illustrates eight queries in Q with their observed clicks ( solid lines ) with products in E1. Some probability estimates , assigned by Equation 3.1, include : P?mle(panfish jigs , e1) = 0, P?mle(ice jigs , e1) = 1, and P?mle(ice auger , e4) = ce(ice auger,e4) ce(ice auger,e3)+ce(ice auger,e4) .
+Even for the largest search engines , query click logs are extremely sparse , and smoothing techniques are necessary ( Craswell and Szummer , 2007; Gao et al ., 2009). By considering only Ce , those clicked urls that map to our entity collection E , the sparsity situation is even more dire . The sparsity of the graph comes in two forms : a ) there are many queries for which an entity is relevant that will never be seen in the click logs ( e.g ., ? panfish jig ? in Figure 1a ); and b ) the query-click distribution is Zipfian and most observed edges will have very low click counts yielding unreliable statistics . In the following subsections , we present a method to expand QEC with unseen queries that are associated with entities in E.
+Then we propose smoothing methods for leveraging a background model over the expanded click graph.
+Throughout our models , we make the simplifying assumption that the knowledge base E is complete.
+3.2 Graph Expansion
+Following Gao et al (2009), we address the sparsity of edges in Ce by inferring new edges through traversing the query-url click subgraph , UC(Q ? U,Cu ), which contains many more edges than Ce.
+If two queries qi and qj are synonyms or near synonyms2, then we expect their click patterns to be similar.
+We define the synonymy similarity , s(qi , qj ) as the cosine of the angle between qi and qj , the click pattern vectors of qi and qj , respectively : cosine(qi,qj ) = qi?qj ? qi?qi ? ? qj?qj where q is an nu dimensional vector consisting of the pointwise mutual information between q and each url u in U , pmi(q , u ): 1Clicks are collected from a commerce vertical search engine described in Section 5.1.
+2A query qi is a near synonym of a query qj if most relevant results of qi are also relevant to qj . Section 5.2.1 describes our adopted metric for near synonymy.
+85 ice fishing ice auger
+Eskimo
+Mako
+Auger
+Luretech
+Hot Hooks
+HiTech
+Fish ? N?
+Bucket icefishingworld.com iceteam.com cabelas.com strikemaster.com ice fishing tackle fishusa.com power auger ice jigs fishing bucket customjigs.com keeperlures.com panfish jigs d rock
+Strike-
+Lite II
+Auger
+Luretech
+Hot Hooks ice fishing tackle ice jigs panfish jigs ? ? eqwe ,? ? eqwe ,?
+E
+Q
+U ? ? ji qqs , ice auger cabelas.com strikemaster.com power auger d rock ? ? uqwu , a ) b ) c ) d ) fishing ice fishing ice fishing minnesota d rock ice fishing tackle ice fishing t 0 t 1 t 3 t 4 t2 ( e1) ( e1) ( e2) ( e3) ( e4) Figure 1: Example QEC graph : ( a ) Sample queries in Q , clicks connecting queries with urls in U , and clicks to entities in E ; ( b ) Zoom on edges in Cu illustrating clicks observed on urls with weight wu(q , u ) as well as synonymy edges between queries with similarity score s(qi , qj ) ( Section 3.2); ( c ) Zoom on edges in Ce where solid lines indicate observed clicks with weight we(q , e ) and dotted lines indicate inferred clicks with smoothed weight w?e(q , e ) ( Section 3.3); and ( d ) A temporal sequence of queries in a search session illustrating entity associations propagating from the QEC graph to the queries in the session ( Section 4).
+pmi(q , u ) = log ( wu(q,u )? ? q??Q,u??U wu(q ?, u ?) ? u??U wu(q,u ?) ? q??Q wu(q ?, u ) ) (3.2) PMI is known to be biased towards infrequent events . We apply the discounting factor , ?( q , u ), proposed in ( Pantel and Lin , 2002): ?( q,u )= wu(q,u)wu(q,u)+1 ? min(?q??Q wu(q?,u ), ? u??U wu(q,u ?)) min(?q??Q wu(q?,u ), ? u??U wu(q,u ?))+1 Enrichment : We enrich the original QEC graph by creating a new edge { q?,e }, where q ? ? Q and e ? E , if there exists a query q where s(q , q ?) > ? and we(q , e ) > 0. ? is set experimentally , as described in Section 5.2.
+Figure 1b illustrates similarity edges created between query ? ice auger ? and both ? power auger ? and ? d rock ?. Since ? ice auger ? was connected to entities e3 and e4 in the original QEC , our expansion model creates new edges in Ce between { power auger , e3}, { power auger , e4}, and { d rock , e3}.
+For each newly added edge { q,e }, P?mle = 0 according to our model from Equation 3.1 since we have never observed any clicks between q and e . Instead , we define a new model that uses P?mle when clicks are observed and otherwise assigns uniform probability mass , as:
+P?hybr(e|q ) = ? ? ?
+P?mle(e|q ) if ? e?|we(q,e?)>0 1? e??E ?( q,e ?) otherwise (3.3) where ?( q , e ) is an indicator variable which is 1 if there is an edge between { q , e } in Ce.
+This model does not leverage the local synonymy graph in order to transfer edge weight to unseen edges . In the next section , we investigate smoothing techniques for achieving this.
+3.3 Smoothing
+Smoothing techniques can be useful to alleviate data sparsity problems common in statistical models . In practice , methods that leverage a background model ( e.g ., a lower-order ngram model ) have shown most promise ( Katz , 1987; Witten and Bell , 1991; Jelinek and Mercer , 1980; Kneser and Ney , 1995). In this section , we present two smoothing methods , derived from Jelinek-Mercer interpolation ( Jelinek and Mercer , 1980), for estimating the target association probability P ( e|q).
+Figure 1c highlights two edges , illustrated with dashed lines , inserted into Ce during the graph expansion phase of Section 3.2. w?e(q , e ) represents the weight of our background model , which can be viewed as smoothed click counts , and are obtained
+UNIF P?unif ( e|q ) Eq . 3.8
+MLE P?mle(e|q ) Eq . 3.1
+HYBR P?hybr(e|q ) Eq . 3.3
+INTU P?intu(e|q ) Eq . 3.6
+INTP P?intp(e|q ) Eq . 3.7
+Table 1: Models for estimating the association probability P ( e|q).
+by propagating clicks to unseen edges using the synonymy model as follows : w?e(q , e ) = ? q??Q s(q,q?)
+Nsq ? P?mle(e|q ?) (3.4) where Nsq = ? q??Q s(q , q ?). By normalizing the smoothed weights , we obtain our background model , P?bsim:
+P?bsim(e|q ) = w?e(q,e )? e??E w?e(q,e ?) (3.5) Below we propose two models for interpolating our foreground model from Equation 3.1 with the background model from Equation 3.5.
+Basic Interpolation : This smoothing model , P?intu(e|q ), linearly combines our foreground and background models using a model parameter ?: P?intu(e|q)=?P?mle(e|q)+(1??)P?bsim(e|q ) (3.6) Bucket Interpolation : Intuitively , edges { q , e } ? Ce with higher observed clicks , we(q , e ), should be trusted more than those with low or no clicks . A limitation of P?intu(e|q ) is that it weighs the foreground and background models in the same way irrespective of the observed foreground clicks . Our final model , P?intp(e|q ) parameterizes the interpolation by the number of observed clicks:
+P?intp(e|q)=?[we(q , e)]P?mle(e|q ) + (1? ?[ we(q , e)])P?bsim(e|q ) (3.7) In practice , we bucket the observed click parameter , we(q , e ), into eleven buckets : {1-click , 2-clicks , ..., 10-clicks , more than 10 clicks}.
+Section 5.2 outlines our procedure for learning the model parameters for both P?intu(e|q ) and
+P?intp(e|q).
+3.4 Summary
+Table 1 summarizes the association models presented in this section as well as a strawman that assigns uniform probability to all edges in QEC:
+P?unif ( e|q ) = e??E ?( q , e ?) (3.8)
+In the following section , we apply these models to the task of extracting product recommendations for general web search queries . A largescale experimental study is presented in Section 5 supporting the effectiveness of our models.
+4 Entity Recommendation
+Query recommendations are pervasive in commercial search engines . Many systems extract recommendations by mining temporal query chains from search sessions and clickthrough patterns ( Zhang and Nasraoui , 2006). We adopt a similar strategy , except instead of mining query-query associations , we propose to mine query-entity associations , where entities come from an entity database as described in Section 1. Our technical challenge lies in annotating sessions with entities that are relevant to the session.
+4.1 Product Entity Domain
+Although our model generalizes to any entity domain , we focus now on a product domain . Specifically , our universe of entities,E , consists of the entities in a large commercial product catalog , for which we observe query-click-product clicks , Ce , from the vertical search logs . Our QEC graph is completed by extracting query-click-urls from a search engine?s general search logs , Cu . These datasets are described in Section 5.1.
+4.2 Recommendation Algorithm
+We hypothesize that if an entity is relevant to a query , then it is relevant to all other queries cooccurring in the same session . Key to our method are the models from Section 3.
+Step 1 ? Query Annotation : For each query q in a session s , we annotate it with a set Eq , consisting of every pair { e , P ? ( e|q )}, where e ? E such that there exists an edge { q , e } ? Ce with probability P ? ( e|q).
+Note that Eq will be empty for many queries.
+Step 2 ? Session Analysis : We build a query-entity frequency cooccurrence matrix , A , consisting of n|Q | rows and n|E | columns , where each row corresponds to a query and each column to an entity.
+87
+The value of the cell Aqe is the sum over each session s , of the maximum edge weight between any query q ? ? s and e3:
+Aqe = ? s?S ?( s , e ) where S consists of all observed search sessions and : ?( s , e ) = argmax
+P ? ( e|q ?) ({ e , P ? ( e|q ?)} ? Eq?),?q ? ? s Step 3 ? Ranking : We compute ranking scores between each query q and entity e using pointwise mutual information over the frequencies in A , similarly to Eq . 3.2.
+The final recommendations for a query q are obtained by returning the top-k entities e according to Step 3. Filters may be applied on : f the frequency Aqe ; and p the pointwise mutual information ranking score between q and e.
+5 Experimental Results 5.1 Datasets
+We instantiate our models from Sections 3 and 4 using search query logs and a large catalog of products from a commercial search engine . We form our QEC graphs by first collecting in Ce aggregate query-click-entity counts observed over two years in a commerce vertical search engine . Similarly , Cu is formed by collecting aggregate query-click-url counts observed over six months in a web search engine , where each query must have frequency at least 10. Three final QEC graphs are sampled by taking various snapshots of the above graph as follows : a ) TRAIN consists of 50% of the graph ; b ) TEST consists of 25% of the graph ; c ) DEV consists of 25% of the graph.
+5.2 Association Models 5.2.1 Model Parameters We tune the ? parameters for P?intu and P?intp against the DEV QEC graph . There are twelve parameters to be tuned : ? for P?intu and ?(1), ?(2), ..., ?(10), ?(> 10) for P?intp , where ?( x ) is the observed click bucket as described in Section 3.3. For each , we choose the parameter value that minimizes the mean-squared error ( MSE ) of the DEV set , where 3Note that this cooccurrence occurs because q ? was annotated with entity e in the same session as q occurred.
+0 0.05 0.1 0.15 0.2 0.25 0.3 0.35 0.4 0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9
+M
+S
+E
+Alpha
+Alpha vs . MSE : Heldout Training For Alpha Parameters Basic
+Bucket_1
+Bucket_2
+Bucket_3
+Bucket_4
+Bucket_5
+Bucket_6
+Bucket_7
+Bucket_8
+Bucket_9
+Bucket_10
+Bucket_11
+Figure 2: Alpha tuning on held out data.
+Model MSE Var Err/MLE MSEW Var Err/MLE
+P?unif 0.0328 ? 0.0112 -25.7% 0.0663? 0.0211 -71.8%
+P?mle 0.0261 0.0111 ? 0.0386 0.0141 ?
+P?hybr 0.0232 ? 0.0071 11.1% 0.0385 0.0132 0.03% P?intu 0.0226? 0.0075 13.4% 0.0369? 0.0133 4.4% P?intp 0.0213? 0.0068 18.4% 0.0375? 0.0131 2.8% Table 2: Model analysis : MSE and MSEW with variance and error reduction relative to P?mle . ? indicates statistical significance over P?mle with 95% confidence.
+model probabilities are computed using the TRAIN QEC graph . Figure 2 illustrates the MSE ranging over [0, 0.05, 0.1, ..., 1].
+We trained the query synonym model of Section 3.2 on the DEV set and hand-annotated 100 random synonymy pairs according to whether or not the pairs were synonyms 2. Setting ? = 0.4 results in a precision > 0.9.
+5.2.2 Analysis
+We evaluate the quality of our models in Table 1 by evaluating their mean-squared error ( MSE ) against the target P ( e|q ) computed on the TEST set:
+MSE(P ? )= ? { q,e}?CTe ( PT ( e|q)?P ? ( e|q))2
+MSEW ( P ? )= ? { q,e}?CTe wTe ( q,e)?(P
+T ( e|q)?P ? ( e|q))2 where CTe are the edges in the TEST QEC graph with weight wTe ( q , e ), P
+T ( e|q ) is the target probability computed over the TEST QEC graph , and P ? is one of our models trained on the TRAIN QEC graph . MSE measures against each edge type , which makes it sensitive to the long tail of the click graph . Conversely , MSEW measures against each edge instance , which makes it a good measure against the head of the click graph . We expect our smoothing models to have much more impact on MSE ( i.e ., the tail ) than on MSEW since head queries do not suffer from data sparsity.
+Table 2 lists the MSE and MSEW results for each model . We consider P?unif as a strawman and P?mle as a strong baseline ( i.e ., without any graph expansion nor any smoothing against a background 0.02 0.03 0.04 0.05 0.06
+M
+S
+E
+Click Bucket ( scaled by query - instance coverage)
+Mean Squared Error vs . Click Bucket
+UNI F
+ML E
+H YBR
+I NTU
+I NTP 1 2 43 5 6 7 8 9 10
+Figure 3: MSE of each model against the number of clicks in the TEST corpus . Buckets scaled by query instance coverage of all queries with 10 or fewer clicks.
+model ). P?unif performs generally very poorly , however P?mle is much better , with an expected estimation error of 0.16 accounting for an MSE of 0.0261.
+As expected , our smoothing models have little improvement on the head-sensitive metric ( MSEW ) relative to P?mle . In particular , P?hybr performs nearly identically to P?mle on the head . On the tail , all three smoothing models significantly outperform P?mle with P?intp reducing the error by 18.4%. Table 3 lists query-product associations for five randomly sampled products along with their model scores from
+P?mle with P?intp.
+Figure 3 provides an intrinsic view into MSE as a function of the number of observed clicks in the TEST set . As expected , for larger observed click counts (>4), all models perform roughly the same , indicating that smoothing is not necessary . However , for low click counts , which in our dataset accounts for over 20% of the overall click instances , we see a large reduction in MSE with P?intp outperforming P?intu , which in turn outperforms P?hybr . P?unif performs very poorly . The reason it does worse as the observed click count rises is that head queries tend to result in more distinct urls with high-variance clicks , which in turn makes a uniform model susceptible to more error.
+Figure 3 illustrates that the benefit of the smoothing models is in the tail of the click graph , which supports the larger error reductions seen in MSE in Table 2. For associations only observed once , P?intp reduces the error by 29% relative to P?mle.
+We also performed an editorial evaluation of the query-entity associations obtained with bucket interpolation . We created two samples from the TEST dataset : one randomly sampled by taking click weights into account , and the other sampled uniformly at random . Each set contains results for
+Query P?mleP?intp Query P?mleP?intp
+Garmin GTM 20 GPS Canon PowerShot SX110 IS garmin gtm 20 0.44 0.45 canon sx110 0.57 0.57 garmin traffic receiver 0.30 0.27 powershot sx110 0.48 0.48 garmin nuvi 885t 0.02 0.02 powershot sx110 is 0.38 0.36 gtm 20 0 0.33 powershot sx130 is 0 0.33 garmin gtm20 0 0.33 canon power shot sx110 0 0.20 nuvi 885t 0 0.01 canon dig camera review 0 0.10 Samsung PN50A450 50? TV Devil May Cry : 5th Anniversary Col.
+samsung 50 plasma hdtv 0.75 0.83 devil may cry 0.76 0.78 samsung 50 0.33 0.32 devilmaycry 0 1.00 50? hdtv 0.17 0.12 High Island Hammock/Stand Combo samsung plasma tv review 0 0.42 high island hammocks 1.00 1.00 50? samsung plasma hdtv 0 0.35 hammocks and stands 0 0.10 Table 3: Example query-product association scores for a random sample of five products . Bold queries resulted from the expansion algorithm in Section 3.2.
+100 queries . The former consists of 203 query-product associations , and the latter of 159 associations . The evaluation was done using Amazon Mechanical Turk4. We created a Mechanical Turk HIT5 where we show to the Mechanical Turk workers the query and the actual Web page in a Product search engine . For each query-entity association , we gathered seven labels and considered an association to be correct if five Mechanical Turk workers gave a positive label . An association was considered to be incorrect if at least five workers gave a negative label.
+Borderline cases where no label got five votes were discarded (14% of items were borderline for the uniform sample ; 11% for the weighted sample ). To ensure the quality of the results , we introduced 30% of incorrect associations as honeypots . We blocked workers who responded incorrectly on the honeypots so that the precision on honeypots is 1. The result of the evaluation is that the precision of the associations is 0.88 on the weighted sample and 0.90 on the uniform sample.
+5.3 Related Product Recommendation
+We now present an experimental evaluation of our product recommendation system using the baseline model P?mle and our best-performing model P?intp.
+The goals of this evaluation are to (1) determine the quality of our product recommendations ; and (2) assess the impact of our association models on the product recommendations.
+5.3.1 Experimental Setup
+We instantiate our recommendation algorithm from Section 4.2 using session cooccurrence frequencies 4https://www.mturk.com 5HIT stands for Human Intelligence Task f 10 25 50 100 10 25 50 100 p 10 10 10 10 10 10 10 10 P?mle precision 0.89 0.93 0.96 0.96 0.94 0.94 0.93 0.92 P?intp precision 0.86 0.92 0.96 0.96 0.94 0.94 0.93 0.94 P?mle coverage 0.007 0.004 0.002 0.001 0.085 0.067 0.052 0.039 P?intp coverage 0.008 0.005 0.003 0.002 0.094 0.076 0.059 0.045 Rintp,mle 1.16 1.14 1.13 1.14 1.11 1.13 1.15 1.19 Table 4: Experimental results for product recommendations . All configurations are for k = 10.
+from a one-month snapshot of user query sessions at a Web search engine , where session boundaries occur when 60 seconds elapse in between user queries.
+We experiment with the recommendation parameters defined at the end of Section 4.2 as follows : k = 10, f ranging from 10 to 100, and p ranging from 3 to 10.
+For each configuration , we report coverage as the total number of queries in the output ( i.e ., the queries for which there is some recommendation ) divided by the total number of queries in the log . For our performance metrics , we sampled two sets of queries : ( a ) Query Set Sample : uniform random sample of 100 queries from the unique queries in the one-month log ; and ( b ) Query Bag Sample : weighted random sample , by query frequency , of 100 queries from the query instances in the one-month log . For each sample query , we pooled together and randomly shuffled all recommendations by our algorithm using both P?mle and P?intp on each parameter configuration . We then manually annotated each { query , product } pair as relevant , mildly relevant or nonrelevant . In total , 1127 pairs were annotated . Interannotator agreement between two judges on this task yielded a Cohen?s Kappa ( Cohen , 1960) of 0.56. We therefore collapsed the mildly relevant and nonrelevant classes yielding two final classes : relevant and nonrelevant . Cohen?s Kappa on this binary classification is 0.71.
+Let CM be the number of relevant ( i.e ., correct ) suggestions recommended by a configurationM and let | M | be the number of recommendations returned by M . Then we define the ( micro -) precision of M as : PM =
+CM
+C . We define relative recall ( Pantel et al ., 2004) between two configurations M1 and M2 as RM1,M2 =
+PM1?|M1|
+PM2?|M2| .
+5.3.2 Results
+Table 4 summarizes our results for some configurations ( others omitted for lack of space ). Most re-
+Query Product Recommendation wedding gowns 27 Dresses ( Movie Soundtrack ) wedding gowns Bridal Gowns : The Basics of Designing , [...] ( Book ) wedding gowns Wedding Dress Hankie wedding gowns The Perfect Wedding Dress ( Magazine ) wedding gowns Imagine Wedding Designer ( Video Game ) low blood pressure Omron Blood Pressure Monitor low blood pressure Healthcare Automatic Blood Pressure Monitor low blood pressure Ridgecrest Blood Pressure Formula - 60 Capsules low blood pressure Omron Portable Wrist Blood Pressure Monitor ? hello cupcake ? cookbook Giant Cupcake Cast Pan ? hello cupcake ? cookbook Ultimate 3-In-1 Storage Caddy ? hello cupcake ? cookbook 13 Cup Cupcakes and More Dessert Stand ? hello cupcake ? cookbook Cupcake Stand Set ( Toys ) 1 800 flowers Todd Oldham Party Perfect Bouquet 1 800 flowers Hugs and Kisses Flower Bouquet with Vase Table 5: Sample product recommendations.
+markable is the { f = 10, p = 10} configuration where the P?intp model affected 9.4% of all query instances posed by the millions of users of a major search engine , with a precision of 94%. Although this model covers 0.8% of the unique queries , the fact that it covers many head queries such as walmart and iphone accounts for the large query instance coverage . Also since there may be many general web queries for which there is no appropriate product in the database , a coverage of 100% is not attainable ( nor desirable ); in fact the upper bound for the coverage is likely to be much lower.
+Turning to the impact of the association models on product recommendations , we note that precision is stable in our P?intp model relative to our baseline P?mle model . However , a large lift in relative recall is observed , up to a 19% increase for the { f = 100, p = 10} configuration . These results are consistent with those of Section 5.2, which compared the association models independently of the application and showed that P?intp outperforms P?mle.
+Table 5 shows sample product recommendations discovered by our P?intp model . Manual inspection revealed two main sources of errors . First , ambiguity is introduced both by the click model and the graph expansion algorithm of Section 3.2. In many cases , the ambiguity is resolved by user click patterns ( i.e ., users disambiguate queries through their browsing behavior ), but one such error was seen for the query ? shark attack videos ? where several Shark-branded vacuum cleaners are recommended . This is because of the ambiguous query ? shark ? that is found in the click logs and in query sessions cooccurring with the query ? shark attack videos ?. The second source of errors is caused by systematic user errors commonly found in session logs such as a user accidentally submitting a query while typing . An example tended session was just the second query and the unintended first query is associated with products such as Speedo swimsuits . This ultimately causes our system to recommend various swimsuits for the query ? speedometer?.
+6 Conclusion
+Learning associations between web queries and entities has many possible applications , including query-entity recommendation , personalization by associating entity vectors to users , and direct advertising . Although many techniques have been developed for associating queries to queries or queries to documents , to the best of our knowledge this is the first that aims to associate queries to entities by leveraging click graphs from both general search logs and vertical search logs.
+We developed several models for estimating the probability that an entity is relevant given a user query . The sparsity of query entity graphs is addressed by first expanding the graph with query synonyms , and then smoothing query-entity click counts over these unseen queries . Our best performing model , which interpolates between a foreground click model and a smoothed background model , significantly reduces testing error when compared against a strong baseline , by 18%. On associations observed only once in our test collection , the modeling error is reduced by 29% over the baseline.
+We applied our best performing model to the task of query-entity recommendation , by analyzing session cooccurrences between queries and annotated entities . Experimental analysis shows that our smoothing techniques improve coverage while keeping precision stable , and overall , that our top-performing model affects 9% of general web queries with 94% precision.
+References [ Agichtein et al2006] Eugene Agichtein , Eric Brill , and Susan T . Dumais . 2006. Improving web search ranking by incorporating user behavior information . In SI-
+GIR , pages 19?26.
+[Agirre et al2009] Eneko Agirre , Enrique Alfonseca , Keith Hall , Jana Kravalova , Marius Pas?ca , and Aitor Soroa . 2009. A study on similarity and relatedness using distributional and wordnetbased approaches . In
+NAACL , pages 19?27.
+[Baeza-Yates et al2004] Ricardo Baeza-Yates , Carlos Hurtado , and Marcelo Mendoza . 2004. Query recommendation using query logs in search engines . In Wolfgang Lindner , Marco Mesiti , Can Tu?rker , Yannis Tzitzikas , and Athena Vakali , editors , EDBT Workshops , volume 3268 of Lecture Notes in Computer
+Science , pages 588?596. Springer.
+[Baeza-Yates2004] Ricardo Baeza-Yates . 2004. Web usage mining in search engines . In In Web Mining : Applications and Techniques , Anthony Scime , editor . Idea
+Group , pages 307?321.
+[Bell et al2007] R . Bell , Y . Koren , and C . Volinsky.
+2007. Modeling relationships at multiple scales to improve accuracy of large recommender systems . In
+KDD , pages 95?104.
+[Boldi et al2009] Paolo Boldi , Francesco Bonchi , Carlos Castillo , Debora Donato , and Sebastiano Vigna . 2009.
+Query suggestions using query-flow graphs . In WSCD ?09: Proceedings of the 2009 workshop on Web Search
+Click Data , pages 56?63. ACM.
+[Cohen1960] Jacob Cohen . 1960. A coefficient of agreement for nominal scales . Educational and Psychological Measurement , 20(1):37?46, April.
+[Craswell and Szummer2007] Nick Craswell and Martin Szummer . 2007. Random walks on the click graph.
+In SIGIR , pages 239?246.
+[Fuxman et al2008] A . Fuxman , P . Tsaparas , K . Achan , and R . Agrawal . 2008. Using the wisdom of the crowds for keyword generation . In WWW , pages 61? 70.
+[Gao et al2009] Jianfeng Gao , Wei Yuan , Xiao Li , Kefeng Deng , and Jian-Yun Nie . 2009. Smoothing clickthrough data for web search ranking . In SIGIR , pages 355?362.
+[Good1953] Irving John Good . 1953. The population frequencies of species and the estimation of population parameters . Biometrika , 40(3 and 4):237?264.
+[Jagabathula et al2011] S . Jagabathula , N . Mishra , and S . Gollapudi . 2011. Shopping for products you don?t know you need . In To appear at WSDM.
+[Jain and Pantel2009] Alpa Jain and Patrick Pantel . 2009.
+Identifying comparable entities on the web . In CIKM , pages 1661?1664.
+[Jelinek and Mercer1980] Frederick Jelinek and Robert L . Mercer . 1980. Interpolated estimation of markov source parameters from sparse data . In In Proceedings of the Workshop on Pattern Recognition in Practice , pages 381?397.
+[Katz1987] Slava M . Katz . 1987. Estimation of probabilities from sparse data for the language model component of a speech recognizer . In IEEE Transactions on 401.
+[Kneser and Ney1995] Reinhard Kneser and Hermann Ney . 1995. Improved backing-off for mgram language modeling . In In Proceedings of the IEEE International Conference on Acoustics , Speech and Signal
+Processing , pages 181?184.
+[Kurland and Lee2004] O . Kurland and L . Lee . 2004.
+Corpus structure , language models , and adhoc information retrieval . In SIGIR , pages 194?201.
+[Lidstone1920] George James Lidstone . 1920. Note on the general case of the bayes-laplace formula for inductive or a posteriori probabilities . Transactions of the Faculty of Actuaries , 8:182?192.
+[Linden et al2003] G . Linden , B . Smith , and J . York.
+2003. Amazon.com recommendations : Item-to-item collaborative filtering . IEEE Internet Computing , 7(1):76?80.
+[Liu and Croft2004] X . Liu and W . Croft . 2004. Cluster-based retrieval using language models . In SIGIR , pages 186?193.
+[Mei et al2008a ] Q . Mei , D . Zhang , and C . Zhai . 2008a.
+A general optimization framework for smoothing language models on graph structures . In SIGIR , pages 611?618.
+[Mei et al2008b ] Q . Mei , D . Zhou , and Church K . 2008b.
+Query suggestion using hitting time . In CIKM , pages 469?478.
+[Nie et al2007] Z . Nie , J . Wen , and W . Ma . 2007.
+Object-level vertical search . In Conference on Innovative Data Systems Research ( CIDR ), pages 235?246.
+[Pantel and Lin2002] Patrick Pantel and Dekang Lin.
+2002. Discovering word senses from text . In SIGKDD , pages 613?619, Edmonton , Canada.
+[Pantel et al2004] Patrick Pantel , Deepak Ravichandran , and Eduard Hovy . 2004. Towards terascale knowledge acquisition . In COLING , pages 771?777.
+[Pantel et al2009] Patrick Pantel , Eric Crestan , Arkady Borkovsky , AnaMaria Popescu , and Vishnu Vyas.
+2009. Web-scale distributional similarity and entity set expansion . In EMNLP , pages 938?947.
+[Pas?ca and Durme2008] Marius Pas?ca and Benjamin Van Durme . 2008. Weakly-supervised acquisition of open-domain classes and class attributes from web documents and query logs . In ACL , pages 19?27.
+[Ponte and Croft1998] J . Ponte and B . Croft . 1998. A language modeling approach to information retrieval.
+In SIGIR , pages 275?281.
+[Sarwar et al2001] B . Sarwar , G . Karypis , J . Konstan , and J . Reidl . 2001. Item-based collaborative filtering recommendation system . In WWW , pages 285?295.
+[Tao et al2006] T . Tao , X . Wang , Q . Mei , and C . Zhai.
+2006. Language model information retrieval with document expansion . In HLT/NAACL , pages 407?414.
+[Wen et al2001] Ji-Rong Wen , Jian-Yun Nie , and HongJiang Zhang . 2001. Clustering user queries of a search engine . In WWW , pages 162?168.
+[Witten and Bell1991] I.H . Witten and T.C . Bell . 1991.
+The zero-frequency problem : Estimating the probabilities of novel events in adaptive text compression.
+IEEE Transactions on Information Theory , 37(4).
+[Zhai and Lafferty2001] C . Zhai and J . Lafferty . 2001. A study of smoothing methods for language models applied to ad hoc information retrieval . In SIGIR , pages 334?342.
+[Zhang and Nasraoui2006] Z . Zhang and O . Nasraoui.
+2006. Mining search engine query logs for query recommendation . In WWW , pages 1039?1040.
+92

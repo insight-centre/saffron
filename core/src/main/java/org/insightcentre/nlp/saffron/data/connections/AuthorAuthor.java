@@ -2,6 +2,9 @@ package org.insightcentre.nlp.saffron.data.connections;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.util.Date;
+import java.util.Map;
 import java.util.Objects;
 import org.insightcentre.nlp.saffron.data.Status;
 
@@ -14,14 +17,23 @@ public class AuthorAuthor {
     public final String author2_id;
     public final double similarity;
     public Status status;
+    public final String run;
+    public final String id;
+    public final Map<String,String> runDate;
 
     @JsonCreator
     public AuthorAuthor(@JsonProperty("author1_id") String author1_id, 
                         @JsonProperty("author2_id") String author2_id, 
-                        @JsonProperty("similarity") double similarity) {
+                        @JsonProperty("similarity") double similarity,
+                        @JsonProperty("run") String run,
+                        @JsonProperty("run_date")  Map<String,String> runDate,
+                        @JsonProperty("_id")  String id) {
         this.author1_id = author1_id;
         this.author2_id = author2_id;
         this.similarity = similarity;
+        this.run = run;
+        this.runDate = runDate;
+        this.id = id;
     }
 
     public String getAuthor1_id() {
@@ -35,6 +47,19 @@ public class AuthorAuthor {
     public double getSimilarity() {
         return similarity;
     }
+
+    public String getRun() {
+        return run;
+    }
+
+    public  Map<String,String> getRunDate() {
+        return runDate;
+    }
+
+    public String getId() {
+        return id;
+    }
+
 
     @Override
     public int hashCode() {

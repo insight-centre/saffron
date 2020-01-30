@@ -1425,7 +1425,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public Taxonomy getTaxonomy(String runId)  {
-        Taxonomy graph = new Taxonomy("", 0, 0, "", "", new ArrayList<>(), Status.none);
+        Taxonomy graph = new Taxonomy("", 0, 0, new ArrayList<>(), Status.none);
         FindIterable<Document> docs = MongoUtils.getTaxonomyFromMongo(runId, this);
         graph = TaxonomyUtils.getTaxonomyFromDocs(docs, graph);
         return graph;
@@ -1608,18 +1608,12 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId) {
-        // Don't retrieve from memory, instead get from saffron data source
-        String contents = this.getCorpusFile(runId, docId);
-        try {
-            SaffronPath path = new SaffronPath();
-            path.setPath(docId);
-            org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
-                    path, docId, null, docId, "text",
-                    Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
-            return doc;
-        } catch (Exception e) {
-            throw new NoSuchElementException("Contents of Corpus cannot be retrieved");
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+
         }
+        return saffron.getDoc(docId);
     }
    
     @Override
