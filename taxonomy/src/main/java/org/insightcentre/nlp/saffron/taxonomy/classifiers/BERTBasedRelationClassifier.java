@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.classifiers;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.deeplearning4j.nn.graph.ComputationGraph;
@@ -36,7 +37,7 @@ public class BERTBasedRelationClassifier {
 			throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
 		 
         net = KerasModelImport.importKerasModelAndWeights(simpleMLPFilePath);
-        bert = Bert.load(bertModelFilePath);
+        bert = Bert.load(new File(bertModelFilePath));
 	}
 
 	/**
