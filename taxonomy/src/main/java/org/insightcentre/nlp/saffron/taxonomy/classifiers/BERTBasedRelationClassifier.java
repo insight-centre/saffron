@@ -73,10 +73,10 @@ public class BERTBasedRelationClassifier implements MulticlassRelationClassifier
         Map<Type, Double> result = new HashMap<Type,Double>();
         
         result.put(Type.hypernymy, modelResults[0]);
-        result.put(Type.hyponymy, modelResults[1]);
+        result.put(Type.synonymy, modelResults[1]);
         result.put(Type.meronymy, modelResults[2]);
-        result.put(Type.synonymy, modelResults[3]);
-        result.put(Type.other, modelResults[4]);
+        result.put(Type.other, modelResults[3]);
+        result.put(Type.hyponymy, modelResults[4]);
         
         return result;
     }

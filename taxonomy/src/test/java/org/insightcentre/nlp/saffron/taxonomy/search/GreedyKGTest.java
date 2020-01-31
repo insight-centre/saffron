@@ -131,7 +131,7 @@ public class GreedyKGTest {
         addTerm(terms, "car wheel", 0.0);
         
         GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()));
-        KnowledgeGraph result = instance.extractTaxonomy(terms);
+        KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
         
         assertEquals("thing", result.getTaxonomy().root);
         assertEquals(2, result.getTaxonomy().children.size());
@@ -164,7 +164,7 @@ public class GreedyKGTest {
         blackList.add(new TypedLink("car wheel", "car",TypedLink.Type.meronymy));
         
         GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()));
-        KnowledgeGraph result = instance.extractTaxonomyWithDenialAndAllowanceList(terms, whiteList, blackList);
+        KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
         
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(1, result.getPartonomy().size());

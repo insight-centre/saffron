@@ -24,7 +24,7 @@ public class GreedyKG implements KGSearch{
 	}
 
 	@Override
-	public KnowledgeGraph extractTaxonomyWithDenialAndAllowanceList(Map<String, Term> termMap, Set<TypedLink> allowanceList,
+	public KnowledgeGraph extractKnowledgeGraphWithDenialAndAllowanceList(Map<String, Term> termMap, Set<TypedLink> allowanceList,
 			Set<TypedLink> denialList) {
 		
 		//1 - Verify edge cases
