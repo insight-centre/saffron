@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.classifiers;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class BERTBasedRelationClassifier implements MulticlassRelationClassifier
 			throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
 		 
         net = KerasModelImport.importKerasModelAndWeights(simpleMLPFilePath);
-        bert = Bert.load(bertModelFilePath);
+        bert = Bert.load(new File(bertModelFilePath));
 	}
 
 	/**
