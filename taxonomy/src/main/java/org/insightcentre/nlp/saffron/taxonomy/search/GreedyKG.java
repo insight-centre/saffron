@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class GreedyKG implements KGSearch{
 	public KnowledgeGraph extractKnowledgeGraphWithDenialAndAllowanceList(Map<String, Term> termMap, Set<TypedLink> allowanceList,
 			Set<TypedLink> denialList) {
 		
+		System.err.println(LocalDateTime.now().toString() + " - Starting Greedy KG");
 		//1 - Verify edge cases
         if(termMap.size() == 0) {
             return KnowledgeGraph.getEmptyInstance();
@@ -35,16 +37,20 @@ public class GreedyKG implements KGSearch{
             return KnowledgeGraph.getSingleTermInstance(termMap.keySet().iterator().next());
         }
 
+        System.err.println(LocalDateTime.now().toString() + " - Generating candidate pairs");
         //2 - Build candidate list of possible links
         ArrayList<TypedLink> candidates = createCandidateLinks(termMap, allowanceList, denialList);
 
+        System.err.println(LocalDateTime.now().toString() + " - Generating Initial Solution");
         //3 - Create solution based on links on allowance list
         Pair<KnowledgeGraphSolution, Score<TypedLink>> result = generateInitialSolution(termMap, allowanceList);
         
+        System.err.println(LocalDateTime.now().toString() + " - Starting Search");
         //4 - Greedy Search for the final solution 
         SOLN_LOOP:
         while(!candidates.isEmpty()) {//TODO: Ideally this loop should stop as soon as a "complete" solution is found
         	
+        	System.err.println(LocalDateTime.now().toString() + " - Reranking candidates");
         	//5 - Calculate how much each link contributes to improving the score of the current Knowledge Graph
             final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
             for (TypedLink candidate : candidates) {
@@ -74,6 +80,7 @@ public class GreedyKG implements KGSearch{
             //7 - Choose which candidate will enter in the current Knowledge Graph
             while (!candidates.isEmpty()) {
             	
+            	System.err.println(LocalDateTime.now().toString() + " - Building a solution");
             	//8 - Create a single solution with the highest ranked candidate
             	TypedLink candidate = candidates.remove(0);
                 KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
@@ -89,6 +96,7 @@ public class GreedyKG implements KGSearch{
             }
         }
         
+        System.err.println(LocalDateTime.now().toString() + " - Greedy KG finished");
         //If the solution is not complete, even after considering all candidates then no solution was found
         if(!result.getKey().isComplete()) {// Complete = all terms must to appear at least in the taxonomy (except synonyms)
         	for (TypedLink candidate : candidates) {
