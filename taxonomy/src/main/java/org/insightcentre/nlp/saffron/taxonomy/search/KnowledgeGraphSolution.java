@@ -116,28 +116,33 @@ public class KnowledgeGraphSolution extends Solution{
     	
     	KnowledgeGraphSolution kgs = this.clone();
     	TypedLink link = null;
-    	//FIXME Minimum linkscore should depend on how many relations there are
-    	if (linkScore > 0.25) {
-	    	switch(linkToBeAdded.getType()) {
-		    	case hypernymy:
+    	switch(linkToBeAdded.getType()) {
+	    	case hypernymy:
+	    		if (!this.taxonomy.isComplete()) {
 		    		link = resolveSynonyms(linkToBeAdded);
 		    		kgs.taxonomy = kgs.taxonomy.add(link.getSource(), link.getTarget(), topScore, bottomScore, linkScore, required);
 		    		if (kgs.taxonomy == null)
 		    			return null;
-		    		break;
-		    	case hyponymy:
+	    		}
+	    		break;
+	    	case hyponymy:
+	    		if (!this.taxonomy.isComplete()) {
 		    		link = resolveSynonyms(linkToBeAdded);
 		    		kgs.taxonomy = kgs.taxonomy.add(link.getTarget(), link.getSource(), bottomScore, topScore, linkScore, required);
 		    		if (kgs.taxonomy == null)
 		    			return null;
-		    		break;
-		    	case meronymy:
+	    		}
+	    		break;
+	    	case meronymy:
+	    		if (linkScore > 0.25) {
 		    		link = resolveSynonyms(linkToBeAdded);
 		    		kgs.partonomy = kgs.partonomy.add(link.getSource(), link.getTarget(), topScore, bottomScore, linkScore, required);
 		    		if (kgs.partonomy == null)
 		    			return null;
-		    		break;
-		    	case synonymy:
+	    		}
+		    	break;
+	    	case synonymy:
+	    		if (linkScore > 0.5) {
 		    		link = linkToBeAdded;
 		    		String currentTarget = link.getTarget();
 		    		while(kgs.synonymyPairs.containsKey(currentTarget)) {
@@ -147,8 +152,8 @@ public class KnowledgeGraphSolution extends Solution{
 		    		}
 		    		kgs.synonymyPairs.put(link.getSource(), currentTarget);
 		    		kgs.terms.remove(link.getSource());
-		    	default:
-	    	}
+	    		}
+	    	default:
     	}
 		return kgs;
     }
