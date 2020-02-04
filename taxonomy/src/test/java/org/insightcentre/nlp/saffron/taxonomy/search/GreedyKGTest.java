@@ -175,7 +175,7 @@ public class GreedyKGTest {
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
                 
-        assert(result.getPartonomy().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("automobile") && t.status == Status.accepted));
+        assert(result.getPartonomy().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.accepted));
         assert(result.getPartonomy().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
         
     }

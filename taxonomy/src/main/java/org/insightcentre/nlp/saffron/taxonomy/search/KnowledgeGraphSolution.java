@@ -136,7 +136,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    	case meronymy:
 	    		if (linkScore > 0.25) {
 		    		link = resolveSynonyms(linkToBeAdded);
-		    		kgs.partonomy = kgs.partonomy.add(link.getSource(), link.getTarget(), topScore, bottomScore, linkScore, required);
+		    		kgs.partonomy = kgs.partonomy.add(link.getTarget(), link.getSource(), topScore, bottomScore, linkScore, required);
 		    		if (kgs.partonomy == null)
 		    			return null;
 	    		}
