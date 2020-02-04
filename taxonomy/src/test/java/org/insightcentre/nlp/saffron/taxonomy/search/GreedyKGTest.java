@@ -37,7 +37,7 @@ public class GreedyKGTest {
         	
         	switch(source) {
         		case "thing":
-        			if (target.equals("vehicle") || target.equals("wheel")) {
+        			if (target.equals("vehicles") || target.equals("wheel")) {
         				predictions.put(TypedLink.Type.hypernymy, 1.0);
         				predictions.put(TypedLink.Type.other, 0.0);
         			}
@@ -132,7 +132,8 @@ public class GreedyKGTest {
         
         GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()));
         KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
-        
+        System.out.println(result.getTaxonomy());
+        System.out.println(result.getPartonomy().get(0));
         assertEquals("thing", result.getTaxonomy().root);
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(2, result.getPartonomy().size());
@@ -169,8 +170,7 @@ public class GreedyKGTest {
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(1, result.getPartonomy().size());
         assertEquals(1,result.getSynonymyClusters().size());
-        System.out.println(result.getTaxonomy());
-        System.out.println(result.getPartonomy().get(0));
+        
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
