@@ -17,12 +17,12 @@ import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 public class KnowledgeGraphSolution extends Solution{
 
-	private TaxonomySolution taxonomy;
+	protected TaxonomySolution taxonomy;
 	private TaxonomySolution partonomy;
     public Set<String> terms;
-    private Map<String,String> synonymyPairs;//change to SynonymySolution
+    protected Map<String,String> synonymyPairs;//change to SynonymySolution
 	
-    private KnowledgeGraphSolution(Set<String> terms) {
+    protected KnowledgeGraphSolution(Set<String> terms) {
         this.taxonomy = TaxonomySolution.empty(terms);
         this.partonomy = TaxonomySolution.empty(terms);
         this.taxonomy = TaxonomySolution.empty(terms);
@@ -148,6 +148,8 @@ public class KnowledgeGraphSolution extends Solution{
 		    		while(kgs.synonymyPairs.containsKey(currentTarget)) {
 		    			if(!kgs.synonymyPairs.get(currentTarget).equals(link.getSource())) {
 		    				currentTarget = kgs.synonymyPairs.get(currentTarget);
+		    			} else {
+		    				return kgs;
 		    			}
 		    		}
 		    		kgs.synonymyPairs.put(link.getSource(), currentTarget);
