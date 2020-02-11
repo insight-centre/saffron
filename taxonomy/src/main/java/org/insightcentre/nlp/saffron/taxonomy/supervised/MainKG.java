@@ -104,7 +104,7 @@ public class MainKG {
             
             BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
 
-            KGSearch search = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
+            KGSearch search = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
             final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
             //Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
 

@@ -8,6 +8,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
@@ -19,9 +20,11 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 public class GreedyKG implements KGSearch{
 
 	private final Score<TypedLink> emptyScore;
+	private final KnowledgeGraphExtractionConfiguration config;
 	
-	public GreedyKG(Score<TypedLink> score) {
+	public GreedyKG(Score<TypedLink> score, KnowledgeGraphExtractionConfiguration config) {
 		this.emptyScore = score;
+		this.config = config;
 	}
 
 	@Override
@@ -111,7 +114,7 @@ public class GreedyKG implements KGSearch{
 	private Pair<KnowledgeGraphSolution, Score<TypedLink>> generateInitialSolution(
 			Map<String, Term> termMap, Set<TypedLink> allowanceList) {
 		
-		KnowledgeGraphSolution soln = KnowledgeGraphSolution.empty(termMap.keySet());
+		KnowledgeGraphSolution soln = KnowledgeGraphSolution.empty(termMap.keySet(), this.config.synonymyThreshold, this.config.meronomyThreshold);
         
         Score<TypedLink> score = this.emptyScore;
         for (TypedLink sp : allowanceList) {

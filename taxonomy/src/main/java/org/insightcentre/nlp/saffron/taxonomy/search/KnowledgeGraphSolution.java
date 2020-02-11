@@ -21,14 +21,24 @@ public class KnowledgeGraphSolution extends Solution{
 	private TaxonomySolution partonomy;
     public Set<String> terms;
     protected Map<String,String> synonymyPairs;//change to SynonymySolution
+    
+    private double synonymyThreshold;
+    private double meronomyThreshold;
 	
     protected KnowledgeGraphSolution(Set<String> terms) {
-        this.taxonomy = TaxonomySolution.empty(terms);
+        this(terms, 0.5, 0.25);
+    }
+    
+    protected KnowledgeGraphSolution(Set<String> terms, double synonymyThreshold, double meronomyThreshold) {
+    	this.taxonomy = TaxonomySolution.empty(terms);
         this.partonomy = TaxonomySolution.empty(terms);
         this.taxonomy = TaxonomySolution.empty(terms);
         this.synonymyPairs = new HashMap<String,String>();
         this.terms = terms;
+        this.synonymyThreshold = synonymyThreshold;
+        this.meronomyThreshold = meronomyThreshold;
     }
+    
     
     public KnowledgeGraph getKnowledgeGraph() {
     	KnowledgeGraph kg = new KnowledgeGraph();
@@ -64,17 +74,20 @@ public class KnowledgeGraphSolution extends Solution{
     }
     
 	/**
+	 * /**
      * Create a new empty solution
      *
      * @param terms The terms included in the complete solution
+     * @param synonymyThreshold The minimum probability threshold for synonym pairs
+	 * @param meronomyThreshold The minimum probability threshold for part/whole pairs
      * @return An empty solution
-     */
-    public static KnowledgeGraphSolution empty(Set<String> terms) {
-        return new KnowledgeGraphSolution(terms);
+	 */
+    public static KnowledgeGraphSolution empty(Set<String> terms, double synonymyThreshold, double meronomyThreshold) {
+        return new KnowledgeGraphSolution(terms, synonymyThreshold, meronomyThreshold);
     }
     
-    public KnowledgeGraphSolution clone() {    	
-    	KnowledgeGraphSolution copy = new KnowledgeGraphSolution(new HashSet<String>(this.terms));
+    public KnowledgeGraphSolution clone() {
+    	KnowledgeGraphSolution copy = new KnowledgeGraphSolution(new HashSet<String>(this.terms), this.synonymyThreshold, this.meronomyThreshold);
     	if (this.taxonomy != null) 
     		copy.taxonomy = new TaxonomySolution(new HashMap<String, Taxonomy>(this.taxonomy.heads), new HashSet<String>(this.terms));
     	else
@@ -134,7 +147,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    		}
 	    		break;
 	    	case meronymy:
-	    		if (linkScore > 0.25) {
+	    		if (linkScore > this.meronomyThreshold) {
 		    		link = resolveSynonyms(linkToBeAdded);
 		    		kgs.partonomy = kgs.partonomy.add(link.getTarget(), link.getSource(), topScore, bottomScore, linkScore, required);
 		    		if (kgs.partonomy == null)
@@ -142,7 +155,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    		}
 		    	break;
 	    	case synonymy:
-	    		if (linkScore > 0.5) {
+	    		if (linkScore > this.synonymyThreshold) {
 		    		link = linkToBeAdded;
 		    		String currentTarget = link.getTarget();
 		    		while(kgs.synonymyPairs.containsKey(currentTarget)) {
