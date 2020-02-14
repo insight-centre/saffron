@@ -43,10 +43,10 @@ public class BERTBasedRelationClassifierTest {
         String bertModelFilePath = "../models/bert_model_SavedModule";
         String source = "automatic withdrawal";
         String target = "hsa account";
-        BERTBasedRelationClassifier instance = new BERTBasedRelationClassifier(simpleMLPFilePath, bertModelFilePath);
+        /*BERTBasedRelationClassifier instance = new BERTBasedRelationClassifier(simpleMLPFilePath, bertModelFilePath);
         double[] expResult = null;
         double[] result = instance.predict(source, target);
-        System.err.println(Arrays.toString(result));
+        System.err.println(Arrays.toString(result));*/
     }
 
 }
