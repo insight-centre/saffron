@@ -1,0 +1,988 @@
+A Context-Based Semantics for SPARQL
+
+Property Paths Over the Web
+
+Olaf Hartig1(B) and Giuseppe Pirr`o2
+1 University of Waterloo, Ontario, Canada
+
+ohartig@uwaterloo.ca
+
+2 Institute for High Performance Computing and Networking, ICAR-CNR,
+
+Rende, Italy
+
+pirro@icar.cnr.it
+
+Abstract. As of today, there exists no standard language for querying Linked Data on the Web, where navigation across distributed data
+sources is a key feature. A natural candidate seems to be SPARQL,
+which recently has been enhanced with navigational capabilities thanks
+to the introduction of property paths (PPs). However, the semantics of
+SPARQL restricts the scope of navigation via PPs to single RDF graphs.
+This restriction limits the applicability of PPs on the Web. To fill this
+gap, in this paper we provide formal foundations for evaluating PPs on
+the Web, thus contributing to the definition of a query language for
+Linked Data. In particular, we introduce a query semantics for PPs that
+couples navigation at the data level with navigation on the Web graph.
+Given this semantics we find that for some PP-based SPARQL queries
+a complete evaluation on the Web is not feasible. To enable systems to
+identify queries that can be evaluated completely, we establish a decidable syntactic property of such queries.
+
+1 Introduction
+
+The increasing trend in sharing and interlinking pieces of structured data on the
+World Wide Web (WWW) is evolving the classical Webwhich is focused on
+hypertext documents and syntactic links among theminto a Web of Linked
+Data. The Linked Data principles [4] present an approach to extend the scope
+of Uniform Resource Identifiers (URIs) to new types of resources (e.g., people,
+places) and represent their descriptions and interlinks by using the Resource
+Description Framework (RDF) [16] as standard data format. RDF adopts a
+graph-based data model, which can be queried upon by using the SPARQL query
+language [12]. When it comes to Linked Data on the WWW, the common way
+to provide query-based access is via SPARQL endpoints, that is, services that
+usually answer SPARQL queries over a single dataset. Recently, the original core
+of SPARQL has been extended with features supporting query federation; it is
+
+This project has been partially funded by the project Cybersecurity - P2
+(PON03PE 00032 2), financed by the Italian Ministry of Education, University and
+Research (MIUR) within the PON Project - Research and Competitiveness.
+
+c Springer International Publishing Switzerland 2015
+F. Gandon et al. (Eds.): ESWC 2015, LNCS 9088, pp. 7187, 2015.
+DOI: 10.1007/978-3-319-18818-8 5
+
+O. Hartig and G. Pirr`o
+
+now possible, within a single query, to target multiple endpoints (via the SERVICE
+operator). However, such an extension is not enough to cope with an unbounded
+and a priori unknown space of data sources such as the WWW. Moreover, not
+all Linked Data on the WWW is accessible via SPARQL endpoints. Hence, as of
+today, there exists no standard query language for Linked Data on the WWW,
+although SPARQL is clearly a candidate.
+
+While earlier research on using SPARQL for Linked Data is limited to fragments of the first version of the language [5,13,14,25], the more recent version
+1.1 introduces a feature that is particularly interesting in the context of queries
+over a graph-like environment such as Linked Data on the WWW. This feature
+is called property paths (PPs) and equips SPARQL with navigational capabilities [12]. However, the standard definition of PPs is limited to single, centralized
+RDF graphs and, thus, not directly applicable to Linked Data that is distributed over the WWW. Therefore, toward the definition of a language for accessing
+Linked Data live on the WWW, the following questions emerge naturally: How
+can PPs be defined over the WWW? and What are the implications of such a
+definition? Answering these questions is the broad objective of this paper. To
+this end, we make the following main contributions:
+
+1. We formalize a query semantics for PP-based SPARQL queries that are meant
+to be evaluated over Linked Data on the WWW. This semantics is context-
+based; it intertwines Web graph navigation with navigation at the level of
+data.
+
+2. We study the feasibility of evaluating queries under this semantics. We assume
+that query engines do not have complete information about the queried Web
+of Linked Data (as it is the case for the WWW). Our study shows that there
+exist cases in which query evaluation under the context-based semantics is
+not feasible.
+
+3. We provide a decidable syntactic property of queries for which an evaluation
+
+under the context-based semantics is feasible.
+
+The remainder of the paper is organized as follows. Section 2 provides an overview
+on related work. Section 3 introduces the formal framework for this paper, including a data model that captures a notion of Linked Data. In Sect. 4 we focus on
+PPs, independently from other SPARQL operators. In Sect. 5 we broaden our
+view to study PP-based SPARQL graph patterns; we characterize a class of
+Web-safe patterns and prove their feasibility. Finally, in Sect. 6 we conclude and
+sketch future work.
+
+2 Related Work
+
+The idea of querying the WWW as a database is not new (see Florescu
+et al.s survey [11]). Perhaps the most notable early works in this context are
+by Konopnicki and Shmueli [18], Abiteboul and Vianu [1], and Mendelzon et
+al. [20], all of which tackled the problem of evaluating SQL-like queries on the
+traditional hypertext Web. While such queries included navigational features,
+?
+
+?
+
+?
+the focus was on retrieving specific Web pages, particular attributes of specific
+pages, or content within them.
+
+From a graph-oriented perspective, languages for the navigation and specification of vertices in graphs have a long tradition (see Woods survey [26]). In the
+RDF world, extensions of SPARQL such as PSPARQL [2], nSPARQL [21], and
+SPARQLeR [17] introduced navigational features since those were missing in the
+first version of SPARQL. Only recently, with the addition of property paths (PPs)
+in version 1.1 [12], SPARQL has been enhanced officially with such features. The
+final definition of PPs has been influenced by research that studied the computational complexity of an early draft version of PPs [3,19], and there also already
+exists a proposal to extend PPs with more expressive power [9]. However, the main
+assumption of all these navigational extensions of SPARQL is to work on a sin-
+gle, centralized RDF graph. Our departure point is different: We aim at defining
+semantics of SPARQL queries (including property paths) over Linked Data on the
+WWW, which involves dealing with two graphs of different types; namely, an RDF
+graph that is distributed over documents on the WWW and the Web graph of how
+these documents are interlinked with each other.
+
+To express queries over Linked Data on the WWW, two main strands of
+research can be identified. The first studies how to extend the scope of SPARQL
+queries to the WWW , with existing work focusing on basic graph patterns [5,
+13,25] or a more expressive fragment that includes AND, OPT, UNION and FILTER [14].
+The second strand focuses on navigational languages such as NautiLOD [8,10].
+These two strands have different departure points. The former employs navigation over the WWW to collect data for answering a given SPARQL query;
+here navigation is a means to discover query-relevant data. The latter provides
+explicit navigational features and uses querying capabilities to filter data sources
+of interest; here navigation (not querying) is the main focus. The context-based
+query semantics proposed in this paper combines both approaches. We believe
+that the outcome of this research can be a starting point toward the definition
+of a language for querying and navigating over Linked Data on the WWW.
+
+3 Formal Framework
+
+This section provides a formal framework for studying semantics of PPs over
+Linked Data. We first recall the definition of PPs as per the SPARQL standard [12]. Thereafter, we introduce a data model that captures the notion of
+Linked Data on the WWW.
+
+3.1 Preliminaries
+Assume four pairwise disjoint, countably infinite sets I (IRIs), B (blank nodes),
+L (literals), and V (variables). An RDF triple (or simply triple) is a tuple from
+the set T = (I  B)  I  (I  B  L). For any triple t  T we write iris(t) to
+denote the set of IRIs in that triple. A set of triples is called an RDF graph.
+
+O. Hartig and G. Pirr`o
+
+A property path pattern (or PP pattern for short) is a tuple P = , path, 
+such that ,   (I  L  V) and path is a property path expression (PP expres-
+sion) defined by the following grammar (where u, u1, . . . , un  I):
+
+path = u | !(u1 | . . . | un) | 
+
+path | path/path | (path| path) | (path)
+
+
+Note that the SPARQL standard introduces additional types of PP expressions [12]. Since these are merely syntactic sugar (they are defined in terms
+of expressions covered by the grammar given above), we ignore them in this
+paper. As another slight deviation from the standard, we do not permit blank
+nodes in PP patterns (i.e., ,  / B). However, standard PP patterns with blank
+nodes can be simulated using fresh variables.
+Example 1. An example of a PP pattern is Tim, (knows)/name, ?n, which
+retrieves the names of persons that can be reached from Tim by an arbitrarily
+long path of knows relationships (which includes Tim). Another example are the
+two PP patterns ?p, knows, Tim and Tim, knows, ?p, both of which retrieve
+persons that know Tim.
+?
+
+?
+
+?
+dom(1)  dom(2)
+
+.
+
+The (standard) query semantics of PP patterns is defined by an evaluation function that returns multisets of solution mappings where a solution mapping 
+is a partial function  : V  (I  B  L). Given a solution mapping  and a
+PP pattern P , we write [P ] to denote the PP pattern obtained by replacing
+the variables in P according to  (unbound variables must not be replaced).
+Two solution mappings, say 1 and 2, are compatible, denoted by 1  2, if
+1(?v) = 2(?v) for all variables ?v  
+We represent a multiset of solution mappings by a pair M = , card where
+ is the underlying set (of solution mappings) and card :   {1, 2, ...} is the
+corresponding cardinality function. By abusing notation slightly, we write   M
+for all   . Furthermore, we introduce a family of special (parameterized)
+cardinality functions that shall simplify the definition of any multiset whose
+solution mappings all have a cardinality of 1. That is, for any set of solution
+mappings , let card1() :   {1, 2, ...} be the constant-1 cardinality function
+that is defined by card1()() = 1 for all   .
+To define the aforementioned evaluation function we also need to introduce
+several SPARQL algebra operators. Let M1 = 1, card 1 and M2 = 2, card 2
+be multisets of solution mappings and let V  V be a finite set of variables.
+Then:
+M1  M2 = , card where  = 1  2 and (i) card() = card 1() for all
+solution mappings    \ 2, (ii) card() = card 2() for all    \ 1,
+and (iii) card() = card 1() + card 2() for all   1  2.
+1  2 | (1, 2)  1  2 and 1 
+
+(1,2)12 s.t. =12 card(1) 
+and, for
+?
+
+?
+
+?
+and, for every   , card() =
+
+M1  M2 = , card where  =
+
+2
+card(2).
+
+every   , card() = card 1().
+
+M1 \ M2 = , card where  =
+?
+
+?
+
+?
+1  1 | 1  2 for all 2  2
+?
+
+?
+
+?
+Fig. 1. Auxiliary functions for defining the semantics of PP expressions of the form
+path
+
+.
+
+V (M1) = , card where  =
+
+|  1 :    and dom() = V 
+?
+
+?
+
+?
+dom()
+
+and, for every   , card() =
+?
+
+?
+
+?
+1 s.t.  card 1().
+
+In addition to these algebra operators, the SPARQL standard introduces auxil-
+, .
+iary functions to define the semantics of PP patterns of the form , path
+Figure 1 provides these functionswhich we call ALP1 and ALP2adapted to
+our formalism.1 We are now ready to define the standard query semantics of PP
+patterns.
+
+Definition 1. The evaluation of a PP pattern P over an RDF graph G, denoted
+by [[P ]]G, is a multiset of solution mappings , card that is defined recursively
+as given in Fig. 2 where ,   (I  L  V), xL, xR  (I  L), ?vL, ?vR  V,
+u, u1, ..., un  I, ?v  V is a fresh variable, and  denotes the empty solution
+mapping (dom() = ).
+
+3.2 Data Model
+
+The standard SPARQL evaluation function for PP patterns (cf. Sect. 3.1) defines
+the expected result of the evaluation of a pattern over a single RDF graph.
+Since the WWW is not an RDF graph, the standard definition is insufficient
+as a formal foundation for evaluating PP patterns over Linked Data on the
+WWW. To provide a suitable definition we need a data model that captures
+the notion of a Web of Linked Data. To this end, we adopt the data model
+proposed in our earlier work [14]. Here, a Web of Linked Data (WoLD) is a tuple
+W = D, data, adoc consisting of (i) a set D of so called Linked Data documents
+(documents), (ii) a mapping data : D  2T that maps each document to a
+finite set of RDF triples (representing the data that can be obtained from the
+document), and (iii) a partial mapping adoc : I  D that maps (some) IRIs to a
+document and, thus, captures a IRI-based retrieval of documents. In this paper
+we assume that the set of documents D in any WoLD W = D, data, adoc is
+finite, in which case we say W is finite (for a discussion of infiniteness refer to
+our earlier work [14]).
+
+1 Variable ?x in line 6 is necessary since PP patterns in our formalism do not have
+
+blank nodes.
+
+O. Hartig and G. Pirr`o
+
+Fig. 2. SPARQL 1.1 W3C property paths semantics.
+
+A few other concepts are needed for the subsequent discussion. For any
+two documents d, d  D in a WoLD W = D, data, adoc, document d has
+a data link to d if the data of d mentions an IRI u  I (i.e., there exists a
+triple s, p, o  data(d) with u  {s, p, o}) that can be used to retrieve d (i.e.,
+adoc(u) = d). Such data links establish the link graph of the WoLD W, that is, a
+directed graph D, E in which the edges E are all pairs d, d  DD for which
+d has a data link to d. Note that this graph, as well as the tuple D, data, adoc
+typically are not available directly to systems that aim to compute queries over
+the Web captured by W. For instance, the complete domain of the partial mapping adoc (i.e., all IRIs that can be used to retrieve some document) is unknown
+to such systems and can only be disclosed partially (by trying to look up IRIs).
+Also note that the link graph of a WoLD is a different type of graph than the
+RDF graph whose triples are distributed over the documents in the WoLD.
+
+4 Web-Aware Query Semantics for Property Paths
+
+We are now ready to introduce our framework, which does not deal with syntactic aspects of PPs but aims at defining query semantics that provide a formal
+foundation for using PP patterns as queries over a WoLD (and, thus, over Linked
+Data on the WWW).
+
+4.1 Full-Web Query Semantics
+
+As a first approach we may assume a full-Web query semantics that is based
+on the standard evaluation function (as introduced in Sect. 3.1) and defines an
+expected query result for any PP pattern in terms of all data on the queried
+WoLD. Formally:
+?
+
+?
+
+?
+Definition 2. Let P be a PP pattern, let W = D, data, adoc be a WoLD, and
+let G be an RDF graph such that G =
+dD data(d), then the evaluation of
+P over W under full-Web semantics, denoted by [[P ]]fw
+W =
+[[P ]]G.
+
+W , is defined by [[P ]]fw
+?
+
+?
+
+?
+We emphasize that the full-Web query semantics is mostly of theoretical interest.
+In practice, that is, for a WoLD W that represents the real WWW (as it runs
+on the Internet), there cannot exist a system that guarantees to compute the
+given evaluation function [[]]fw. over W using an algorithm that both terminates
+and returns complete query results. In earlier work, we showed such a limitation for evaluating other types of SPARQL graph patternsincluding triple
+patternsunder a corresponding full-Web query semantics defined for these patterns [14]. This result readily carries over to the full-Web query semantics for
+PP patterns because any PP pattern P = , path,  with PP expression path
+being an IRI u  I is, in fact, a triple pattern , u, . Informally, we explain
+this negative result by the fact that the three structures D, data, and adoc that
+capture the queried Web formally, are not available in practice. Consequently,
+to enumerate the set of all triples on the Web (i.e., the RDF graph G in Definition 2), a query execution system would have to enumerate all documents (the
+set D); given that such a system has limited access to mapping adoc (in partic-
+ular, dom(adoc)the set of all IRIs whose lookup retrieves a documentis, at
+best, partially known), the only guarantee to discover all documents is to look
+up any possible (HTTP-scheme) IRI. Since these are infinitely many [7], the
+enumeration process cannot terminate.
+
+4.2 Context-Based Query Semantics
+
+Given the limited practical applicability of full-Web query semantics for PPs,
+we propose an alternative query semantics that interprets PP patterns as a
+language for navigation over Linked Data on the Web (i.e., along the lines of
+earlier navigational languages for Linked Data such as NautiLOD [8]). We refer
+to this semantics as context-based.
+
+The main idea behind this query semantics is to restrict the scope of searching
+for any next triple of a potentially matching path to specific data within specific
+documents on the queried WoLD. As a basis for formalizing these restrictions
+we introduce the notion of a context selector. Informally, for each IRI that can
+be used to retrieve a document, the context selector returns a specific subset of
+the data within that document; this subset contains only those RDF triples that
+have the given IRI as their subject (such a set of triples resembles Harth and
+Speisers notion of subject authoritative triples [13]). Formally, for any WoLD
+W = D, data, adoc, the context selector of W is a function CW : IBLV 
+2T that, for each   (I  B  L  V), is defined as follows:2
+
+2 To simplify the following formalization of context-based semantics, context selectors
+
+are defined not only over IRIs, but also over blank nodes, literals, and variables.
+
+O. Hartig and G. Pirr`o
+s, p, o  data
+
+
+
+CW() =
+
+adoc()
+
+ 
+
+  = s
+
+if   I and   dom(adoc),
+otherwise.
+
+Informally, we explain how a context selector restricts the scope of PP patterns
+over a WoLD as follows. Suppose a sequence of triples s1, p1, o1, ... ,sk, pk, ok
+presents a path that already matches a sub-expression of a given PP expression.
+Under the previously defined full-Web query semantics (cf. Sect. 4.1), the next
+triple for such a path can be searched for in an arbitrary document in the queried
+WoLD W. By contrast, under the context-based query semantics, the next triple
+has to be searched for only in CW(ok). Given these preliminaries, we now define
+context-based semantics:
+Definition 3. Let P be a PP pattern and let W = D, data, adoc be a WoLD.
+The evaluation of P over W under context-based semantics, denoted by [[P ]]ctx
+W ,
+returns a multiset of solution mappings , card defined recursively as given
+in Fig. 3, where u, .., un  I; xL, xR  (I  L); ?vL, ?vR  V;  is the empty
+solution mapping (i.e., dom() = ); function ALPW1 is given in Fig. 4; and
+?v  V is a fresh variable.
+There are three points worth mentioning w.r.t. Definition 3: First, note how
+the context selector restricts the data that has to be searched to find matching
+
+Fig. 3. Context-based query semantics for SPARQL property paths over the web.
+?
+
+?
+
+?
+Fig. 4. Auxiliary functions used for defining context-based query semantics.
+
+triples (e.g., consider the first line in Fig. 3). Second, we emphasize that contextbased query semantics is defined such that it resembles the standard semantics
+of PP patterns as close as possible (cf. Sect. 3.1). Therefore, for the part of our
+, , we also use auxiliary
+definition that covers PP patterns of the form , path
+functions ALPW1 and ALPW2 (cf. Fig. 4).
+
+These functions evaluate the sub-expression path recursively over the queried
+WoLD(instead of using a fixed RDF graph as done in the standard semantics in
+Fig. 1). Third, the two base cases with a variable in the subject position (i.e.,
+the third and the sixth line in Fig. 3) require an enumeration of all IRIs. Such
+a requirement is necessary to preserve consistency with the standard semantics,
+as well as to preserve commutativity of operators that can be defined on top
+of PP patterns (such as the ANDoperator in SPARQL; cf. Sect. 5). However, due
+to this requirement there exist PP patterns whose (complete) evaluation under
+context-based semantics is infeasible when querying the WWW. The following
+example describes such a case.
+Example 2. Consider the PP pattern PE2 = ?v, knows, Tim, which asks for
+the IRIs of people that know Tim. Under context-based semantics, any IRI u
+can be used to generate a correct solution mapping for the pattern as long as
+a lookup of that IRI results in retrieving a document whose data includes the
+triple u, knows, Tim. While, for any WoLD that is finite, there exists only a
+finite number of such IRIs, determining these IRIs and guaranteeing completeness requires to enumerate the infinite set of all IRIs and to check each of them
+(unless one knows the completeand finitesubset of all IRIs that can be used
+to retrieve some document, which, due to the infiniteness of possible HTTP IRIs,
+cannot be achieved for the WWW).
+
+It is not difficult to see that the issue illustrated in the example exists for any
+triple pattern that has a variable in the subject position. On the other hand,
+triple patterns whose subject is an IRI do not have this issue. However, having an
+IRI in the subject position is not a sufficient condition in general. For instance,
+the PP pattern Tim, knows, ?v has the same issue as the pattern in Example 2 (in fact, both patterns are semantically equivalent under context-based
+semantics). A question that arises is whether there exists a property of PP patterns that can be used to distinguish between patterns that do not have this issue
+
+O. Hartig and G. Pirr`o
+
+(i.e., evaluating them over any WoLD is feasible) and those that do. We shall
+discuss this question for the more general case of PP-based SPARQL queries.
+
+5 SPARQL with Property Paths on the Web
+
+After considering PP patterns in separation, we now turn to a more expressive
+fragment of SPARQL that embeds PP patterns as the basic building block and
+uses additional operators on top. We define the resulting PP-based SPARQL
+queries, discuss the feasibility of evaluating these queries over the Web, and
+introduce a syntactic property to identify queries for which an evaluation under
+context-based semantics is feasible.
+
+5.1 Definition
+
+By using the algebraic syntax of SPARQL [22], we define a graph pattern recursively as follows: (i) Any PP pattern , path,  is a graph pattern; and (ii) if
+P1 and P2 are graph patterns, then (P1ANDP2), (P1UNIONP2), and (P1OPTP2) are
+graph patterns.3 For any graph pattern P , we write V(P ) to denote the set of
+all variables in P .
+
+By using PP patterns as the basic building block of graph patterns, we can
+readily carry over our context-based semantics to graph patterns: For any graph
+pattern P and any WoLD W, the evaluation of P over W under context-based
+semantics is a multiset of solution mappings, denoted by [[P ]]ctx
+W , that is defined
+recursively as follows:4
+
+ If P is a PP pattern, then [[P ]]ctx
+ If P is (P1 AND P2), then [[P ]]ctx
+ If P is (P1 UNION P2), then [[P ]]ctx
+ If P is (P1 OPT P2), then [[P ]]ctx
+W =
+
+W is defined in Definition 3.
+
+W = [[P1]]ctx
+?
+
+?
+
+?
+W = [[P1]]ctx
+[[P1]]ctx
+
+W  [[P2]]ctx
+W .
+W  [[P2]]ctx
+W .
+W  [[P2]]ctx
+
+  
+
+W \ [[P2]]ctx
+
+[[P1]]ctx
+?
+
+?
+
+?
+.
+
+5.2 Discussion
+
+Given a query semantics for evaluating PP-based graph patterns over a WoLD,
+we now discuss the feasibility of such evaluation. To this end, we introduce the
+notion of Web-safeness of graph patterns. Informally, graph patterns are Websafe if evaluating them completely under context-based semantics is possible.
+Formally:
+
+Definition 4. A graph pattern P is Web-safe if there exists an algorithm that,
+for any finite WoLD W = D, data, adoc, computes [[P ]]ctx
+W by looking up only a
+finite number of IRIs without assuming direct access to the sets D and dom(adoc).
+
+3 For this paper we leave out other types of SPARQL graph patterns such as filters.
+Adding them is an exercise that would not have any significant implication on the
+following discussion.
+
+4 Note that the definition uses the algebra operators introduced in Sect. 3.1.
+?
+
+?
+
+?
+Bob, knows, ?vAND?v, knows, Tim
+.
+Example 3. Consider graph pattern PE3 =
+The right sub-pattern PE2 = ?v, knows, Tim is not Web-safe because evaluating it
+completely over the WWW is not feasible under context-based semantics (cf. Examis Web-safe; it can be evaluated comple 2). However, the larger pattern PE3
+pletely under context-based semantics. For instance, a possible algorithm may
+first evaluate the left sub-pattern, which is feasible because it requires the lookup
+of a single IRI only (the IRI Bob). Thereafter, the evaluation of the right subpattern PE2 can be reduced to looking up a finite number of IRIs only, namely the
+IRIs bound to variable ?v in solution mappings obtained for the left sub-pattern.
+Although any other IRI u might also be used to discover matching triples for
+PE2, each of these triples has IRI u as its subject (which is a consequence of
+restricting retrieved data based on the context selector introduced in Sect. 4.2).
+Therefore, the solution mappings resulting from such matching triples cannot be
+compatible with any solution for the left sub-pattern and, thus, do not satisfy the
+join condition established by the semantics of ANDin pattern PE3.
+
+The example illustrates that some graph patterns are Web-safe even if some
+of their sub-patterns are not. Consequently, we are interested in a decidable
+property that enables to identify Web-safe patterns, including those whose subpatterns are not Web-safe.
+?
+
+?
+
+?
+SERVICE?v P
+
+Buil-Aranda et al. study a similar problem in the context of SPARQL federation where graph patterns of the form PS =
+are allowed [6].
+Here, variable ?v ranges over a possibly large set of IRIs, each of which represents the address of a (remote) SPARQL service that needs to be called to
+assemble the complete result of PS. However, many service calls may be avoided
+if PS is embedded in a larger graph pattern that allows for an evaluation during
+which ?v can be bound before evaluating PS. To tackle this problem, Buil-Aranda
+et al. introduce a notion of strong boundedness of variables in graph patterns and
+use it to show a notion of safeness for the evaluation of patterns like PS within
+larger graph patterns. The set of strongly bound variables in a graph pattern P ,
+denoted by SBV(P ), is defined recursively as follows:
+
+ If P is a PP pattern, then SBV(P ) = V(P ) (where V(P ) are all variables in P ).
+ If P is of the form (P1 AND P2), then SBV(P ) = SBV(P1)  SBV(P2).
+ If P is of the form (P1 UNION P2), then SBV(P ) = SBV(P1)  SBV(P2).
+ If P is of the form (P1 OPT P2), then SBV(P ) = SBV(P1).
+The idea behind the notion of strongly bound variables has already been used
+in earlier work (e.g., certain variables [23], output variables [24]), and it is
+tempting to adopt it for our problem. However, we note that one cannot identify
+Web-safe graph patterns by using strong boundedness in a manner similar to its
+use in Buil-Aranda et al.s work alone. For instance, consider graph pattern PE3
+from Example 3. We know that (i) PE3 is Web-safe and that (ii) V(PE3) = {?v}
+and also SBV(PE3) = {?v}. Then, one might hypothesize that for every graph
+pattern P ,if SBV(P ) = V(P ), then P is Web-safe. However, the PP pattern
+PE2 = ?v, knows, Tim disproves such a hypothesis because, even if SBV(PE2) =
+V(PE2), pattern PE2 is not Web-safe (cf. Example 2).
+
+O. Hartig and G. Pirr`o
+
+We conjecture the following reason why strong boundedness cannot be used
+directly for our problem. For complex patterns (i.e., patterns that are not PP
+patterns), the sets of strongly bound variables of all sub-patterns are defined
+independent from each other, whereas the algorithm outlined in Example 3 leverages a specific relationship between sub-patterns. More precisely, the algorithm
+leverages the fact that the same variable that is the subject of the right subpattern is also the object of the left sub-pattern.
+
+Based on this observation, we introduce the notion of conditionally Webbounded variables, the definition of which, for complex graph patterns, is based
+on specific relationships between sub-patterns. This notion shall turn out to be
+suitable for our case.
+
+Definition 5. The conditionally Web-bounded variables of a graph pattern P
+w.r.t. a set of variables X is the subset CBV(P | X)  V(P ) that is defined recursively as follows:
+?
+
+?
+
+?
+PE2
+
+Example 4. For the PP pattern PE2 = ?v, knows, Timwhich is not Websafe (as discussed in Example 2)if we use the set {?v} as condition, then, by
+= {?v}. However, if we use
+line 1 in Definition 5, it holds that CBV
+the empty set instead, we obtain CBV(PE2 |) =  (cf. line 2 in Definition 5).
+While for the non-Web-safe pattern PE2 we thus observe CBV(PE2 |) = V(PE2),
+Bob, knows, ?vAND?v, knows, Tim
+which is Webfor graph pattern PE3 =
+safe (cf. Example 3)we have CBV(PE3 |) = V(PE3). The fact that CBV(PE3 |) =
+Bob, knows, ?v 
+
+= {?v}, (ii) SBV(Bob, knows, ?v)
+{?v} follows from (i) CBV
+{?v}
+= {?v}, and (iv) line 11 in Defini-
+= {?v}, (iii) CBV
+tion 5.
+
+?v, knows, Tim 
+?
+
+?
+
+?
+{?v}
+
+The example seems to suggest that, if all variables of a graph pattern are conditionally Web-bounded w.r.t. the empty set of variables, then the graph pattern
+is Web-safe. The following result verifies this hypothesis.
+Theorem 1. A graph pattern P is Web-safe if CBV(P |) = V(P ).
+?
+
+?
+
+?
+Note 1. Due to the recursive nature of Definition 5, the condition CBV(P |)=
+V(P ) (as used in Theorem 1) is decidable for any graph pattern P .
+
+We prove Theorem 1 based on an algorithm that evaluates graph patterns recursively by passing (intermediate) solution mappings to recursive calls. To capture
+the desired results of each recursive call formally, we introduce a special evaluation function for a graph pattern P over a WoLD W that takes a solution
+mapping  as input and returns only the solutions for P over W that are compatible with .
+Definition 6. Let P be a graph pattern, let W be a WoLD, and let , card =
+[[P ]]ctx
+W . Given a solution mapping , the -restricted evaluation of P over W
+under context-based semantics, denoted by [[P |  ]]ctx
+W , is the multiset of solution
+mappings , card
+() = card() for
+and card
+all  .
+The following lemma shows the existence of the aforementioned recursive algo-
+rithm.
+
+ with  =
+?
+
+?
+
+?
+   
+?
+
+?
+
+?
+  
+?
+
+?
+
+?
+Lemma 1. Let P be a graph pattern and let in be a solution mapping. If it
+
+= V(P ), there exists an algorithm that, for any
+holds that CBV
+finite WoLD W, computes [[P | in ]]ctx
+W by looking up a finite number of IRIs
+only.
+?
+
+?
+
+?
+ dom(in)
+
+W = [[P ]]ctx
+
+Before providing the proof of the lemma (and of Theorem 1),we point out two
+important properties of Definition 6. First, it is easily seen that, for any graph
+pattern P and WoLD W, [[P |  ]]ctx
+W , where  is the empty solution
+mapping (i.e., dom() = ). Consequently, given an algorithm, say A, that has
+the properties of the algorithm described by Lemma 1, a trivial algorithm that
+can be used to prove Theorem 1 may simply call algorithm A with the empty
+solution mapping and return the result of this call ( we shall elaborate more on
+this approach in the proof of Theorem 1 below). Second, for any PP pattern
+, path,  and WoLD W, if  is a variable and path is a base PP expression
+(i.e., one of the first two cases in the grammar in Sect. 3.1), then [[P |  ]]ctx
+W is
+empty for every solution mapping  that binds (variable)  to a literal or a blank
+node. Formally, we show the latter as follows.
+Lemma 2. Let P be a PP pattern of the form ?v, u,  or ?v, !(u1 |  |
+un),  with ?v  V and u, u1, . . . , un  I, and let  be a solution mapping. If
+?v  dom() and (?v)  (B  L), then, for any WoLD W, [[P |  ]]ctx
+W is the
+empty multiset.
+
+Proof (Lemma 2). Recall that, for any IRI u and any WoLD W, context CW(u)
+contains only triples that have IRI u as their subject. As a consequence, for any
+WoLD W, every solution mapping   [[P ]]ctx
+W binds variable ?v to some IRI
+(and never to a literal or blank node); i.e., (?v)  I. Therefore, if ?v  dom()
+and (?v)  (B  L), then  cannot be compatible with any   [[P ]]ctx
+W and,
+thus, [[P |  ]]ctx
+?
+
+?
+
+?
+W is empty.
+
+O. Hartig and G. Pirr`o
+
+We use Lemma 2 to prove Lemma 1 as follows.
+
+Proof idea (Lemma 1). We prove the lemma by induction on the possible structure of graph pattern P . For the proof, we provide Algorithm 1 and show that
+this (recursive) algorithm has the desired properties for any possible graph pattern (i.e., any case of the induction, including the base case). Due to space
+limitations, in this paper we only present a fragment of the algorithm and highlight essential properties thereof. The given fragment covers the base case (lines
+111) and one pivotal case of the induction step, namely, graph patterns of the
+form (P1ANDP2) (lines 5772). The complete version of the algorithm and the
+full proof can be found in an extended version of this paper [15].
+
+For the base case, Algorithm 1 looks up at most one IRI (cf. lines 25). The
+crux of showing that the returned result is sound and complete is Lemma 2 and
+the fact that the only possible context in which a triple s, p, o with s  I can
+be found is CW(s).
+
+Pj
+?
+
+?
+
+?
+Pi | dom(in)
+?
+
+?
+
+?
+= V(Pi) and CBV
+?
+
+?
+
+?
+ dom(in)  dom()
+
+W and , card  = [[Pj | in   ]]ctx
+
+For PP patterns of the form (P1ANDP2) consider lines 5772. By using Defin-
+=
+ition 5, we show CBV
+V(Pj) for all   Pi. Therefore, by induction, all recursive calls (lines 60 and 62)
+look up a finite number of IRIs and return correct results; i.e., Pi, card Pi =
+[[Pi | in ]]ctx
+W for all   Pi. Then, since
+each   Pi is compatible with all    and all processed solution mappings are compatible with in, it is easily verified that the computed result is
+
+[[(P1ANDP2)| in ]]ctx
+W .
+We are now ready to prove Theorem 1, for which we use Lemma 1, or more
+precisely the algorithm that we introduce in the proof of the lemma.
+Proof (Theorem 1). Let P be a graph pattern s.t. CBV(P |) = V(P ). Then, given
+the empty solution mapping  with dom() = , we have CBV
+=
+V(P ). Therefore, by our proof of Lemma 1 we know that, for any finite WoLD W,
+Algorithm 1 computes [[P |  ]]ctx
+W by looking up a finite number of IRIs. We also
+know that the empty solution mapping is compatible with any solution mapping.
+Consequently, by Definition 6, [[P |  ]]ctx
+W for any WoLD W. Hence, by
+passing the empty solution mapping to it, Algorithm 1 can be used to compute
+[[P ]]ctx
+W for any finite WoLD W, and during this computation the algorithm looks
+
+up a finite number of IRIs only.
+
+W = [[P ]]ctx
+?
+
+?
+
+?
+ dom()
+
+While the condition in Theorem 1 is sufficient to identify Web-safe graph pat-
+terns, the question that remains is whether it is a necessary condition (in which
+case it could be used to decide Web-safeness of all graph patterns). Unfortu-
+nately, the answer is no.
+Example 5. Consider the graph pattern P = (P1 UNION P2) with P1 = u1, p1, ?x
+and P2 = u2, p2, ?y. We note that CBV(P1 |) = {?x} and CBV(P2 |) = {?y},
+and, thus, CBV(P |) = . Hence, the pattern does not satisfy the condition
+in Theorem 1. Nonetheless, it is easy to see that there exists a (sound and
+complete) algorithm that, for any WoLD W, computes [[P ]]ctx
+W by looking up
+?
+
+?
+
+?
+Algorithm 1. EvalCtxBased(P, in), which computes [[P | in]]ctx
+W .
+1: if P is of the form , u,  or P is of the form , !(u1 |  | un),  then
+2:
+3:
+4:
+
+if   I then u
+else if   V and   dom(in) and in()  I then u
+else u
+if u
+
+is an IRI and looking it up results in retrieving a document, say d then
+
+:= in()
+
+:= null
+
+:= 
+
+:=
+
+G := the set of triples in d (use a fresh set of blank node identifiers when
+parsing d)
+s, p, o  G
+G
+, card := [[P ]]G
+return a new multiset , card
+?
+
+?
+
+?
+ s = u
+([[P ]]G can be computed by using any algorithm that
+implements the standard SPARQL evaluation function)
+) for all  
+return a new empty multiset , card with  =  and dom(card ) = 
+
+  
+) = card (
+
+ with 
+card
+?
+
+?
+
+?
+   in
+?
+
+?
+
+?
+=
+
+(
+
+and
+?
+
+?
+
+?
+else
+
+. . .
+
+5:
+6:
+
+7:
+8:
+
+9:
+
+10:
+11:
+?
+
+?
+
+?
+P1 | dom(in)
+if CBV
+Create a new empty multiset M = , card with  =  and dom(card ) = 
+Pi , card Pi := EvalCtxBased (Pi, in)
+for all   Pi do
+
+= V(P1) then i := 1; j := 2 else i := 2; j := 1
+
+, card  := EvalCtxBased (Pj, in  )
+for all    do
+
+57: else if P is of the form (P1ANDP2) then
+58:
+59:
+60:
+61:
+62:
+63:
+64:
+65:
+66:
+67:
+68:
+69:
+70:
+71:
+72:
+
+
+k := card Pi()  card (
+if   then
+old := card (
+Adjust card such that card (
+Adjust card such that card (
+Add 
+
+:=   
+
+return M
+
+) = k
+
+to 
+
+else
+
+)
+
+)
+
+) = k + old
+
+a finite number of IRIs only. For instance, such an algorithm, say A, may
+first use two other algorithms that compute [[P1]]ctx
+W by looking up a
+finite number of IRIs, respectively. Such algorithms exist by Theorem 1, because
+CBV(P1 |) = V(P1) and CBV(P2 |) = V(P2). Finally, algorithm A can generate
+the (sound and complete) query result [[P ]]ctx
+W by computing the multiset union
+[[P1]]ctx
+
+W , which requires no additional IRI lookups.
+
+W  [[P2]]ctx
+
+W and [[P2]]ctx
+
+Remark 1. The example illustrates that only if cannot be shown in Theorem 1. It remains an open question whether there exists an alternative condition
+for Web-safeness that is both sufficient and necessary (and decidable).
+
+O. Hartig and G. Pirr`o
+
+6 Concluding Remarks and Future Work
+
+This paper studies the problem of extending the scope of SPARQL property
+paths to query Linked Data that is distributed on the WWW. We have proposed
+a context-based query semantics and analyzed its peculiarities. Our perhaps most
+interesting finding is that there exist queries whose evaluation over the WWW
+is not feasible. We studied this aspect and introduced a decidable syntactic
+property for identifying feasible queries.
+
+We believe that the presented work provides valuable input to a wider discussion about defining a language for accessing Linked Data on the WWW.
+In this context, there are several directions for future research such as the following three. First, studying a more expressive navigational core for property
+paths over the Web; e.g., along the lines of other navigational languages such
+as nSPARQL [21] or NautiLOD [8]. Second, investigating relationships between
+navigational queries and SPARQL federation. Third, while the aim of this paper
+was to introduce a formal foundation for answering SPARQL queries with PPs
+over Linked Data on the WWW, an investigation of how systems may implement
+efficiently the machinery developed in this paper is certainly interesting.

@@ -173,7 +173,7 @@ public class TaxonomyTest {
     public void testMinDepth2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
     	
     	assertEquals("The minimum depth is incorrect", 2,taxonomy.minDepth());
     }
@@ -235,7 +235,7 @@ public class TaxonomyTest {
     public void testMaxDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234,null, Status.none));
     	
     	assertEquals("The maximum node degree is different from expected", 5,taxonomy.maxDegree());
     }
@@ -252,7 +252,7 @@ public class TaxonomyTest {
     public void testAvgDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
     	
     	assertEquals("The average node degree is different from expected", 28.0/15, taxonomy.avgDegree(), 0.00001);
     }

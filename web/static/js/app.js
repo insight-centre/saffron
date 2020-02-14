@@ -1,7 +1,6 @@
 const apiUrl = '/api/v1/run/';
 const apiUrlWithSaffron = apiUrl + saffronDatasetName + '/';
 
-
 angular.module('app', ['ngMaterial', 'ui.bootstrap'])
     // this service is used to collect all public values
     // to be able to pass them among controllers
@@ -43,8 +42,6 @@ function acceptRejectterms($http, terms, mainterm, status){
         }
     );
 }
-
-
 
 // general function to accept or reject child/related terms
 function deleteOneRun($http, id){
@@ -94,7 +91,7 @@ angular.module('app').component('header', {
       ctrl.searchAction = "/" + saffronDatasetName + "/search/";
    },
    bindings: {
-     //expects the value "yes" 
+     //expects the value "yes"
       menu: '@',
       search: '@'
    }
@@ -102,81 +99,37 @@ angular.module('app').component('header', {
 
 // getting the top terms to fill the right sidebar on homepage of a run
 angular.module('app').component('topterms', {
-    
     templateUrl: '/top-terms.html',
     controller: function ($http) {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        maxScore = 0
-
-
         this.loadterms = function () {
-
             $http.get(apiUrlWithSaffron + "terms").then(
-
                 function (response) {
-
                     response = response.data;
-                    // normalize saffron  score 
-                    maxScore = Math.max.apply(Math, response.map(function(o) { return o.score.toPrecision(3); }))
-                    minScore = 0 
-                    
-                    function normalizeScore(min, max) {
-                        var delta = max - min;
-                        return function(val){
-                            return ((val - min) / delta).toFixed(2);
-                        };
-                     }
-
-                    scoreList = []
-                    response.forEach((responseObj) => scoreList.push(responseObj.score.toPrecision(3)));
-                    normalizedScore = scoreList.map(normalizeScore(minScore,maxScore));
-                    response.forEach((responseObj, indx) =>{
-                        responseObj.score = normalizedScore[indx]
-                    });
-
-
-
                     response.sort((a, b) => (a.score < b.score) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2+30);
-
                     ctrl.terms = [];
                     for (t = 0; t < response.length; t++) {
                         if(response[t].status !== "rejected") {
-
                             ctrl.terms.push({
                                 "term_string": response[t].termString,
-                                "score": response[t].score, //toFixed(2)
-
                                 "pos": (t + 1 + ctrl.n2)
-
-                            });                            
+                            });
                         }
                     }
-
                     ctrl.n = ctrl.n2;
-
                 },
-
-
                 function (response) {
                     console.log(response);
                     console.log("Failed to get top terms");
                 }
-
-
-
             );
-
         };
-
-
-
         this.termForward = function () {
             ctrl.n2 += 30;
             this.loadterms();
-
         };
         this.termBack = function () {
             ctrl.n2 -= 30;
@@ -230,7 +183,7 @@ angular.module('app').component('term', {
                 console.log("Failed to get terms");
             }
         );
-        
+
         // function to save updates on term name or term parent
         $scope.ApiSaveterm = function(old_term_id, new_term_name, old_term_parent, new_term_parent, $event){
             $event.preventDefault();
@@ -336,7 +289,7 @@ angular.module('app').component('relatedterms', {
                     ctrl.n = ctrl.n2;
                 });
 
-            } else 
+            } else
 
             // if on a document page, show top terms from the document
             if (ctrl.doc) {
@@ -358,7 +311,7 @@ angular.module('app').component('relatedterms', {
                     }
                     ctrl.n = ctrl.n2;
                 });
-            } else 
+            } else
 
             // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
             if (ctrl.author) {
@@ -493,14 +446,13 @@ angular.module('app').controller('runs', function ($scope, $http, $location, sha
     function getRuns() {
         var url = apiUrl;
         $http.get(url).then(function (response) {
-
+            console.log(response)
+            console.log(response.data)
 
             for (t = 0; t < response.data.length; t++) {
-                // console.log(response.data[t])
+                console.log(response.data[t])
                 $scope.parents.push(response.data[t])
-
             }
-
         });
     }
     getRuns();
@@ -537,7 +489,7 @@ angular.module('app').component('childterms', {
                         "pos": (t + 1),
                         "left": t < response.data.children.length / 2,
                         "right": t >= response.data.children.length / 2
-                    });    
+                    });
                 }
             }
         });
@@ -677,20 +629,14 @@ angular.module('app').component('relateddocuments', {
         ctrl.n2 = 0;
         this.loadterms = function () {
             if (ctrl.term) {
-                $http.get(apiUrlWithSaffron + 'docs').then(function (response) {
-                    ctrl.docs = [];
-                    var json = JSON.parse(JSON.stringify(response.data));
-                    json.forEach(function(obj) {
-                        var text = ""
-                        text = Object.values(obj)[0]
-                        text = text.split(ctrl.term).join("<b>" + ctrl.term + "</b>")
-                        if (text.includes(ctrl.term)) {
-                            ctrl.docs.push({
-                                "doc": Object.keys(obj)[0],
-                                "values": $sce.trustAsHtml(text.substring(text.indexOf(ctrl.term) -100, text.indexOf(ctrl.term) +100))
-                            });
-                        }
-                    })
+                $http.get('/' + saffronDatasetName + '/doc-terms?n=20&offset=' + ctrl.n2 + '&term=' + ctrl.term).then(function (response) {
+                    for (t = 0; t < response.data.length; t++) {
+                        ctrl.docs.push({
+                            "doc": response.data[t],
+                            "contents_highlighted": $sce.trustAsHtml(response.data[t].contents.split(ctrl.term).join("<b>" + ctrl.term + "</b>")),
+                            "pos": (t + 1)
+                        });
+                    }
                     ctrl.n = ctrl.n2;
                 });
             } else if (ctrl.author) {

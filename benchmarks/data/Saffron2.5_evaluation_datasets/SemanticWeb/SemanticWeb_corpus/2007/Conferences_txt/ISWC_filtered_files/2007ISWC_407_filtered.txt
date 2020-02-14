@@ -1,0 +1,763 @@
+Measuring Incoherence in Description
+
+Logic-Based Ontologies
+
+Guilin Qi1 and Anthony Hunter2
+
+1Institute AIFB
+
+Universit at Karlsruhe
+
+D-76128 Karlsruhe, Germany
+gqi@aifb.uni-karlsruhe.de
+
+2Department of Computer Science
+
+University College London, Gower Street
+
+London WC1E 6BT,UK
+a.hunter@cs.ucl.ac.uk
+
+Abstract. Ontologies play a core role in the success of the Semantic
+Web as they provide a shared vocabulary for different resources and ap-
+plications. Developing an error-free ontology is a difficult task. A common
+kind of error for an ontology is logical contradiction or incoherence. In
+this paper, we propose some approaches to measuring incoherence in DLbased ontologies. These measures give an ontology engineer important
+information for maintaining and evaluating ontologies. We implement
+the proposed approaches using the KAON2 reasoner and provide some
+preliminary but encouraging empirical results.
+
+1 Introduction
+
+Ontologies play the core role for the success of the Semantic Web (SW) as they
+provide shared vocabularies for different domains. There are many representation languages for ontologies, such as Description Logics (DLs) [1]. High quality
+ontologies are important for SW technology. However, in practice, it is often
+difficult to construct an ontology which is error-free. A common error for an
+ontology is incoherence, i.e. whether there are unsatisfiable concepts which is
+interpreted as an empty set in all the models of its terminology. Incoherence can
+occur for several reasons, such as modeling errors when constructing an ontology and migration or merging of ontologies [16]. For example, when two upper
+ontologies SUMO and CYC are used in a single document, there exist over 1000
+unsatisfiable concepts. Currently, there are many discussions on how to debug
+and diagnose terminologies in ontologies [9,8,17,16]. Whilst incoherence in an
+ontology is often viewed negatively, by measuring it, we can get useful information for maintaining and evaluating an ontology. For example, by measuring the
+extent of incoherence of different ontologies, we can give a rank over them. That
+is, an ontology is more reliable than another one if it contains less incoherent
+information. Similarly, by measuring the extent of incoherence of different ax-
+ioms, we get some ranking information on axioms which can be used to resolve
+
+K. Aberer et al. (Eds.): ISWC/ASWC 2007, LNCS 4825, pp. 381394, 2007.
+c Springer-Verlag Berlin Heidelberg 2007
+
+G. Qi and A. Hunter
+
+incoherence [8]. Furthermore, there is a trade-off in the amount of useful information in an ontology and the amount of coherent information. For example, in
+the extreme, we could guarantee a coherent ontology by only having the empty
+ontology. Obviously, this would not be acceptable, and so we need to tolerate
+the possiblity of some incoherence in an ontology. Once we do tolerate this pos-
+sibility, we need to keep track of it, perhaps as part of a process of improvement,
+or as a way of isolating the problematical parts of the ontology until we decide
+to how to fix those parts. So for these tasks, it is helpful to know where and by
+how much there is incoherence. This may include consideration of whether it is
+widespread, or localized. So the size and overlaps of incoherent subsets can be
+useful diagnostic tools.
+
+Incoherence in ontologies corresponds to inconsistency in knowledge bases in
+classical logic, where a knowledge base is a finite set of classical formulae. A
+knowledge base is inconsistent if and only if there is no model satisfying all its
+formulae. We can regard the measures of inconsistency for a knowledge base as
+one of the following three types:(Formula-centric measures) These measures
+take into account the number of formulae required for inconsistency, and so fewer
+formulae in an inconsistency means a higher degree of inconsistency (e.g. [10]);
+(Atom-centric measures) These measures take into account the proportion
+of the language affected by inconsistency, and so more propositional atoms involved in inconsistency means a higher degree of inconsistency (e.g. [5,11]); and
+(Conflict-centric measures) These measures take into the account the number of conflicts each formula is involved in, and so if each formula is involved in
+more conflicts, there is a higher degree of inconsistency (e.g. [6]). Furthermore,
+given a measure of inconsistency of a knowledgebase, using one of the above,
+we can ascribe the blame or responsibility that each formula has in the set by
+drawing on an approach from game theory, called Shapley values, that allows
+for a principled assignment [7].
+
+In this paper, we propose some approaches for measuring incoherence in DLbased ontologies that are independent of specific DL languages. They are based
+on the notion of scoring function introduced for classical logic in [6]. Whilst
+description logics are sub-systems of classical logic, they do incorporate a number
+of specialized features that are not in classical logic, and so in order to optimize
+the use of scoring functions for description logics, some refinement of the notion
+of scoring functions has been necessary. Indeed, this refinement has resulted in
+two classes of measures of incoherence: measures of incoherence for unsatisfiable
+concepts and measures of incoherence for terminologies. First, we define the
+scoring function for an unsatisfiable concept and use it to define a score ordering
+on unsatisfiable concepts. Second, we define the scoring function for a TBox and
+use it to define an ordering on terminology axioms and an ordering on TBoxes.
+We implement the proposed approaches using KAON2 reasoner1 and report
+preliminary but encouraging experimental results.
+
+The paper is organized as follows: We review DLs and related notions on
+incoherence (Section 2); We review related work (Section 3); We define our new
+
+1 c.f. http://kaon2.semanticweb.org
+?
+
+?
+
+?
+framework (Section 4); We discuss applications (Section 5); and We present
+preliminary empirical results (Section 6).
+
+2 Preliminaries
+
+2.1 Description Logics
+
+We now give a brief introduction of Description Logics (DLs) and refer the reader
+to the DL handbook [1] for more details.
+A DL-based ontology (or ontology) O = (T ,A) consists of a set T of concept
+axioms (TBox) and role axioms, and a set A of assertional axioms (ABox).
+Concept axioms have the form C  D where C and D are (possibly complex)
+concept descriptions, and role axioms are expressions of the form RS, where R
+and S are (possibly complex) role descriptions. We call both concept axioms and
+role axioms as terminology axioms. The ABox contains concept assertions of the
+form C(a) where C is a concept and a is an individual name, and role assertions
+of the form R(a, b), where R is a role and a and b are individual names.
+
+The semantics of DLs is defined via a model-theoretic semantics, which explicates the relationship between the language syntax and the model of a domain:
+An interpretation I = (I,I) consists of a non-empty domain set I and
+an interpretation function I, which maps from individuals, concepts and roles
+to elements of the domain, subsets of the domain and binary relations on the
+domain, respectively.
+Given an interpretation I, we say that I satisfies a concept axiom C  D
+(resp., a role inclusion axiom R  S) if CIDI (resp., RI  SI). Furthermore,
+I satisfies a concept assertion C(a) (resp., a role assertion R(a, b)) if aICI
+(resp., (aI, bI)RI). An interpretation I is called a model of an ontology O, iff
+it satisfies each axiom in O.
+
+2.2 Incoherence in DL-Based Ontologies
+
+We introduce the notion of incoherence in DL-based ontologies defined in [4].
+Definition 1 (Unsatisfiable Concept). A concept name C in an ontology
+O, is unsatisfiable iff, for each interpretation I of O, CI = . The set of all
+unsatisfiable concept is denoted as U S(O).
+
+That is, a concept name is unsatisfiable in an ontology iff it is interpreted as an
+empty set by all models of O.
+Definition 2 (Incoherent Ontology). An ontology O is incoherent iff there
+exists an unsatisfiable concept name in O.
+For example, an ontology O = {AB, AB} is incoherent because A is unsatisfiable in O. As pointed out in [4], incoherence does not provide the classical
+sense of the inconsistency because there might exist a model for an incoherent
+ontology. We first introduce the definition of an inconsistent ontology.
+
+G. Qi and A. Hunter
+
+Definition 3 (Inconsistent Ontology). An ontology O is inconsistent iff it
+has no model.
+
+However, incoherence and inconsistency are related to each other. According to
+the discussion in [4], incoherence is a potential cause of inconsistency. That is,
+suppose C is an unsatisfiable concept in O, by adding an instance a to C will result in an inconsistent ontology. For example, the ontology O = {AB, AB}
+is incoherent but consistent (any interpretation which interprets A as an empty
+set and B as an nonempty set is a model of O). However, O = {A(a), AB, A
+B} is both incoherent and inconsistent.
+
+In most of current work on debugging ontologies, the incoherence problem is
+often discussed at the terminology level. That is, ABoxes are usually considered
+as irrelevant for incoherence. Therefore, when we talk about an axiom in an
+ontology, we mean only the terminology axiom.
+
+In the following, we introduce some definitions which are useful to explain
+
+logical incoherence.
+
+Definition 4. [17] Let A be a concept name which is unsatisfiable in a TBox
+T . A set T T is a minimal unsatisfiability-preserving sub-TBox (MUPS) of T
+if A is unsatisfiable in T , and A is satisfiable in every sub-TBox T   T . The
+set of all MUPS of T with respect to A is denoted as M UA(T ).
+A MUPS of T and A is the minimal sub-TBox of T in which A is unsatisfiable.
+For example, given an TBox T = {C  A, AB, AB}. C is an unsatisfiable
+concept and it has one MUPS, i.e., T . Based on MUPS, we can classify unsatisfiable concepts into derived unsatisfiable concepts and root unsatisfiable concepts
+as follows:
+Definition 5 (Root and Derived). [9] C is a derived unsatisfiable concept in T
+iff it satisfies the following condition: i, j such that M U P Si(C)  M U P Sj(D),
+for an unsatisfiable concept D, where M U P Si(C)M UC(T ) and M U P Si(D)
+M UD(T ). If C does not satisfy this condition then it is a root unsatisfiable concept.
+Definition 6. [17] Let T be an incoherent TBox. A TBox T T is a minimal
+incoherence-preserving sub-TBox (MIPS) of T if T  is incoherent, and every
+sub-TBox T T  is coherent. The set of all MIPSs of T is denoted as M I(T ).
+A MIPS of T is the minimal sub-TBox of T which is incoherent. Let us consider
+the example used to illustrate Definition 4, in which there is only one MIPS of
+T : {AB, AB}. We say a terminology axiom is in conflict in T if there exists
+a MIPS of T containing it.
+
+Algorithms have been given to calculate MUPS and MIPS in a given ontology
+(see [17,9]). It was shown in [17] that calculating MUPS is the same as the
+satisfiability check if a glass-box algorithm is used, i.e., the algorithm is based
+on the description logic tableaux reasoner.
+?
+
+?
+
+?
+3 Related Work
+
+This work is related to the work on debugging terminologies and resolve incoherence [9,8,17,16]. The first work on debugging erroneous terminologies is
+reported in [17] where the authors provide a specialized algorithm for the DL
+ALC. The notions of MUPS and MIPS are introduced to explain logical incoherences there. In [9], two orthogonal debugging approaches are proposed to detect
+the clash/sets of support axioms responsible for an unsatisfiable classes, and to
+identify root/derived unsatisfiable classes. Based on the debugging approach, in
+[8], the authors give a tool to repair unsatisfiable concepts in OWL ontologies.
+The basic idea is to rank erroneous axioms and then to generate a plan to resolve the errors in a given set of unsatisfiable concepts by taking into account
+the axiom ranks. Although the above-mentioned work provides potential starting
+points for measuring incoherence, they are not explicitly used for this purpose.
+The approaches to measuring incoherence in ontologies are still underdeveloped.
+Recently, some approaches for measuring inconsistency in an ontology have
+been proposed [3,12]. In [3], some inconsistency measures are proposed by adapting the approach based on Shapley values in [7]. The approach given in [12] is
+defined by a four-valued semantics of DL ALC. Our approaches differ from these
+approaches in that we consider measuring incoherence of an ontology instead
+of inconsistency, although the measures of incoherence implicitly provides information for degree of inconsistency of an ontology (recall that inconsistency and
+incoherence are two different but related notions in DLs).
+
+4 Measures of Incoherence
+
+4.1 Measures of Incoherence for Unsatisfiable Concepts
+
+If an ontology is incoherent, there is at least one unsatisfiable concept in its
+TBox. For these unsatisfiable concepts, some are more problematic than oth-
+ers. For example, given a TBox T = {AB, BC, BC}. A and B are both
+unsatisfiable concepts. However, A is unsatisfiable because of B. That is, if B
+becomes satisfiable, then A is also satisfiable. So in a sense, we may regard B as
+more incoherent than A. However, we may argue that B is less incoherent than
+A because the axioms involved in the conflict for concept B are a subset of those
+for concept A. We develop an alternative (conflict-centric) characterization here.
+We define an ordering between two unsatisfiable concepts based on the scoring
+
+function.
+Definition 7. Let T be an incoherent TBox, and A be an unsatisfiable concept
+name in T and M UA(T ) be the set of all MUPSs of T with respect to A. The
+scoring function for A is a function ST ,A : (T )  N ((T ) denoting the power
+set of T ) such that for all T (T )
+
+ST ,A(T 
+
+) = |{TiM UA(T ) : TiT =}|.
+
+G. Qi and A. Hunter
+
+The scoring function ST ,A for A returns for each subset T  of T the number
+of MUPS of T with respect to A that have overlap with T . The scoring function adapts a version defined in [6] to compare two logical inconsistent sets of
+propositional formulae. It is clear that we have the following proposition.
+Proposition 1. Let T be an incoherent TBox, and A be an unsatisfiable concept
+names in T and M UA(T ) be the set of all MUPSs of T with respect to A. Suppose
+ST ,A is the scoring function for A, then for all T (T )
+) = |M UA(T )|  |M UA(T \ T 
+
+ST ,A(T 
+
+)|.
+
+According to Proposition 1, the scoring function for T  gives the number of
+MUPS that would be eliminated from T if T  were substracted from T .
+Let T be an incoherent TBox, and A and B be two unsatisfiable concept names
+in T . Let MA = TiMUA(T )Ti and MB = TjMUB(T )Tj. Suppose |MA|<|MB|,
+then we add some dummy axioms to MA such that |MA| = |MB|. The dummy
+axioms can be constructed by using fresh concept names (i.e. names not used
+elsewhere). We can define a score ordering as follows:
+Definition 8. Assume that ST ,A and ST ,B are the scoring functions for A and
+B respectively. ST ,ASST ,B iff there is a bijection f : (MA)  (MB) such
+that the following condition is satisfied:
+
+T   (MA), ST ,A(T 
+
+)ST ,B(f(T 
+
+)).
+
+As usual, ST ,A<SST ,B denotes ST ,ASST ,B and ST ,BSST ,A, and ST ,ASST ,B
+denotes ST ,ASST ,B and ST ,BSST ,A. The score ordering, denoted , is defined
+as follows: for any two unsatisfiable concepts A and B,
+AB if f ST ,ASST ,B.
+
+Intuitively, ST ,ASST ,B means that the MUPSs in M UA(T ) are less overlapping
+than those in M UB(T ), and hence each formula in the first set is involved in
+the same or fewer conflicts than its corresponding formula in the second. So A
+is less incoherent than B with respect to the score ordering iff the MUPSs in A
+is less overlapping than those in B.
+
+We illustrate the score ordering by the following example.
+
+Example 1. Given a TBox T = {AB, AC, BD, CD, EF, EF, FD,
+ED}, where A, B, C, D, E, F are concept names. Clearly, A and E are two
+root unsatisfiable concepts in T , and M UA = {T1}, s.t. T1 = {AB, AC, BD,
+CD} and M UE = {T2,T3}, s.t. T2 = {EF, EF} and T3 = {EF, FD,
+ED}. So MA = {AB, AC, BD, CD} and ME ={EF, EF, FD,
+ED}. Let ST ,A and ST ,E be the scoring function for A and E respectively, then
+ST ,A(T ) = 1, for all T   (MA). However, ST ,E({EF}) = 2 and ST ,E(T )1
+for all other T (ME). So ST ,A<SST ,E and we have A<E.
+When defining the score ordering, we need to find a bijection f mapping every
+subset of MA to a subset of MB. In the following, we provide a procedure to
+find the bijection f. Let |(MA)| = |(MB)| = n.
+?
+
+?
+
+?
+j
+
+Step 1: for each Ti(MA) and each T 
+(MB), compute ST ,A(Ti) and
+ST ,B(T 
+j ),
+Step 2: rearrange T1,...,Tn as Ti1,...,Tin (ik{1, ..., n}) such that ST ,A(Ti1)
+ST ,A(Ti2)...ST ,A(Tin), and rearrange T 
+jn (jk{1, ..., n})
+such that ST ,B(T 
+Step 3: a mapping fS : (MA)  (MB) is defined as follows: for each
+Tik
+
+(MA), fS(Tik) = T 
+
+1 ,...,T 
+n as T 
+),
+
+j2)...ST ,B(T 
+
+j1)ST ,B(T 
+
+j1,...,T 
+
+jn
+
+.
+
+jk
+
+It is clear that fS is a bijection. The following proposition shows that fS is
+
+the bijection which is used to define the score ordering.
+
+Proposition 2. Assume that ST ,A and ST ,B are the scoring functions for A
+and B respectively. Then ST ,ASST ,B iff
+T   (MA), ST ,A(T 
+
+)ST ,B(fS(T 
+
+)).
+
+jk
+
+Proof: If part is clear by the definition of score ordering. We show the only
+if part.
+Suppose ST ,ASST ,B, then there exists a bijection f s.t. for all T (MA),
+ST ,A(T )ST ,B(f(T )). We shown that ST ,A(Tik )ST ,B(T 
+) for all k = 1, ..., n
+by induction over the index k.
+Suppose k = 1. Then ST ,A(Ti1)ST ,B(f(Ti1)) ST ,B(T 
+j1).
+Assume that ST ,A(Tik)ST ,B(T 
+
+) for all k < m. Suppose that ST ,A(Tim)>
+) < ST ,B(f(Tim)). This means that there exists jl <
+. However, since ST ,A(Tim)>ST ,B(T 
+), we have that
+jm) for all k < m. Therefore, for any k < m, there exists
+jk . Therefore, it is impossible that there exists
+corresponds to a Tik with k < m).
+(every such T 
+
+ST ,B(T 
+). Then ST ,B(T 
+jm such that f(Tim) = T 
+ST ,A(Tik)>ST ,B(T 
+k < m such that f(Tik) = T 
+jl < jm such that f(Tim) = T 
+This is a contradiction. So ST ,A(Tim)ST ,B(T 
+Proposition 3. Let T be an incoherent TBox, and let A and B be two unsatisfiable concepts in it. If ABT , then BSA.
+
+).
+
+jm
+
+jm
+
+jm
+
+jm
+
+jk
+
+jl
+
+jl
+
+jl
+
+The proof of Proposition 3 is easy to establish. Proposition 3 tells us that if
+A is subsumed by B then A is more incoherent than B with respect to the
+score ordering. If we consider the example in the beginning of this section, B is
+more incoherent than A with respect to the score ordering. Therefore, our score
+ordering provides a different view on the extent of incoherence of a concept from
+the subsumption relation. Indeed, the scoring ordering gives a conflict-centric
+view since the axioms involved in the conflict for concept B are a subset of
+those for concept A. Proposition 3 also provides us with a way to improve the
+performance of our approach for generating the score ordering. That is, before
+comparing the score functions of two unsatisfiable concepts, we can first check
+if they have a subsumption relation in the ontology.
+
+G. Qi and A. Hunter
+
+4.2 Measures of Incoherence for Terminologies
+
+Given a TBox which may be incoherent, we propose three approaches to measuring its degree of incoherence. The first measure is defined by the ratio of the
+number of unsatisfiable concepts and that of all the concepts in T .
+Definition 9. Let T be a TBox. Suppose Con(T ) is the set of all concept names
+and U S(T ) be the set of all unsatisfiable concept names in T respectively, the
+unsatisfiability ratio for T , denoted dUR, is defined as follows:
+
+dUR(T ) =
+
+|U S(T )|
+|Con(T )| .
+
+The unsatisfiability ratio gives us a simple view on the incoherence of a TBox.
+That is, if most of concept names are unsatisfiable in a TBox, the TBox is
+problematic. However, the unsatisfiability ratio is misleading in some cases. For
+example, in an ontology such as Tambis2 where there is a large number of unsatisfiable concept names, many of the unsatisfiable concept names depend on
+other unsatisfiable concept names. The root unsatisfiable concept names are
+relatively few (according to [9], in Tambis, 33 concepts names out of 144 unsatisfiable concept names are root unsatisfiable concept names) and by repairing
+these concept names we can get a coherent ontology. Therefore, this ontology
+is not strongly incoherent. To overcome the problem for the unsatisfiability
+ratio, we can consider only the root unsatisfiable concept names.
+Definition 10. Let T be a TBox. Suppose Con(T ) is the set of all concept
+names and RU(T ) be the set of all root unsatisfiable concept names in T respec-
+tively, the refined unsatisfiability ratio for T , denoted dRU , is defined as follows:
+
+dRU (T ) =
+
+|RU(T )|
+|Con(T )| .
+
+Let us consider Example 1 again. The set of concept names are {A, B, C, D, E, F}
+and root unsatisfiable concept names are A and E, so dRU (T ) = 2
+5.
+
+Both the unsatisfiability ratio and the refined unsatisfiability ratio do not
+consider the number of terminology axioms that are in conflict. So we define
+another incoherence measure for TBoxes.
+Definition 11. Let T be a TBox. Suppose M I(T ) is the set of all MIPSs of T ,
+then the incoherence ratio for T , denoted dIR, is defined as follows:
+
+dIR(T ) =
+
+| TiMI(T ) Ti|
+
+|T |
+
+.
+
+The incoherence ratio measures the percentage of axioms in a TBox that are
+in conflict. It differentiates the root unsatisfiable concept names and derived
+unsatisfiable concept names. This is because any axiom whose left hand is a
+derived unsatisfiable concept name is not in an MIPS.
+
+2 http://protege.cim3.net/file/pub/ontologies/tambis/tambis-full.owl
+?
+
+?
+
+?
+3 and dIR(T ) = 1.
+
+Example 2. Let T = {AB, AB, CA} and T  = {AB, AB, C}.
+Then U S(T ) = U S(T ) = {A, C} and dUR(T ) = dUR(T ) = 2
+3: T and T 
+have the same unsatisfiability ratio. However, M I(T ) = {{AB, AB}} and
+M I(T ) = {T }. So dIR(T ) = 2
+The problem for the incoherence ratio is that it says nothing about the extent
+to which the MIPSs in M I(T ) overlap.
+Example 3. Let T = {AB, AB, CD, CD} and T  = {AB, AB,
+BC, AC} be two coherent TBoxes, where A, B, C, D are concept names. By
+Definition 6, T has two MIPSs {AB, AB} and {CD, CD}, and T  has
+two MIPSs {AB, AB} and {AB, BC, AC}. According to Definition
+11, we have dIR(T ) = dIR(T ) = 1. However, MIPSs in M I(T ) have no overlap
+whilst the MIPSs in M I(T ) have a common axiom AB. Therefore, we may
+conclude that T is less coherent than T .
+We have defined two measures and argue that they are not fine grained enough.
+Next, we define an incoherence measure for TBoxes which is based on the scoring
+functions.
+Definition 12. Let T be a TBox. The scoring function for T is a function
+ST : (T )  N such that for all T (T )
+
+ST (T 
+
+) = |{TiM I(T ) : TiT =}|.
+
+The scoring function ST for T returns for each subset T  of T the number of
+MIPSs of T that have an overlap with T .
+
+We have the following proposition for the scoring function.
+
+Proposition 4. Let ST be the scoring function for T . For Ti,Tj(T ), we have
+
+ST (Ti  Tj)min(ST (Ti), ST (Tj)) and max(ST (Ti), ST (Tj))ST (Ti  Tj).
+
+The scoring function can be used to define an ordering between two terminology
+axioms.
+Definition 13. Let T be a TBox and ST be its scoring function. A score-based
+ordering on terminology axioms in T , denoted ST , is defined as follows: for
+any , T ,
+
+ST  if f ST ({})ST ({}).
+
+As usual, ST  denotes ST  and ST .  ST  means that  is less
+incoherent than  with respect to the scoring function. That is,  is contained in
+less MIPSs of T than . It is clear that ST is a total pre-order, i.e. a pre-order
+which is complete.
+Example 4. (Example 1 Continued) There are three MIPSs of T : T1 = {AB,
+AC, BD, CD}, T2 = {EF, EF} and T3 = {EF, FD, ED}. So
+ST ({EF}) = 2 and ST ({}) = 1 for all other   T . Therefore, ST EF
+for all   T and =EF .
+
+G. Qi and A. Hunter
+
+Let T and T  be two TBox. Let MT = TiMI(T )Ti and MT  = TjMI(T )Tj.
+Suppose |MT |<|MT |, then we add some dummy axioms to MT such that
+|MT | = |MT |. An ordering on TBoxes can be defined by the scoring functions
+as follows.
+
+Definition 14. Assume that ST and ST  are the scoring functions for two
+TBoxes T and T  respectively. ST ST  iff there is a bijection f : (MT ) 
+(MT ) such that the following condition is satisfied:
+)ST (f(T 
+
+T   (M1), ST (T 
+
+)).
+
+As usual, ST SST  denotes ST SST  and ST SST , and ST SST  denotes
+ST SST  and ST SST . The score ordering, denoted S, is defined as: for any
+two TBoxes T and T ,
+
+T ST 
+
+if f ST SST .
+
+Intuitively, ST ST  means that the MIPSs of T are less overlapping than those
+of T . So T is less incoherent than T  with respect to the score ordering iff the
+MIPSs of T is less overlapping than those of T .
+Example 5. Given two TBoxesT = {ABC, BC} and T  = {AB, AC,
+BC}, it is clear that T  T . T has only one MIPS which is T and T  has
+only one MIPS which is T . So MT = T and MT  = T . Since |MT | < |MT |, we
+add a dummy axiom to MT such that MT = {ABC, BC, D}, where
+D is a new concept name. Let ST and ST  be the scoring functions for T and T 
+respectively, we then have
+
+ST ({ABC}) = 1, ST ({BC}) = 1, ST ({D}) = 0, and
+ST ({AB}) = 1, ST ({AC}) = 1, ST ({BC}) = 1.
+So ST ST  and T ST .
+
+According to Example 5, the scoring function defined by Definition 12 is syntax
+sensitive in the sense that there may exist two TBoxes T and T  where T  T 
+and ST is the scoring function for T and ST  is the scoring function for T , but
+ST ST . To give a more precise measure of incoherence, we can simply split
+the axioms in a TBox T into smaller axioms to obtain an equivalent TBox Ts
+using the algorithm in [8]. For instance, in Example 5, the axiom ABC can
+be split into AB and AC. Then it is clear that ST SST .
+The score ordering S is related to the incoherence ratio.
+
+Proposition 5. Let T and T  be two TBoxes, and |T | = |T |. Suppose ST
+and ST  are scoring function for T and T  respectively, then ST SST  implies
+dIR(T )dIR(T ). The converse does not hold.
+Proposition 5 shows that if two TBoxes have the same cardinality, then a TBox
+T is less coherent than another one T  implies that T contains fewer conflicting
+terminology axioms.
+?
+
+?
+
+?
+5 Applications of Measures of Incoherence
+
+The ordering relations on unsatisfiable concepts can provide important information for repairing incoherence in ontologies. When resolving incoherence in
+an ontology, we may need to repair unsatisfiable concepts one by one [8]. In
+this case, the ordering on unsatisfiable concepts can be used to decide which
+unsatisfiable concepts should be dealt with first. Another strategy to resolve incoherence is to remove some unsatisfiable concepts in an ontology [8]. Based on
+our ordering relation I, those unsatisfiable concepts that are more incoherent
+w.r.t I should be removed before those that are less incoherent.
+
+Based on the score ordering on the TBoxes, we can give an ordering on on-
+tologies. That is, an ontology O is more important or reliable than another one
+O if it is less coherent than O. The ordering on ontologies provides us with
+important information for evaluating different ontologies.
+
+We have applied the scoring function to define an ordering between two
+axioms in an ontology. Alternatively, we can compute the Shapley values of
+each axiom and then obtain an ordering on axioms. The ordering on axioms
+are important context information for dealing with incoherence and inconsistency in an ontology. It has been widely accepted that priorities play an important role in dealing with inconsistency in propositional logic. Recently, several
+priority-based approaches for reasoning with inconsistent ontologies have been
+proposed [13,14,15]. A challenging problem for these approaches is to obtain an
+ordering on axioms. This problem can be solved by considering our score
+ordering.
+
+6 Evaluation
+
+We have implemented the approaches for measuring incoherence described in
+the previous sections in JAVA using KAON2. All tests were performed on a laptop computer with a 1.5 GHz Intel processor, 512M of RAM (with 512M heap
+space allocated to JVM). The operating system was Windows XP Pro SP2. The
+data sets were miniTambis (we do not use Tambis because KAON2 does not
+support it) and a revised version of Chemical (we denoted it by Chemical)
+provided by the University of Maryland 3, and proton 100 all4. Some information about the ontologies is given in Table 1. The second column of the table
+shows the number of terminology axioms, MIPSs and the cardinality of the
+union of all MIPSs and the third column of the table shows the number of
+concepts/properties/individuals and unsatisfiable concepts in the ontology. To
+find all the MUPSs of an unsatisfiable concept, we implemented an approach
+which is based on the algorithm for finding minimal unsatisfiable subsets in
+[2]. We then obtained all the MIPSs of an ontology using the approach given
+in [17].
+
+3 http://www.mindswap.org/2005/debugging/ontologies/
+4 http://wasp.cs.vu.nl/knowledgeweb/d2163/learning.html
+
+G. Qi and A. Hunter
+
+Table 1. Sample OWL Data
+
+Ontology #axiom/#MIPS/#MIPUnion C/P/I/U
+
+miniTambis
+
+Chemical
+
+proton 100 all
+
+173/3/12
+123/4/8
+1788/3/10
+
+178/35/0/30
+48/19/0/35
+
+266/111/30/3
+
+Table 2. Score ordering on unsatisfiable concepts (time is in seconds)
+
+Ontology
+
+Prepare time Compare time Total time
+
+miniTambis
+
+Chemical
+
+proton 100 all
+
+233.230
+873.12
+319.83
+
+78.540
+652.75
+0.071
+
+311.770
+1525.87
+319.901
+
+6.1 Score Ordering on Unsatisfiable Concepts
+
+We implemented the approach for score ordering on unsatisfiable concepts. The
+performance of our approach is analyzed in Table 2. In Table 2, the second
+column and third column show the average runtime (in seconds) of calculating
+MUPS of each unsatisfiable concept (prepare time) and average runtime of generating the score ordering on unsatisfiable concepts (compare time) respectively.
+The fourth column is the sum of the prepare time and compare time.
+
+For all test ontologies, the time spent on comparing concepts is less than that
+spent on calculating MUPS. For ontology proton 100 all, which has only three
+unsatisfiable concepts and the maximal cardinality of their MUPSs is 5, it takes
+0.071 seconds to compare concepts. Much time has been spent on calculating
+MUPS because there exist 1788 axioms in this ontology. In contrast, for ontologies miniTambis and Chemical which contain about 30 unsatisfiable concepts,
+there is increasing time spent on comparison. Especially, for Chemical in which
+the cardinalities of some MUPSs are more than 10, the compare time is almost
+the same as the prepare time. Therefore, we can conclude that the efficiency of
+computation of score ordering on unsatisfiable concepts depends on the cardinalities of MUPSs. Even for a big ontology like proton 100 all, if the cardinalities
+of the MUPSs of its unsatisfiable concepts are small, the score ordering can still
+be computed quickly if we ignore the time spent on calculating MUPS.
+
+6.2 Score Ordering on Terminologies
+
+We also implemented the approaches for score orderings on terminology axioms
+and on ontologies. The performance of the approach for score ordering on terminology axioms is analyzed in Table 3. In Table 3, the second column and third
+column show the average runtime (in milliseconds) of calculating MIPS of the
+ontology (prepare time) and average runtime of generating the score ordering on
+axioms (compare time) respectively. The prepare time in Table 3 does not count
+the time spent on calculating all MUPSs in an ontology, which can be checked
+?
+
+?
+
+?
+Table 3. Score ordering on terminologies (time is in milliseconds)
+
+Ontology
+
+Prepare time Compare time Total time
+
+miniTambis
+
+Chemical
+
+proton 100 all
+?
+
+?
+
+?
+0.1
+?
+
+?
+
+?
+90.1
+
+in Table 2. According to the table, it takes less than one second to calculate all
+the MIPSs from MUPSs for all test ontologies.
+
+According to our experiment, the score of every terminology axiom in miniTambis is 1. This means that the MIPSs in miniTambis are pair-wise disjoint.
+For Chemical and proton 100 all, however, axioms may get different scores.
+For example, in Chemical, the axiom P ublishedW orkP erson gets score 2
+and the axiom N erveAgentRelatedP ublishedW orkP ublishedW ork gets score
+4 and so the former is less incoherent than the latter w.r.t. the score ordering.
+According to Table 3, the time spent on comparison is much less than that spent
+on calculating MIPSs.
+
+Similar to the score ordering on terminology axioms, if we ignore the time
+spent on calculating MIPS, it also takes less than 1 second to obtain the score
+orderings on ontologies. This is reasonable because both the number of MIPS
+in each ontology and the size of the union of MIPS in each ontology are small.
+In contrast, the MUPS of an unsatisfiable concept is more likely to contain a
+large number of axioms and there are usually many unsatisfiable concepts in a
+coherent ontology. So it takes longer to obtain a score ordering on unsatisfiable
+concepts. The test ontologies are not comparable w.r.t. the score ordering S.
+That is, there does not exist two ontologies such that one is more incoherent
+than the other w.r.t. the score ordering.
+
+7 Conclusions and Future Work
+
+In this paper, we have defined two classes of measures for incoherent ontologies:
+measures of incoherence for unsatisfiable concepts and measures of incoherence
+for terminologies. The first class of measures gives us information on comparing
+unsatisfiable concept names. The second class of measures gives us information
+on comparing terminology axioms and comparing ontologies. These measures of
+incoherence can provide important information for dealing with incoherence and
+evaluating ontologies. Finally, we have implemented the approaches for measuring incoherence and reported on some preliminary but interesting experimental
+results.
+
+For future work, we plan to apply the approaches of measuring incoherence
+to deal with incoherence and inconsistency in an ontology. The score ordering
+defined on unsatisfiable concepts is not applicable for ontologies which contain
+a large number of conflicting terminology axioms. We will explore some approximation techniques to solve this problem.
+
+G. Qi and A. Hunter
+
+Acknowledgments
+
+We would like to thank the anonymous reviewers for their helpful comments.
+This work is partially supported by the EU under the IST project NeOn (IST-
+2006-027595, http://www.neon-project.org/).

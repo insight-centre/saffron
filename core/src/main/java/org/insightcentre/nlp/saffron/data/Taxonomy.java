@@ -37,10 +37,6 @@ public class Taxonomy {
 	
     /** The term string of this node in the taxonomy */
     public String root;
-    /** The original parent node of this node in the taxonomy */
-    public String originalParent;
-    /** The original Term string of this node in the taxonomy */
-    public String originalTerm;
     /** The score associated with this term (its importance) */
     public final double score;
     /** The score relating this node to its parent (NaN if there is no parent) */
@@ -63,13 +59,9 @@ public class Taxonomy {
     public Taxonomy(@JsonProperty("root") String root,
                     @JsonProperty("score") double score,
                     @JsonProperty("linkScore") double linkScore,
-                    @JsonProperty("originalParent") String originalParent,
-                    @JsonAlias("originalTopic") @JsonProperty("originalTerm") String originalTerm,
                     @JsonProperty("children") List<Taxonomy> children,
                     @JsonProperty("status") Status status) {
         this.root = root;
-        this.originalParent = originalParent;
-        this.originalTerm = originalTerm;
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
@@ -373,7 +365,7 @@ public class Taxonomy {
 
         newChildren.add(child);
 
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -388,7 +380,7 @@ public class Taxonomy {
             for(Taxonomy childTaxo : this.getChildren()) {
                 newChildren.add(childTaxo);
             }
-            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+            return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
         }
 
         for(Taxonomy childTaxo : currentTaxo.getChildren()) {
@@ -397,7 +389,7 @@ public class Taxonomy {
             }
         }
         newChildren.add(child);
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -657,7 +649,7 @@ public class Taxonomy {
      * @return A new taxonomy instance
      */
     public Taxonomy withLinkScore(double linkScore) {
-        return new Taxonomy(this.root, this.score, linkScore, this.originalParent, this.originalTerm, this.children, this.status);
+        return new Taxonomy(this.root, this.score, linkScore, this.children, this.status);
     }
         
     /**
@@ -669,7 +661,7 @@ public class Taxonomy {
         for(Taxonomy t : children) {
             newChildren.add(t.deepCopy());
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -685,7 +677,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopy());
             }
             newChildren.add(newTaxo);
-            return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+            return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
         }
 
         for(Taxonomy t : newParentTaxo.children) {
@@ -699,7 +691,7 @@ public class Taxonomy {
             }
         }
 
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -724,7 +716,7 @@ public class Taxonomy {
                     newChildren.add(t.deepCopyUpdatedTaxo(newParent, newTaxo, t));
             }
         }
-        return new Taxonomy(newParentTaxo.root, newParentTaxo.score, newParentTaxo.linkScore, newParentTaxo.originalParent, newParentTaxo.originalTerm, newChildren, newParentTaxo.status);
+        return new Taxonomy(newParentTaxo.root, newParentTaxo.score, newParentTaxo.linkScore, newChildren, newParentTaxo.status);
     }
 
 
@@ -754,7 +746,7 @@ public class Taxonomy {
 
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -773,7 +765,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopyNewTerm(termString, newTermString));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -792,7 +784,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopySetTermStatus(termString, status));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -811,7 +803,7 @@ public class Taxonomy {
                 newChildren.add(t.deepCopySetTermRelationshipStatus(termString, status));
             }
         }
-        return new Taxonomy(this.root, this.score, this.linkScore, this.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(this.root, this.score, this.linkScore, newChildren, this.status);
     }
 
     /**
@@ -832,7 +824,7 @@ public class Taxonomy {
             }
         }
 
-        return new Taxonomy(termParent.root, termParent.score, termParent.linkScore, termParent.originalParent, this.originalTerm, newChildren, this.status);
+        return new Taxonomy(termParent.root, termParent.score, termParent.linkScore, newChildren, this.status);
     }
 
 
@@ -907,17 +899,6 @@ public class Taxonomy {
     		taxonomy.root = root;
     		return this;
     	}
-    	
-    	public Builder originalParent(String originalParent) {
-    		taxonomy.originalParent = originalParent;
-    		return this;
-    	}
-    	
-    	public Builder originalTerm(String originalTerm) {
-    		taxonomy.originalTerm = originalTerm;
-    		return this;
-    	}
-    	
     	public Builder status(Status status) {
     		taxonomy.status = status;
     		return this;

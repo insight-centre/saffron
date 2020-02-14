@@ -1,0 +1,768 @@
+iSeM: Approximated Reasoning for Adaptive
+
+Hybrid Selection of Semantic Services
+
+Matthias Klusch and Patrick Kapahnke
+
+German Research Center for Artificial Intelligence, Saarbr ucken, Germany
+
+{klusch,patrick.kapahnke}@dfki.de
+
+Abstract. We present an intelligent service matchmaker, called iSeM,
+for adaptive and hybrid semantic service selection that exploits the full
+semantic profile in terms of signature annotations in description logic SH
+and functional specifications in SWRL. In particular, iSeM complements
+its strict logical signature matching with approximated reasoning based
+on logical concept abduction and contraction together with informationtheoretic similarity and evidential coherence-based valuation of the re-
+sult, and non-logic-based approximated matching. Besides, it may avoid
+failures of signature matching only through logical specification plug-in
+matching of service preconditions and effects. Eventually, it learns the
+optimal aggregation of its logical and non-logic-based matching filters
+off-line by means of binary SVM-based service relevance classifier with
+ranking. We demonstrate the usefulness of iSeM by example and preliminary results of experimental performance evaluation.
+
+1 Introduction
+
+Semantic service selection is commonly considered key to the discovery of relevant services in the semantic Web, and there are already quite a few matchmakers available for this purpose [11]. In this paper, we present the first adaptive
+semantic service IOPE matchmaker. In essence, its innovative features are (a)
+approximated logical signature (IO) matching based on non-monotonic concept
+abduction and contraction together with information-theoretic similarity and
+evidential coherence-based valuation of the result to avoid strict logical false
+negatives, (b) stateless strict logical specification (PE) plug-in matching to avoid
+failures of signature matching only, and (c) SVM (support vector machine)-based
+semantic relevance learning adopted from [9] but extended to full functional service profile (IOPE) matching and use of approximated IO matching results to
+prune the feature space for precision. Preliminary evaluation results particularly
+indicate that this kind of approximated logical matching can perform significantly better than its strict logical counterpart, performs close to its non-logic-
+based approximated counterparts, that are text and structural matching, and
+does even more so in adaptive hybrid combination with the latter.
+
+The remainder of the paper is structured as follows. We motivate and provide
+an overview of the matchmaker iSeM in Sections 2 and 3. This is followed by a
+detailed description of its signature matching filters with focus on approximated
+
+L. Aroyo et al. (Eds.): ESWC 2010, Part II, LNCS 6089, pp. 3044, 2010.
+c Springer-Verlag Berlin Heidelberg 2010
+?
+
+?
+
+?
+logical matching in Section 4, while Section 5 discusses its stateless, logical specification matching filter. Section 6 describes the SVM-based service relevance
+learning for selection, while preliminary evaluation results are provided in Section 7. Eventually, we comment on related work in Section 8 and conclude in
+Section 9.
+
+2 Motivation
+
+The specific problems of semantic service selection the matchmaker iSeM has
+been particularly designed to cope with are motivated by the following service
+example, which is used throughout the paper.
+
+Example 1. Consider the semantic profiles of service request R and offer S in
+Figure 1, taken from the standard test collection OWLS-TC3 according to which
+S is relevant to R.
+
+The desired service R is supposed to purchase a book for a given person by
+debiting his own debit account, shipping the book to him and eventually acknowledging the completed deal. The e-shopping service S like amazon.com
+offers arbitrary articles including books that are requested by some customer
+whose own credit card account gets respectively charged while sending an invoice for and pricing information about the deal. Both services are written in
+OWL-S with semantic signature (IO) concept definitions in description logic SH
+and their logical preconditions and effects (PE) in SWRL. In the following, we
+assume the matchmaker to have an appropriate shared ontology and a service
+
+registry available over which semantic service selection is performed.
+
+Fig. 1. Service request (book purchasing) and relevant service offer (article purchasing)
+
+M. Klusch and P. Kapahnke
+
+False negatives of strict logical signature matching. The majority of semantic service matchmakers perform logical signature matching [11]. One prominent set of strict logical matching filters for this purpose is provided below [17,8].
+Each of these filters requires (a) each service input concept to be more generic
+than or equal to those provided in the request and (b) the complete requested
+output to be covered by that of the service in terms of the respectively considered type of logical concept subsumption relation.
+
+Definition 1. Strict logical signature matching.
+Let S, R semantic services, in(S), out(S), in(R), out(R) the sets of input, resp., output
+concepts of semantic signatures of S and R defined in a shared OWL ontology O;
+BP G(  C,  D) the set of injective concept assignments (C, D), C   C, D   D as valid
+solution of bipartite graph matching with maximized sum of binary weights v of edges
+between concepts as nodes in the graph indicating whether the considered type of
+strict logical subsumption relation (, , 1, 1) holds (v = 1 iff C  D else v = 0);
+BP G(  C,  D) =  iff no such assignment is possible (|  D| < |  C|). BP GX(  C,  D) with
+X  {(,1, 1} are defined analogously.
+The degree MatchIOLogic(R, S) of strict logical signature matching is as follows:
+MatchIOLogic(R, S)  { Exact, Plug-in, Subsumes, Subsumed-by, LFail } with
+Exact: S equivalent to R
+
+Plug-in: S plugs into R
+
+Subsumes: R subsumes S
+
+  IS  in(S)  IR  in(R): (IS, IR)  BP G(in(S), in(R))
+  OR  out(R)  OS  out(S): (OR, OS)  BP G(out(R), out(S))
+  IS  in(S)  IR  in(R): (IS, IR)  BP G(in(S), in(R))
+  OR  out(R)  OS  out(S): (OR, OS)  BP G1(out(R), out(S))
+  IS  in(S)  IR  in(R): (IS, IR)  BP G(in(S), in(R))
+  OR  out(R)  OS  out(S): (OR, OS)  BP G(out(R), out(S))
+  IS  in(S)  IR  in(R): (IS, IR)  BP G(in(S), in(R))
+  OR  out(R)  OS  out(S): (OR, OS)  BP G1(out(R), out(S))
+
+Subsumed-by: R subsumed by S
+?
+
+?
+
+?
+LFail: None of the above logical filter constraints are satisfied.
+Applying these strict logical matching filters to the example above produces a
+logical fail (LFail), hence a false negative. The reasons are that (a) the inputs
+book and article are not strictly logically disjoint siblings in the ontology, that
+is (Book  Article  ), and (b) the inputs debit account and credit card are
+strictly logically disjoint, that is (DebitAccount  CreditCard  ).
+Such cases of logical signature mismatches may appear quite often, in fact, applying the above filters to the standard collection OWLS-TC3 yields a relatively
+high number of strict logical false negatives for each request in the order of 45%
+of the size of its relevance set in average. As shown, for example, in [9,8,10]
+and the contest S3 (http://www.dfki.de/-klusch/s3), some hybrid combination
+of strict logical with non-logic-based approximated signature matching methods may avoid failures of strict logical signature matching filters defined above
+in practice1. But how can logical matching itself be improved by what kind of
+1 Avoidance or higher (lower) ranking of false negatives (positives) increases average
+
+precision of ranked result lists.
+?
+
+?
+
+?
+complementary approximation (cf. Section 4), and how well does this perform
+compared to and in combination with its non-logic-based counterparts in practice (cf. Section 7)?
+
+Failures of signature matching only. It is well known that matching of semantic signatures only may fail in many cases, since they do not capture the
+functional behavior commonly encoded in logical service preconditions and effects (PE). There are different approaches to logical PE-matching [11] - but
+which one to use in case of a third-party matchmaker that usually has no access
+to concept instances for registered semantic services (cf. Section 5)?
+
+Best combination of semantic matching filters. How to best combine different kinds of semantic service matching filters in terms of precision? One option
+proposed, for example, in [9,10] is to let the matchmaker learn the optimal aggregation of different matching results for its semantic relevance decision - rather
+than to put the burden of finding and hard-coding the solution by hand on the
+developer. Though this turned out to be quite successfull in the S3 contest restricted to semantic signatures, how can approximated logical matching be used
+to improve the learning for better precision of service selection (cf. Section 6)?
+
+3 iSeM Matchmaker: Overview
+
+Before delving into the technical details of the matchmaker iSeM, we shall first
+provide an overview of its functionality.
+
+Matchmaking algorithm in brief. For any given service request, the iSeM
+matchmaker returns a ranked set of relevant, registered services as its answer set
+to the user. For this purpose, it first learns the weighted aggregation of different
+kinds of service IOPE matching results off line over a given training set of positive and negative samples by means of SVM-based binary relevance classification
+with ranking. These different kinds of matching a given service request R with
+service offers S in OWL-S or SAWSDL concern strict and approximated logical,
+text similarity-based and structural semantic matching of service signatures (IO)
+in SH, as well as stateless, logical plug-in matching of service preconditions and
+effects (PE) in SWRL, if they exist.2 Once learning has been done, the same
+filters are used by the learned relevance classifier for selecting relevant services
+for previously unknown requests. iSeM classifies as adaptive, hybrid semantic
+service IOPE matchmaker [11].
+
+Logical signature (IO) matching. Logical signature matching of iSeM comes
+in two complementary flavors: Strict logical matching and approximated logical
+matching. For every service pair (R, S) for which strict logical signature matching
+2 Restriction to annotation in SH is due to respective limitation of the adopted concept
+abduction reasoner [3]; its extension to SHOIN is ongoing.
+
+M. Klusch and P. Kapahnke
+
+as defined above (Section 2, Def. 1) fails, iSeM computes the approximated logical matching degree MatchIOALogic(R, S) based on approximated subsumption
+relations (C AC D) between I/O concepts C, D via contraction and structured
+abduction together with their information-theoretic valuation. This leads to two
+hypotheses of approximated logical signature matching, that are approximated
+logical plug-in (H1) and subsumed-by (H2), both of which weighted by their averaged informative quality v  [1, 1]. Eventually, the degree MatchIOALogic(R, S)
+= (H, v) of approximated logical service signature matching is determined as
+the hypothesis H with maximal valuation v. The approximated logical matching
+results are used in the learning process over a given training set of service pairs to
+prune the respective feature space restricted to logic-based matching to compensate for strict logical false negatives. In addition, iSeM performs non-logic-based
+approximated, that are text and structural semantic similarity-based signature
+matching for which purpose it applies the respective filters of OWLS-MX3 [9]
+(cf. Section 4).
+
+Logical specification (PE) matching. To cope with failures of signature
+matching only and allow for third-party matchmaking without having access
+to service concept instances, iSeM performs stateless, logical plug-in matching
+MatchPE(S, R) of service preconditions and effects by means of approximated
+theorem proving, that is theta-subsumption, of required logical PE-implications
+like in LARKS[17] (cf. Section 5).
+
+Learning of full service profile (IOPE) selection. To combine the results
+of its different IOPE matching filters for optimal precise service selection, iSeM
+performs binary SVM-based semantic relevance learning off line over a given
+training set of positive and negative samples (S, R) each of which is represented
+as a vector x in the 10-dimensional feature space of different matching filters.
+This space gets particularly pruned by exploiting the approximated logical signature matching results to compensate for strict logical false negatives. Once
+that has been done, the learned binary classifier d with ranking r is applied
+by iSeM to any service pair (S, R) with unknown request R to return the final
+result: MatchIOPE(S, R) = (d, r) (cf. Section 6, 7).
+
+4 Hybrid Semantic Signature Matching
+
+Semantic signature matching by iSeM is performed by means of both logicbased and non-logic-based matching. While the first type basically relies on
+strict logical (cf. Definition 1) and approximated logical concept subsumptions
+(cf. Section 4.1), the second exploits text and structural similarities of signature
+concepts (cf. Section 4.2). Both kinds of approximated logical and non-logic-
+based matching are performed by iSeM in particular to compensate for strict
+logical signature matching failures in due course of its relevance classification
+learning (cf. Section 6).
+?
+
+?
+
+?
+4.1 Approximated Logical Matching
+
+Inspired by [2,3,14], approximated logical signature matching of a given service pair (S, R) relies on the combined use of logical contraction and abduction
+of signature concepts for approximated concept subsumption (cf. Definition 2)
+which is valuated in terms of the information gain and loss induced by its construction (cf. Definition 3). Eventually, we extend both means of approximation and valuation on the concept level to its application on the signature level
+(cf. Definition 4).
+
+Definition 2. Logical concept contraction and abduction [2,3].
+Let C, D concepts of ontology O in SH.
+The contraction of C with respect to D is CCP (C, D) = (G, K) with C  G  K and
+K  D  .3
+The abducible concept K h is derived from concept K through rewriting operations [3]:
+K h = h0  rew(K), rew(A) = A, rew(A) = A, rew(C1  C2) = rew(C1)  rew(C2),
+rew(R.C) = R.(hi  rew(C)) and rew(R.C) = R.(hi  rew(C));
+where i is incremented per application of rew, A primitive component (in the logical
+unfolding of K in O), Ci concepts in SH, and  H = (h0, . . . , hn).
+Structural abduction of concept K with respect to D is SAP (K, D) = H = (H0, . . . , Hn)
+with [  H, H](K h)  D and [  H, H](K h)  .
+ := [  H, H](K h) of C with respect to D is constructed
+The approximated concept C
+by applying [  H, H] = {h0  H0, . . . , hn  Hn} to the abducible concept K h.
+The approximated logical concept subsumption C AC D is defined as follows: C AC
+D  C
+ = [  H, H](K h). 
+
+  D with (G, K) = CCP (C, D), H = SAP (K, D) and C
+
+To avoid strict logical false negatives for increasing average precision, iSeM assumes the user to be consent to give up those parts of logical signature concept
+definitions that cause strict logical subsumption failures and keeping the remaining parts instead. The latter are used to compute approximated concept
+subsumption relations and the respectively approximated signature matching.
+
+Fig. 2. Approximated logical concept subsumption
+
+3 K (keep) denotes the compatible part of C with respect to D, while G (give
+
+up) denotes the respectively incompatible part.
+
+M. Klusch and P. Kapahnke
+
+= (allows.CreditP , M ediumOf Exchange  issuedBy.BankP ),
+
+Example 2. Consider Example 1. The approximated logical subsumption between
+strict logically disjoint siblings DebitAccount, CreditCard is computed as follows:
+(G, K) = CCP (DebitAccount, CreditCard)
+K h = h0  ObjectP  hasV alue.(h1  V alueP )  issuedBy.(h2  BankP ),
+ H = (h0, h1, h2),
+H = SAP (DebitAccount, CreditCard) = (allows.CreditP ,, CompanyP ),
+[  H, H] = {h0  allows.CreditP , h1  , h2  CompanyP},
+DebitAccount
+
+= allows.Credit  M ediumOf Exchange  issuedBy.(Bank  Company),
+
+ = [  H, H](K h)
+
+  CreditCard, hence DebitAccount AC CreditCard. 
+
+It holds that DebitAccount
+
+In order to rank the computed approximations, we valuate them by means of
+their informative quality. Roughly, the informative quality of approximated logical subsumption between signature concepts C, D is the difference between the
+information gain and loss induced by its construction. That is, the utility of the
+ is the trade off between its informationrespectively approximated concept C
+theoretic similarity [14] with the original concept C and the targeted one D.
+The similarity bases on the probabilistic information content of concepts with
+respect to the frequency of their occurrence in semantic service signatures.
+?
+
+?
+
+?
+, C))
+
+, D)  (1  siminf (C
+
+Definition 3. Informative quality of approximated concept subsumption.
+Let SR set of service offers registered at the matchmaker, in(S), out(S) multi-set of
+concepts used for signature (IO) parameter annotation of service S, SAC(SR) set of
+all concepts used for annotating services in SR.
+We define the informative quality v of approximated concept subsumption C AC D
+(cf. Definition 2) as: v(C, D) = siminf (C
+with the information-theoretic similarity of concepts C and D taken from [14]:
+siminf (C, D) = 2  IC(maxdcs(C, D))/(IC(C) + IC(D))
+where maxdcs(C, D) = argmaxcdcs(C,D){IC(c)} is the direct common subsumer (dcs)
+of C, D in ontology O with maximum information content IC(c).
+The information content of concept C  SAC(S, R) is IC(C) =  log P (C), else
+IC(C) := maxDSAC(SR){IC(D)}.
+We define the probability of concept C being used for semantic service annotation as
+the frequency of its occurrence in semantic signatures of services in service registry SR:
+
+P (C) =
+Example 3. Informative quality of DebitAccount AC CreditCard in Example 2 is
+computed as follows:
+IC(DebitAccount) =  log P (DebitAccount) =  log 0.045  1.348 ,
+IC(CreditCard) =  log P (CreditCard) =  log 0.075  1.125 ,
+IC(DebitAccount
+ 0.789 ,
+siminf (DebitAccount
+ 0.877 ,
+siminf (DebitAccount
+v(DebitAccount, CreditCard) = 0.789  (1  0.877) = 0.666.
+
+, CreditCard) = 21.125
+, DebitAccount) = 21.348
+
+) =  log 0.075  1.727 ,
+
+1.727+1.348
+
+1.727+1.125
+
+|{Din(S)out(S):DC}|
+
+|in(S)out(S)|
+
+.
+
+
+?
+
+?
+
+?
+SSR
+?
+
+?
+
+?
+For each service pair, depending on the computed type of their approximated
+signature concept subsumption relations one can determine two hypotheses of
+approximated logical service signature matching, that are approximated logical
+plug-in and approximated subsumed-by, each of which with maximal informative quality through respective bipartite concept graph matchings.
+
+Definition 4. Approximated logical signature match with informative quality.
+Let S, R semantic services, in(S), out(S), in(R), out(R) multisets of their signature concepts and BP GAC (  C,  D) the concept assignment via bipartite graph matching as in
+Definition 1 but with approximated subsumption AC and informative quality of edge
+weights v(C, D) for C   C, D   D; BP GAC (  C,  D) analogously with edge weights
+v(D, C).
+Approximated logical plug-in signature matching hypothesis H1(R, S) holds iff:
+IS  in(S)IR  in(R) s.t. (IS, IR) BP GAC (in(S), in(R))
+OR  out(R)OS  out(S) s.t. (OS, OR) BP GAC (in(S), in(R)).
+Approximated logical subsumed-by signature matching hypothesis H2(R, S) holds iff:
+IS  in(S)IR  in(R) s.t. (IS, IR) BP GAC (in(S), in(R))
+OR  out(R)OS  out(S) s.t. (OS, OR) BP GAC (in(S), in(R)).
+Informative quality val(S,R) : {H1, H2}  [1, 1] of an approximated signature matching hypothesis is the average of informative qualities of its respective approximated
+concept subsumptions:
+
+2|in(S)| 
+2|in(S)| 
+
+val(S,R)(H1) =
+
+2|out(R)| 
+2|out(R)| 
+
++
+
++
+
+val(S,R)(H2) =
+
+(IR ,IS )BP GAC
+
+(in(R),in(S)) v(IR, IS)
+
+(OS ,OR)BP GAC
+
+(out(S),out(R)) v(OS, OR).
+
+(IR ,IS )BP GAC
+
+(in(R),in(S)) v(IR, IS)
+
+(OS ,OR)BP GAC
+
+(out(S),out(R)) v(OS, OR).
+
+The approximated logical signature matching degree is the approximation hypothesis
+with maximum informative quality:
+MatchIOALogic(S, R) := (H, v) with H = argmaxx{H1,H2}val(x) and v = val(S,R)(H).
+Semantic relevance ranking of services S bases on MatchIOALogic(S, R)[2][-1,1].
+Binary relevance classification by approximated logical matching:
+MatchIOALogic(S, R)* = 1 iff MatchIOALogic(S, R)[2] > 0, else MatchIOALogic(R, S)*
+
+= 0.
+
+Example 4. Consider Examples 1 - 3. The approximated logical signature match of
+S, R is comuted as follows:
+BP GAC (in(R), in(S)) = {(Book, Article), (DebitAccount, CreditCard),
+(P erson, Customer)}, BP GAC (out(S), out(R)) = {(Invoice, Acknowledgement)} ,
+ 0.895 = 0.8905. In this example, the
+val(S,R)(H1) = 1
+23
+
+same valuation holds for H2, and MatchIOALogic(S, R) := (H1, 0.8905)
+
+ (0.829 + 0.666 + 0.927) + 1
+21
+
+Obviously, the approximated logical matching relation MatchIOALogic(R, S) always exists, and its binary decision variant MatchIOALogic(R, S)* is redundant
+to its logical counterpart MatchIOLogic(R, S) with respect to positive service se-
+lection, that is their true and false positives are the same, but not vice versa. The
+latter fact is used in iSeM to restrict its computation of approximated
+
+M. Klusch and P. Kapahnke
+
+logical signature matches in the learning phase to cases of strict logical false negatives only and use the evidential coherence of the matching results to heuristically
+prune the feature space for precision (cf. Section 6.2).
+
+4.2 Text and Structural Signature Matching
+
+Non-logic-based approximated signature matching can be performed by means
+of text and structural similarity measurement. For iSeM, we adopted those of
+the matchmaker OWLS-MX3, since they have been experimentally shown to be
+most effective for this purpose [9]. For text matching of signature concepts in
+the classical vector space model, their unfoldings in the shared ontology are represented as weighted keyword vectors for token-based similarity measurement,
+while the structural semantic similarity of concepts relies on their relative positioning in the subsumption graph, in particular on the shortest path via their
+direct common subsumer and its depth in the taxonomy [13].
+
+Definition 5. Approximated non-logic-based signature matching
+Let SR service registry, I text index of service signature concepts, shared ontology O,
+Sin TFIDF weighted keyword vector of conjunction of unfolded input concepts of S.
+Text similarity-based signature matching is the average of the respective signature
+concept similarities: MatchIOT ext(S, R) = (simtext(Sin, Rin) + simtext(Sout, Rout))/2
+ [0, 1] with Tanimoto coefficient (Cosine similarity) simtext(Sj, Rj), j  {in, out}.
+Structural semantic signature matching is the averaged maximal structural similarity
+of their signature concepts:
+MatchIOStruct(S, R) = (simstruct(in(S), in(R)) + simstruct(out(S), out(R)))/2  [0, 1]
+aA max{simcsim(a, b) : b  B}, and structural con-
+h) if
+cept similarity adopted from [13]: simcsim(C, D) = e
+C = D else 1, with l shortest path via direct common subsumer between given concepts
+and h its depth in O,  = 0.2 and  = 0.6 weighting parameters adjusted to structural
+
+features of ontology O.
+
+with simstruct(A, B) = 1/|A|
+
+l(eh  e
+
+h)/(eh + e
+
+Example 5. Applied to Example 1, we obtain a high score for text-based signature
+matching MatchIOtext(S, R) = 0.71 which correctly accounts for semantic relevance of
+S to R, hence avoids the strict logical false negative. The same holds for the structural semantic matching MatchIOstruct(S, R) = 0.69. For example, text and structural
+similarities of the strict logically disjoint input concept siblings DebitAccount and
+CreditCard are high (simtext(DA, CC)= 0.94, simcsim(DA, CC) = 0.63) which indi-
+
+cates their semantic proximity.
+
+While text matching of signatures may avoid strict logical matching failures,
+structural semantic matching may also compensate for text matching failures,
+in particular when mere is-a ontologies with inclusion axioms only are used for
+semantic annotation of service signatures. For reasons of space limitation, we
+refer to [9] for more details and examples.
+?
+
+?
+
+?
+5 Stateless Logical Specification Matching
+
+As mentioned above, semantic signatures of services do not cover functional
+service semantics usually encoded in terms of logical service preconditions and
+effects such that signature matching only may fail. Though semantic service descriptions rarely contain such specifications in practice [12], we equipped the
+implemented iSeM matchmaker with the most prominent PE-matching filter
+adopted from software retrieval: Logical specification plug-in matching.
+
+Definition 6. Stateless, logical specification plug-in matching.
+Let (S, R) services with preconditions (P reR, P reS) and effects (Ef fR, Ef fS) defined
+in SWRL. Service S logically specification-plugin matches R:
+MatchPE(S, R)iff |= (P reR  P reS)  (Ef fS  Ef fR).
+
+Stateless checking of MatchPE(S, R) in iSeM 1.0 is adopted from LARKS [17]: Preconditions and effects specified as SWRL rules are translated into PROLOG as in [18]
+and then used to compute the required logical implications by means of -subsumption
+checking stateless, that is without any instances (ABox)4, as given in [19]:
+
+(pS  P reS : pR  P reR : pR  pS)  (P reR  P reS)
+(eR  Ef fR : eS  Ef fS : eS  eR)  (Ef fS  Ef fR)
+
+A clause C -subsumes D, written C  D, iff there exists a substitution  such that
+C  D holds; -subsumption is an incomplete, decidable consequence relation [6]. 
+?
+
+?
+
+?
+, R
+
+Example 6. If applied to Example 1, this PE-matching filter succeeds, hence avoids
+the respective false negative of strict logical signature matching only. Further, consider
+) having the same, identical, or strict logically equivalent semantic
+a service pair (S
+signatures as (S, R) given in Example 1 - but with the requested effect to only register
+: The false posi-
+a book at a given local index such that service S
+ of (strict or approximated) logical signature matching only can be avoided by
+tive S
+
+additional specification plug-in matching which, in this case, would correctly fail.
+
+ is irrelevant to R
+
+6 Off-Line Service Relevance Learning
+
+In order to find the best combination of its different matching filters for most
+precise service selection, iSeM learns their optimal weighted aggregation by using
+a support vector machine (SVM) approach. In particular, the underlying feature
+space is pruned by evidential coherence-based weighting of approximated against
+strict logical signature matching results over a training set to improve precision.
+
+6.1 Overview: Learning and Selection
+The training set T S is a random subset of the given service test collection T CSH
+created from a given standard service retrieval collection T C by restricting service annotations to SH. It contains user-rated service pairs (S, R) each of which
+4 Third-party matchmakers may not have access to service instances of providers.
+
+M. Klusch and P. Kapahnke
+
+with 10-dimensional matching feature vector xi for positive and/or negative
+service relevance samples (xi, yi)  X  {1,1} in the possibly non-linearly
+separable5 feature space X. The different matching results for (S, R) are encoded as follows: x[1] ... x[5] {0, 1}5 for MatchIOLogic(R, S) in decreasing order;
+x[6] = val(S,R)(H1) and x[7] = val(S,R)(H2)  [1, 1] for MatchIOALogic(R, S);
+x[8] [0, 1] for MatchIOT ext(R, S); x[9] [0, 1] for MatchIOStruct(R, S); and
+x[10] {0, 1} for MatchPE(R, S). For example: x = (0, 0, 0, 0, 1, 0.85, 0, 0.4, 0.6, 1)
+encodes a strict logical fail but approximated logical plugin with informative
+quality of 0.85, text (structural) match of 0.4 (0.6) and plugin specification
+match.
+The SVM-based classification learning problem of iSeM then is to find a separating hyperplane h in X such that for all samples (x, y)  T S for (S, R)
+with minimal distances to h these distances are maximal. This yields a binary
+relevance classifier d(x) with respect to the position of feature vector x to the
+separating h while ranking of S is according to the distance dist(x) of x for (S, R)
+to h. Once that has been done, the learned classifier can be applied to any service
+pair (S, R) with potentially unknown request R and returns MatchIOPE(S, R)
+= (d(x), dist(x)). As kernel of the SVM, iSeM uses the Radial Basis Function
+(RBF) and performs 6-folded cross-validation. For more details of this learning
+process in general, we refer to [9,10].
+
+6.2 Evidential Coherence-Based Feature Space Pruning
+
+To improve the performance of the binary SVM-based relevance classier to be
+learned by iSeM, iSeM exploits information available from the given trainings
+set T S to prune the feature space X based on the classification results of strict
+Vs. approximated logical signature matching. Due to redundance of both logical matching types for (true and false) positive classification, it restricts the
+pruning of feature vectors x  X to cases of strict logical matching failures
+(M atchIOALogic(R, S) = LF ail). The respective set Ev = {(x, y) : x[5] = 1}
+of classification events is partitioned with respect to binary classification results of approximated logical matching (MatchIOALogic(R, S)*) for these cases as
+follows:
+
+E1 = {(x, y)  Ev : y = 1  (x[6] > 0  x[7] > 0)},
+E2 = {(x, y)  Ev : y = 0  x[6]  0  x[7]  0},
+E3 = {(x, y)  Ev : y = 1  x[6]  0  x[7]  0},
+E4 = {(x, y)  Ev : y = 0  (x[6] > 0  x[7] > 0)}.
+
+(1)
+(2)
+(3)
+(4)
+For example, E1 denotes all relevant samples (x,y) Ev classified correctly
+as (true) positives by M atchIOALogic while E2 contains all irrelevant samples
+(x,y) Ev classified correctly as (true) negatives by M atchIOALogic. The sets
+E3 and E4 contain wrong classifications of approximated matching, hence are
+5 For example, the feature space for the test collection OWLS-TC3 is non-linearly
+
+separable.
+?
+
+?
+
+?
+redundant to their strict logical counterpart and deleted from the respectively
+pruned feature space for learning.
+Inspired by the work of Glass [4], the feature space X is pruned further by
+modification of logical matching results of feature vectors x  X of samples in E1
+or E2 based on evidential coherence-based weighting of approximated matching
+results as follows:
+
+(x, y)  E1  x[6]  x[7]  x[5] := 0, x[6] := Co(H +
+(x, y)  E1  x[6] < x[7]  x[5] := 0, x[6] := 0, x[7] := Co(H +
+(x, y)  E2  x[6]  x[7]  x[6] := Co(H
+)  x[6], x[7] := 0,
+(x, y)  E2  x[6] < x[7]  x[6] := 0, x[7] := Co(H
+)  x[7].
+
+1 , E+)  x[6], x[7] := 0,
+2 , E+)  x[7],
+
+
+1 , E
+
+
+2 , E
+
+In case of true positive of approximated logical matching, the encoded strict
+logical misclassification in x is discarded (x[5] = 0), and the respective approximation (H1 or H2) is weighted with the evidential coherence value of one of the
+following hypotheses (A1, A2) of relevance explanation: (A1) M atchIOALogic is
+a correct explanation of semantic relevance (avoids logical false negatives), and
+(A2) M atchIOALogic is a correct explanation for semantic irrelevance (avoids
+introduction of false positives). While hypothesis A1 (A2) is represented by spe-
+) provides cases of observed evidence for
+cial case set H +
+relevance (irrelevance) in the test collection.
+
+
+i ), the set E+ (E
+
+i (H
+
+Which of both hypotheses of semantic relevance explanation is best with respect to a given test collection? Following [4], iSeM determines the quality of
+an explanation by measuring the impact of evidence E on the probability of
+explanation H (with coherence or confirmation measures) rather than measuring its posterior probability with Bayes. In other words, it determines the most
+plausible explanation H instead of the most probable measured in terms of its
+coherence with evidence E over given training set. The coherence overlap measure Co(H, E) = P (HE)
+P (HE) performed best in practice [4], and is used by iSeM to
+compute the weights of approximated logical signature matching results (x[6],
+x[7]) for respective feature space pruning as defined above.
+Example 7. Consider training set T S with |Ev| = 20, |E1| = 10 and |E4| = 1.
+E1 contains 8 events (cases) of approximated plug-in matching (x[6]  x[7]), the only
+event in E4 is also an approximated plug-in match. Required posterior probabilities for
+Co(H +
+P (E+) =
+dential coherence-based weight of approximated logical matching is: Co(H +
+
+1 , E+) are computed as follows: P (H +
+
+1 ) =
+|{xE1:x[6]x[7]}|
+
+|{xE1E4:x[6]x[7]}|
+
+1 |E+) =
+
+|Ev| = 14
+
+20 , P (H +
+
+|E1E3|
+
+|E1E3|
+
+= 9
+20 ,
+
+= 8
+
+|Ev|
+
+P (E
+
++
+
++)P (H
+
+1 |E
+1 )P (H
+
++
+
++)
+1 E+)
++
+
+P (E+)+P (H
+
+ 0.5333.
+
+14 . The resulting evi-
+1 , E+) =
+
+
+7 Evaluation
+
+Our preliminary experimental performance evaluation of the implemented iSeM
+1.0 is restricted to semantic signature matching, since the otherwise required
+
+M. Klusch and P. Kapahnke
+
+Fig. 3. Macro-averaged recall/precision (MARP) and average precision (AvgP) of basic
+and adaptive signature matching by iSeM 1.0
+
+standard service retrieval test collection for IOPE-based matching does not exist
+yet6. For evaluation, we used the public tool SME2 v2.17 and the subset T CSH
+of services in OWLS-TC3 annotated in SH.
+
+In summary, the evaluation results shown in Figure 3 reveal that (a) approximated logical matching via abduction and informative quality can perform significantly better than its strict logical counterpart, (b) performs closer to but still
+worse than its non-logic-based approximated counterparts (text and structural
+matching), and (c) adaptive hybrid combination outperforms all other variants
+in terms of precision. The first two findings can be directly derived from the
+MARP graph and the AvgP values shown in Figure 3.
+
+As expected, due to the redundance of strict and approximated logical signature matching positives approximated logic-based matching alone was not
+able to outperform its non-logic-based counterparts but performed better than
+strict logical matching only in this respect. However, additional evaluation restricted to T CLF N/F P  T CSH that only contains cases of false positives and
+false negatives of strict logical signature matching indicated that, according to
+the statistical Friedman Test, none of the tested matching variants performed
+significantly better than the others at 5% level. This implies that each of the
+basic signature matching filters of iSeM contributes to an overall increase of
+
+6 The public standard test collections OWLS-TC3 for OWL-S and SAWSDL-TC2 for
+
+SAWSDL at semwebcentral.org contain services with semantic signatures only.
+
+7 http://projects.semwebcentral.org/projects/sme2/
+?
+
+?
+
+?
+performance for some cases of strict logical false classification, i.e. none of the
+tested variants outperformed the others for almost all service requests in the test
+collection.
+
+The adaptive hybrid aggregation of the four different semantic signature
+matching filters as done by iSeM (cf. Section 6) significantly increases the retrieval performance compared to that of its individual matching filters. While
+the combination of strict logic-based, text similarity and structure matching already yields good results, the additional consideration of approximated logical
+matching (in the learning process) performs even if only slightly better. Finally,
+the service retrieval by iSeM based on the use of approximated logical matching
+for pruning the feature space of its semantic relevance learning (cf. Section 6.2)
+performed best.
+
+8 Related Work
+
+iSeM is the first adaptive, hybrid semantic service IOPE matchmaker, and there
+are quite a few other matchmakers available [11]8. For example, the strict logical
+and the non-logic-based semantic signature matching filters as well as the SVMbased learning process of iSeM are adopted from the adaptive signature matchmaker OWLS-MX3 [9]. However, unlike iSeM, OWLS-MX3 neither performs
+approximated logical signature matching, nor PE-matching, nor is its adaptive
+process applicable to IOPE matching results and the feature space is not evidentially pruned. The same holds for the adaptive hybrid semantic signature
+matchmaker SAWSDL-MX2[10]. Besides, SAWSDL-MX2 performs structural
+matching on the WSDL grounding level only which significantly differs from the
+semantic structural matching performed by iSeM. The use of abduction for approximated logical signature matching is inspired by DiNoia et al.[3,2]. However,
+their non-adaptive matchmaker MaMaS performs abduction for approximated
+matching of monolithic service concept descriptions in SH, while iSeM exploit
+it for significantly different approximated structured signature matching and its
+use for learning. Besides, MaMaS has not been evaluated yet.
+
+9 Conclusion
+
+We presented the first adaptive, hybrid and full semantic service profile (IOPE)
+matchmaker that, in particular, performs approximated logical reasoning and
+respectively evidential coherence-based pruning of learning space to improve
+precision over strict logical matching. The preliminary evaluation of iSeM re-
+vealed, among others, that its adaptive hybrid combination with non-logic-
+based approximated signature matching improves each of them individually. The
+approximated logical matching results by iSeM can also be exploited for
+explanation-based interaction with the user during the selection process, if re-
+quired, though in its initially implemented version iSeM remains non-obtrusive
+in this respect. Such interaction together with extending the abductive approximated reasoning to OWL2-DL annotations is future work.
+
+8 See also S3 contest in 2009: http://www.dfki.de/ klusch/s3/html/2009.html
+
+M. Klusch and P. Kapahnke

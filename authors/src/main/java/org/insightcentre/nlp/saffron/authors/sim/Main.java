@@ -61,7 +61,7 @@ public class Main {
 
             ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
             
-            ow.writeValue(outputFile, ts.authorSimilarity(docTerms));
+            ow.writeValue(outputFile, ts.authorSimilarity(docTerms, ""));
             
         } catch(Throwable t) {
             t.printStackTrace();

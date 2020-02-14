@@ -1,0 +1,997 @@
+Learning Semantic Query Suggestions
+
+Edgar Meij1, Marc Bron1, Laura Hollink2, Bouke Huurnink1, and Maarten de Rijke1
+
+1 ISLA, University of Amsterdam, Science Park 107, 1098 XG Amsterdam
+
+{edgar.meij,m.m.bron,bhuurnink}@uva.nl, mdr@science.uva.nl
+
+2 Dept. of Computer Science, VU University Amsterdam,
+
+de Boelelaan 1081a, 1081 AH Amsterdam
+
+hollink@cs.vu.nl
+
+Abstract. An important application of semantic web technology is recognizing
+human-defined concepts in text. Query transformation is a strategy often used in
+search engines to derive queries that are able to return more useful search results
+than the original query and most popular search engines provide facilities that let
+users complete, specify, or reformulate their queries. We study the problem of
+semantic query suggestion, a special type of query transformation based on identifying semantic concepts contained in user queries. We use a feature-based approach in conjunction with supervised machine learning, augmenting term-based
+features with search history-based and concept-specific features. We apply our
+method to the task of linking queries from real-world query logs (the transaction
+logs of the Netherlands Institute for Sound and Vision) to the DBpedia knowledge
+base. We evaluate the utility of different machine learning algorithms, features,
+and feature types in identifying semantic concepts using a manually developed
+test bed and show significant improvements over an already high baseline. The resources developed for this paper, i.e., queries, human assessments, and extracted
+features, are available for download.
+
+1 Introduction
+
+Human-defined concepts are fundamental building blocks of the semantic web. When
+used as annotations for documents or text fragments they can provide explicit anchoring
+in background knowledge and enable intelligent search and browsing facilities. As such,
+an important application of ontological knowledge is augmenting unstructured text with
+links to relevant, human-defined concepts. For the author or reader of the text, this
+augmentation may supply useful pointers, for example to the concepts themselves or
+to other concepts related to the ones found. For ontology learning applications, such
+links may be used to learn new concepts or relations between them [34]. Recently,
+data-driven methods have been proposed to generate links between phrases appearing
+in full-text documents and a set of ontological concepts known a priori. [24] propose
+the use of several linguistic features in a machine learning framework to link phrases
+in full-text documents to Wikipedia articles and this approach is further improved upon
+by [25]. Because of the connection between Wikipedia and DBpedia, such data-driven
+linking methods help us establish links between textual documents and Linked Open
+Data [2, 3, 9, 33].
+
+A. Bernstein et al. (Eds.): ISWC 2009, LNCS 5823, pp. 424440, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+?
+
+?
+
+?
+Another, more challenging instantiation of linking text to human-defined concepts
+in a knowledge source is semantic query suggestion. Query suggestion is a strategy to
+derive terms that are able to return more relevant results than the initial query. Commonly used approaches to query suggestion (sometimes referred to as a form of query
+expansion) are highly data-driven and based mostly on term frequencies [21, Chapter
+9]. Semantic query suggestion, in contrast, tries to understand (or learn) which concepts
+the user used in her query or, phrased alternatively, the concepts she is interested in and
+wants to find.1 Moreover, the properties of each concept, and any other resources associated with it, could serve as additional, useful information for the user. In our current
+work, we use DBpedia as our target ontology. As an example of our task, consider the
+query obama white house. A semantic query suggestion algorithm should return suggestions in the form of the (DBpedia) instances labeled Barack Obama and White
+House. Identifying such semantic suggestions serves multiple purposes: it can (i) help
+the user acquire contextual information, (ii) suggest related concepts or associated terms
+that may be used for search, and (iii) provide valuable navigational suggestions.
+
+In this paper we address the semantic query suggestion task and automatically link
+queries to DBpedia concepts. We propose a novel method that leverages the textual representation of each concept as well as query-based and concept-based features. Working
+with user queries, which are typically quite short [31], implies that we cannot use previously established approaches that rely on textual context such as shallow parsing or
+part-of-speech tagging [24]. One interesting aspect of working with user queries is that
+we have history-based information available ( from the session or the user) that can
+potentially be used to help address the semantic query suggestion task.
+
+Our approach proceeds as follows. First, we use language modeling for information
+retrieval (IR) techniques to retrieve the most relevant concepts for the full query and for
+each n-gram (i.e., contiguous sequence of n words) in the query. Second, we use supervised machine learning methods to decide which of the retrieved concepts should be
+kept and which should be discarded. In order to train the machine learner, we examined
+close to 1000 queries from a search engine for a digital multimedia archive and manually linked over 600 of these to relevant concepts in DBpedia.2 The research questions
+we address are the following.
+
+ Can we cast semantic query suggestion as a ranking problem?
+ What is the best way of handling the terms in the input query?
+ Can we use features pertaining to the query terms, concepts, and history to improve
+
+upon a basic retrieval based approach?
+
+ Which type of the feature helps most? Which separate feature is most informative?
+
+Our main contribution is threefold: we introduce the problem of semantic query sug-
+gestion, provide a very effective approach to the problem plus an analysis of the contributions of the features used, and we make available resources to enable future work
+on the problem. The remainder of this paper is structured as follows. In Section 2 we
+
+1 We use ontology to refer to the full spectrum of conceptualizations, ranging from glossaries
+
+to formal ontologies [22]. We refer to an instance in DBpedia as concept [33].
+
+2 The queries, human assessments, and extracted features are publicly available for download at
+
+http://ilps.science.uva.nl/resources/iswc09_annotations
+
+E. Meij et al.
+
+discuss related work. Sections 3 and 4 detail the semantic query suggestion task and our
+approach. Our experimental setup is described in Section 5 and our results are presented
+in Section 6. We end with a concluding section.
+
+2 Related Work
+
+Linking terms or phrases to ontologies is related to several areas of research. These
+include semantic web areas such as ontology matching and semantic annotation, but
+also areas from language technology and information retrieval.
+
+In ontology matching relations between concepts from different ontologies are found.
+These relations are based on a comparison of instances, concept labels, semantic struc-
+ture, or ontological features such as constraints or properties, sometimes exploiting auxiliary external resources such as the lexical resource WordNet or the upper ontology
+DOLCE [30]. E.g., [36] develop a machine learning technique to learn the relationship between the similarity of instances and the validity of mappings between concepts.
+Other approaches are designed for lexical comparison of concept labels in the source
+and target ontology and do not use semantic structure nor instances (e.g. [32]). This type
+of matching is sometimes referred to as lexical matching and is used in cases where
+the ontologies do not have any instances or structure; e.g., in [1] lexical comparison
+of labels is used to map both the source and the target ontology to a semantically rich
+external source of background knowledge.
+
+Lexical matching is very similar to our task at hand, as we do not have any semantic
+structure in the queries. Since 2008, the Ontology Alignment Evaluation Initiative has
+contained a task similar to ours, where participants link a largely unstructured thesaurus,
+the GTAA, to DBpedia [10]. Our approach is different, however, in two ways. First, we
+use the interaction history with the system in the form of user sessions to obtain a
+certain amount of contextual information. Second, the fact that the source terms that we
+are trying to link are natural language captured in user queries instead of standardized
+concept labels makes the task intrinsically harder.
+
+A lot of work has been done on semantic annotation: the process of relating documents to concepts from ontologies or other sources of structured knowledge, such as
+Wikipedia. Many restricted forms of the problem have been addressed. The detection
+of named entities in pieces of text is an important sub-problem of semantic annotation.
+For example,
+[20] create links between named entities in text and concepts from a
+light-weight ontology. [8] propose an interesting example of semantic document anal-
+ysis, where named entities are related over time using Wikipedia. [11] do not restrict
+themselves to named entities, but instead link all words in a document to ontological
+concepts. They use latent topic models to learn links between words and concepts. Other
+sub-problems of semantic annotation include sense tagging and word sense disambiguation [13]. Some of the techniques developed there have fed into automatic link generation between full-text documents and Wikipedia. For example,
+[25] depend heavily on contextual information (terms and phrases) around the source text to determine
+the best Wikipedia articles to link to (like typical named entity recognition and sense
+tagging methods). This work was based on earlier work by [24]. Similarly, we also
+?
+
+?
+
+?
+consider a two-step approach to linking text to Wikipedia/DBpedia; first keyword extraction is performedi, and next, each extracted keyword is linked to a Wikipedia article.
+The authors apply part-of-speech tagging and develop several ranking procedures for
+candidate Wikipedia articles. Our approach differs in that we do not limit ourselves to
+exact matches with the query terms. Another distinct difference between our approach
+and those mentioned above is that while they work with full-text documents, we utilize
+much sparser data in the form of user queries. As such we can not easily use techniques
+such as part-of-speech tagging or lean too heavily on context words for disambiguation.
+As will be detailed below, our approach uses session history and n-grams in the queries
+to obtain contextual information instead.
+
+Turning to semantic query analysis (as opposed to semantic analysis of full docu-
+ments), [14] perform named entity recognition in queries; they recognize a single entity
+in each query and subsequently classify it into one of a small set of predefined classes
+such as movie or video game. We do not impose the restriction of having a single
+concept per query and, furthermore, our list of candidate concepts is much larger, i.e.,
+all articles in Wikipedia. Several other approaches have been proposed that link queries
+to a limited set of categories. [26] use online product search engines to link queries to
+product categories; [5] link millions of queries to 17 topical categories based on a list
+of manually pre-categorized queries; [16] use commonly occurring multimedia terms
+to categorize audio, video, and image queries.
+
+As to related work on query suggestions, some approaches use query logs to determine which queries or which rewrites occur frequently [18]. Others perform query
+analysis and try to identify the most relevant terms [6], to predict the querys performance a priori [40], or combine the two [7].
+[6] use part-of-speech tagging and a
+supervised machine learning technique to identify the key noun phrases in natural
+language queries. Key noun phrases are phrases which convey the most information in
+a query and contribute most to the resulting retrieval performance; we evaluate several
+of the features proposed by these authors.
+
+3 The Task
+
+The semantic query suggestion task we address in this paper is the following. Given a
+query that is submitted to a search engine, identify the relevant concepts that the user
+entered in her query where the concepts are taken from an existing knowledge base
+or ontology. We address our task in the setting of a digital archive, specifically of the
+Netherlands Institute for Sound and Vision (Sound and Vision). Sound and Vision
+maintains a large digital audiovisual collection, currently containing over a million objects and daily updated with new broadcasts. Users of the archive consist primarily of
+media professionals who use an online search interface to locate audiovisual items to
+be used in new programs such as documentaries and news reviews.
+
+Sound and Vision is in the process of linking all its digital resources to a variety
+of structured knowledge sources. Because of its central role in the Linked Open Data
+initiative, our knowledge source of choice for semantic query suggestion is DBpedia.
+Thus, in practical terms, the task we are facing is: given a query (within a session, for
+
+E. Meij et al.
+
+a given user), produce a ranked list of concepts from DBpedia that are mentioned or
+meant in the query. These concepts could then be used to suggest relevant multimedia
+items associated with each concept or to suggest contextual information, such as text
+snippets from the Wikipedia article.
+
+4 Approach
+
+Our approach to suggesting DBpedia concepts for user queries consists of two stages.
+In the first stage, a ranked list of possible concepts for the query is generated using
+a language modeling framework (cf. Section 4.1). To create this ranking we consider
+two approaches; one approach is to extract all n-grams in the query and generate a
+ranking for each. The other approach is to use the entire query to create a single concept
+ranking. We use various textual representations of each DBpedia concept, including
+the accompanying Wikipedia article text, its label, and the text used in the hyperlinks
+pointing to it. An example of the first stage of ranking concepts is provided in Table 1
+for the query obama white house. From the example it is clear why we consider these
+two approaches. Should we simply use the full query on its own (first row), we would
+miss the relevant concept Barack Obama. However, as can be seen from the last two
+rows, considering all n-grams also introduces noise.
+
+Table 1. An example of generating n-grams for the query obama white house and retrieved
+candidate concepts, ranked by retrieval score. Correct concepts in boldface.
+
+N-gram (Q)
+
+Candidate concepts
+
+obama white house White House; White House Station; President Coolidge; Sensation White
+obama white
+white house
+obama
+white
+house
+
+Michelle Obama; Barack Obama; Democratic Pre-elections 2008; January 17
+White House; White House Station; Sensation; President Coolidge
+Barack Obama; Michelle Obama; Presidential Elections 2008; Hillary Clinton
+Colonel White; Edward White; White County; White Plains Road Line
+House; Royal Opera House; Sydney Opera House; Full House
+
+In the second stage supervised machine learning is used to decide which of the candidate concepts in the ranked lists should be kept as viable concepts for the query in
+question. In order to train these machine learning algorithms, we asked annotators to
+assess queries submitted to Sound and Vision and manually link them to relevant DBpedia concepts. More details with respect to the test collection and the manual annotations are listed in Section 5. The machine learning algorithms we consider are Naive
+Bayes, Decision Trees, and Support Vector Machines [35, 37] and are introduced in
+Section 4.2. As input to the machine learning algorithms we extract a set of features
+related to the query n-gram, concept, and the session in which the query appears as
+detailed in Section 4.3.
+
+4.1 Ranking Concepts
+
+We base our concept ranking framework within the language modeling paradigm, as it
+is a theoretically transparent retrieval approach that is competitive in terms of retrieval
+?
+
+?
+
+?
+effectiveness [15, 28, 39]. Here, a query is viewed as having been generated from an
+underlying document language model, where some words are more probable to occur
+than others. At retrieval time each document is scored according to the estimated likelihood that the words in the query were generated by a random sample of the language
+model underlying the document. These word probabilities are generally estimated from
+the document itself (using maximum likelihood estimation) and combined with background collection statistics to overcome zero probability and data sparsity issues; a
+process known as smoothing.
+For the n-gram based re-ranking, we extract all n-grams from each query Q (where
+1  n  |Q|) and create a ranked list of concepts for each individual n-gram, Q. For
+the full-query based reranking approach, we use the same method but add the additional
+constraint that n = |Q|. The problem of ranking DBpedia concepts given an n-gram
+can then be formulated as follows. Each concept c should be ranked according to the
+probability that it was generated by the n-gram P (c|Q), which can be rewritten using
+Bayes rule as:
+
+P (c|Q) = P (Q|c)P (c)
+
+P (Q)
+
+.
+
+Here, the term P (Q) is the same for all concepts and be ignored for ranking purposes.
+The term P (c) indicates the prior probability of selecting a concept, which we assume
+to be uniform. Assuming independence between the individual terms q  Q, as is
+common in the field of information retrieval [4], we obtain
+P (q|c)n(q,Q),
+
+P (c|Q)  P (c)
+
+(1)
+?
+
+?
+
+?
+qQ
+
+where n(q, Q) indicates the count of term q in n-gram Q. The probability P (q|c) is
+smoothed using Bayes smoothing with a Dirichlet prior [39], which is formulated as:
+?
+
+?
+
+?
+P (q|c) = n(q, c) + P (q)
+q n(q, c) + 
+
+,
+
+(2)
+
+where P (q) indicates the probability of observing q in a large background collection
+and  is a hyperparameter that controls the influence of the background corpus.
+
+Since each DBpedia concept is linked to its Wikipedia counterpart, we can use the
+textual representations of the associated wikipedia pages for retrieval. In particular, we
+perform retrieval using the title of the article, the content, and the text used for the
+hyperlinks pointing to it from other Wikipedia articles.
+
+4.2 Learning to Rerank Concepts
+
+Once we have obtained a ranked list of possible concepts for each n-gram in the query,
+we turn to concept selection. In this stage we need to decide which of the candidate
+concepts are most viable. We use a supervised machine learning approach, which takes
+as input a set of labeled examples (query to concept mappings) and several features of
+these examples (detailed below). We choose to compare a Naive Bayes (NB) classifier,
+
+E. Meij et al.
+
+Table 2. Features used, grouped by type
+
+N-gram features
+LEN (Q) = |Q| Number of terms in the phrase Q
+IDF(Q)
+Inverse document frequency of Q
+WIG(Q)
+Weighted information gain using top-5 retrieved concepts
+QE(Q)
+Number of times Q appeared as whole query in query log
+QP(Q)
+Number of times Q appeared as partial query in query log
+QEQP(Q)
+Ratio between QE and QP
+SNIL(Q)
+Does a sub-n-gram of Q fully match with any concept label?
+SNCL(Q)
+Is a sub-n-gram of Q contained in any concept label?
+
+The number of concepts linking to c
+
+Concept features
+INLINKS(c)
+OUTLINKS(c) The number of concepts linking from c
+GEN (c)
+CAT(c)
+REDIRECT(c) Number of redirect pages linking to c
+
+Function of depth of c in SKOS category hierarchy [25]
+Number of associated categories
+
+N-gram + concept features
+
+n(Q, c)
+
+|c|
+n(Q, c, f)
+
+|f|
+
+TF(c, Q) =
+
+Relative phrase frequency of Q in c, normalized by length of c
+Relative phrase frequency of Q in representation f of c,
+normalized by length of f
+
+TF f (c, Q) =
+POSn(c, Q) = posn(Q)/|c| Position of nth occurrence of Q in c, normalized by length of c
+SPR(c, Q)
+Spread (distance between the last and first occurrences of Q in c)
+TF  IDF(c, Q)
+The importance of Q for c
+RIDF(c, Q)
+Residual IDF (difference between expected and observed IDF)
+2(c, Q)
+2 test of independence between Q in c and in collection Coll
+QCT (c, Q)
+Does q contain the label of c?
+T CQ(c, Q)
+Does label of c contain q?
+T EQ(c, Q)
+Does label of c equal q?
+SCORE(c, Q)
+Retrieval score of c w.r.t Q
+RAN K(c, Q)
+Retrieval rank of c w.r.t Q
+
+History features
+CCIH(c)
+CCCH(c)
+CIHH(c)
+CCIHH(c)
+CCCHH(c)
+QCIHH(Q)
+QCCHH(Q) Number of times title of any result for any query in history contains Q
+QCIH(Q)
+QCCH(Q)
+
+Number of occurrences of label of c appears as query in history
+Number of occurrences of label of c appears in any query in history
+Number of times c is retrieved as result for any query in history
+Number of times label of c equals title of any result for any query in history
+Number of times title of any result for any query in history contains label of c
+Number of times title of any result for any query in history equals Q
+
+Number of times Q appears as query in history
+Number of times Q appears in any query in history
+?
+
+?
+
+?
+with a Support Vector Machine (SVM) classifier and a decision tree classifier (J48)a
+set representative of the state-of-the-art in classification. We experiment with multiple
+classifiers in order to confirm that our results are generally valid, i.e., not dependent on
+any machine learning algorithm.
+
+4.3 Features Used
+
+We employ several types of features, each associated with either the current query n-
+gram, the current concept, their combination, or the current search history. Unless indicated otherwise, we consider Q to be a phrase when determining the features.
+
+N-gram Features. These features are based on information from an n-gram and are
+listed in Table 2 (first group). IDF (Q) indicates the relative number of concepts in
+which Q occurs, which is defined as IDF (Q) = log (|Coll|/df (Q)), where |Coll| indicates the number of documents in the collection and df (Q) the number of documents
+in which Q occurs [4]. WIG(Q) indicates the weighted information gain, that was proposed by [40] as a predictor of the retrieval performance of Q. It is the only feature
+which uses the set of all candidate concepts retrieved for this n-gram, CQ, and determines the relative probability of Q occurring in these documents as compared to the
+collection. Formally:
+?
+
+?
+
+?
+WIG(Q) =
+
+1|CQ|
+
+log P (Q)
+
+cCQ log(P (Q|c))  log(P (Q))
+
+.
+
+QE(Q) and QP(Q) indicate the number of times this n-gram appears in the entire
+query logs as a whole or partial query respectively.
+
+Concept Features. Table 2 (second group) lists the features related to a DBpedia con-
+cept. This set of features is related to the knowledge we have of the current candidate
+concept, such as the number of other concepts linking to or from it, the number of
+associated categories (the count of the DBpedia property skos:subject), and the
+number of redirect pages pointing to it (the DBpedia property dbpprop:redirect).
+
+N-gram + Concept Features. This set of features considers an n-gram and a concept
+(Table 2, third group). We consider the relative frequency of occurrence of the n-gram
+as a phrase in the corresponding Wikipedia article, in the separate document representations (title, content, anchor texts, first sentence, and first paragraph of the Wikipedia arti-
+cle), the position of the first occurrence of the n-gram, the distance between the first and
+last occurrence, and various IR-based measures. Of these, RIDF [12] is the difference
+between expected and observed IDF for a concept, which is defined as RIDF(c, Q) =
+log (|Coll|/df (Q)) + log (1  exp(n(Q, Coll)/|Coll|)). We also consider whether
+the label of the concept, i.e. the Wikipedia article title, matches Q and we include the
+current retrieval information.
+
+History Features. Finally, we consider features based on the previous queries that
+were issued in the same session (Table 2, fourth group). These features look at either
+the current candidate concept or current n-gram and see whether they occur (partially)
+in the previous queries or in the retrieved candidate concepts.
+
+E. Meij et al.
+
+Below, we compare the effectiveness of the features listed above for our semantic
+
+query suggestion task.
+
+5 Experimental Setup
+
+We introduce the experimental environment and the experiments that we perform to answer the research questions from Section 1. We also introduce our evaluation measures
+and describe our manual assessments, but start with detailing our data sets.
+
+5.1 Data
+
+Two main types of data are needed for our experiments: queries and DBpedia concepts.
+We have access to a set of 264,503 queries issued between 18 November 2008 to 15
+May 2009 to Sound and Vision. Sound and Vision logs the actions of users on the
+site, generating session identifiers and time stamps. This allows a series of consecutive
+queries to be linked to a single search session, where a session is identified using a
+session cookie. A session is terminated once the user closes the browser. An example
+is given in Table 3. All queries were Dutch language queries; however, nothing in our
+semantic query suggestion approach is language dependent. As the history of a query,
+we took all queries previously issued in the same user session.
+
+Table 3. An example of queries issued in a (partial) session, translated to English
+
+Session ID
+
+jyq4navmztg
+jyq4navmztg
+jyq4navmztg
+jyq4navmztg
+jyq4navmztg
+jyq4navmztg
+jyq4navmztg
+
+Query ID
+
+715681456
+715681569
+715681598
+715681633
+715681789
+715681896
+715681952
+
+Query (Q)
+
+santa claus canada
+santa claus emigrants
+santa claus australia
+christmas sun
+christmas australia
+christmas new zealand
+christmas overseas
+
+The DBpedia version we use is the most recent Dutch version (3.2). We downloaded the Wikipedia dump from which this DBpedia version was created (dump date
+20080609); this dump is used for all our text-based processing steps and features.
+
+5.2 Training Data
+
+For training and testing purposes, four assessors were asked to manually link 998
+queries to DBpedia concepts. The assessors were presented with a list of sessions and
+the queries in them. Once a session had been selected, they were asked to find the
+most relevant DBpedia concepts given each query and its preceding session history if
+any. Our assessors were able to search through Wikipedia using the fields described in
+Section 4.1. Besides indicating relevant concepts, the assessors could also indicate
+?
+
+?
+
+?
+whether a query was ambiguous, contained a typographical error, or whether they were
+unable to find any relevant concept. For our experiments, we removed all the assessed
+queries in these anomalous categories and were left with a total of 629 assessed
+queries in 193 sessions.3 In this sample the average query length is 2.14 terms per
+query. Each query has 1.34 concepts annotated on average.
+
+5.3 Parameters
+
+As to retrieval, we use the entire Wikipedia document collection as background corpus
+and set  to the average length of a Wikipedia article [39], i.e.,  = 315 (cf. Eq. 2).
+For classification we use the following three machine learning algorithms in our experi-
+ments: J48, Naive Bayes and Support Vector Machines. The implementations are taken
+from the Weka machine learning toolkit [37]. J48 is a decision tree algorithm and the
+Weka implementation of C4.5 [29]. The Naive Bayes classifier uses the training data to
+estimate the probability that an instance belongs to the target class, given the presence
+of each feature. By assuming independence between the features these probabilities can
+be combined to calculate the probability of the target class given all features [19]. SVM
+uses a sequential minimal optimization algorithm for training with polynomial kernels
+as described in [27]. The training instances are represented as n-dimensional vectors
+and two decision hyperplanes are created that best separate the instances of the target
+classes. The distance between the hyperplanes is called the margin and by maximizing
+this distance the generalization error of the classifier is minimized. For all algorithms
+we do not perform extensive optimization of the parameter settings and use the default weka parameters.4 Whether fine-grained parameter tuning is beneficial and, thus,
+whether our choice negatively influences the experimental outcomes is a topic for future
+work.
+
+5.4 Testing and Evaluation
+
+We define semantic query suggestion as a ranking problem. In this paper, the system
+has to return five concepts for a given input query; the assessments described above
+are used to determine the relevance of these five concepts. We employ several measures
+which are well-known in the field of information retrieval [4], namely precision@1 (P1;
+how many relevant concepts are retrieved at rank 1), r-precision (R-prec; precision@r
+where r equals the size of the set of known relevant concepts for this query), recall
+(which percentage of relevant concepts were retrieved?), mean reciprocal rank (MRR;
+the reciprocal of the rank of the first correct concept), and the success rate @5 (SR; a
+binary measure that indicates whether at least one correct concept has been returned in
+the top-5).
+
+To verify the generality of the machine learning algorithms, we perform 10-fold cross
+validation [37], which reduces the possibility of errors being caused by artifacts in the
+data. The reported scores are averaged over all folds and all evaluation measures are
+averaged over the queries used for testing. For determining the statistical significance
+
+3 We focus on evaluating the actual semantic query suggestions and discard queries which the
+
+assessors deemed too anomalous to confidently link to any concept.
+
+4 See http://weka.sourceforge.net/doc
+
+E. Meij et al.
+
+of the observed differences between the various runs we use one-way ANOVA to determine if there is a significant difference (  0.05). We then use the Tukey-Kramer test
+to determine which of the individual pairs are significantly different. We designate the
+best result in each table in bold face.
+
+6 Results
+
+In this section we report on the experimental results which answer the research questions from Section 1. We compare three approaches to the semantic query suggestion
+task:
+
+(i) a baseline which retrieves concepts based solely on their textual representation in
+
+the form of the associated Wikipedia article,
+
+(ii) n-gram based reranking which extracts all n-grams from the query and uses ma-
+
+chine learning to identify the best concepts, and
+
+(iii) full-query based reranking which does not extract n-grams, but calculates feature
+
+values based on the full query.
+
+After we have described the results for each approach, we zoom in on the most informative features and the specific feature types.
+
+6.1 Baseline
+
+As our baseline, we take the entire query as issued by the user and employ Eq. 1 to rank
+DBpedia concepts based solely on their textual representation (this techniques is similar
+to using a search engine to perform a search within the Dutch Wikipedia). We consider
+two forms of textual representation: content and full text. The former consists of
+the textual content of a Wikipedia article corresponding to a DBpedia concept, the latter
+adds to this the title of the article and the anchor texts of hypertext links in Wikipedia
+that point to the article at hand.
+
+Table 4. Results of ranking concepts based on using the entire query Q and either the content of
+the Wikipedia article or the full text associated with each DBpedia concept
+
+P1 R-prec Recall MRR
+
+full text
+content
+
+0.5636 0.5216 0.6768 0.6400 0.7535
+0.5510 0.5134 0.6632 0.6252 0.7363
+
+Table 4 shows the results of the baseline. From this table we observe that including
+the title and anchor texts of the incoming links results in improved retrieval performance
+overall. Notice that this is a strong baseline; on average, over 65% of the relevant concepts are correctly identified in the top-5 and, further, over 55% of the relevant concepts
+are retrieved at rank 1. The success rate indicates that for 75% of the queries at least
+one relevant concept is retrieved in the top-5.
+?
+
+?
+
+?
+6.2 N-gram Based Reranking
+
+Table 5 shows the result for the baseline (last row) and the query challenger wubbo
+ockels. As is clear from this example, the two relevant concepts are retrieved at ranks
+1 and 4. When we look at the same results for the n-grams in the query, however, one
+of the relevant concepts is retrieved at the first position for each n-gram. This example
+and the one in Table 1 suggest that it will be beneficial to consider all possible n-grams
+in the query. In this section we report on the results of extracting n-grams from the
+query, generating features for each, and subsequently applying the machine learning
+algorithms to decide which of the suggested concepts to keep. The features used here
+are described in Section 4.2.
+
+Table 5. An example of baseline results for the n-grams in the query challenger wubbo ockels,
+ranked by retrieval score. Concepts labeled as correct in boldface.
+
+N-gram
+
+Candidate concepts
+
+challenger
+wubbo
+ockels
+challenger wubbo
+wubbo ockels
+challenger wubbo ockels Wubbo Ockels; STS-61-A; Spacelab; Space Shuttle Challenger
+
+Space Shuttle Challenger; Challenger; Bombardier Challenger; STS-61-A
+Wubbo Ockels; Spacelab; Canon of Groningen; Superbus; Andr e Kuipers
+Wubbo Ockels; Spacelab; Superbus; Canon of Groningen; Andr e Kuipers
+Wubbo Ockels; STS-61-A; Space Shuttle Challenger; Spacelab; STS-9
+Wubbo Ockels; Spacelab; Superbus; Canon of Groningen; Andr Kuipers
+
+Table 6. Results for n-gram based reranking.
+indicate that a score is significantly
+better, worse or statistically indistinguishable respectively. The leftmost symbol represents the
+difference with the baseline, the next with the J48 run, and the rightmost with the NB run.
+
+and
+
+ 
+
+
+
+Machine learner
+
+P1
+
+R-prec
+
+Recall
+
+baseline
+J48
+?
+
+?
+
+?
+0.5636
+
+0.6510
+
+0.4665
+
+0.8388
+
+0.5216
+
+0.5604
+
+0.4344
+
+0.7170
+
+0.6768
+
+0.7245
+
+0.6984
+
+0.7852
+
+0.6400
+
+0.7441
+
+0.7100
+
+0.8500
+
+0.7535
+
+0.7958
+
+0.7614
+
+0.8548
+
+Table 6 shows the results of applying the machine learning algorithms on the extracted n-gram features. We note that J48 and SVM are able to improve upon the baseline results from the previous section, according to all metrics. The Naive Bayes classifier performs worse than the baseline in terms of P1 and R-precision. SVM clearly
+outperforms the other algorithms and is able to obtain very high scores; significantly
+better than the baseline on all metrics. Interestingly, we see that the use of n-gram
+based reranking has both a precision enhancing effect for J48 and SVM (the P1 and
+MRR scores go up) and a recall-enhancing effect.
+
+In Section 4.3 we identified several groups of features, relating to the n-gram, con-
+cept, their combination, or the session history. We will now zoom in on the performance
+of these groups. Table 7 shows the results when several of these groups are removed
+
+E. Meij et al.
+
+Table 7. Results of removing specific feature types from the training data for the SVM classifier
+indicate that a score is significantly worse or statistically
+and n-gram based reranking.
+indistinguishable. The leftmost symbol represents the difference with the all features run, the next
+with the without history features run, and the rightmost symbol the without concept features run.
+
+and
+?
+
+?
+
+?
+
+
+P1
+
+R-prec
+
+Recall
+
+0.8388
+All features
+Without history
+0.7867
+Without concept
+0.5826
+Without history and concept 0.1929
+
+
+
+?
+
+?
+
+?
+0.7170
+
+0.4687
+
+0.3282
+
+0.1429
+
+0.7852
+
+0.6272
+
+0.4554
+
+0.1679
+
+0.8500
+
+0.8009
+
+0.5826
+
+0.1929
+
+0.8548
+
+0.8041
+
+0.5826
+
+0.1929
+
+from the training data for the SVM classifier. It turns out that both the n-gram specific
+and n-gram + concept specific features are needed for classification. When these groups
+are removed, none of the relevant concepts are identified. From Table 7 we observe that
+removing the history features results in a drop in performance, albeit a small one. When
+the concept features are removed, the resulting performance drops even further and their
+combined removal yields very low scores. Classification without the concept based features results in performance that is statistically indistinguishable from the baseline.
+
+Table 8. Results for full query-based reranking.
+indicate that a score is significantly
+better, worse or statistically indistinguishable respectively. The leftmost symbol represents the
+difference with the baseline, the next with the J48 run, and the rightmost with the NB run.
+
+and
+
+ 
+
+
+
+Machine learner
+
+P1
+
+R-prec
+
+Recall
+
+baseline
+J48
+?
+
+?
+
+?
+0.5636
+
+0.7055
+
+0.7110
+
+0.8908
+
+0.5216
+
+0.5907
+
+0.6004
+
+0.8604
+
+0.6768
+
+0.6664
+
+0.7173
+
+0.8890
+
+0.6400
+
+0.6768
+
+0.7121
+
+0.8173
+
+0.7535
+
+0.7314
+
+0.7889
+
+0.8963
+
+Next we turn to a comparison of n-gram based reranking and full query reranking.
+Table 8 shows the results when we omit the n-grams and only the full query is used
+to generate features. We again observe that SVM significantly outperforms J48, NB, as
+well as the baseline. We further note that these scores are the highest obtained so far and
+this approach is able to return almost 90% of all relevant concepts. This result is very
+encouraging and shows that the approach taken handles semantic query suggestions
+extremely well.
+
+6.3 Feature Selection
+
+Several methods exist with which to automatically determine the most informative features given training instances and their class labels (in our case the class label indicates
+whether the current concept is selected by the assessors). In this section we report on
+using the information gain based algorithm for feature selection [38].
+?
+
+?
+
+?
+Table 9. Results of calculating the information gain with respect to the class label for all features
+(truncated after 7 features). The higher this score, the more informative a feature is.
+
+N-grams
+
+Full-queries
+
+0.190 RAN K(c, Q)
+0.108 T EQ(c, Q)
+0.080 INLINKS(c)
+
+0.119 RAN K(c, Q)
+0.107 DOCID
+0.052 INLINKS(c)
+0.040 TF anchor(c, Q) 0.056 DOCID
+0.038 OUTLINKS(c) 0.041 OUTLINKS(c)
+0.033 SCORE(c, Q)
+0.037 TF title(c, Q)
+0.031 T EQ(c, Q)
+0.025 REDIRECT(c)
+
+Table 9 shows the features with the highest information gain scores for both n-gram
+and full-query based reranking. From this table we observe that the rank at which the
+retrieval framework puts a concept with respect to an n-gram is most informative. Also
+the number of in- and outlinks, and whether the n-gram matches the concepts label
+are informative. DOCID is the internal identifier of each concept and not a feature that
+we explicitly implemented. However, it turns out that some DBpedia concepts have a
+higher a priori probability of getting selected. Indeed, in the assessments there were a
+total of 854 concepts identified, of which 505 are unique. Some of these repetitions are
+caused because of a coherent information need in the user sessions; when a user rewrites
+her query by adding or changing part of the query, the remaining concepts remain the
+same and were annotated as such. As to n-gram based reranking, the term frequency
+in the title and anchor texts are strong indicators of relevance for given phrase and
+concept.
+
+7 Conclusion and Future Work
+
+We have introduced the task of semantic query suggestion and presented a method
+that uses supervised machine learning methods to learn which concepts are used in a
+query. The concepts are obtained from an ontology and may be used to provide search
+or navigation suggestions to the user, or as an entry point into the Linked Open Data
+cloud. Our method extracts query, document, and history specific features from manual
+annotations and learns how to best rank candidate concepts given an input query.
+
+Our results were obtained using the Dutch version of DBpedia and queries from a
+log of the Netherlands Institute for Sound and Vision. Although these resources are
+in Dutch, the framework we have presented is language-independent. Moreover, the
+approach is also generic in that several of the employed features could be used with
+ontologies other than DBpedia. However, as became clear from Table 7 and 9, DBpedia
+related features such as inlinks and redirects were especially helpful. Using Support
+Vector Machines and features extracted from the full input queries yields optimal re-
+sults. The best performing run is able to locate almost 90% of the relevant concepts on
+
+E. Meij et al.
+
+average. Moreover, this particular run achieves a precision@1 of 89% which means that
+for this percentage of queries a relevant concept is returned as the first suggestion.5
+
+In sum, we have shown that the semantic query suggestion problem can be successfully cast as a ranking problem. The best way of handling query terms is not as separate
+n-grams, but as a single unita finding also interesting from an efficiency viewpoint,
+since the number of n-grams is quadratic with respect to the length of the query. All
+types of feature were found to be helpful and, besides document and term features, we
+found that concept features were also important in achieving our best performance.
+
+As to future work, we will look into expanding the list of features, for example by including more structural features such as ones pertaining to the structure of the ontology.
+Another question that should be answered is how much training data is needed in order
+to arrive at a reasonable level of performance. We also intend to go beyond suggesting concepts and look at which part of the query should be linked. Finally, we believe
+that there might be room for further improvement by using session history in other
+ways. One option would be a more fine-grained notion of session changes, for example
+using query overlap [17], or a wider one which considers user history over multiple
+sessions. Finally, our current approach is trained to find matches between (parts of) the
+user query and DBpedia concepts, comparable to finding skos:exactMatch or even
+owl:equivalentClass relations in an ontology matching task. However, semantic query suggestion can also be interpreted in a broader sense, where not only exact
+matches but also semantically related concepts are suggested [23]. We believe that our
+approach can be easily adapted to incorporate such semantically related suggestions.
+
+Acknowledgments
+
+We thank the anonymous reviewers for their constructive comments. This research was
+carried out in the context of the Virtual Laboratory for e-Science project and supported
+by the DuOMAn project carried out within the STEVIN programme which is funded by
+the Dutch and Flemish Governments under project number STE-09-12 and the Netherlands Organisation for Scientific Research (NWO) under project numbers 017.001.190,
+640.001.501, 640.002.501, 612.066.512, 612.061.814, 612.061.815, 640.004.802.

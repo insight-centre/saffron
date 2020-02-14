@@ -1,0 +1,1199 @@
+A Generic Approach for Large-Scale Ontological
+Reasoning in the Presence of Access Restrictions
+
+to the Ontologys Axioms
+
+Franz Baader1, Martin Knechtel2, and Rafael Penaloza1
+
+1 Theoretical Computer Science TU Dresden, Germany
+
+{baader,penaloza}@tcs.inf.tu-dresden.de
+
+2 SAP AG, SAP Research CEC Dresden, Germany
+
+martin.knechtel@sap.com
+
+Abstract. The framework developed in this paper can deal with scenarios where selected sub-ontologies of a large ontology are offered as
+views to users, based on criteria like the users access right, the trust
+level required by the application, or the level of detail requested by the
+user. Instead of materializing a large number of different sub-ontologies,
+we propose to keep just one ontology, but equip each axiom with a label from an appropriate labeling lattice. The access right, required trust
+level, etc. is then also represented by a label (called user label) from this
+lattice, and the corresponding sub-ontology is determined by comparing this label with the axiom labels. For large-scale ontologies, certain
+consequence (like the concept hierarchy) are often precomputed. Instead
+of precomputing these consequences for every possible sub-ontology, our
+approach computes just one label for each consequence such that a comparison of the user label with the consequence label determines whether
+the consequence follows from the corresponding sub-ontology or not.
+
+In this paper we determine under which restrictions on the user and
+axiom labels such consequence labels (called boundaries) always exist,
+describe different black-box approaches for computing boundaries, and
+present first experimental results that compare the efficiency of these
+approaches on large real-world ontologies. Black-box means that, rather
+than requiring modifications of existing reasoning procedures, these approaches can use such procedures directly as sub-procedures, which allows us to employ existing highly-optimized reasoners.
+
+1 Introduction
+Assume that you have a large ontology T , but you want to offer different users
+different views on this ontology, i.e., each user can see only a subset of the actual
+ontology, which is selected by an appropriate criterion. This criterion could be the
+access right that this user has, the level of trust (in the axioms of the ontology)
+that the user requires, the level of details that is deemed to be appropriate for
+this user, etc. In principle, you could explicitly create a sub-ontology for each
+(type of) user, but then you might end up with exponentially many different
+
+A. Bernstein et al. (Eds.): ISWC 2009, LNCS 5823, pp. 4964, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+?
+
+?
+
+?
+ontologies, where each is a subset of T . Instead, we propose to keep just the
+big ontology T , but label the axioms in T such that a comparison of the axiom
+label with the user criterion determines whether the axiom belongs to the subontology for this user or not. To be more precise, we use a labeling lattice (L,),
+i.e., a set of labels L together with a partial order  on these labels such that a
+finite set of labels always has a join (supremum, least upper bound) and a meet
+(infimum, greatest lower bound) w.r.t. .1. All axioms t  T are now assumed
+to have a label lab(t)  L, and the user also receives a label   L (which can be
+read as access right, required level of trust, etc.). The sub-ontology that a user
+with label  can see is then defined to be2
+
+T := {t  T | lab(t)  }.
+
+Of course, the user of an ontology should not only be able to see its axioms, but
+also the consequences of these axioms. Thus, a user with label  should be able
+to see all the consequences of T. For large ontologies, certain relevant consequences are often pre-computed. The goal of the pre-computation is that certain
+user queries can be answered by a simple look-up in the pre-computed conse-
+quences, and thus do not require expensive reasoning during the deployment
+phase of the ontology. For example, in the version of the large medical ontology
+SNOMED CT3 that is distributed to hospitals, all the subsumption relationships
+between the concept names occurring in the ontology are pre-computed. For a labeled ontology as introduced above, it is not enough to pre-compute the relevant
+consequences of T . In fact, if the relevant consequence  follows from T , then
+we also need to know for which user labels  it still follows from T. Otherwise, if
+a user with label  asks whether  holds, the system could not simply look this
+up in the pre-computed consequences, but would need to compute the answer
+on-the-fly by reasoning over the sub-ontology T. Our solution to this problem
+is to compute a so-called boundary for the consequence , i.e., an element  of
+L such that  follows from T iff   .
+
+There are basically two approaches for computing a boundary. The glassbox approach takes a specific reasoner (or reasoning technique) for an ontology
+language (e.g., a tableau-based reasoner for OWL DL [20]) and modifies it such
+that it can compute a boundary. Examples for the application of the glassbox approach to specific instances of the problem of computing a boundary
+are tableau-based approaches for reasoning in possibilistic Description Logics
+[15,13] (where the lattice is the interval [0, 1] with the usual order) and glassbox approaches to axiom pinpointing in Description Logics [19,14,12,3,4] (where
+the lattice consists of (equivalence classes of) monotone Boolean formulae with
+implication as order [4]). The problem with glass-box approaches is that they
+1 Figure 1 in Section 3 shows a small lattice. A detailed introduction to lattices and
+
+orders can, e.g., be found in [9].
+
+2 To define this sub-ontology, an arbitrary partial order would be sufficient. However,
+the existence of suprema and infima will be important for the computation of a
+boundary of a consequence (see below).
+
+3 http://www.ihtsdo.org/snomed-ct/
+?
+
+?
+
+?
+have to be developed for every ontology language and reasoning technique anew
+and that optimizations of the original reasoning technique do not always apply
+to the modified reasoners. In contrast, the black-box approach can re-use existing
+optimized reasoners without modifications, and it can be applied to arbitrary
+ontology languages: one just needs to plug in a reasoner for this language.
+
+In this paper, we introduce three different black-box approaches for computing
+a boundary, and compare their performance on real-world ontologies. The first
+approach uses an axiom pinpointing algorithm as black-box reasoner, whereas
+the second one modifies the Hitting-Set-Tree-based black-box approach to axiom
+pinpointing [11,21]. The third uses binary search and can only be applied if the
+labeling lattice is a linear order. It can be seen as a generalization of the blackbox approach to reasoning in possibilistic Description Logics described in [16].
+All the proofs omitted in this paper can be found in [2].
+
+2 Basic Definitions and Results
+
+To stay as general as possible, we do not fix a specific ontology language. We
+just assume that ontologies are finite sets of axioms such that every subset of
+an ontology is again an ontology. If T  is a subset of the ontology T , then T 
+is called a sub-ontology of T . The ontology language determines which sets of
+axioms are admissible as ontologies. For a fixed ontology language, a monotone
+consequence relation |= is a binary relation between ontologies T of this language
+and consequences  such that, for every ontology T , we have that T   T and
+T  |=  imply T |= . If T |= , then we say that  follows from T and that
+T entails . For instance, given a Description Logic L (e.g., the DL SHIN (D)
+underlying OWL DL), an ontology is an L-TBox, i.e., a finite set of general
+concept inclusion axioms (GCIs) of the form C  D for L-concept descriptions
+C, D. As consequences we can, e.g., consider subsumption relationships A  B
+for concept names A, B.
+?
+
+?
+
+?
+We consider a lattice (L,) and respectively denote by
+
+S 
+the join (least upper bound) and meet (greatest lower bound) of the finite set
+S  L. A labeled ontology with labeling lattice (L,) is an ontology T together
+with a labeling function lab that assigns a label lab(t)  L to every element t of
+T 4 We denote with Llab the set of all labels occurring in the labeled ontology T ,
+i.e., Llab := {lab(t) | t  T }. Every element of the labeling lattice   L defines
+a sub-ontology T that contains the axioms of T that are labeled with elements
+greater than or equal to :
+
+S  and
+?
+
+?
+
+?
+T := {t  T | lab(t)  }.
+
+Conversely, every sub-ontology S  T defines an element S  L, called the label
+of S: S :=
+tS lab(t). The following lemma states some simple relationships
+between these two notions.
+Lemma 1. For all   L, S  T , it holds that   T, S  TS and T = TT .
+4 An example of a labeled ontology is given in Example 2 in Section 3.
+?
+
+?
+
+?
+Notice that, if a consequence  follows from T for some   L, it must also
+follow from T for every 
+  , since then T  T. A maximal element of L
+that still entails the consequence will be called a margin for this consequence.
+
+Definition 1 (Margin). Let  be a consequence that follows from the ontology
+T . The label   L is called a (T , )-margin if T |= , and for every  with
+ <  we have T |= .
+If T and  are clear from the context, we usually ignore the prefix (T , ) and
+call  simply a margin. The following lemma shows three basic properties of the
+set of margins that will be useful throughout this paper.
+Lemma 2. Let  be a consequence that follows from the ontology T . We have:
+1. If  is a margin, then  = T;
+2. if T |= , then there is a margin  such that   ;
+3. there are at most 2|T | margins for .
+If we know that  is a margin for the consequence , then we know whether 
+follows from T for all   L that are comparable with : if   , then  follows
+from T, and if  > , then  does not follow from T. However, the fact that  is
+a margin gives us no information regarding elements that are incomparable with
+. In order to obtain a full picture of when the consequence  follows from T for
+an arbitrary element of l, we can try to strengthen the notion of margin to that
+of an element  of L that accurately divides the lattice into those elements whose
+associated sub-ontology entails  and those for which this is not the case, i.e., 
+should satisfy the following: for every   L, T |=  iff   . Unfortunately, such
+an element need not always exist, as demonstrated by the following example.
+Example 1. Consider the distributive lattice (S4,4) having the four elements
+S4 = {0, a1, a2, 1}, where 0 and 1 are the least and greatest elements, respectively,
+and a1, a2 are incomparable w.r.t. 4. Let T be the set formed by the axioms ax1
+and ax2, which are labeled by a1 and a2, respectively, and let  be a consequence
+such that, for every S  T , we have S |=  iff |S|  1. It is easy to see
+that there is no element   S4 that satisfies the condition described above.
+Indeed, if we choose  = 0 or  = a1, then a2 violates the condition, as a2  ,
+but Ta2 = {ax2} |= . Accordingly, if we choose  = a2, then a1 violates the
+condition. Finally, if  = 1 is chosen, then 1 itself violates the condition: 1  ,
+but T1 =  |= .
+It is nonetheless possible to find an element that satisfies a restricted version of
+the condition, where we do not impose that the property must hold for every
+element of the labeling lattice, but only for those elements that are join prime
+relative to the labels of the axioms in the ontology.
+Definition 2 (Join prime). Let (L,) be a lattice. Given a finite set K  L,
+M  | M  K} denote the closure of K under the meet operator.
+An element   L is called join prime relative to K if, for every K
+  K,
+
+let K := {
+ 
+
+kK k implies that there is an k0  K
+
+ such that   k0.
+?
+
+?
+
+?
+lattice elements with the exception of 1 are join prime
+
+In Example 1, all
+relative to {a1, a2}.
+Definition 3 (Boundary). Let T be an ontology and  a consequence. An
+element   L is called a (T , )-boundary if for every element   L that is join
+prime relative to Llab it holds that    iff T |= .
+As with margins, if T and  are clear from the context, we will simply call such
+a  a boundary. In Example 1, the element 1 is a boundary. Indeed, every join
+prime element  relative to {a1, a2} (i.e., every element of L except for 1) is
+such that  < 1 and T |= . From a practical point of view, our definition of
+a boundary has the following implication: we must enforce that user labels are
+always join prime relative to the set Llab of all labels occurring in the ontology.
+
+3 Computing a Boundary
+
+In this section, we describe three black-box approaches for computing a bound-
+ary. The first two approaches are based on Lemma 3 below, and the third one, a
+modification of binary search, can be used if the labeling lattice is a linear order.
+Lemma 3. Let 1, . . . , n be all (T , )-margins. Then
+i=1 i is a boundary.
+By Lemma 2, a consequence always has finitely many margins, and thus Lemma 3
+shows that a boundary always exists. Note, however, that a consequence may
+have boundaries different from the one of Lemma 3. To identify the particular
+boundary of Lemma 3, we will call it the margin-based boundary.
+?
+
+?
+
+?
+n
+
+3.1 Using Full Axiom Pinpointing
+
+From Lemma 3 we know that the set of all margins yields sufficient information
+for computing a boundary. The question is now how to compute this set. In this
+subsection, we show that all margins (and thus the margin-based boundary) can
+be computed through axiom pinpointing. Axiom-pinpointing refers to the task of
+computing MinAs [6]: minimal (w.r.t. set inclusion) sub-ontologies from which
+a consequence  still follows. More formally, S  T is called a MinA for T and
+ if S |= , and S |=  for every S  S. The following lemma shows that every
+margin can be obtained from some MinA.
+Lemma 4. For every margin  for  there is a MinA S such that  = S.
+Notice that this lemma does not imply that the label of any MinA S corresponds
+to a margin. However, as the consequence follows from every MinA, point 2 of
+Lemma 2 shows that S   for some margin . The following theorem is an
+immediate consequence of this fact together with Lemma 3 and Lemma 4.
+Theorem 1. If S1, . . . ,Sn are all MinAs for T and , then
+margin-based boundary for .
+
+i=1 Si is the
+?
+
+?
+
+?
+n
+
+F. Baader, M. Knechtel, and R. Penaloza
+
+Thus, to compute a boundary, it is sufficient to compute all MinAs. Several
+methods exist for computing the set of all MinAs, either directly [19,11,7] or
+through a so-called pinpointing formula [6,4,5], which is a monotone Boolean
+formula encoding all the MinAs. The main advantage of using the pinpointingbased approach for computing a boundary is that one can simply use existing
+implementations for computing all MinAs, such as the ones offered by the ontology editor Protege 45 and the CEL system.6
+
+3.2 Label-Optimized Axiom Pinpointing
+
+From Lemma 4 we know that every margin is of the form S for some MinA
+S. In the previous subsection we have used this fact to compute a boundary by
+first obtaining the MinAs and then computing their labels. This process can be
+optimized if we directly compute the labels of the MinAs, without necessarily
+computing the actual MinAs. Additionally, not all the labels of MinAs are neces-
+sary, but only the maximal ones. We present here a black-box algorithm that uses
+the labels of the axioms to find the boundary in an optimized way. Our algorithm
+is a variant of the Hitting-Set-Tree-based [17] method (HST approach) for axiom
+pinpointing [11,21]. First, we briefly describe the HST approach for computing
+all MinAs, which will serve as a starting point for our modified version.
+
+The HST algorithm computes one MinA at a time while building a tree that
+expresses the distinct possibilities to be explored in the search of further MinAs.
+It first computes an arbitrary MinA S0 for T , which is used to label the root of
+the tree. Then, for every axiom t in S0, a successor node is created. If T \ {t}
+does not entail the consequence, then this node is a dead end. Otherwise, T \{t}
+still entails the consequence. In this case, a MinA S1 for T \ {t} is computed
+and used to label the node. The MinA S1 for T \ {t} obtained this way is also
+a MinA of T , and it is guaranteed to be distinct from S0 since t / S1. Then,
+for each axiom s in S1, a new successor is created, and treated in the same way
+as the successors of the root node, i.e., it is checked whether T \ {t, s} still has
+the consequence, etc. This process obviously terminates, and the end result is a
+tree, where each node that is not a dead end is labeled with a MinA, and every
+MinA appears as the label of at least one node of the tree (see [11,21]).
+
+An important ingredient of the HST algorithm is a procedure that computes
+a single MinA from an ontology. Such a procedure can, for example, be obtained
+by going through the axioms of the ontology in an arbitrary order, and removing
+redundant axioms, i.e., ones such that the ontology obtained by removing this
+axiom from the current sub-ontology still entails the consequence (see [6] for a
+description of this and of a more sophisticated logarithmic procedure). As said
+before, in our modified HST algorithm, we are now not interested in actually
+computing a MinA, but only its label. This allows us to remove all axioms having
+a redundant label rather than a single axiom. Algorithm 1 describes a blackbox method for computing S for some MinA S that is based on this idea. In
+5 http://protege.stanford.edu/
+6 http://code.google.com/p/cel/
+?
+
+?
+
+?
+return no MinA
+
+Algorithm 1. Compute a minimal label set of one MinA.
+Procedure min-lab(T , )
+Input: T : ontology; : consequence
+Output: ML  L: minimal label set for a MinA
+1: if T |=  then
+2:
+3: S := T
+
+4: ML := 
+5: for every k  Llab do
+l  k then
+6:
+lML
+if S  k |=  then
+7:
+S := S  k
+8:
+9:
+ML := (ML \ {l | k < l})  {k}
+10:
+11: return ML
+
+else
+
+if
+
+fact, the algorithm computes a minimal label set of a MinA S, a notion that will
+also be useful when describing our variant of the HST algorithm.
+Definition 4 (Minimal label set). Let S be a MinA for . A set K  {lab(t) |
+t  S} is called a minimal label set of S if distinct elements of K are incomparable and S =
+?
+
+?
+
+?
+K .
+?
+
+?
+
+?
+Algorithm 1 removes all the labels that do not contribute to a minimal label set.
+If T is an ontology and   L, then the expression T   appearing at Line 7
+denotes the sub-ontology T   := {t  T | lab(t) = }. If, after removing all the
+axioms labeled with k, the consequence still follows, then there is a MinA none
+of whose axioms is labeled with k. In particular, this MinA has a minimal label
+set not containing k; thus all the axioms labeled with k can be removed in our
+search for a minimal label set. If the axioms labeled with k cannot be removed,
+then all MinAs of the current sub-ontology need an axiom labeled with k, and
+hence k is stored in the set ML. This set is used to avoid useless consequence
+tests: if a label is greater than or equal to
+ML , then the presence or absence
+of axioms with this label will not influence the final result, which will be given
+by the infimum of ML; hence, there is no need to apply the (possibly complex)
+decision procedure for the consequence relation.
+Theorem 2. Let T and  be such that T |= . There is a MinA S0 for  such
+that Algorithm 1 outputs a minimal label set of S0.
+Once the label of a MinA has been found, we can compute new MinA labels
+by a successive deletion of axioms from the ontology using the HST approach.
+Suppose that we have computed a minimal label set M0, and that   M0. If we
+remove all the axioms in the ontology labeled with , and compute a new minimal
+label set M1 of a MinA of this sub-ontology, then M1 does not contain , and
+thus M0 = M1. By iterating this procedure, we could compute all minimal label
+sets, and hence the labels of all MinAs. However, since our goal is to compute
+
+F. Baader, M. Knechtel, and R. Penaloza
+
+Algorithm 2. Hitting set tree (HST) algorithm for computing the boundary
+Procedure hst-boundary(T , )
+Input: T : ontology; : consequence
+Output: boundary  for 
+1: Global : C, H := ; 
+
+2: M := min-lab(T , )
+3: C := {M}
+4:  :=
+5: for each label   M do
+expand-hst(T, , {})
+6:
+7: return 
+Procedure expand-hst(T , , H)
+Input: T : ontology; : consequence; H: list of lattice elements
+Side effects: modifications to C, H and 
+1: if there exists some H  H such that {h  H | h  }  H or
+H contains a prefix-path P with {h  P | h  } = H then
+return
+
+2:
+(early path termination 3)
+3: if there exists some M  C such that for all   M, h  H,   h and    then
+4: M := M
+(MinLab reuse)
+5: else
+6: M := min-lab(T, )
+
+7: if T |=  then
+8: C := C  {M}
+9:
+10:
+11:
+12: else
+13: H := H  {H}
+
+ :=
+for each label   M do
+
+expand-hst(T, , H  {})
+
+(normal termination )
+
+M 
+
+{,
+
+M }
+?
+
+?
+
+?
+the supremum of these labels, the algorithm can be optimized by avoiding the
+computation of MinAs whose labels will have no impact on the final result. Based
+on this we can actually do better than just removing the axioms with label :
+instead, all axioms with labels   can be removed. For an element   L and
+an ontology T , T denotes the sub-ontology obtained from T by removing all
+axioms whose labels are  . Now, assume that we have computed the minimal
+label set M0, and that M1 = M0 is the minimal label set of the MinA S1. For
+all   M0, if S1 is not contained in T, then S1 contains an axiom with label
+ . Consequently,
+mM0 m, and thus M1 need not be
+computed. Algorithm 2 describes our method for computing the boundary using
+a variant of the HST algorithm that is based on this idea.
+In the procedure hst-boundary, three global variables are declared: C and
+H, initialized with , and . The variable C stores all the minimal label sets
+computed so far, while each element of H is a set of labels such that, when all
+the axioms with a label less than or equal to any label from the set are removed
+from the ontology, the consequence does not follow anymore; the variable  stores
+the supremum of the labels of all the elements in C and ultimately corresponds
+
+mM1 m = S1
+
+
+?
+
+?
+
+?
+to the boundary that the method computes. The algorithm starts by computing
+a first minimal label set M, which is used to label the root of a tree. For each
+element of M, a branch is created by calling the procedure expand-hst.
+
+The procedure expand-hst implements the ideas of HST construction for pinpointing [11,21] with additional optimizations that help reduce the search space
+as well as the number of calls to min-lab. First notice that each M  C is a minimal label set, and hence the infimum of its elements corresponds to the label of
+some MinA for . Thus,  is the supremum of the labels of a set of MinAs for
+. If this is not yet the boundary, then there must exist another MinA S whose
+label is not less than or equal to . This in particular means that no element of
+S may have a label less than or equal to , as the label of S is the infimum of
+the labels of the axioms in it. When searching for this new MinA we can then
+exclude all axioms having a label  , as done in Line 6 of expand-hst. Every
+time we expand a node, we extend the set H, which stores the labels that have
+been removed on the path in the tree to reach the current node. If we reach normal termination, it means that the consequence does not follow anymore from
+the reduced ontology. Thus, any H stored in H is such that, if all the axioms
+having a label less than or equal to an element in H are removed from T , then
+ does not follow anymore. Lines 1 to 4 of expand-hst are used to reduce the
+number of calls to the subroutine min-lab and the total search space. We describe
+them now in more detail. The first optimization, early path termination, prunes
+the tree once we know that no new information can be obtained from further
+expansion. There are two conditions that trigger this optimization. The first one
+tries to decide whether T |=  without executing the decision procedure. As
+  H, if all labels less than or equal to any
+said before, we know that for each H
+ are removed, then the consequence does not follow. Hence, if the current
+in H
+  H we know that enough labels have
+list of removal labels H contains a set H
+been removed to make sure that the consequence does not follow. It is actually
+ | h  }  H since the consequence test we
+enough to test whether {h  H
+need to perform is whether T |= . The second condition for early path ter-
+
+ such that P = H. If we consider H
+mination asks for a prefix-path P of H
+as a list of elements, then a prefix-path is obtained by removing a final portion
+of this list. The idea is that, if at some point we have noticed that we have
+removed the same axioms as in a previous portion of the search, we know that
+all possibilities that arise from that search have already been tested before, and
+hence it is unnecessary to repeat the work. Hence we can prune the tree here.
+
+The second optimization avoids a call to min-lab by reusing a previously computed minimal label set. Notice that our only requirement on min-lab that it
+produces a minimal label set. Hence, any minimal label set for the ontology obtained after removing all labels less than or equal to any h  H or to  would
+work. The MinLab reuse optimization checks whether there is such a previously
+computed minimal label set. If this is the case, it uses this set instead of computing a new one by calling min-lab.
+Theorem 3. Let T and  be such that T |= . Then Algorithm 2 computes the
+margin-based boundary of .
+
+F. Baader, M. Knechtel, and R. Penaloza
+
+n0 :
+
+n3 :
+
+n1 :
+
+n2 :
+
+n4 :
+
+n5 :
+
+n6 :
+
+Fig. 1. A lattice
+
+Fig. 2. An expansion of the HST method
+
+A proof of this theorem can be found in [2]. Here, we just illustrate how it works
+by a small example.
+Example 2. Consider the lattice in Figure 1, and let T be the (Description Logic)
+ontology consisting of the following five axioms:
+
+t1 : A  P1  Q1,
+
+t2 : P1  P2  Q2,
+t4 : Q1  P2  Q2,
+
+t3 : P2  B,
+t5 : Q2  B,
+
+where each axiom ti is labeled with lab(ti) = i. There are four MinAs for the
+subsumption relation A  B w.r.t. T , namely {t1, t2, t3},{t1, t2, t5},{t1, t3, t4},
+and {t1, t4, t5}. All the elements of the labeling lattice except 1 and 3 are
+join prime relative to Llab. Figure 2 shows a possible run of the hst-boundary
+algorithm. The algorithm first calls the routine min-lab(T , A  B). Consider
+that the for loop of min-lab is executed using the labels 1, . . . , 5 in that order.
+Thus, we try first to remove t1 labeled with 1. We see that T  1 |= A  B;
+hence t1 is not removed from T , and ML is updated to ML = {1}. We then see
+that T  2 |= A  B, and thus t2 is removed from T . Again, T  3 |= A  B,
+so t3 is removed from T . At this point, T = {t1, t4, t5}. We test then whether
+T  4 |= A  B and receive a negative answer; thus, 4 is added to ML;
+additionally, since 4 < 1, the latter is removed from ML. Finally, T  5 |=
+A  B, and so we obtain ML = {4, 5} as an output of min-lab.
+The minimal label set {4, 5}, is used as the root node n0, setting the value
+of  = 4  5 = 0. We then create the first branch on the left by removing all
+the axioms with a label  4, which is only t4, and computing a new minimal
+label set. Assume, for the sake of the example, that min-lab returns the minimal
+label set {2, 3}, and  is accordingly changed to 4. When we expand the tree
+from this node, by removing all the axioms below 2 (left branch) or 3 (right
+branch), the subsumption relation A  B does not follow any more, and hence
+we have a normal termination, adding the sets {4, 2} and {4, 3} to H. We
+then create the second branch from the root, by removing the elements below 5.
+We see that the previously computed minimal axiom set of node n1 works also
+as a minimal axiom set in this case, and hence it can be reused (MinLab reuse),
+represented as an underlined set. The algorithm continues now by calling expand-
+hst(T2, A  B,{5, 2}). At this point, we detect that there is H
+ = {4, 2}
+?
+
+?
+
+?
+return no boundary
+
+Algorithm 3. Compute a boundary by binary search.
+Input: T : ontology; : consequence
+Output: : (T , )-boundary
+1: if T |=  then
+2:
+3:  := 0lab; h := 1lab
+4: while l < h do
+5:
+6:
+7:
+8:
+9:
+10: return  := 
+
+set m,  < m  h such that (, m)  (m, h)  1.
+if Tm |=  then
+
+h := pred(m)
+
+ := m
+
+else
+
+satisfying the first condition of early path termination (recall that  = 4), and
+hence the expansion of that branch at that point. Analogously, we obtain an
+early path termination on the second expansion branch of the node n4. The
+algorithm then outputs  = 4, which can be easily verified to be a boundary.
+
+3.3 Binary Search for Linear Ordering
+In this subsection, we assume that the labeling lattice (L,) is a linear order,
+i.e., for any two elements 1, 2 of L we have 1  2 or 2  1.
+Lemma 5. Let T and  be such that T |= . Then the unique boundary of  is
+the maximal element  of Llab with T |= .
+A direct way for computing the boundary in this restricted setting thus consists
+of testing, for every element in   Llab, in order (either increasing or decreasing)
+whether T |=  until the desired maximal element is found. This process requires
+in the worst case n := |Llab| iterations. This can be improved using binary
+search, which requires a logarithmic number of steps measured in n. Algorithm 3
+describes the binary search algorithm. In the description of the algorithm, the
+following abbreviations have been used: 0lab and 1lab represent the minimal and
+the maximal elements of Llab, respectively; for 1  2  Llab, (1, 2) := |{
+ 
+  2}| is the distance function in Llab and for a given   Llab,
+Llab | 1 < 
+pred() is the maximal element 
+
+  Llab such that 
+
+The variables  and h are used to keep track of the relevant search space.
+At every iteration of the while loop, the boundary is between  and h. At the
+beginning these values are set to the minimum and maximum of Llab and are
+later modified as follows: we first find the middle element m of the search space;
+i.e., an element whose distance to  differs by at most one from the distance to
+h. We then test whether Tm |= . If that is the case, we know that the boundary
+must be larger or equal to m, and hence the lower bound  is updated to the
+value of m. Otherwise, we know that the boundary is strictly smaller than m as
+m itself cannot be one; hence, the higher bound h is updated to the maximal
+
+< .
+?
+
+?
+
+?
+F. Baader, M. Knechtel, and R. Penaloza
+
+element of Llab that is smaller than m : pred(m). This process terminates when
+the search space has been reduced to a single point, which must be the boundary.
+
+4 Empirical Evaluation
+
+4.1 Test Data and Test Environment
+We test on a PC with 2GB RAM and Intel Core Duo CPU 3.16GHz. We implemented all approaches in Java and used Java 1.6, CEL 1.0, Pellet 2.0.0-rc5
+and OWL API trunk revision 1150. The boundary computation with full axiom pinpointing (FP in the following) uses log-extract-mina() (Alg. 2 from [7],
+which is identical to Alg. 8 from [21]) and the HST based hst-extract-all-minas()
+(Alg. 9 from [21]). The set of extracted MinAs is then used to calculate the
+label of the consequence. We break after 10 found MinAs in order to limit the
+runtime, so there might be non-final label results. The boundary computation
+with label-optimized axiom pinpointing (LP in the following) with min-lab() and
+hst-boundary() are implementations of Alg. 1 and Alg. 2 of the present paper.
+The boundary computation with binary search for linear ordering (BS in the
+following) implements Alg. 3 of the present paper.
+
+Although we focus on comparing the efficiency of the presented algorithms,
+and not on practical applications of these algorithms, we have tried to use inputs
+that are closely related to ones encountered in applications. The two labeling
+lattices (Ld,d) and (Ll,l) are similar to ones encountered in real-world appli-
+cations. The labeling lattice (Ld,d) was already introduced in Fig. 1. Lattices
+of this structure (where the elements correspond to hierarchically organized user
+roles) can be obtained from a real-world access matrix with the methodology
+presented in [8]. The set of elements of Ld that are allowed to represent user
+roles if all elements of the lattice can be used as axiom labels are the elements
+that are join prime relative to the whole lattice, i.e., 0, 2, 4, 5. The labeling
+lattice (Ll,l) is a linear order with 6 elements Ll = Ld = {0, . . . , 5} with
+l := {(n, n+1) | n, n+1  Ll  0  n  5}, which could represent an order of
+trust values as in [18] or dates from a revision history.
+We used the two ontologies OSnomed and OFunct with different expressivity
+and types of consequences for our experiments. The Systematized Nomenclature
+of Medicine, Clinical Terms (Snomed ct) is a comprehensive medical and clinical ontology which is built using the Description Logic (DL) EL+. Our version
+OSnomed is the January/2005 release of the DL version, which contains 379,691
+concept names, 62 object property names, and 379,704 axioms. Since more than
+five million subsumptions are consequences of OSnomed, testing all of them was
+not feasible and we used the same sample subset as described in [7], i.e., we
+sampled 0.5% of all concepts in each top-level category of OSnomed. For each
+sampled concept A, all positive subsumptions A OSnomed B with A as subsumee
+were considered. Overall, this yielded 27,477 positive subsumptions. Following
+the ideas of [7], we precomputed the reachability-based module for each sampled
+concept A with CEL and stored these modules. This module for A was then used
+as the start ontology when considering subsumptions with subsumee A.
+?
+
+?
+
+?
+Table 1. Emprical results of FP and LP with lattice (Ld,d) on a sampled set of
+21,001 subsumptions from OSnomed and on a set of 307 consequences from OFunct with
+less than 10 MinAs (time in ms)
+
+early
+termination
+
+reuse
+
+avg
+max
+stddev
+avg
+max
+stddev
+avg
+max
+stddev
+avg
+max
+stddev
+
+81.05
+57,188.00
+874.34
+0.01
+2.00
+0.13
+43.59
+567.00
+92.16
+0.09
+2.00
+0.34
+
+9.06
+4,850.00
+82.00
+0.00
+1.00
+0.02
+29.52
+433.00
+64.04
+0.02
+1.00
+0.13
+
+calls to
+extract
+MinA
+(MinLab)
+26.43
+4,567.00
+90.48
+2.76
+6.00
+0.59
+26.56
+126.00
+30.90
+2.80
+7.00
+0.90
+
+MinA
+(MinLab)
+
+2.07
+9.00
+1.86
+1.03
+3.00
+0.16
+4.26
+9.00
+2.84
+1.33
+4.00
+0.54
+
+axioms
+(labels) per
+MinA
+(MinLab)
+5.40
+28.67
+3.80
+1.73
+3.00
+0.56
+3.05
+6.50
+1.01
+1.40
+3.00
+0.48
+
+lattice
+operations
+time
+
+total
+labeling
+time
+
+0.25
+45.00
+0.86
+0.35
+57.00
+0.98
+0.49
+41.00
+2.38
+0.76
+22.00
+1.56
+
+143.55
+101,616.00
+1,754.03
+4.29
+70.00
+3.62
+3,403.56
+13,431.00
+3,254.25
+207.32
+1,295.00
+87.29
+
+d
+e
+m
+o
+n
+?
+
+?
+
+?
+t
+c
+n
+u
+?
+
+?
+
+?
+OFunct is an OWL ontology for functional description of mechanical engineering solutions presented in [10]. It has 115 concept names, 47 object property
+names, 16 data property names, 545 individual names, 3,176 axioms, and the
+DL expressivity used in the ontology is SHOIN (D). Its 716 consequences are
+12 subsumption and 704 instance relationships (class assertions).
+
+To obtain labeled ontologies, axioms in both labeled ontologies received a random label assignment of elements from Ll = Ld. As black-box subsumption and
+instance reasoner we used the reasoner Pellet since it can deal with the expressivity of both ontologies. For the expressive DL SHOIN (D) it uses a tableau-based
+algorithm and for EL+ it uses an optimized classifier for the OWL 2 EL profile,
+which is based on the algorithm described in [1].
+
+4.2 Results
+The results for OSnomed and (Ld,d) are given in the upper part of Table 1.
+LP computed all labels, but since we limit FP to <10 MinAs, only 21,001 subsumptions have a final label, which is guaranteed to be equal to the boundary.
+The 6,476 remaining subsumptions (31%) have a non-final label which might
+be too low in the lattice since there might be further MinAs providing a higher
+label. The overall labeling time for all 21,001 subsumptions with FP was 50.25
+minutes, for LP 1.50 minutes which means that LP is about 34 times faster than
+FP, but again this is only for the subset of subsumptions which were finished by
+FP. An estimation for the time needed to label all of the more than 5 million
+subsumptions in O
+
+Snomed with LP would be approximately 6 hours.
+
+The final labels of FP and LP (i.e., the computed boundaries) were identical,
+the non-final labels of FP were identical to the final labels of LP (i.e., the bound-
+aries) in 6,376 of the 6,476 cases (98%), i.e., in most cases the missing MinAs
+would not have changed the already computed label. Table 2 provides results
+for the subsumptions with more than 10 MinAs: FP took 2.5 hours on this set
+without final results (since it stopped after 10 MinAs), whereas LP took 0.6%
+of that time and returned final results after 58 seconds. We started a test series
+
+F. Baader, M. Knechtel, and R. Penaloza
+
+Table 2. Emprical results of FP and LP with lattice (Ld,d) on a sampled set of 6,476
+subsumptions from OSnomed and on a set of 409 class assertions from OFunct with at
+least 10 MinAs (time in ms)
+
+early
+termination
+
+reuse
+
+avg
+max
+stddev
+avg
+max
+stddev
+avg
+max
+stddev
+avg
+max
+stddev
+
+432.11
+42,963.00
+1,125.06
+0.04
+3.00
+0.21
+30.01
+760.00
+85.33
+0.09
+3.00
+0.33
+
+42.25
+5,003.00
+121.15
+0.00
+2.00
+0.04
+16.00
+511.00
+47.79
+0.01
+2.00
+0.12
+
+calls to
+extract
+MinA
+(MinLab)
+126.54
+4,623.00
+186.33
+3.12
+6.00
+0.50
+26.44
+411.00
+40.61
+2.76
+7.00
+0.91
+
+MinA
+(MinLab)
+
+10.20
+16.00
+0.49
+1.06
+3.00
+0.25
+10.04
+11.00
+0.20
+1.38
+4.00
+0.64
+
+axioms
+(labels) per
+MinA
+(MinLab)
+16.38
+37.80
+5.00
+2.05
+3.00
+0.44
+4.41
+6.50
+1.08
+1.32
+2.00
+0.43
+
+lattice
+operations
+time
+
+0.30
+14.00
+0.54
+0.32
+46.00
+1.04
+0.56
+3.00
+0.55
+0.77
+16.00
+1.40
+
+total
+(non-final)
+labeling
+time
+1,378.66
+148,119.00
+3,493.02
+8.88
+86.00
+4.26
+8,214.91
+25,148.00
+3,428.97
+200.55
+596.00
+61.11
+
+d
+e
+m
+o
+n
+?
+
+?
+
+?
+t
+c
+n
+u
+?
+
+?
+
+?
+Table 3. Emprical results of LP and BS on a sampled set of 27,477 subsumptions in
+OSnomed/ all 716 consequences of OFunct with lattice (Ll,l) (time in ms)
+
+early
+termina-
+tion
+
+reuse
+
+calls to
+extract
+MinLab
+
+MinLab
+
+OSnomed
+
+OFunct
+
+avg
+max
+stddev
+avg
+max
+stddev
+
+0.03
+1.00
+0.18
+0.09
+1.00
+0.28
+
+0.00
+0.00
+0.00
+0.00
+0.00
+0.00
+
+2.24
+5.00
+0.45
+2.50
+5.00
+0.72
+
+1.03
+3.00
+0.19
+1.27
+3.00
+0.49
+
+labels
+per
+MinLab
+
+1.23
+2.00
+0.42
+1.24
+2.00
+0.40
+
+lattice
+opera-
+tions
+time
+0.37
+329.00
+4.85
+0.82
+62.00
+2.74
+
+total
+labeling
+time
+
+4.75
+330.00
+6.37
+186.98
+1147.00
+69.55
+
+iterations
+
+2.41
+3.00
+0.49
+2.55
+3.00
+0.50
+
+total
+labeling
+time
+
+2.81
+75.00
+2.94
+95.80
+877.00
+45.44
+
+limiting runs of FP to <30MinAs, which did not terminate after 90 hours, with
+1,572 labels successfully computed and 30 subsumptions skipped since they had
+30MinAs. Interestingly, in both consequence sets, LP can rarely take advantage
+of the optimizations early termination and MinA reuse, which might be due to
+the simple structure of the lattice.
+
+For OFunct the comparison between FP and LP is given in the lower part
+of Tables 1 and 2. Again, the computation of FP was restricted to <10 MinAs.
+This time, only 363 out of 409 (88%) non-final labels of FP were equal to the
+final labels of LP (i.e., the boundary). Although the ontology is quite small, LP
+again behaves much better than FP. The reason could be that in this ontology
+consequences frequently have a large set of MinAs. From Tables 1 and 2, one
+can see that LP requires at most three MinLabs for OSnomed, at most four for
+OFunct, and usually just one MinLab whereas FP usually requires more MinAs.
+Table 3 provides results for LP vs. BS with the total order (Ll,l) as labeling
+lattice. For OSnomed, LP takes 130.4 and BS takes 77.1 seconds to label all 27,477
+Funct, LP takes 133.9 and BS takes 68.6 seconds to label
+subsumptions. For O
+all 716 consequences. So BS is about twice as fast as LP. Interestingly, labeling
+all consequences of OFunct and OSnomed takes roughly the same time, perhaps
+due to a tradeoff between ontology size and expressivity.
+?
+
+?
+
+?
+5 Conclusion
+
+We have considered a scenario where ontology axioms are labeled and user labels determine views on the ontology, i.e., sub-ontologies that are obtained by
+comparing the user label with the axiom labels. Our approach can be used for
+large-scale ontologies since, on the one hand, it allows to precompute consequences without having to do do this separately for all possible views: once we
+have computed a boundary for the consequence, checking whether this consequence entailed by a sub-ontology is reduced to a simple label comparison. On
+the other hand, the fact that we employ a black-box approach for computing
+the boundary allows us to use existing highly-optimzed reasoners, rather than
+having to implement a new reasoner from scratch.
+
+Our general framework allows to use any restriction criterion that can be
+represented using a lattice, such as user roles, levels of trust, granularity, or
+degrees of uncertainty. In the presence of access restrictions, each user label defines a sub-ontology containing the axioms visible to this user. In the presence
+of trust restrictions, the user label specifies the trust level required for the ontology axiom. This supports scenarios with axioms from different sources, like
+company-internal with high trust level and public Web with low trust level. In
+the presence of uncertainty, e.g. in possibilistic reasoning, each axiom has an
+associated certainty degree in the interval [0, 1]. The user label then specifies
+the certainty degree required for the axioms and the consequences. Similarly,
+granularity restrictions (i.e., on how much details the ontology should provide
+for the user) can be expressed by a total order.
+
+Our experiments have shown that this framework can be applied to large
+ontologies. From the two black-box algorithms that can deal with arbitrary lat-
+tices, the Full Axiom Pinpointing approach is clearly outperformed by the LabelOptimized Axiom Pinpointing approach. For the special case where the labeling
+lattice is a total order, the latter is again outperformed by the Binary Search
+approach.

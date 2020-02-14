@@ -2,13 +2,9 @@ package org.insightcentre.nlp.saffron.authors.sim;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
+
+import java.util.*;
+
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
@@ -29,11 +25,11 @@ public class AuthorSimilarity {
         this.top_n = config.topN;
     }
 
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats) {
-        return authorSimilarity(ats, new DefaultSaffronListener());
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName) {
+        return authorSimilarity(ats, saffronDatasetName, new DefaultSaffronListener());
     }
        
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, SaffronListener log) {
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName, SaffronListener log) {
         List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
         //System.err.printf("%d author terms\n", ats.size());
@@ -65,7 +61,7 @@ public class AuthorSimilarity {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
-                        topN.add(new AuthorAuthor(t1, t2, s));
+                        topN.add(new AuthorAuthor(t1, t2, s, saffronDatasetName, new HashMap<String, String>(), saffronDatasetName ));
                     }
                 }
             }

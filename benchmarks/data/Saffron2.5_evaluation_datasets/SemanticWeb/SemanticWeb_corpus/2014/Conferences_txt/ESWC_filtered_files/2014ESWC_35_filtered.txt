@@ -1,0 +1,1042 @@
+The CLOCK Data-Aware Eviction Approach:
+
+Towards Processing Linked Data Streams
+
+with Limited Resources
+
+Shen Gao, Thomas Scharrenbach, and Abraham Bernstein
+
+University of Zurich, Department of Informatics, Zurich, Switzerland
+
+{shengao,scharrenbach,bernstein}@ifi.uzh.ch
+
+Abstract. Processing streams rather than static files of Linked Data has
+gained increasing importance in the web of data. When processing datastreams system builders are faced with the conundrum of guaranteeing
+a constant maximum response time with limited resources and, possibly,
+no prior information on the data arrival frequency. One approach to
+address this issue is to delete data from a cache during processing  a
+process we call eviction. The goal of this paper is to show that datadriven eviction outperforms todays dominant data-agnostic approaches
+such as first-in-first-out or random deletion.
+
+Specifically, we first introduce a method called Clock that evicts
+data from a join cache based on the likelihood estimate of contributing to a join in the future. Second, using the well-established SR-Bench
+benchmark as well as a data set from the IPTV domain, we show that
+Clock outperforms data-agnostic approaches indicating its usefulness
+for resource-limited linked data stream processing.
+
+Keywords: #eswc2014Gao.
+
+Introduction
+
+Streams of Data have become increasingly common in the Web of Data (WoD).
+Constant streams of weather data, stock ticker information, tweets, bids on an
+auction site, and TV viewers switching channels are all examples of such streams.
+When processing such streams, one typically attempts to answer queries or evaluate some functions as data comes along. To that end, SPARQL-like [1] languages
+such as SPARQLStream [2], C-SPARQL [3], CQELS [4], TEF-SPARQL [5], and
+EP-SPARQL [6] were proposed to allow joining elements of the stream with each
+other or some rich background data set.
+
+In contrast to static data processing systems, stream processing systems need
+to be reactive: they must process continuously arriving new data within a given
+set of Quality of Service (QoS) constraints. Given that latency (or the delay by
+which newly incoming data impacts results) is usually among these constraints,
+
+ The research leading to these results has received funding from the European Union
+
+Seventh Framework Program FP7/2007-2011 under grant agreement No.296126.
+
+V. Presutti et al. (Eds.): ESWC 2014, LNCS 8465, pp. 620, 2014.
+c Springer International Publishing Switzerland 2014
+?
+
+?
+
+?
+Littles law [7] commands that we change from all-time semantics to one-time-
+semantics: data arriving after the accepted latency will not influence an answer
+produced by the system. Consequently, stream processing systems have to implement measures to cope with situations where the incoming data-rate overwhelms
+the systems processing capabilities  a situation we call a stressed system. Stress,
+in turn, occurs either because the constant data rate is overwhelming, hence the
+environment is overloaded, or bursts in the data-rate inundates the system.
+
+Current systems typically try to avoid stress by limiting the scope of the query
+using a time-window  a language feature many systems support to define the
+context of a query. This solution is, however, limited to situations in which the
+window that is semantically relevant according to the application domain limits
+the arriving data to volumes that can be handled by the system. Hence, even in
+the light of query contexts it is easy to imagine a use case with a data rate that
+will overwhelm the system.
+
+In order to deal with stress, stream processing systems can sample the incoming data, an operation called load shedding [810]. In this paper, we propose to
+delete data from the caches of the operators, as this operation can exploit the
+state of the operators in addition to data statistics to reduce stress. We refer
+to this as eviction, as it expels data items from the cache of operators. Both
+load-shedding and eviction allow maintaining the QoS constraints of a stream
+processing system in the light of limited resources. They do so at the cost of
+possibly introducing errors: mistakenly evicting data-items from intermediate
+caches that would lead to results can lower recall and even precision (when using the non-open world assumption operators such as average).
+
+This paper proposes the computationally efficient data-aware eviction strategy
+Clock that evicts data from a join cache based on an estimate of contributing to a join in the future. Specifically, we show that our method outperforms
+data-agnostic strategies such as random or First-In-First-Out (FIFO ) using both
+SRBench, a standard benchmark for evaluating the performance of Linked Data
+stream processing systems [11], and a real-world IPTV data set. As such, the paper extends a preliminary study that showed that an omniscient eviction strategy
+(i.e., a strategy that could look into the future) could outperform data-agnostic
+scheduling strategies [12] and makes it practical due to removal of the reliance
+on future knowledge.
+
+Consequently, we address the following Research Questions (RQ):
+
+RQ 1: Real-world datasets, such as the ones in our study, can induce stress
+
+even when context limitations are present.
+
+RQ 2: Eviction can curb memory consumption at the cost of lower recall.
+RQ 3: Our Clock data-aware eviction strategy outperforms data-agnostic evic-
+
+tion strategies in terms of recall.
+
+RQ 4: Clock outperforms the Least Recently Used (LRU ) strategy, which are
+
+often used in cache management, in terms of recall.
+
+Outline: After a conceptualization of load shedding and eviction for processing
+streams of data (cf. Section 2), Section 3 presents our Clock method, followed
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+by a thorough evaluation of our research questions on two real-world data sets
+(cf. Section 4). After a discussion of limitations (cf. Section 5) and related work
+(cf. Section 6) we close with a summary of our findings (cf. Section 7).
+
+2 System Model: A Conceptualization of Load Shedding
+
+and Eviction
+
+A data stream processing system can be conceptualized as Processor P that
+continuously consumes one or more input data streams ISi and transforms them
+through a series of operators O into one or more internal flows IFj , some of
+which are emitted as output data streams OSj . Hence, P = (IS  OS  IF, O)
+can be seen as a directed graph, where the data flows along directional edges
+(IS  OS  IF ) that connect the operators oi  O, which are the nodes. All
+internal flows if  IF connect two operators, whilst the input streams ISi and
+output streams OSj are only connected to one operator.
+
+In the context of the WoD the input streams ISi typically consist of sequentially arriving data tuples of the format < s, p, o > [tstart, tend], where < s, p, o >
+is a triple representing a fact and tstart / tend denotes the start/end time of the
+triples validity. Alternatively, when tstart = tend (i.e., the triple describes an
+event at time t rather than a fact) the incoming tuples can be abbreviated as
+< s, p, o > t or, when only relative temporal order is implied by arrival time,
+t can be dropped. The output streams OSj contain a continuous sequence of
+tuples either in the same format as the ones in the input stream or denoting
+bindings to a query. Note that all our considerations do not take the format of
+the input and output into account. Hence, our findings generalize to all stream
+processing systems.
+
+System Stress. This conceptualization indicates that a system can be stressed
+either by overwhelming the load on the operators or by inundating the bandwidth
+and latency constraints on the edges. This paper will focus uniquely on the former
+problem: It will assume that the bandwidth/latency constraints of the edges are
+adequate for tasks at hand. Note that operators can be overwhelemed either by
+time complexity (e.g., an operator that computes the factorial of large numbers)
+or by space complexity (e.g., a join that has to maintain a cache).
+
+A context can curtail stress, as it allows the system ignoring nonsensical dataitems and concentrating on data relevant for answering a query. A context is defined for an operator and defines which data is valid for evaluating the operator.
+One oftentimes used context is a time-window. Consider we want to count the
+audience for a certain TV channel based on a stream of events indicating which
+viewer switches to what TV channel. We need to know the set of data items
+the count is based on, i.e., the context of the operation. Prudent choices are, for
+example, time-based windows such as the last second (referring to the current
+TV ratings) or the past hour (referring to past ratings). For a detailed overview
+over windows and operators, we refer to [13].
+
+Dealing with Stress. We know of two approaches for dealing with stress: load
+shedding and eviction.
+?
+
+?
+
+?
+In load shedding the stream processing system samples the input streams and
+only considers part of the data. Formally, it is a sample operation s : ISi  ISi,
+where ISi  ISi. Figure 1 illustrates this for a join between stream ISx and
+stream ISy. Here stream ISx sheds its data item x5 at t = 3 by deleting it from
+the considered input stream. Load shedding strategies range from deleting data
+at random (e.g., useful for dealing with high-frequency sensor reporting averages
+per time unit), via a scheduling strategy such as FIFO, to estimating statistics
+of which data to delete and which not [810].
+
+In eviction the stream processing system removes data from the internal memory of the operators to preserve computational resources. Formally, eviction
+is the extension of the operators oi  O with one or more eviction strategies
+es : memory  memory, where memory  memory. Figure 1 illustrates two
+eviction strategies: First, it garbage collects items that exit the context windows winnow of streams ISx and ISy. At time t = 2 for both streams these are
+all data items, which we observed at t = 1, i.e., x2 and y2. Second, due to the
+limited size of its join cache, it decides to remove data item y3 of stream ISy.
+Note that this second strategy removes a data item which we observed at t = 3,
+i.e., a data item which would be still valid with respect to the context of stream
+ISy.
+
+This paper focuses on the impact of eviction strategies on the potential error
+in the resulting data. Specifically, the next section will introduce two tradi-
+tional, data-agnostic evictions strategies (e.g., random eviction and FIFO ), one
+
+contextnow
+
+contextold
+
+stream ISx
+
+ 
+
+x6
+t=4
+
+x5
+t=3
+
+load shedding
+
+operator memory for x,y
+
+future
+
+eviction
+
+stream ISy
+
+ 
+
+y6
+t=4
+
+y5
+t=4
+
+x4
+t=3
+
+x4
+t=3
+
+x3
+t=2
+
+x3
+t=2
+
+  
+
+y4
+t=3
+
+y4
+t=3
+
+y3
+t=3
+
+y3
+t=3
+
+x2
+t=1
+
+x2
+t=1
+
+y2
+t=1
+
+y2
+t=1
+
+x1
+t=0
+
+ 
+
+garbage collection
+
+past
+
+y1
+t=0
+
+ 
+
+contextnow
+
+contextold
+
+Fig. 1. Depiction of stress handling approaches in a join of two input streams. Load
+shedding on input stream ISy, garbage collection on both join caches, and other (un-
+specified) eviction on join cache of stream ISx. Context is shown as windows (dashed:
+now, dotted: past) and cache memory sizes are two items for the upper and one item
+for the lower stream.
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+based on the nature of the data (e.g., garbage collection) as well as our own
+Clock strategy, which relies on the likelihood of future joins.
+
+3 Eviction Strategies
+
+Eviction removes items from the internal memory (or cache) of an operator to
+save space. Most WoD stream processing systems extend the SPARQL algebra
+in order to allow evaluation of SPARQL operators on streams. As a consequence,
+the operators caches typically hold candidate variable bindings. Hence, the role
+of the eviction strategy is to choose variable bindings to delete from the cache.
+Formally, an operators cache (or short cache) Cop with limit M and size N
+
+is a finite set of variable bindings 1, . . . , N , where N  M . We say there exists
+
+an overflow for C, if and only if N > M , i.e. in case the number of items in the
+cache exceeds the caches limit. An eviction strategy es removes data items from
+|  M , i.e. it
+a cache C such that C
+has no overflow. In the sequel we define different eviction strategies.
+
+= es(C, M ) is a cache of limit M and |C
+?
+
+?
+
+?
+Note that in this study we consider eviction for caches of two-way-joins, i.e.,
+joins with two join partners sharing one common join variable. We discuss possibilities for extensions to other operators in Section 5.
+
+3.1 Baseline Eviction Strategies
+
+In this section we succinctly introduce the four baseline or traditional eviction
+strategies: random, FIFO, LRU, and garbage collection.
+
+Random eviction deletes variable bindings from a cache according to a uniform
+distribution U (0, N ) over all cache entries. To deal with cache overflow, it requires to compute O(N  M ) random indices to delete from the cache.
+First-In-First-Out (FIFO) maintains a queue of items, where the head of the
+queue is deleted whenever an overflow occurs. It requires O(N  M ) calls to
+the queue. Together with random eviction FIFO has been adopted by todays
+conventional systems [10].
+
+Least-Recently-Used (LRU), a strategy widely adopted in cache management
+including the SASE+ stream management system [14], extends FIFO by moving
+items to the back of the deletion queue whenever they are accessed. As with
+FIFO, handling an overflow requires O(N  M ) operations on the LRU queue.
+Garbage Collection removes irrelevant data items from the operator cache. Relevancy may be determined via the context of a query. When processing TV viewership data, e.g., current viewers of a program are determined by joining the
+most recent program changes and user channel switches. Older channel switches
+by a user can, therefore, safely be garbage collected, as they are irrelevant to
+the query. Pure garbage collection is an incomplete eviction strategy, as it may
+not be able to remove enough items from the cache, when the context is not
+sufficiently restrictive.
+?
+
+?
+
+?
+Following the example of Section 2, random eviction would delete user sessions at random while FIFO would delete the oldest sessions  both while the
+session would be still valid. In a data agnostic way they blindly follow their eviction strategies independent of possible future results. Garbage collection would
+delete all invalid sessions. It relies on data context but ignores the performance
+of the item in contributing to the operation. As a metric of past performance
+LRU deletes valid sessions with no recent activity. It favors temporal recency
+but ignores the magnitude of a bindings past performance. In the next subsection we introduce our Clock approach that estimates the future likelihood
+of usefulness based on past performance. It extends LRU by considering both
+recency and magnitude of usefulness.
+
+3.2 The Clock Strategy
+
+Clock is a data-aware eviction strategy that considers both recency and magnitude of past usefulness of a binding to estimate the likelihood of future usefulness,
+which it employs as a criteria for eviction. Clock associates each binding with
+a score. Whenever an item is matched, it increases that score. When it looks for
+items to evict, it first depreciates the bindings scores, and then evicts those with
+lower scores. Thus, the score combines a measure of recency with a measure of
+magnitude.
+
+Specifically, Clock maintains a circular buffer cache of M slots containing
+the bindings  with their associated scores w and a pointer to a position p
+in the circle.1 When a new data item arrives, it gets assigned an initial score
+w = w0. If there are empty slots, it is added to one. Else the pointer depreciates
+the score of the item at position p using the depreciation function dep(). If the
+items new score is lower than some threshold  , then it gets evicted and the
+newly arrived binding takes its place. Otherwise, the pointer moves to the next
+position and repeats this procedure. Whenever a binding contributes to a join,
+its score gets increased by one (i.e., w := w + 1).
+
+Following the example of Section 2, Clock increases the count whenever we
+observe a session activity, i.e. a user switches channels. At each point in time we
+decrease the count whenever we observed no activity.
+Practically, we propose two different depreciation functions. The linear depreciation function deplin(w) = w  1 just decreases the value of a score by one. It
+is associated with the threshold  = 0. Alternatively, we can depreciate exponentially with a depreciation rate  resulting in depexp(w) = w   (0 <   1).
+In this case w will never reach 0. Hence, we picked  = 0.01 as a threshold. We
+call this extended version Clockexp.
+
+In its baseline description without any extensions, Clock may have to circle
+around the cache a number of times before finding a suitable candidate for
+eviction. With an extension containing the currently smallest score in the cache
+Clock needs at most O(M ) (limit of the cache) depreciation steps to find a
+
+1 Using a circular cache allows us to efficiently find eviction candidates by circular
+
+iterations over the buffer.
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+victim for eviction. Clock also requires a constant amount of additional memory
+(in particular M ) for storing the scores w of the bindings.
+Observations: First, as mentioned, Clock can be seen as an extension of LRU
+that considers both temporal recency and past join history. The weight between
+these two factors can by set by adjusting .
+
+Second, the initial score w0 reflects the degree to which we give a binding 
+an initial chance to find a join partner. It should be sufficiently high, such that
+it has a chance to survive initially. It should be sufficiently low to ensure the
+timely eviction of less useful bindings. In Clockexp it determines together with
+ how dynamic the eviction strategy is.
+
+Third, Clock could be easily extended to multi-way joins by using different-
+
+sized increments for partial vs. full join results.
+
+Fourth, the Clock eviction strategy is founded on the following assumptions:
+in burst streams, eviction only takes place eventually. As a result, cache entries
+for which we observed no join partners could remain in the cache for a long
+time until eviction takes place. In an overloaded environment, there is only little
+chance that such items stay in the cache for long periods.
+
+4 Evaluation
+
+This paper argues that real-world and, hence, resource-limited WoD stream processing systems will be subject to stress even when using a use-case motivated
+context to limit the data that needs to be taken into consideration. To deal
+with stress it proposes to employ eviction  an approach that removes data from
+the caches of the operators of the stream processor. Specifically, it suggests to
+employ a data-aware eviction strategy over (more traditional) data-agnostic eviction strategies and introduces the Clock approach that is based on a likelihood
+estimate of future usefulness of an item.
+
+To support this argumentation this section will provide empirical evidence for
+
+the research questions (RQ) we defined in Section 1:
+
+RQ 1: Real-world datasets, such as the ones in our study, can induce stress
+
+even when context limitations are present.
+
+RQ 2: Eviction can curb memory consumption at the cost of lower recall.
+RQ 3: Our Clock data-aware eviction strategy outperforms data-agnostic evic-
+
+tion strategies in terms of recall.
+
+RQ 4: Clock outperforms the Least Recently Used (LRU ) strategy, which are
+
+often used in cache management, in terms of recall.
+
+As a consequence, this section will first lay out the experimental setup (Sec-
+tion 4.1) and then proceed to discuss each of these research questions in turn.
+We first show that our data sets can be used to evaluate RQ2 and RQ3 (Sec-
+tion 4.2). We then evaluate these with two different experiments: first, we show
+the general performance of Clock versus other strategies (Section 4.3), then
+we show that we can optimize Clock with regards to learning its parameters
+(Section 4.4).
+?
+
+?
+
+?
+4.1 Evaluation Setup
+
+To evaluate our research questions we built a stream processing simulator that
+allows to precisely measure, curb, and manipulate the memory consumption
+of the involved operators via pluggable load shedding and eviction strategies.
+Whilst the system does correctly identify the bindings, we call the system a
+simulator rather than a full-fledged stream processing systems as it was built
+for experimentation rather than efficient processing and lacks elements such as
+a query parser/optimizer.
+
+Given our research questions, the Key Performance Indicator (KPI) of our
+evaluation is recall, which is defined as the ratio between the number of results
+with a given cache size to that with unlimited cache size. We disregarded the
+time complexity of the eviction strategy as we found that all the strategies were
+faster than 40 ms ( = 9.45ms, var = 15.03ms) per data item  a performance
+we deem sufficient for most applications.
+
+To ensure realistic data we employ two real-world data sets: SRBench and
+ViSTA-TV. SRBench [11] is a well-established benchmark for assessing the semantic streaming processing engines. It comprises the LinkedSensorData, GeoNames and DBpedia.2 Our test query focuses on the wind speed data set, because
+it is reported by most of the sensor stations. To simplify our experiments, we preprocessed the SRBench dataset and extracted all of the 603642 windspeed data
+entries, where each triple has the format: < sensorID, reports, windSpeed >
+time. Since the queries of SRBench were designed to benchmark the functionality of different engines, we designed a new query focused on establishing the
+performance of eviction strategies. The query (cf. Listing 1), defined using the
+TEF-SPARQL [5] semantics, aims to find sensors with similar wind speeds using
+a self-join on the windSpeed entry  an operation, where recall depends greatly
+on the size of join-cache employed.
+
+SELECT ? sensor1 , ? s e n s o r 2 FROM STREAM w i n d S p e e d
+WHERE {
+
+r e p o r t s
+r e p o r t s
+
+? s e n s o r 1
+? s e n s o r 2
+FILTER (? s e n s o r 1 != ? s e n s o r 2) .
+FILTER (? w i n d S p e e d >= 10^^ xsd : int ) .
+
+? w i n d S p e e d ? T1 .
+? w i n d S p e e d ? T2 .
+
+}
+C O N T E X T ((? T1 - ? T2 ) <= 200^^ xsd : m i l l i s e c o n d ) .
+
+Listing 1. A self-join query inspired by SRBench
+
+ViSTA-TV 3 is a FP7 financed EU project that investigates the real-time
+processing of TV viewership information. The data set we employed for evaluation contains anonymous IPTV viewership logs (Log) in the format < userID,
+watches, channelID > [tstartviewer , tendviewer ] and Electronic Program Guide
+
+http://wiki.knoesis.org/index.php/LinkedSensorData,
+http://geonames.org, http://dbpedia.org
+http://vista-tv.eu/
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+(EPG) data < channelID, plays, programID > [tstartEP G, tendEP G ]. Each data
+entry is annotated by a starting time stamp and an ending time stamp. A data
+entry is consider to be expired when the system time has passed its ending time.
+We used three-days Log and EPG data, which contains 1887256 viewership
+events and 31960 EPG entries. As defined in TEF-SPARQL [5], the query (cf.
+Listing 2) is a two-way join operation, which represents the use case to find
+all users that are currently watching a specific TV-program. To ensure that all
+caches were in steady state, first one third amount of data in each data set are
+used to warm up the system and the rest are reported here.
+
+All experiments were conducted on a MacBookPro with a 2.7 GHz Intel Core
+
+i7, 16GB of RAM, and 256 GB of SSD disk space running Mac OX 10.9.1.
+
+SLECT ? user , ? p r o g r a m FROM STREAM Log , EPG
+WHERE {
+
+? userID
+? c h a n n e l I D plays
+
+w a t c h e s ? c h a n n e l I D
+? p r o g r a m I D
+
+?Tstartviewer ?Tendviewer .
+?TstartEP G ?TendEP G .
+
+}
+C O N T E X T ((!?Tendviewer < ?TstartEP G ) && (!?TendEP G < ?Tstartviewer )).
+
+Listing 2. ViSTA-TV query
+
+4.2 RQ1: Real-World Systems Are Subject to Stress
+
+To elucidate if real-world systems are likely to be subject to stress, we graphed
+the cache sizes necessary to fully answer our queries for the two data sets. In other
+words, we assumed a system without any memory limitations and elaborated
+how much memory (i.e., number of triples inside cache) it needed to provide
+correct answers (i.e., 100% precision and recall) to our queries. Figure 2a/2b
+graphs 8 minutes/72 hours worth of data measured every 10 seconds/1 hour for
+SRBench/ViSTA-TV.
+
+We can observe significant fluctuations in the memory size needed irrespective
+of the context limitations provided by the queries (e.g., the limitation on a 200ms
+
+n
+o
+i
+t
+p
+m
+u
+s
+n
+o
+
+y
+r
+o
+m
+e
+
+)
+e
+h
+c
+a
+
+n
+i
+ 
+s
+e
+l
+p
+i
+r
+
+f
+o
+ 
+r
+e
+b
+m
+u
+
+(
+
+n
+o
+i
+t
+p
+m
+u
+s
+n
+o
+
+y
+r
+o
+m
+e
+
+)
+e
+h
+c
+a
+
+n
+i
+ 
+s
+e
+l
+p
+i
+r
+
+f
+o
+ 
+r
+e
+b
+m
+u
+
+(
+
+0min 1min 2min 3min 4min 5min 6min 7min 8min
+
+0h
+
+12h
+
+24h
+
+36h
+
+48h
+
+60h
+
+72h
+
+Elapsed Time
+
+(a) SRBench
+
+Elapsed Time
+
+(b) ViSTA-TV
+
+Fig. 2. Fluctuations in memory consumption per time unit
+?
+
+?
+
+?
+window in the SRBench case). In SRBench, this is because some sensors cluster
+their reporting. In ViSTA-TV, the start/end times of major shows may lead to
+fluctuations in load.
+
+Whilst these findings do not provide proof that systems will undergo stress
+conditions, they strongly indicate that real-world systems are subject to massive
+changes in load (hence stress). Consequently, we can argue that for any realworld system there would be a real-world data set that would overwhelm the
+available resources either by overloading or by burst. This, in turn, would argue
+for systems that are resilient against stress supporting the premise of this paper
+and answering RQ1.
+
+4.3 RQ2-4 Eviction Results: Memory Consumption and Recall
+
+The fact that eviction can curb memory consumption is almost self-evident.
+Obviously, randomly deleting data items whenever a cache-size limit is met will
+curb cache size. The more interesting question is what the cost of the memory
+limitations would be in terms of recall for a given eviction strategy.
+
+We measured the recall gained with different cache sizes for four eviction
+strategies: Random, FIFO, LRU, as well as Clock using the linear depreciation
+function deplin() with  = 0. Note that we did not include our prior approach
+[12], as it can only be used offline due to its reliance on the whole dataset;
+including items not yet encountered in the stream.
+
+The results are reported in Figures 3a and 3b. All strategies were combined
+with garbage collection to give them the advantage of logically evicting data
+items that would not be used anymore.4 We can make the following observations:
+First, all strategies perform similarly with large cache sizes: systems with
+sufficient memory are unlikely to be stressed. Hence, eviction does not impact
+recall significantly.
+
+Second, with decreasing cache size, the data-aware strategies strongly outperform Random and FIFO by up to 78% and 81% in ViSTA-TV and 12 and
+50 times in SRBench. These results show that a stressed system with limited
+memory resources dramatically benefit from data-aware eviction strategies.
+
+Refinement under Stress. To further highlight these results, Figures 4a and 4b
+plot the performance results under stressed conditions. Hence, recalls are computed only during the number of data items per second surpassed the respective
+average input rate of SRBench and ViSTA-TV. The results further reinforce the
+above findings: Clock outperforms the traditionally employed LRU by up to
+147% for SRbench and 162% for ViSTA-TV.
+
+These results provide evidence to answer RQ2, RQ3, and RQ4. We can clearly
+conclude that for the given data sets data-aware methods outperform dataagnostic methods in the light of resource constraint. Further, we established
+that our Clock strategy outperforms the traditional LRU approach. What remains open is how robust Clock is towards varying depreciation functions.
+4 Note that we cannot measure garbage collection alone, as it does not guarantee
+
+limited cache size usage.
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+ 
+
+l
+l
+a
+c
+e
+
+m
+e
+t
+s
+y
+
+l
+l
+a
+c
+e
+
+m
+e
+t
+s
+y
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+Random
+?
+
+?
+
+?
+100% 80% 60% 40% 20% 10% 5%
+
+Cache Size
+
+(a) SR-Bench
+
+ 
+
+l
+l
+a
+c
+e
+
+m
+e
+t
+s
+y
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+Random
+?
+
+?
+
+?
+100% 50%
+
+25%
+
+15%
+
+1%
+
+Cache Size
+
+(b) ViSTA-TV
+
+Fig. 3. System recall with varying cache size
+
+Random
+?
+
+?
+
+?
+100% 80% 60% 40% 20% 10% 5%
+
+Cache Size
+
+(a) SR-Bench
+
+ 
+
+l
+l
+a
+c
+e
+
+m
+e
+t
+s
+y
+
+ 0.8
+
+ 0.6
+
+ 0.4
+
+ 0.2
+
+Random
+?
+
+?
+
+?
+100% 50%
+
+25%
+
+15%
+
+1%
+
+Cache Size
+
+(b) ViSTA-TV
+
+Fig. 4. Results of a stressed system
+
+Specifically, how does Clock compare to Clockexp with different depreciation
+weights  that we discussed in Section 3.2  a topic we will investigate in the
+next subsection.
+
+4.4 Tuning Clock via Varying Depreciation Weights 
+
+Different data sets may exhibit varying degrees of decay in the applicability
+of their data items. We, hence, investigated if Clock could be better tuned
+to a data set using the depreciation functions dep. Specifically, we ran both
+Clock and Clockexp on our two data sets. For Clockexp we varied  between
+the following values:   {0.95, 0.57, 0.5.0.25}.
+
+Figure 5 shows heat-maps depicting the recall for both SRBench (on the left)
+and ViSTA-TV (on the right). The heat-maps clearly show that the depreciation
+rate  has a profound influence in recall. For example, in SRBench, the best
+performance is obtained when  = 0.95. In the ViSTA-TV data set,  = 0.5 seems
+to provide the best performance for smaller cache sizes. Hence, in the ViSTATV data set it appears to better emphasize more on recent items and depreciate
+results faster than in SRBench. Consequently, Clock can be tuned according
+?
+
+?
+
+?
+CLOCK_exp 0.25
+CLOCK_exp 0.5
+CLOCK_exp 0.75
+CLOCK_exp 0.95
+
+SRBench
+
+60% 40% 20% 10%
+5%
+0.972 0.919 0.786 0.571 0.266
+0.991 0.966 0.875 0.654 0.291
+0.998 0.989 0.936 0.770 0.413
+0.999 0.997 0.965 0.852 0.545
+0.999 0.998 0.979 0.896 0.650
+0.997 0.992 0.967 0.875 0.567
+
+ViSTA-TV
+50% 25% 15%
+1%
+0.964 0.635 0.529 0.446
+0.964 0.865 0.740 0.526
+0.932 0.818 0.762 0.683
+0.965 0.789 0.753 0.683
+0.961 0.761 0.694 0.622
+0.956 0.799 0.751 0.685
+
+Fig. 5. Parameter tuning for Clock and Clockexp (with   {0.95, 0.57, 0.5.0.25})
+on SRBench and ViSTA-TV
+
+to the idiosyncrasies of a data set by choosing an appropriate depreciation rate.
+We hope to investigate automated tuning in the future.
+
+5 Limitations
+
+First, our current evaluation is limited to one operator: the join. We believe that
+focusing on joins for a first study made sense, as it is both the most used operator
+and one of the most intricate. As mentioned in Section 3, our Clock method
+could be easily extended to multi-way joins. Projections can be supported without any cache. Aggregation functions have constant memory implementations or
+approximations requiring investigations similar to ours. Filters are interesting,
+as their implementation will greatly depend on the definition of context.
+
+Second, not neglecting the importance of throughput and latency, we deliberately focused on the very KPI that eviction will impact negatively, i.e. , recall.
+Other metrics will be evaluated when we implement Clock in real stream processing systems. Despite this limitation we believe that Clocks performance
+regarding throughput is comparable with other methods, given its low computational overhead (cf. Section 3).
+
+A disadvantage of Clock is that it has to invest additional memory for storing the scores w. With the same amount of memory, methods like FIFO and
+LRU may, hence, cache more bindings than Clock. However, this overhead could
+be minimized by implementing the score as a bitmap. Moreover, as Clock only
+needs to adjust the score for each binding, its implementation is orthogonal to
+other internal memory structures (e.g., a B-tree) and will not impose extra overhead on them. A next study will have to investigate the trade-off between using
+some memory for eviction-bookkeeping and using it only for storing bindings.
+
+Last but not least, we will need to consider additional datasets. Whilst the two
+data sets considered come from two vastly different real-world applications we believe that many more data characteristics. The compilation of more good data sets
+for WoD stream processing seems to be a challenge for the whole community.
+
+6 Related Work
+
+We discuss related work in the followings. We will first introduce different
+Semantic Flow Processing (SEP) systems and then discuss query processing
+
+S. Gao, T. Scharrenbach, and A. Bernstein
+
+in memory-constrained environments. Finally, we review related load shedding
+strategies for data stream processing.
+
+Semantic Flow Processing Systems. C-SPARQL [3] performs query matching on
+subsets of the information flow, which are defined by windows. The decidability
+of SPARQL query processing on such windows of RDF triples causes the number
+of variable bindings produced to be finite. However, the size of variable bindings
+may still become prohibitively large, e.g., when using non-shrinking semantics
+for aggregates [15]. For a cache of a given window size, our eviction strategies
+could be directly applied.
+
+EP-SPARQL [6] and TEF-SPARQL [5] are both complex event processing
+systems for semantic data flows. EP-SPARQL extends the ETALIS system with
+a flow-ready extension of SPARQL. TEF-SPARQL distinguishes between Events
+that happen at a specific time point and Facts that remain valid until some
+events alter them. Both systems incorporate a garbage collection facility that can
+prune outdated events. Since garbage collection is orthogonal to our strategies
+(cf Section 4.3), our findings are directly applicable to these systems.
+
+CQELS [4] implements the required query operators natively to avoid the
+overhead and limitations of closed system regimes. It optimizes the execution
+by dynamically re-ordering operators because the earlier we prune the triples
+that will not make it to the final output, the better, since operators will then
+process fewer triples. This pruning does, however, not make any guarantees
+about the number of variable bindings created by the processors. Our methods
+should be directly applicable to CQELS as it provides a native implementation
+of the operators which contain lists of active variable bindings.
+
+Query Processing in Memory-Constrained Environments. In memory-constrained
+environments various techniques have been proposed to reduce the memory footprint of query planners and the number of intermediate results.
+
+Targeting SPARQL queries Stocker et al.[16] investigated the selectivity estimates to optimize query execution. To efficiently generate alternative query
+plans, [17] proposed a branch-and-bound to enumerate join plans for left-deep
+processing trees. This method requires less memory as it prunes the search space
+during enumeration. Our eviction strategies are designed for caches and assume
+a given query execution plan.
+
+Regarding multiple aggregate queries over stream data Naindu et al. [18]
+proposed a new hash model for estimating the cost for intermediate aggregates.
+This method groups common attributes of related queries and reduces overall
+memory usage. Based on this new model, they also proposed a greedy heuristic
+to generate the execution plan. Our eviction strategies are designed for general
+semantic streaming systems that perform not only aggregate query, but also
+other kinds of queries.
+
+In a XML processing system the memory consumption for XML processing
+can greatly exceed the actual file size. Therefore, an entire XML document may
+not fit into main memory. In [19] the authors proposed a method that analyses
+XQuery to identify and extract only useful attributes form XML documents during compilation to reduce the file size. Our eviction strategies deal with semantic
+?
+
+?
+
+?
+data, where it is straightforward to identify useful attributes from input stream.
+Meanwhile our strategies are also applicable to projected variable bindings.
+
+Load Shedding. Load shedding has been applied to information flow process-
+ing. Approaches like [810] perform load shedding by dropping tuples from the
+stream, i.e., dropping data instead of variable bindings.
+
+In [10] the authors proposed to insert a drop operator into the query execution plan, which automatically decides where, when and how to perform load
+shedding. Regarding how to perform load shedding they proposed a random
+method as a baseline and a semantic method which decides whether to retain
+a data entry based on estimating its impact on QoS. In addition to their ap-
+proach, our strategies also take into account the time a data entry has resided in
+memory. Similar to [10], [9] also proposed a special operator that decides where
+and when to drop unprocessed data by using statistical methods. However, [9]
+only focuses on aggregate queries.
+
+SASE+ [14] employs an automata-based matching approach. Similar to our
+case of caching variable bindings, SASE+ stores automata states. The authors do
+apply some eviction strategy. However, their strategy is based on a deterministic
+approach that is similar to FIFO and LRU in our baseline approaches.
+
+Finally, Das et al. [8] propose a simple equi-join on two incoming streams and
+to evict tuples that are unlikely to find a join partner. However, this method
+works only with a sliding window and with a single equi-join of two streams.
+Our approaches could be applied on caches for any kind of join.
+
+7 Conclusion and Outlook
+
+In this paper, we presented our data-aware eviction strategy Clock, which
+addresses stress in WoD stream processing systems. We found that stress in terms
+of overloading and bursts occurred in our two real-world datasets. In addition,
+Clock and its variant Clockexp outperform the often-used LRU strategy by
+factors between 1.5 and almost 3 and FIFO strategy by even higher factors.
+
+The next step in our investigation will be to implement these strategies in a
+real stream processing system to study the trade-off between recall and other
+KPIs such as latency and throughput with different data sets. Whilst our work is
+only a first step in investigating resource-limited stream processing, we believe
+it pursues an important direction that sets the expectation for the real-world
+usage of such systems.
+
+Acknowledgments. We would like to thank Khoa Nguyen for all his earlier
+work on this topic and Daniel Spicar for his constructive advice.

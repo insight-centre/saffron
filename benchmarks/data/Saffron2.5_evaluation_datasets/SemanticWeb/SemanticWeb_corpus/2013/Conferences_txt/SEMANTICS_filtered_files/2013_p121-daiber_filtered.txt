@@ -1,0 +1,563 @@
+Improving Efficiency and Accuracy in
+
+Multilingual Entity Extraction
+
+Joachim Daiber
+
+Computational Linguistics
+Rijksuniversiteit Groningen
+Groningen, The Netherlands
+daiber.joachim@gmail.com
+
+Chris Hokamp
+
+Lang. and Inf. Technologies
+University of North Texas
+
+Denton, TX, USA
+
+chris.hokamp@gmail.com
+
+Max Jakob
+Neofonie GmbH
+
+Robert-Koch-Platz 4
+
+10115 Berlin, Germany
+
+max.jakob@neofonie.de
+
+Pablo N. Mendes
+
+Kno.e.sis Center, CSE Dept.
+
+Wright State University
+
+Dayton, OH, USA
+
+pablo@knoesis.org
+
+ABSTRACT
+There has recently been an increased interest in named entity recognition and disambiguation systems at major conferences such as WWW, SIGIR, ACL, KDD, etc. However,
+most work has focused on algorithms and evaluations, leaving little space for implementation details.
+In this paper,
+we discuss some implementation and data processing challenges we encountered while developing a new multilingual
+version of DBpedia Spotlight that is faster, more accurate
+and easier to configure. We compare our solution to the
+previous system, considering time performance, space requirements and accuracy in the context of the Dutch and
+English languages. Additionally, we report results for 9 additional languages among the largest Wikipedias. Finally,
+we present challenges and experiences to foment the discussion with other developers interested in recognition and
+disambiguation of entities in natural language text.
+
+Categories and Subject Descriptors
+I.2.7 [Artificial Intelligence]: Natural Language Processinglanguage models, text analysis; H.3.1 [Information
+Storage and Retrieval]: Content Analysislinguistic pro-
+cessing
+
+General Terms
+Algorithms, Performance
+
+Keywords
+Named Entity Recognition, Entity Linking, Information Ex-
+traction
+
+Permission to make digital or hard copies of all or part of this work for personal
+or classroom use is granted without fee provided that copies are not made or
+distributed for profit or commercial advantage and that copies bear this notice
+and the full citation on the first page. Copyrights for components of this work
+owned by others than the author(s) must be honored. Abstracting with credit is
+permitted. To copy otherwise, or republish, to post on servers or to redistribute
+to lists, requires prior specific permission and/or a fee. Request permissions
+from Permissions@acm.org.
+
+ISEM13, September 04 - 06 2013, Graz, Austria
+Copyright is held by the owner/author(s). Publication rights licensed to ACM.
+ACM 978-1-4503-1972-0/13/09...$15.00
+http://dx.doi.org/10.1145/2506182.2506192.
+
+1.
+
+INTRODUCTION
+
+DBpedia Spotlight [3] is an open source project developing a system for automatic annotation of DBpedia entities in
+natural language text. It provides programmatic interfaces
+for phrase spotting (recognition of phrases to be annotated)
+and disambiguation (entity linking) as well as various output
+formats (XML, JSON, RDF, etc.) in a REST-based web ser-
+vice. The standard disambiguation algorithm is based upon
+cosine similarities and a modification of TF-IDF weights (us-
+ing Apache Lucene1). The main phrase spotting algorithm is
+exact string matching, which uses LingPipes2 Aho-Corasick
+implementation.
+
+The project has focused initially on the English language.
+However, since DBpedia Spotlights models are learned from
+Wikipedia, it should be possible to adapt the system to any
+other language that has a Wikipedia edition. In addition, although fairly intensively used by researchers3 and others,4,5
+the current implementation can be improved in certain as-
+pects.
+
+In this paper, we describe how we enhanced the performance and accuracy of our entity recognition and disambiguation components and discuss challenges encountered
+while adapting DBpedia Spotlight to work with other lan-
+guages. For this experiment, we focused on the Dutch lan-
+guage. As a result, we present a new version of the system,
+which is faster, more accurate and improves the ease of in-
+ternationalization. Demonstrations of internationalized versions are provided in English and Dutch and models for 9
+additional languages are made available via the supporting
+material for this submission.
+
+IMPLEMENTATION
+
+2.
+2.1 Phrase Spotting
+
+Phrase spotting is the task of finding phrases in a text
+that later should be linked to DBpedia entities. The stan-
+1http://lucene.apache.org/
+2http://alias-i.com/lingpipe
+3As of the time of writing, Google Scholar reports 108 citations to the main DBpedia Spotlight article.
+4http://bit.ly/A6RE27
+5http://git.io/qB3n6g
+
+                                               121dard phrase spotting algorithm used by DBpedia Spotlight is
+very light on its NLP demands, only requiring one languagedependent step: tokenization. Recognition of spot candidates is then performed by substring matching using a kind
+of prefix tree and the Aho-Corasick algorithm.
+
+Our goal is to have the best possible phrase spotting quality and time performance with little memory overhead. Previous work [2] showed increased precision when using NLPinformed phrase spotting methods. Therefore, we developed
+a Spotter that proceeds in two steps.
+
+First step:. In the first step, candidates for possible annotations are generated. There are two implementations
+of this step. In the language-independent implementation,
+the candidates are generated by traversing a finite state automaton encoding all possible sequences of tokens that form
+known spot candidates.
+
+In the language-dependent implementation, candidates are
+generated using three methods: 1. identifying all sequences
+of capitalized tokens, 2. identifying all noun phrases, prepositional phrases and multi word units, 3. identifying all named
+entities. Methods 2 and 3 are performed using Apache
+OpenNLP6 models for phrase chunking and Named Entity
+Recognition.
+
+For English and German, all required OpenNLP models are readily available. For Dutch, we created a chunker model from the Lassy Small corpus, a corpus of Dutch
+language texts with automatic syntactic annotations which
+were manually corrected [5]. The resulting phrase chunker detects Noun Phrase chunks (NP), Prepositional Phrase
+chunks (PP) and Multi Word Units (MWUs). We use this
+model in addition to the publicly available Dutch Named
+Entity Recognition models.
+
+probability as: P (annotation|s) =
+
+Second step:. As our goal is to achieve the best possible precision, the second step selects the best candidates
+from the set of phrases generated in step 1. First, overlaps in the candidates are resolved based on a score and
+a preference-based choice for the method that generated
+them.7 Second, all candidates that fall below a specified
+score threshold are removed. We compute the score for each
+spot candidate as a linear combination of features, since this
+gives us flexibility in treating certain kinds of phrases dif-
+ferently. One of our features is the annotation probability
+P (annotation|s). Given a set of mentions of article links
+e with anchor text s (spot), we estimate the annotation
+e count(e, s)/ count(s).
+We identified several cases of phrases where this annotation probability is consistently lower than the general case.
+Acronyms are one example of this phenomenon (e.g. AIG,
+IBM). Hence, we add binary features that are triggered for
+these kinds of cases to produce the overall score. We determine the weights for the components of this score from
+held-out data via linear regression. This method provides
+the additional advantage of automatically estimating the optimal cut-off threshold from the data.
+2.2 Disambiguation
+
+Disambiguation in our build is performed using the generative probabilistic model from [1]. The score for an entity
+e given the phrase s and context c is calculated as a combination of P(e), P(s|e) and P(c|e). The combination can
+6http://opennlp.apache.org/
+7In the
+Capitalized Sequence.
+
+PERORGLOCMISCNPMWUPPFSA lookup
+
+order
+
+be either a linear regression mixture or, in accordance with
+the generative model, the product of the individual values.
+Given the Wikipedia data set M consisting of article links
+with their anchor texts and textual context, we estimate the
+required probability distributions from the raw counts using
+the maximum likelihood approach presented in [1]. PLM(t)
+is the smoothed unigram language model estimated over all
+tokens in the data set and weighed by the parameter  whose
+value we adopted from [1].
+
+P (e) =
+
+count(e)
+
+|M|
+
+count(e, s)
+count(e)
+
+P (s|e) =
+P (c|e) = Pe(t1)  Pe(t2)  Pe(t3)  ...  Pe(tn)
+Pe(t) = Pe ML(t) + (1  )PLM(t)
+
+Pe ML(t) =
+
+
+counte(t)
+t counte(t)
+
+(1)
+
+(2)
+
+(3)
+
+(4)
+
+(5)
+
+In this generative model, probabilities are negligibly small
+and are represented in logarithmic space to avoid under-
+flows. To produce a more useful score for each entity, we
+normalize the score via the softmax function and obtain a
+final disambiguation score between 0.0 and 1.0.
+
+For each phrase and its surrounding context tokens, we
+further generate a NIL entity, which represents the hypothesis that the context and phrase were not generated by any
+known entity. We use the formulas for P (NIL), P (s|NIL) and
+P (c|NIL) from [1] to calculate the score for the NIL entity.
+All entity candidates with a lower score than the NIL entity
+are removed.
+
+P (NIL) =
+P (s|NIL) =
+
+P (c|NIL) =
+
+|M|
+
+
+PLM(t)
+
+PLM(t)
+
+tS
+
+tC
+
+(6)
+
+(7)
+
+(8)
+
+As above, PLM is the smoothed general language model
+probability of a token that we estimate over all tokens imported to the system as context of an entity mention.
+2.3 Indexing
+
+The indexing process of our model consists of two phases:
+First, we collect the raw counts necessary for our models
+from Wikipedia. Some language-dependent pre-processing
+is performed, including stemming and the removal of stop-
+words. We use PigNLProc,8 a collection of Pig Latin scripts
+and utilities focused on Wikipedia and DBpedia that we
+adapted for this work. Apache Pig is part of the Hadoop
+ecosystem, providing a high-level abstraction of MapReduce
+using an SQL-like syntax. In the second step, the raw counts
+are serialized into efficient data structures that the system
+can de-serialize at runtime. This step can be performed on
+a commodity PC and takes a few minutes for Dutch and 1-2
+hours for the English version.
+
+For the annotation probability, we must find count(s), the
+total number of string occurrences of a phrase in the corpus.
+Since performing a string search for each possible phrase in
+the entire corpus is not feasible, we collect all n-grams (where
+
+8https://github.com/dbpedia-spotlight/pignlproc/
+
+                                               122n is a parameter set to 5 by default) in the corpus and in
+order to obtain the number of times s has occurred, we intersect this set with the set of known phrases. This simplification makes the process feasible but also introduces lim-
+itations: phrases with more than n tokens are not counted
+and phrases with more than one token can contain other
+phrases as substrings (e.g. Apple MacBook and Apple),
+which skews the counts of these substring phrases. In our
+system, we correct the latter issue by subtracting the counts
+of phrases from the total counts of their phrase substrings.
+2.4 Data Storage, Models and Configuration
+When selecting our preferred data storage implementa-
+tion, we considered the following criteria: compatibility with
+the Apache 2.0 license, optimization for read operations,
+type of data serialization, ease of integration and scalability.
+While some full-fledged DBMS, such as Apache Cassandra9
+met most of our criteria, we decided to use an in-memory
+model efficiently serialized using Kryo,10 since this allows
+maximum retrieval performance, high flexibility, smaller external dependencies and deliberate optimizations based on
+our knowledge of the data. Optionally, JDBM311 can be
+used for disk-based access on low memory systems. We
+share our performance evaluations of suitable data storages
+in the supporting material for this submission.12 To reduce
+the complexity of the configuration, we introduced a selfcontained model directory structure that is produced by the
+indexing module and can be run with no further configuration using the DBpedia Spotlight server.
+
+3. EVALUATION
+
+Our aim was to produce a system providing easier and
+faster indexing, faster and more accurate runtime performance and simple internationalization. The evaluation was
+carried out on our build as well as the current build of DBpedia Spotlight for Dutch and English. We evaluated indexing
+and runtime performance, phrase spotting and disambigua-
+tion. Additional to English and Dutch, where we had previous systems to compare against, we provide these values for
+9 additional languages.
+3.1 Performance: Runtime and Footprint
+
+Annotation time. To measure time performance (Ta-
+ble 1), we annotated a small corpus of around 500 randomly
+selected articles from the Reuters news corpus using both
+systems with their default settings.13
+
+Language Model
+
+Our build
+Current
+
+Avg
+
+1.20s
+9.52s
+
+Total
+
+601.39s
+4758.31s
+
+640.2s
+
+2803.22s
+
+Dutch
+
+English
+
+Our build
+Current public endpoint
+
+1.28s
+5.72s
+Table 1: Performance evaluations
+
+9http://cassandra.apache.org/
+10http://code.google.com/p/kryo/
+11https://github.com/jankotek/JDBM3
+12http://git.io/xvzPGw
+13Except for the current build of the English version marked
+as Public endpoint, all tests were performed on the same
+personal computer.
+
+Disk and Memory Footprint. In Table 2, we report
+the disk and memory footprint for our build and for two
+versions of the current build: in Current (1), the candidate
+index is kept in memory and the disambiguation index is on
+disk while in Current (2) both indexes are loaded to memory.
+
+Language Model
+
+Articles
+
+Disk Memory
+
+Dutch
+
+English
+
+Our build
+Current (1)
+Current (2)
+
+1.1m
+
+489MB
+2.1GB
+2.1GB
+
+Our build
+Current (1)
+Table 2: Space requirements
+
+4.1m
+
+5.2GB
+18.2GB
+
+1.9GB
+2.4GB
+14.6GB
+
+11.7GB
+5.9GB
+
+3.2 Phrase Spotting
+
+We evaluated the phrase spotting performance automatically on the first 10.000 paragraphs of a Dutch held-out data
+set from Wikipedia. Table 3 shows the results for the default
+spotting algorithm of the current DBpedia Spotlight build,
+as well as the language-independent FSA-based implementation and language-dependent OpenNLP-based implementation of our build.
+
+Language Model
+
+Precision Recall
+
+F1
+
+Dutch
+
+Lang. dep.
+Lang. indep.
+Current
+
+
+Table 3: Phrase spotting evaluation
+
+3.3 Disambiguation
+
+We automatically evaluated the disambiguation performance of both builds for Dutch on 28.475 randomly selected
+paragraphs from the full held-out data set with only ambiguous annotations. Results are shown in Table 4. MRR (mean
+reciprocal rank) indicates n-best performance and No URI
+is the percentage of annotations in which the correct URI
+was not among the first 20 candidates. Note that the current
+build for Dutch is trained on the full Wikipedia data. Our
+build is trained on only the training section of the Wikipedia
+corpus, excluding the held-out sections. The English results
+are measured on an independent test corpus [4].
+
+Language Model
+
+Accuracy MRR No URI
+
+Dutch
+Dutch
+
+English
+English
+
+Our build
+Current
+
+
+Our build
+Current
+
+
+Table 4: Disambiguation evaluation
+
+
+3.4 Internationalized Models
+
+We created models for a number of languages among the
+largest Wikipedias. Table 5 presents performance values as
+well as the size of the respective input corpus for each of
+these languages. As above, we show accuracy, mean reciprocal rank and the percentage of annotations for which the
+correct URI was not found for the disambiguation sub-task.
+Additionally, we include the accuracy Acc of a strong baseline for each language. The baseline is to always pick the
+
+                                               123Input
+
+Performance
+
+Phrase Spotting
+
+Language
+
+Articles
+
+Disk Memory Time/par.
+
+Type
+
+Pr.
+
+Re.
+
+German
+French
+Italian
+Russian
+Spanish
+Hungarian
+Danish
+
+1.5m
+1.3m
+1m
+991k
+980k
+238k
+176k
+
+1.5GB
+1.2GB
+944MB
+881MB
+950MB
+302MB
+158MB
+
+4.2GB
+2.4GB
+1.7GB
+2GB
+2.2GB
+0.9GB
+0.6GB
+
+113ms
+36ms
+42ms
+20ms
+49ms
+14ms
+27ms
+
+T, C
+
+I, FSA 44.81
+I, FSA 47.20
+I, FSA 40.31
+I, FSA 42.12
+I, FSA 41.85
+T, FSA 46.80
+
+
+F1
+
+
+Acc
+
+
+Disambiguation
+
+Acc MRR No URI
+
+
+Table 5: Overview of internationalized entity extraction models
+
+dexing and internationalization process as well as pointers
+to source code and data are available from the supporting
+material online.
+
+We believe that entity recognition and linking with multilingual support will increasingly play a key role in knowledge acquisition, integration and retrieval on the Web. The
+ability to fuse information created and shared in different
+languages will provide supporting knowledge, contrasting
+facts as well as new information that can be seamlessly used
+across different geographic regions with little or no language-
+barriers. In this work, we provide some steps towards evaluating options for implementing such solutions in languages
+with a rich set of NLP resources, as well as in resource-poor
+languages, in an efficient and accurate manner.
+
+5. ACKNOWLEDGMENTS
+
+Parts of this work were funded by Google Summer of Code
+2012 and by the FP7 grant Dicode (GA no. 257184). The
+authors would like to thank David de Boer and Gosse Bouma
+for help with the Dutch model. We also thank Faveeo and
+Globo.com for support and computing resources. Special
+thanks to MTA Sztaki (through Mih aly H eder) for providing
+the necessary computing resources for creating the internationalized models.
