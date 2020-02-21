@@ -31,28 +31,7 @@ public class MainKG {
     }
     
 	public static void main(String[] args) throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
-    	/*File configuration = new File("src/test/resources/test_config.json");
-    	final File docTermFile = new File("/Users/biancapereira/Git/saffron3/web/data/cl/doc-topics.json");
-        final File termFile = new File("/Users/biancapereira/Git/saffron3/web/data/cl/topics.json");
 
-    	ObjectMapper mapper = new ObjectMapper();
-        Configuration config = mapper.readValue(configuration, Configuration.class);
-
-        
-        List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
-        List<Term> terms = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
-
-        Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
-        
-
-        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
-
-        KGSearch search = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
-        final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
-
-        final File output = new File("src/test/resources/output.json");
-        mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
-    	*/
         try {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
@@ -106,11 +85,6 @@ public class MainKG {
 
             KGSearch search = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
             final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
-            //Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
-
-            //SupervisedTaxo supTaxo = new SupervisedTaxo(docTerms, termMap, model);
-            //TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
-            //final Taxonomy graph = search.extractTaxonomy(termMap);
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
 
