@@ -33,15 +33,7 @@ import javax.servlet.http.HttpServlet;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Concept;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.data.SaffronRun;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
@@ -90,17 +82,18 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     final MongoCollection termsCollection;
     final MongoCollection termsCorrespondenceCollection;
     final MongoCollection termsExtractionCollection;
-    
+
     final MongoCollection conceptsCollection;
     final String RUN_IDENTIFIER = "run";
     final String CONCEPT_IDENTIFIER = "concept_id";
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
-    
+
     final MongoCollection authorTermsCollection;
     final MongoCollection termsSimilarityCollection;
     final MongoCollection authorSimilarityCollection;
     final MongoCollection taxonomyCollection;
+    final MongoCollection knowledgeGraphCollection;
     final MongoCollection corpusCollection;
 
     private final Map<String, MongoDBHandler.SaffronDataImpl> data = new HashMap<>();
@@ -114,6 +107,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     private static class SaffronDataImpl {
 
         private Taxonomy taxonomy;
+        private KnowledgeGraph knowledgeGraph;
         private List<AuthorAuthor> authorSim;
         private List<TermTerm> termSim;
         private List<AuthorTerm> authorTerms;
@@ -142,6 +136,10 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         public void setTaxonomy(Taxonomy taxonomy) {
             this.taxonomy = taxonomy;
             this.taxoMap = getTaxoLocations(taxonomy);
+        }
+
+        public void setKnowledgeGraph(KnowledgeGraph knowledgeGraph) {
+            this.knowledgeGraph = knowledgeGraph;
         }
 
         public List<AuthorAuthor> getAuthorSim() {
@@ -424,9 +422,9 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         }
 
         public void setSearcher(DocumentSearcher searcher) {
-        	this.searcher = searcher;
+            this.searcher = searcher;
         }
-        
+
         public DocumentSearcher getSearcher() {
             return searcher;
         }
@@ -587,20 +585,21 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
         this.taxonomyCollection = database.getCollection(collectionName + "_taxonomy");
         this.corpusCollection = database.getCollection(collectionName + "_corpus");
+        this.knowledgeGraphCollection = database.getCollection(collectionName + "_knowledge_graph");
 
         this.initialiseInMemoryDatabase();
     }
-    
+
     public String getMongoUrl() {
-    	StringBuilder url = new StringBuilder();
-    	url.append("mongodb://").append(this.host).append(":").append(this.port).append("/").append(this.dbName);
-    	
-    	return url.toString();
+        StringBuilder url = new StringBuilder();
+        url.append("mongodb://").append(this.host).append(":").append(this.port).append("/").append(this.dbName);
+
+        return url.toString();
     }
 
     private void initialiseInMemoryDatabase() {
         try {
-    	    List<SaffronRun> runs = this.getAllRuns();
+            List<SaffronRun> runs = this.getAllRuns();
             for (SaffronRun doc : runs) {
                 this.fromMongo(doc.id);
             }
@@ -609,8 +608,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         } catch (IOException e) {
             throw new RuntimeException("An error has ocurring while loading database into memory", e);
         }
-	}
-    
+    }
+
     /**
      * Load Saffron data from disk into MongoDB
      *
@@ -619,67 +618,67 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
      * @throws IOException
      */
     public void importFromDirectory(File directory, String name) throws IOException {
-    	
-    	String runId = directory.getName();
-    	
-    	File configFile = new File(directory, "config.json");
-    	if (!configFile.exists()) {
+
+        String runId = directory.getName();
+
+        File configFile = new File(directory, "config.json");
+        if (!configFile.exists()) {
             throw new FileNotFoundException("Could not find config.json");
         }
-    	
+
         File taxonomyFile = new File(directory, "taxonomy.json");
         if (!taxonomyFile.exists()) {
             throw new FileNotFoundException("Could not find taxonomy.json");
         }
-        
+
         File authorSimFile = new File(directory, "author-sim.json");
         if (!authorSimFile.exists()) {
             throw new FileNotFoundException("Could not find author-sim.json");
         }
-        
+
         File termSimFile = new File(directory, "term-sim.json");
         if (!termSimFile.exists()) {
-        	//Enable compatibility with version 3.3
-        	termSimFile = new File(directory, "topic-sim.json");
-        	if (!termSimFile.exists()) {
-        		throw new FileNotFoundException("Could not find term-sim.json");
-        	}
+            //Enable compatibility with version 3.3
+            termSimFile = new File(directory, "topic-sim.json");
+            if (!termSimFile.exists()) {
+                throw new FileNotFoundException("Could not find term-sim.json");
+            }
         }
-        
+
         File authorTermFile = new File(directory, "author-terms.json");
         if (!authorTermFile.exists()) {
-        	//Enable compatibility with version 3.3
-        	authorTermFile = new File(directory, "author-topics.json");
-        	if (!authorTermFile.exists()) {
-        		throw new FileNotFoundException("Could not find author-terms.json");
-        	}
+            //Enable compatibility with version 3.3
+            authorTermFile = new File(directory, "author-topics.json");
+            if (!authorTermFile.exists()) {
+                throw new FileNotFoundException("Could not find author-terms.json");
+            }
         }
-        
+
         File docTermsFile = new File(directory, "doc-terms.json");
         if (!docTermsFile.exists()) {
-        	//Enable compatibility with version 3.3
-        	docTermsFile = new File(directory, "doc-topics.json");
-        	if (!docTermsFile.exists()) {
-        		throw new FileNotFoundException("Could not find doc-terms.json");
-        	}
+            //Enable compatibility with version 3.3
+            docTermsFile = new File(directory, "doc-topics.json");
+            if (!docTermsFile.exists()) {
+                throw new FileNotFoundException("Could not find doc-terms.json");
+            }
         }
-        
+
         File termsFile = new File(directory, "terms.json");
         if (!termsFile.exists()) {
-        	//Enable compatibility with version 3.3
-        	termsFile = new File(directory, "topics.json");
-        	if (!termsFile.exists()) {
-        		throw new FileNotFoundException("Could not find terms.json");
-        	}
+            //Enable compatibility with version 3.3
+            termsFile = new File(directory, "topics.json");
+            if (!termsFile.exists()) {
+                throw new FileNotFoundException("Could not find terms.json");
+            }
         }
-        
+
         File indexFile = new File(directory, "index");
         if (!indexFile.exists()) {
             throw new FileNotFoundException("Could not find index");
         }
-        
-    	BufferedReader r = Files.newBufferedReader(Paths.get(configFile.getAbsolutePath()));
-    	StringBuilder sb = new StringBuilder();
+
+        BufferedReader r = Files.newBufferedReader(Paths.get(configFile.getAbsolutePath()));
+        StringBuilder sb = new StringBuilder();
         Configuration newConfig = null;
         try {
             String line;
@@ -688,14 +687,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             }
             newConfig = new ObjectMapper().readValue(sb.toString(), Configuration.class);
         } catch (Exception e) {
-        	throw new RuntimeException("The configuration file is in the wrong format.", e);
-        }        
-    	this.addRun(runId, new Date(), newConfig);
-    	
-    	
+            throw new RuntimeException("The configuration file is in the wrong format.", e);
+        }
+        this.addRun(runId, new Date(), newConfig);
+
+
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
-        
+
         this.setTaxonomy(runId, mapper.readValue(taxonomyFile, VirtualRootTaxonomy.class));
         this.setAuthorSim(runId, mapper.readValue(authorSimFile,
                 tf.constructCollectionType(List.class, AuthorAuthor.class)));
@@ -711,7 +710,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.setIndex(runId, DocumentSearcherFactory.load(indexFile));
     }
 
-	/**
+    /**
      * Load the Saffron data from mongo
      *
      * @param runId The runId for the saffron instance
@@ -859,7 +858,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         try {
             currentStatus = (JSONArray) jsonObj.get("execution_status");
         } catch (Exception e) {
-           currentStatus = new JSONArray();
+            currentStatus = new JSONArray();
         }
 
         try {
@@ -1010,8 +1009,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public void deleteTerm(String runId, String term) {
 
-    	this.removeTermFromConcepts(runId, term);
-    	
+        this.removeTermFromConcepts(runId, term);
+
         BasicDBObject updateFields = new BasicDBObject();
         updateFields.append("run", runId);
         updateFields.append("term", term);
@@ -1023,271 +1022,271 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     /*
      * Concept Manipulation
      */
-    
+
     /**
      * Removes a relationship between a term and multiple concepts
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the run to be manipulated
      * @param term - the string of the term to be removed
      */
     //FIXME Due to the way how relations between terms and concepts is instantiated, the delete
     // operation is inefficient, requirement going through the whole database of concepts
     public void removeTermFromConcepts(String runId, String term) {
-    	for(Concept concept: getAllConcepts(runId)) {
-    		
-    		try {
-	    		if (concept.getPreferredTerm().equals(term)) {
-	    			// If term is a preferred term, then choose a random synonym to become
-	    			// a preferred term, or remove the concept if no synonym is available
-		    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
-		    			this.removeConcept(runId, concept.getId());
-		    		else {
-		    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
-						this.updateConcept(runId, concept);
-		    		}
-	    		} else if (concept.getSynonymsStrings().contains(term)) {
-	    			// If term is not a preferred term, just remove it from the list of synonyms
-	    			Set<Term> synonyms = concept.getSynonyms();
-	    			Term toBeRemoved = null;
-	    			for(Term toRemove: synonyms){
-	    				if (toRemove.getString().equals(term)) {
-	    					toBeRemoved = toRemove;
-	    					break;
-	    				}
-	    			}
-	    			synonyms.remove(toBeRemoved);
-	    			concept.setSynonyms(synonyms);
-					this.updateConcept(runId, concept);
-	    		}
-    		} catch (ConceptNotFoundException | TermNotFoundException e) {
-				//Include logging here
-				throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
-			}
-    	}    	
+        for(Concept concept: getAllConcepts(runId)) {
+
+            try {
+                if (concept.getPreferredTerm().equals(term)) {
+                    // If term is a preferred term, then choose a random synonym to become
+                    // a preferred term, or remove the concept if no synonym is available
+                    if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+                        this.removeConcept(runId, concept.getId());
+                    else {
+                        concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+                        this.updateConcept(runId, concept);
+                    }
+                } else if (concept.getSynonymsStrings().contains(term)) {
+                    // If term is not a preferred term, just remove it from the list of synonyms
+                    Set<Term> synonyms = concept.getSynonyms();
+                    Term toBeRemoved = null;
+                    for(Term toRemove: synonyms){
+                        if (toRemove.getString().equals(term)) {
+                            toBeRemoved = toRemove;
+                            break;
+                        }
+                    }
+                    synonyms.remove(toBeRemoved);
+                    concept.setSynonyms(synonyms);
+                    this.updateConcept(runId, concept);
+                }
+            } catch (ConceptNotFoundException | TermNotFoundException e) {
+                //Include logging here
+                throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
+            }
+        }
     }
-    
+
     /**
      * Retrieves all concepts from the Database for a given runId
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the run to be retrieved
      * @return - An {@link ArrayList} of {@link Concept} objects
      */
     public List<Concept> getAllConcepts(String runId){
-    	Bson filter = eq(RUN_IDENTIFIER, runId);    	
-    	List<Concept> concepts = this.findConcepts(filter);
-    	
-    	return concepts;
+        Bson filter = eq(RUN_IDENTIFIER, runId);
+        List<Concept> concepts = this.findConcepts(filter);
+
+        return concepts;
     }
-    
+
     /**
      * Retrieves a concept with a given id
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the Id of the run
      * @param conceptId - the identifier of the concept to be retrieved
      * @return A {@link Concept} with the provided id or {@code null}
      */
     public Concept getConcept(String runId, String conceptId){
-    	
-    	Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(CONCEPT_IDENTIFIER, conceptId));    	
-    	List<Concept> concepts = this.findConcepts(filter);
-    	
-    	if(concepts.size() > 0)
-    		return concepts.get(0);
-    	else
-    		return null;
+
+        Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(CONCEPT_IDENTIFIER, conceptId));
+        List<Concept> concepts = this.findConcepts(filter);
+
+        if(concepts.size() > 0)
+            return concepts.get(0);
+        else
+            return null;
     }
-    
+
     /**
      * Retrieves a list of concepts with a specified preferred term
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the Id of the run
      * @param preferredTermString - the preferred term string
      * @return A {@link List} of {@link Concept} objects
      */
     public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString){
-    	
-    	Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(CONCEPT_PREFERRED_TERM_STRING, preferredTermString));    	
-    	List<Concept> concepts = this.findConcepts(filter);
-    	return concepts;
+
+        Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(CONCEPT_PREFERRED_TERM_STRING, preferredTermString));
+        List<Concept> concepts = this.findConcepts(filter);
+        return concepts;
     }
-    
+
     /**
      * Search for concepts in the Mongo Database according to the provided filters
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param filter - the filter for the search
-     * @return the result of the search as a {link List} with {link Concept} objects 
+     * @return the result of the search as a {link List} with {link Concept} objects
      */
     private List<Concept> findConcepts(Bson filter) {
-    	Iterable<Document> dbConcepts = conceptsCollection.find(filter);
-    	
-    	List<Concept> concepts = new ArrayList<Concept>();
-    	ObjectMapper mapper = new ObjectMapper();
-    	
-    	for(Document dbDoc: dbConcepts) {
-    		try {
-				concepts.add(mapper.readValue(dbDoc.toJson(), Concept.class));
-			} catch (Exception e) {
-				throw new RuntimeException("Error retrieving concepts from Mongo Database", e);
-			} 
-    	}
-    	
-    	return concepts;
+        Iterable<Document> dbConcepts = conceptsCollection.find(filter);
+
+        List<Concept> concepts = new ArrayList<Concept>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        for(Document dbDoc: dbConcepts) {
+            try {
+                concepts.add(mapper.readValue(dbDoc.toJson(), Concept.class));
+            } catch (Exception e) {
+                throw new RuntimeException("Error retrieving concepts from Mongo Database", e);
+            }
+        }
+
+        return concepts;
     }
-    
+
     /**
      * Add a set of concepts in the database
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the identifier of the run
      * @param concepts - a {@link List} of {@link Concept} to be saved in the database.
      *     Each concept must contain a unique id, a valid preferred term and synonyms.
-     * 
+     *
      * @throws {@link RuntimeException} if the a {@link Concept} with same id
      *     already exists in the database
      * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
      *     for a given concept is not already in the database.
      */
     public void addConcepts(String runId, List<Concept> concepts) {
-    	if (concepts != null) {
-	    	for(Concept concept: concepts) {
-	    		try {
-					this.addConcept(runId, concept);
-				} catch (TermNotFoundException e) {
-					//TODO Include logging!!!!!!
-					// The term X could not be found in the database, Skipping concept Y
-					continue;
-				}
-	    	}
-    	}
+        if (concepts != null) {
+            for(Concept concept: concepts) {
+                try {
+                    this.addConcept(runId, concept);
+                } catch (TermNotFoundException e) {
+                    //TODO Include logging!!!!!!
+                    // The term X could not be found in the database, Skipping concept Y
+                    continue;
+                }
+            }
+        }
     }
 
     /**
      * Adds a new concept in the database.
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the identifier of the run
      * @param conceptToBeAdded - the concept to be saved in the database.
      *     It must contain a unique id, a valid preferred term and synonyms.
      * @throws TermNotFoundException when one of the terms was not found in the database
-     * 
+     *
      * @throws {@link RuntimeException} if the a {@link Concept} with same id
      *     already exists in the database
      * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
      *     is not already in the database.
      */
-    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException{ 
-    	/*
-    	 * 1 - Verify if the preferredTerm exists. If not, throw object not found
-    	 * 2 - Verify if each synonym exists. If not, throw object not found
-    	 * 3 - Save the object in the database
-    	 */
-    	if (this.getConcept(runId, conceptToBeAdded.getId()) != null)
-    		throw new RuntimeException("A concept with same id already exists in the database. id: " + conceptToBeAdded.getId());
-    	
-    	if (this.getTerm(runId, conceptToBeAdded.getPreferredTermString()) == null)
-    		throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
-    	
-    	for (Term synonym: conceptToBeAdded.getSynonyms()) {
-    		if (this.getTerm(runId, synonym.getString()) == null)
-        		throw new TermNotFoundException(synonym);
-    	}
-    	
-    	Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeAdded);
-    	conceptsCollection.insertOne(dbObject);
+    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException{
+        /*
+         * 1 - Verify if the preferredTerm exists. If not, throw object not found
+         * 2 - Verify if each synonym exists. If not, throw object not found
+         * 3 - Save the object in the database
+         */
+        if (this.getConcept(runId, conceptToBeAdded.getId()) != null)
+            throw new RuntimeException("A concept with same id already exists in the database. id: " + conceptToBeAdded.getId());
+
+        if (this.getTerm(runId, conceptToBeAdded.getPreferredTermString()) == null)
+            throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
+
+        for (Term synonym: conceptToBeAdded.getSynonyms()) {
+            if (this.getTerm(runId, synonym.getString()) == null)
+                throw new TermNotFoundException(synonym);
+        }
+
+        Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeAdded);
+        conceptsCollection.insertOne(dbObject);
     }
-    
+
     /**
      * Updates a concept already in the database.
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the identifier of the run
      * @param conceptToBeUpdated - the concept to be updated in the database.
      *     It must contain a unique id, a valid preferred term and synonyms.
      * @throws ConceptNotFoundException - if {@link Concept} with same id does not exist in the database
      * @throws TermNotFoundException - if {@link Term} given as preferred string
      *  does not exist in the database
-     * 
+     *
      * @throws {@link ConceptNotFoundException} if there is no {@link Concept} with same id
      *     in the database.
      * @throws {@link TermNotFoundException} if the preferred term or any of the synonyms
      *     is not already in the database.
      */
-    public void updateConcept(String runId, Concept conceptToBeUpdated) 
-    		throws ConceptNotFoundException, TermNotFoundException{
-    	/*
-    	 * 1 - Verify if an object with that id already exists. If not, throw an exception.
-    	 * 2 - Verify if the preferredTerm exists. If not, throw object not found
-    	 * 3 - Verify if each synonym exists. If not, throw object not found
-    	 * 4 - Save the object in the database
-    	 */
-    	
-    	if (this.getConcept(runId, conceptToBeUpdated.getId()) == null)
-    		throw new ConceptNotFoundException(conceptToBeUpdated);
-    	
-    	if (this.getTerm(runId, conceptToBeUpdated.getPreferredTermString()) == null)
-    		throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
-    	
-    	for (Term synonym: conceptToBeUpdated.getSynonyms()) {
-    		if (this.getTerm(runId, synonym.getString()) == null)
-        		throw new TermNotFoundException(synonym);
-    	}
-    	
-    	Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeUpdated);
-    	conceptsCollection.updateOne(eq(CONCEPT_IDENTIFIER,conceptToBeUpdated.getId()), dbObject);
+    public void updateConcept(String runId, Concept conceptToBeUpdated)
+            throws ConceptNotFoundException, TermNotFoundException{
+        /*
+         * 1 - Verify if an object with that id already exists. If not, throw an exception.
+         * 2 - Verify if the preferredTerm exists. If not, throw object not found
+         * 3 - Verify if each synonym exists. If not, throw object not found
+         * 4 - Save the object in the database
+         */
+
+        if (this.getConcept(runId, conceptToBeUpdated.getId()) == null)
+            throw new ConceptNotFoundException(conceptToBeUpdated);
+
+        if (this.getTerm(runId, conceptToBeUpdated.getPreferredTermString()) == null)
+            throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
+
+        for (Term synonym: conceptToBeUpdated.getSynonyms()) {
+            if (this.getTerm(runId, synonym.getString()) == null)
+                throw new TermNotFoundException(synonym);
+        }
+
+        Bson dbObject = this.createBsonDocumentForConcept(runId, conceptToBeUpdated);
+        conceptsCollection.updateOne(eq(CONCEPT_IDENTIFIER,conceptToBeUpdated.getId()), dbObject);
     }
-    
+
     /**
      * Create a {@link Bson} for a {@link Concept}.
-     * 
+     *
      * @param concept - the concept to be converted
      * @return the {@link Bson} object
      */
     private Document createBsonDocumentForConcept(String runId, Concept concept) {
-    	Document doc = new Document(CONCEPT_IDENTIFIER, concept.getId())
-    			.append(CONCEPT_PREFERRED_TERM_STRING, concept.getPreferredTermString())
-    			.append(RUN_IDENTIFIER, runId);
-    	
-    	if(concept.getSynonyms() != null && concept.getSynonyms().size() >0) {
-    		doc.append(CONCEPT_SYNONYM_LIST, Arrays.asList(concept.getSynonymsStrings()));
-    	}
-    	
-    	return doc;
+        Document doc = new Document(CONCEPT_IDENTIFIER, concept.getId())
+                .append(CONCEPT_PREFERRED_TERM_STRING, concept.getPreferredTermString())
+                .append(RUN_IDENTIFIER, runId);
+
+        if(concept.getSynonyms() != null && concept.getSynonyms().size() >0) {
+            doc.append(CONCEPT_SYNONYM_LIST, Arrays.asList(concept.getSynonymsStrings()));
+        }
+
+        return doc;
     }
-    
+
     /**
      * Remove a concept from the database.
-     * 
+     *
      * @author Bianca Pereira
-     * 
+     *
      * @param runId - the identifier of the run
      * @param conceptToBeUpdated - the concept to be removed from the database.
      * @throws ConceptNotFoundException when a {@link Concept} with this id does not exist
-     * 
+     *
      * @throws {@link ConceptNotFoundException} if there is no {@link Concept} with same id
      *     in the database.
      */
-    public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException{
-    	/*
-    	 * 1 - Verify if an object with that id already exists. If not, throw an exception.
-    	 * 2 - Remove the object
-    	 */
-    	if (this.getConcept(runId, conceptId) == null)
-    		throw new ConceptNotFoundException(new Concept.Builder(conceptId, "").build());
-    	
-    	conceptsCollection.deleteOne(eq(CONCEPT_IDENTIFIER,conceptId));
+    public void removeConcept(String runId, String conceptToBeUpdated) throws ConceptNotFoundException{
+        /*
+         * 1 - Verify if an object with that id already exists. If not, throw an exception.
+         * 2 - Remove the object
+         */
+        if (this.getConcept(runId, conceptToBeUpdated) == null)
+            throw new ConceptNotFoundException(new Concept.Builder(conceptToBeUpdated, "").build());
+
+        conceptsCollection.deleteOne(eq(CONCEPT_IDENTIFIER,conceptToBeUpdated));
     }
 
     public boolean addAuthorTerms(String id, Date date, Collection<AuthorTerm> terms) {
@@ -1407,6 +1406,32 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     }
 
+
+    @Override
+    public boolean addPartonomy(String id, Date date, Partonomy graph) {
+        return false;
+    }
+
+    public boolean addKnowledgeGraph(String id, Date date, KnowledgeGraph knowledgeGraph) {
+
+        ObjectMapper mapper = new ObjectMapper();
+
+
+        try{
+            Document doc = Document.parse( mapper.writeValueAsString(knowledgeGraph) );
+            doc.append("id", id);
+            doc.append("date", date);
+            this.knowledgeGraphCollection.insertOne(doc);
+            return true;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+
+        return false;
+    }
+
     public boolean updateTaxonomy(String id, Taxonomy graph) {
         Document doc = new Document();
         doc.append("id", id);
@@ -1431,7 +1456,45 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return graph;
     }
 
+    @Override
+    public Partonomy getPartonomy(String runId) {
+        Partonomy partonomy = null;
+        FindIterable<Document> docs = MongoUtils.getPartonomyFromMongo(runId, this);
+        for (Document doc : docs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            try {
+                JSONArray partonomyComponents = (JSONArray)jsonObj.get("partonomy");
+                ArrayList<Taxonomy> listData = new ArrayList<Taxonomy>();
 
+                if (partonomyComponents != null) {
+                    for (int i=0;i<partonomyComponents.length();i++){
+                        JSONObject taxo = (JSONObject)partonomyComponents.get(i);
+                        Taxonomy taxonomy = Taxonomy.fromJsonString(taxo.toString());
+                        listData.add(taxonomy);
+                    }
+                }
+                partonomy = new Partonomy(listData);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return partonomy;
+    }
+
+    @Override
+    public KnowledgeGraph getKnowledgeGraph(String runId)  {
+        KnowledgeGraph graph = new KnowledgeGraph();
+        FindIterable<Document> docs = MongoUtils.getKnowledgeGraphFromMongo(runId, this);
+        for (Document doc : docs) {
+            JSONObject jsonObj = new JSONObject(doc.toJson());
+            try {
+                graph = KnowledgeGraph.fromJsonString(jsonObj.toString());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return graph;
+    }
 
 
     @Override
@@ -1615,13 +1678,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         }
         return saffron.getDoc(docId);
     }
-   
+
     @Override
     public void setIndex(String runId, DocumentSearcher index) {
-    	MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
-        }        
+        }
         saffron.setSearcher(index);
     }
 
@@ -1672,7 +1735,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public void setAuthorTerms(String runId, Collection<AuthorTerm> authorTerms) {
-       this.addAuthorTerms(runId, new Date(), authorTerms);
+        this.addAuthorTerms(runId, new Date(), authorTerms);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1708,6 +1771,16 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         saffron.setTaxonomy(taxonomy);
+    }
+
+    @Override
+    public void setKnowledgeGraph(String runId, KnowledgeGraph knowledgeGraph) {
+        this.addKnowledgeGraph(runId, new Date(), knowledgeGraph);
+        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setKnowledgeGraph(knowledgeGraph);
     }
 
     @Override
@@ -1839,11 +1912,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public boolean containsKey(String id) throws IOException {
-            String run = this.getRun(id);
-            if (!run.matches("\\{}")) {
-                //this.fromMongo(id);
-                return true;
-            }
+        String run = this.getRun(id);
+        if (!run.matches("\\{}")) {
+            //this.fromMongo(id);
+            return true;
+        }
         return false;
     }
 

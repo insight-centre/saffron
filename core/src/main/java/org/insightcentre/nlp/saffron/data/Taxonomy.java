@@ -14,6 +14,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
@@ -843,6 +844,65 @@ public class Taxonomy {
         return objectMapper.readValue(json, Taxonomy.class);
     }
 
+    /**
+     * Retrieve all relation pairs with a given {@link Status}
+     * 
+     * @param status - the status of the pairs to be retrieved
+     * @return a {@link Set} with all taxonomic relations with that status
+     * 
+     * @author Bianca Pereira
+     */
+    public Set<TaxoLink> getRelationsByStatus(Status status) {
+    	
+    	Set<TaxoLink> relations = new HashSet<TaxoLink>();
+    	
+    	if(status.equals(Status.accepted) || status.equals(Status.none)) {
+    		this.collectRelationPairsByStatus(relations, status);
+    	} else if (status.equals(Status.rejected)) {
+    		this.collectRejectedRelationPairs(relations);
+    	}
+    	
+    	return relations;
+    }
+    
+    /**
+     * Collect all relationship pairs with a given {@link Status}, except those with rejected status
+     * 
+     * @param relationSet - the {@link Set} to be populated
+     * @param status - the {@Status} of the relations to be retrieved
+     * 
+     * @author Bianca Pereira
+     */
+    private void collectRelationPairsByStatus(Set<TaxoLink> relationSet, Status status) {
+    	if (relationSet == null)
+    		relationSet = new HashSet<TaxoLink>();
+    	
+    	for (Taxonomy child : this.getChildren()) {
+            if (child.getStatus().equals(status)) {
+            	relationSet.add(new TaxoLink(this.getRoot(), child.getRoot()));
+            }
+            child.collectRelationPairsByStatus(relationSet, status);
+        }
+    }
+    
+    /**
+     * Collect all relationship pairs that have been rejected
+     * 
+     * @param rejectedRelations - the {@link Set} to be populated
+     * 
+     * @author Bianca Pereira
+     */
+    private void collectRejectedRelationPairs(Set<TaxoLink> rejectedRelations) {
+    	
+    	throw new NotImplementedException("There is no record of rejected relations until version 3.4");
+    	/*
+    	if (rejectedRelations == null)
+    		rejectedRelations = new HashSet<TaxoLink>();
+    	
+    	for(Taxonomy child: this.getChildren()) {
+    		child.collectRejectedRelationPairs(rejectedRelations);
+    	}*/
+    }
 
 
     @Override

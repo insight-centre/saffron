@@ -2,11 +2,15 @@ package org.insightcentre.nlp.saffron.taxonomy.classifiers;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.modelimport.keras.KerasModelImport;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
+import org.insightcentre.nlp.saffron.data.TypedLink.Type;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
@@ -18,7 +22,7 @@ import com.robrua.nlp.bert.Bert;
  * @author Rajdeep Sarkar
  * @author Andy Donald
  */
-public class BERTBasedRelationClassifier {
+public class BERTBasedRelationClassifier implements MulticlassRelationClassifier<String>{
 	
 	private ComputationGraph net;
 	private Bert bert;
@@ -50,8 +54,7 @@ public class BERTBasedRelationClassifier {
 	 * @throws UnsupportedKerasConfigurationException
 	 * @throws InvalidKerasConfigurationException
 	 */
-    public double[] predict (String source, String target) 
-    		throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
+    public Map<Type, Double> predict (String source, String target) {
 
         float[] embedding_source = this.bert.embedSequence(source);
         float[] embedding_target = this.bert.embedSequence(target);
@@ -66,6 +69,15 @@ public class BERTBasedRelationClassifier {
 
         INDArray[] prediction = this.net.output(features);
 
-        return prediction[0].toDoubleVector();
+        double[] modelResults = prediction[0].toDoubleVector();
+        Map<Type, Double> result = new HashMap<Type,Double>();
+        
+        result.put(Type.hypernymy, modelResults[0]);
+        result.put(Type.synonymy, modelResults[1]);
+        result.put(Type.meronymy, modelResults[2]);
+        result.put(Type.other, modelResults[3]);
+        result.put(Type.hyponymy, modelResults[4]);
+        
+        return result;
     }
 }

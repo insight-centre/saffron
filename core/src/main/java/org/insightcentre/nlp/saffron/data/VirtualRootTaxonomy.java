@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.data;
 
+import java.util.Collection;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -25,6 +26,14 @@ public class VirtualRootTaxonomy extends Taxonomy{
 		super();
 		this.setRoot(VIRTUAL_ROOT);
 		this.addChild(taxonomy);
+	}
+	
+	public VirtualRootTaxonomy(Collection<Taxonomy> taxonomies) {
+		super();
+		this.setRoot(VIRTUAL_ROOT);
+		for (Taxonomy taxonomy: taxonomies) {
+			this.addChild(taxonomy);
+		}
 	}
 	
 	@JsonCreator

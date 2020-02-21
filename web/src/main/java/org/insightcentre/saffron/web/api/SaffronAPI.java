@@ -23,10 +23,7 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
-import org.insightcentre.nlp.saffron.data.SaffronRun;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;
@@ -876,7 +873,40 @@ public class SaffronAPI {
             x.printStackTrace();
             throw x;
         }
+    }
 
+    @GET
+    @JSONP
+    @Path("/partonomy/{param}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getPartonomy(@PathParam("param") String saffronDatasetName) {
+        Partonomy partonomy;
+        try {
+            partonomy = saffronService.getPartonomy(saffronDatasetName);
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonString = mapper.writeValueAsString(partonomy);
+            return Response.ok(jsonString).build();
+        } catch (Exception x) {
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+        }
+    }
+
+    @GET
+    @JSONP
+    @Path("/knowledgegraph/{param}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getKnowledgeGraph(@PathParam("param") String saffronDatasetName) {
+        KnowledgeGraph knowledgeGraph;
+        try {
+            knowledgeGraph = saffronService.getKnowledgeGraph(saffronDatasetName);
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonString = mapper.writeValueAsString(knowledgeGraph);
+            return Response.ok(jsonString).build();
+        } catch (Exception x) {
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+        }
     }
 
     private Executor getExecutor() {
