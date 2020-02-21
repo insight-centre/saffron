@@ -9,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.insightcentre.nlp.saffron.data.TypedLink.Type;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -27,6 +28,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class Partonomy {
 
     /** A list of Taxonomy objects */
+	//FIXME: The Partonomy components should not be Taxonomies. Instead, they should be
+	//hierarchies (similar to Taxonomies) but where the relations between terms are of type meronymy
     private List<Taxonomy> components;
 
 
@@ -85,7 +88,9 @@ public class Partonomy {
     	Set<TypedLink> relations = new HashSet<TypedLink>();  
     	
     	for(Taxonomy component: this.getComponents()) {
-    		relations.addAll(component.getRelationsByStatus(status));
+    		for(TaxoLink link: component.getRelationsByStatus(status)) {
+    			relations.add(new TypedLink(link.getSource(),link.getTarget(),Type.meronymy));
+    		}
     	}
     	
     	return relations;
