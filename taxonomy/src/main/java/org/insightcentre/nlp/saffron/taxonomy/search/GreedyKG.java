@@ -8,6 +8,7 @@ import java.util.Set;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Term;
@@ -21,8 +22,9 @@ public class GreedyKG implements KGSearch{
 
 	private final Score<TypedLink> emptyScore;
 	private final KnowledgeGraphExtractionConfiguration config;
+	private SaffronListener log;
 	
-	public GreedyKG(Score<TypedLink> score, KnowledgeGraphExtractionConfiguration config) {
+	public GreedyKG(Score<TypedLink> score, KnowledgeGraphExtractionConfiguration config, SaffronListener log) {
 		this.emptyScore = score;
 		this.config = config;
 	}
@@ -31,7 +33,7 @@ public class GreedyKG implements KGSearch{
 	public KnowledgeGraph extractKnowledgeGraphWithDenialAndAllowanceList(Map<String, Term> termMap, Set<TypedLink> allowanceList,
 			Set<TypedLink> denialList) {
 		
-		System.err.println(LocalDateTime.now().toString() + " - Starting Greedy KG");
+		log.log(LocalDateTime.now().toString() + " - Starting Greedy KG");
 		//1 - Verify edge cases
         if(termMap.size() == 0) {
             return KnowledgeGraph.getEmptyInstance();
@@ -40,20 +42,20 @@ public class GreedyKG implements KGSearch{
             return KnowledgeGraph.getSingleTermInstance(termMap.keySet().iterator().next());
         }
 
-        System.err.println(LocalDateTime.now().toString() + " - Generating candidate pairs");
+        log.log(LocalDateTime.now().toString() + " - GreedyKG - Generating candidate pairs");
         //2 - Build candidate list of possible links
         ArrayList<TypedLink> candidates = createCandidateLinks(termMap, allowanceList, denialList);
 
-        System.err.println(LocalDateTime.now().toString() + " - Generating Initial Solution");
+        log.log(LocalDateTime.now().toString() + " - GreedyKG  - Generating Initial Solution");
         //3 - Create solution based on links on allowance list
         Pair<KnowledgeGraphSolution, Score<TypedLink>> result = generateInitialSolution(termMap, allowanceList);
         
-        System.err.println(LocalDateTime.now().toString() + " - Starting Search");
+        log.log(LocalDateTime.now().toString() + " - GreedyKG  - Starting Search");
         //4 - Greedy Search for the final solution 
         SOLN_LOOP:
         while(!candidates.isEmpty()) {//TODO: Ideally this loop should stop as soon as a "complete" solution is found
         	
-        	System.err.println(LocalDateTime.now().toString() + " - Reranking candidates");
+        	log.log(LocalDateTime.now().toString() + " - GreedyKG - Reranking candidates");
         	//5 - Calculate how much each link contributes to improving the score of the current Knowledge Graph
             final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
             for (TypedLink candidate : candidates) {
@@ -83,7 +85,7 @@ public class GreedyKG implements KGSearch{
             //7 - Choose which candidate will enter in the current Knowledge Graph
             while (!candidates.isEmpty()) {
             	
-            	System.err.println(LocalDateTime.now().toString() + " - Building a solution");
+            	log.log(LocalDateTime.now().toString() + " - GreedyKG  - Building a solution");
             	//8 - Create a single solution with the highest ranked candidate
             	TypedLink candidate = candidates.remove(0);
                 KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
@@ -99,11 +101,11 @@ public class GreedyKG implements KGSearch{
             }
         }
         
-        System.err.println(LocalDateTime.now().toString() + " - Greedy KG finished");
+        log.log(LocalDateTime.now().toString() + " - Greedy KG finished");
         //If the solution is not complete, even after considering all candidates then no solution was found
         if(!result.getKey().isComplete()) {// Complete = all terms must to appear at least in the taxonomy (except synonyms)
         	for (TypedLink candidate : candidates) {
-                System.err.println(candidate);
+                log.log("No solution found with candidate: " + candidate.toString());
             }
             throw new RuntimeException("Failed to find solution");
         }        

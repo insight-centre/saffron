@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Status;
@@ -132,7 +133,7 @@ public class GreedyKGTest {
         addTerm(terms, "car wheel", 0.0);
         
         GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()),
-        		new KnowledgeGraphExtractionConfiguration());
+        		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
         KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
         System.out.println(result.getTaxonomy());
         System.out.println(result.getPartonomy().getComponents().get(0));
@@ -167,7 +168,7 @@ public class GreedyKGTest {
         blackList.add(new TypedLink("car wheel", "car",TypedLink.Type.meronymy));
         
         GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()),
-        		new KnowledgeGraphExtractionConfiguration());
+        		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
         KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
         
         assertEquals(2, result.getTaxonomy().children.size());
