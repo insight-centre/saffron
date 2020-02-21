@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.taxonomy.search.testing;
+package org.insightcentre.nlp.saffron.data;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -11,15 +11,12 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.TypedLink;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class KnowledgeGraph {
 
 	private Taxonomy taxonomy;
-	private List<Taxonomy> partonomy;
+	private Partonomy partonomy;
 	private Collection<Set<String>> synonymyClusters;
 	
 	public static KnowledgeGraph getEmptyInstance() {
@@ -40,10 +37,10 @@ public class KnowledgeGraph {
 	public void setTaxonomy(Taxonomy taxonomy) {
 		this.taxonomy = taxonomy;
 	}
-	public List<Taxonomy> getPartonomy() {
+	public Partonomy getPartonomy() {
 		return partonomy;
 	}
-	public void setPartonomy(List<Taxonomy> partonomy) {
+	public void setPartonomy(Partonomy partonomy) {
 		this.partonomy = partonomy;
 	}
 	public Collection<Set<String>> getSynonymyClusters() {
@@ -67,9 +64,7 @@ public class KnowledgeGraph {
 			result.addAll(this.getTaxonomy().getRelationsByStatus(status));
 		}
 		if (this.getPartonomy() != null) {
-			for(Taxonomy component: this.getPartonomy()) {
-				result.addAll(component.getRelationsByStatus(status));
-			}
+			result.addAll(this.getPartonomy().getRelationsByStatus(status));
 		}
 		return result;
 	}

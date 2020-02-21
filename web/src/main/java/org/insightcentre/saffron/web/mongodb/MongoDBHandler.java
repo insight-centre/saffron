@@ -40,7 +40,6 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronDataSource;

@@ -4,10 +4,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.TypedLink;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 /**
  * /**

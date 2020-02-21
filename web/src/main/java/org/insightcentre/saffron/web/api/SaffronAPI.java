@@ -24,7 +24,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.*;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;

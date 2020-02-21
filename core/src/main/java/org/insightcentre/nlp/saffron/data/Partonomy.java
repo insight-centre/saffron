@@ -1,5 +1,15 @@
 package org.insightcentre.nlp.saffron.data;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+
+import org.apache.commons.lang3.NotImplementedException;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,12 +17,6 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import org.apache.commons.lang3.NotImplementedException;
 
 /**
  * An object describing a Partonomy of part-whole relationships comprising of a collection of Taxonomy components
@@ -68,7 +72,24 @@ public class Partonomy {
     public boolean verifyPartonomy() {
         throw new NotImplementedException("Partonomy.verifyPartonomy not implemented");
     }
-
+    
+    /**
+     * Retrieve all relation pairs with a given {@link Status}
+     * 
+     * @param status - the status of the pairs to be retrieved
+     * @return a {@link Set} with all relations with that status
+     * 
+     * @author Bianca Pereira
+     */
+    public Set<TypedLink> getRelationsByStatus(Status status) {
+    	Set<TypedLink> relations = new HashSet<TypedLink>();  
+    	
+    	for(Taxonomy component: this.getComponents()) {
+    		relations.addAll(component.getRelationsByStatus(status));
+    	}
+    	
+    	return relations;
+    }
 
     /**
      * Build a Partonomy object from a string

@@ -10,13 +10,13 @@ import java.util.Map;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.SumKGScore;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.junit.Test;
 
@@ -135,10 +135,10 @@ public class GreedyKGTest {
         		new KnowledgeGraphExtractionConfiguration());
         KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
         System.out.println(result.getTaxonomy());
-        System.out.println(result.getPartonomy().get(0));
+        System.out.println(result.getPartonomy().getComponents().get(0));
         assertEquals("thing", result.getTaxonomy().root);
         assertEquals(2, result.getTaxonomy().children.size());
-        assertEquals(2, result.getPartonomy().size());
+        assertEquals(2, result.getPartonomy().getComponents().size());
         assertEquals(1,result.getSynonymyClusters().size());
         
     }
@@ -171,15 +171,15 @@ public class GreedyKGTest {
         KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
         
         assertEquals(2, result.getTaxonomy().children.size());
-        assertEquals(1, result.getPartonomy().size());
+        assertEquals(1, result.getPartonomy().getComponents().size());
         assertEquals(1,result.getSynonymyClusters().size());
         
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
         assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
                 
-        assert(result.getPartonomy().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.accepted));
-        assert(result.getPartonomy().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
+        assert(result.getPartonomy().getComponents().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.accepted));
+        assert(result.getPartonomy().getComponents().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
         
     }
 

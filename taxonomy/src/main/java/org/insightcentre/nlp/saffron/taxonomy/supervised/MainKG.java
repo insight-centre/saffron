@@ -11,11 +11,11 @@ import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfig
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
 import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 

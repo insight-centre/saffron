@@ -15,7 +15,6 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
 import org.insightcentre.saffron.web.exception.TermNotFoundException;
 import org.json.JSONObject;

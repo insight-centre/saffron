@@ -8,11 +8,11 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.ScoreFactory;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 
 public interface KGSearch {

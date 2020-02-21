@@ -11,9 +11,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TypedLink;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 public class KnowledgeGraphSolution extends Solution{
 
@@ -52,12 +53,14 @@ public class KnowledgeGraphSolution extends Solution{
     	return this.taxonomy.toTaxonomy();
     }
     
-    private List<Taxonomy> getPartonomy(){
-    	List<Taxonomy> partonomy = new ArrayList<Taxonomy>();
-    	for(Taxonomy part: this.partonomy.heads.values()) {
-    		partonomy.add(part);
-    	}
-    	return partonomy;
+    private Partonomy getPartonomy(){
+    	List<Taxonomy> components = null;
+    	if (this.partonomy.heads != null && !this.partonomy.heads.isEmpty())
+    		components = new ArrayList<Taxonomy>(this.partonomy.heads.values());
+    	else
+    		components = new ArrayList<Taxonomy>();
+		return new Partonomy(components); 
+    	
     }
     
     //TODO: Needs testing

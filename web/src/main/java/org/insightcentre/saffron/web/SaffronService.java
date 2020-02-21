@@ -9,7 +9,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
-import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 /**
  * Service to connect with other Saffron components and
