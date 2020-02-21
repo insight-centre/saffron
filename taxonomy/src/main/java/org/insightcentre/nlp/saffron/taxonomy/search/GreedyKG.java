@@ -27,6 +27,7 @@ public class GreedyKG implements KGSearch{
 	public GreedyKG(Score<TypedLink> score, KnowledgeGraphExtractionConfiguration config, SaffronListener log) {
 		this.emptyScore = score;
 		this.config = config;
+		this.log = log;
 	}
 
 	@Override
