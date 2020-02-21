@@ -9,6 +9,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 
 /**
  * Service to connect with other Saffron components and
@@ -397,6 +398,44 @@ public class SaffronService {
 			throw new RuntimeException("An error has ocurred when updating the taxonomy in the database.");
 		
 		this.updateParentRelationshipStatus(taxonomyId, termChild, Status.accepted.toString());
+	}
+
+	/**
+	 * Return a Partonomy for a given partonomy ID.
+	 *
+	 * @param partonomyId - the identifier of the partonomy
+	 */
+	public Partonomy getPartonomy(String partonomyId) {
+
+		if (partonomyId == null || partonomyId.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The partonomy id cannot be empty");
+			exception.addParameterValue("partonomyId", "");
+			throw exception;
+		}
+		try {
+			return dataSource.getPartonomy(partonomyId);
+		} catch (Exception e) {
+			throw new RuntimeException("The partonomy " + partonomyId + " could not be retrieved: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Return a KnowledgeGraph for a given knowledgeGraph ID.
+	 *
+	 * @param knowledgeGraphId - the identifier of the knowledge graph
+	 */
+	public KnowledgeGraph getKnowledgeGraph(String knowledgeGraphId) {
+
+		if (knowledgeGraphId == null || knowledgeGraphId.equals("")) {
+			InvalidValueException exception = new InvalidValueException("The knowledgeGraph id cannot be empty");
+			exception.addParameterValue("knowledgeGraphId", "");
+			throw exception;
+		}
+		try {
+			return dataSource.getKnowledgeGraph(knowledgeGraphId);
+		} catch (Exception e) {
+			throw new RuntimeException("The knowledgeGraph " + knowledgeGraphId + " could not be retrieved: " + e.getMessage());
+		}
 	}
 
     private Executor getExecutor() {

@@ -1,15 +1,21 @@
 package org.insightcentre.nlp.saffron.taxonomy.search.testing;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TypedLink;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class KnowledgeGraph {
 
 	private Taxonomy taxonomy;
@@ -66,6 +72,21 @@ public class KnowledgeGraph {
 			}
 		}
 		return result;
+	}
+
+	/**
+	 * Build a KnowledgeGraph object from a string
+	 * @param json file to read from
+	 * @return a Taxonomy object
+	 *
+	 * @throws JsonParseException
+	 * @throws JsonMappingException
+	 * @throws IOException
+	 */
+	@JsonIgnoreProperties(ignoreUnknown = true)
+	public static KnowledgeGraph fromJsonString(String json) throws JsonParseException, JsonMappingException, IOException{
+		ObjectMapper objectMapper = new ObjectMapper();
+		return objectMapper.readValue(json, KnowledgeGraph.class);
 	}
 	
 	@Override

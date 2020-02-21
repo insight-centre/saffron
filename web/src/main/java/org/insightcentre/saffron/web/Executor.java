@@ -29,6 +29,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
@@ -61,7 +63,11 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
+import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
+import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.insightcentre.nlp.saffron.topic.tfidf.TFIDF;
@@ -219,7 +225,7 @@ public class Executor extends AbstractHandler {
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         ConceptConsolidationConfiguration conceptConsolidationConfiguration
-        		= new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
+                = new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
@@ -480,7 +486,8 @@ public class Executor extends AbstractHandler {
         }
     }
 
-    void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
+    void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun)
+            throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
         AllowanceDenialList allowDenyList = extractAllowanceDenialList(saffronDatasetName);
         if (allowDenyList == null) {
             allowDenyList = AllowanceDenialList.getInstance(Taxonomy.class);
@@ -598,6 +605,19 @@ public class Executor extends AbstractHandler {
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
         data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
+
+        /*_status.stage++;
+
+        _status.setStageStart("Building knowledge graph", saffronDatasetName);
+        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
+        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+        data.setKnowledgeGraph(saffronDatasetName, kGraph);
+        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
+         */
         _status.completed = true;
     }
 
@@ -694,13 +714,13 @@ public class Executor extends AbstractHandler {
             data.remove(name);
             if(cause != null) {
                 cause.printStackTrace();
-	            if (out != null) {
-	                cause.printStackTrace(out);
-	            }
-	            logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
+                if (out != null) {
+                    cause.printStackTrace(out);
+                }
+                logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
             }
             else {
-            	logger.atSevere().log("Failed: " + message);
+                logger.atSevere().log("Failed: " + message);
             }
             if (out != null) {
                 out.flush();

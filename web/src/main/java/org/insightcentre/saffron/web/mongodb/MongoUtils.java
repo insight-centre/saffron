@@ -16,6 +16,14 @@ public class MongoUtils {
         return handler.taxonomyCollection.find(eq("id", runId));
     }
 
+    public static FindIterable<Document> getPartonomyFromMongo(String runId, MongoDBHandler handler) {
+        return handler.knowledgeGraphCollection.find(eq("id", runId));
+    }
+
+    public static FindIterable<Document> getKnowledgeGraphFromMongo(String runId, MongoDBHandler handler) {
+        return handler.knowledgeGraphCollection.find(eq("id", runId));
+    }
+
     public static FindIterable getDocs(MongoDBHandler handler) {
         return handler.runCollection.find();
     }
