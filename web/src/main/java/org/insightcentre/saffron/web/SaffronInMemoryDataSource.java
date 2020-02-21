@@ -27,6 +27,7 @@ import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+import org.insightcentre.nlp.saffron.taxonomy.search.testing.KnowledgeGraph;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
 import org.insightcentre.saffron.web.exception.TermNotFoundException;
 
@@ -52,6 +53,9 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     private static class SaffronDataImpl {
 
         private Taxonomy taxonomy;
+        private Partonomy partonomy;
+        private KnowledgeGraph knowledgeGraph;
+
         private List<AuthorAuthor> authorSim;
         private List<TermTerm> termSim;
         private List<AuthorTerm> authorTerms;
@@ -78,9 +82,21 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             return taxonomy;
         }
 
+        public Partonomy getPartonomy() {
+            return partonomy;
+        }
+
+        public KnowledgeGraph getKnowledgeGraph() {
+            return knowledgeGraph;
+        }
+
         public void setTaxonomy(Taxonomy taxonomy) {
             this.taxonomy = taxonomy;
             this.taxoMap = getTaxoLocations(taxonomy);
+        }
+
+        public void setKnowledgeGraph(KnowledgeGraph knowledgeGraph) {
+            this.knowledgeGraph = knowledgeGraph;
         }
 
         public List<AuthorAuthor> getAuthorSim() {
@@ -261,7 +277,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
                 }
             });
         }
-        
+
         public Concept getConcept(String id) {
             return concepts.get(id);
         }
@@ -269,11 +285,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         public List<Concept> getConcepts() {
             return concepts == null ? Collections.EMPTY_LIST : (List) concepts.values();
         }
-        
+
         public void addConcept(Concept concept) {
-        	if (this.concepts == null || this.concepts.size() == 0)
-        		this.concepts = new HashMap<>();
-        	this.concepts.put(concept.getId(), concept);
+            if (this.concepts == null || this.concepts.size() == 0)
+                this.concepts = new HashMap<>();
+            this.concepts.put(concept.getId(), concept);
         }
 
         public void setConcepts(Collection<Concept> concepts) {
@@ -489,9 +505,9 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             }
         }
 
-		public void setSearcher(DocumentSearcher searcher) {
-			this.searcher = searcher;			
-		}
+        public void setSearcher(DocumentSearcher searcher) {
+            this.searcher = searcher;
+        }
     }
 
 
@@ -607,6 +623,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
+    public boolean addPartonomy(String id, Date date, Partonomy graph) {
+        throw new NotImplementedException();
+    }
+
+    @Override
     public boolean addTermExtraction(String id, Date date, Set<Term> res) {
         SaffronDataImpl saffron = data.get(id);
         if (saffron == null) {
@@ -707,6 +728,24 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
+    public Partonomy getPartonomy(String runId) {
+        SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getPartonomy();
+    }
+
+    @Override
+    public KnowledgeGraph getKnowledgeGraph(String runId) {
+        SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        return saffron.getKnowledgeGraph();
+    }
+
+    @Override
     public List<DocumentTerm> getDocTerms(String runId) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
@@ -724,7 +763,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
         return saffron.getTaxoParents(termString);
     }
-    
+
     @Override
     public List<SaffronRun> getAllRuns() {
         throw new NotImplementedException();
@@ -909,19 +948,19 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         }
         saffron.setDocTerms(docTerms);
     }
-    
+
     @Override
     public void setIndex(String runId, DocumentSearcher index) {
-    	SaffronDataImpl saffron = data.get(runId);
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-    	saffron.setSearcher(index);
+        saffron.setSearcher(index);
     }
-    
+
     @Override
     public void setCorpus(String runId, Corpus corpus) {
-    	SaffronDataImpl saffron = data.get(runId);
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
@@ -971,6 +1010,15 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         saffron.setTaxonomy(taxonomy);
+    }
+
+    @Override
+    public void setKnowledgeGraph(String runId, KnowledgeGraph knowledgeGraph) {
+        SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
+        }
+        saffron.setKnowledgeGraph(knowledgeGraph);
     }
 
     @Override
@@ -1075,149 +1123,149 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
 
-	@Override
-	public List<Concept> getAllConcepts(String runId) {
-		SaffronDataImpl saffron = data.get(runId);
+    @Override
+    public List<Concept> getAllConcepts(String runId) {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         return saffron.getConcepts();
-	}
+    }
 
-	@Override
-	public Concept getConcept(String runId, String conceptId) {
-		SaffronDataImpl saffron = data.get(runId);
+    @Override
+    public Concept getConcept(String runId, String conceptId) {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         return saffron.getConcept(conceptId);
-	}
+    }
 
-	//FIXME Suboptimal
-	@Override
-	public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString) {
-		SaffronDataImpl saffron = data.get(runId);
+    //FIXME Suboptimal
+    @Override
+    public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString) {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         List<Concept> result = new ArrayList<Concept>();
         for(Concept concept: saffron.getConcepts()) {
-        	if (concept.getPreferredTermString().equals(preferredTermString))
-        		result.add(concept);
+            if (concept.getPreferredTermString().equals(preferredTermString))
+                result.add(concept);
         }
-        
-        return result;
-	}
 
-	@Override
-	public void addConcepts(String runId, List<Concept> concepts) {
-		if (concepts != null) {
-			for(Concept concept: concepts) {
-				try {
-					this.addConcept(runId, concept);
-				} catch (TermNotFoundException e) {
-					//TODO Include logging!!!!!!
-					// The term X could not be found in the database, Skipping concept Y
-					continue;
-				}
-			}
-		}
-	}
-	
-	@Override
-	public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException {
-		SaffronDataImpl saffron = data.get(runId);
+        return result;
+    }
+
+    @Override
+    public void addConcepts(String runId, List<Concept> concepts) {
+        if (concepts != null) {
+            for(Concept concept: concepts) {
+                try {
+                    this.addConcept(runId, concept);
+                } catch (TermNotFoundException e) {
+                    //TODO Include logging!!!!!!
+                    // The term X could not be found in the database, Skipping concept Y
+                    continue;
+                }
+            }
+        }
+    }
+
+    @Override
+    public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         if (conceptToBeAdded.getId() == null || conceptToBeAdded.getId().equals(""))
-        	throw new InvalidValueException("The concept id cannot be null or empty");
-        
-        if (saffron.getConcept(conceptToBeAdded.getId()) != null) 
-        	throw new RuntimeException("A concept with same id already exists in the database. id: " + conceptToBeAdded.getId());
-        if (saffron.getTerm(conceptToBeAdded.getPreferredTermString()) == null)
-        	throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
-        for (Term synonym: conceptToBeAdded.getSynonyms()) {
-    		if (saffron.getTerm(synonym.getString()) == null)
-        		throw new TermNotFoundException(synonym);
-    	}
-        
-        saffron.addConcept(conceptToBeAdded);
-	}
+            throw new InvalidValueException("The concept id cannot be null or empty");
 
-	@Override
-	public void updateConcept(String runId, Concept conceptToBeUpdated) 
-			throws ConceptNotFoundException, TermNotFoundException {
-		SaffronDataImpl saffron = data.get(runId);
+        if (saffron.getConcept(conceptToBeAdded.getId()) != null)
+            throw new RuntimeException("A concept with same id already exists in the database. id: " + conceptToBeAdded.getId());
+        if (saffron.getTerm(conceptToBeAdded.getPreferredTermString()) == null)
+            throw new TermNotFoundException(conceptToBeAdded.getPreferredTerm());
+        for (Term synonym: conceptToBeAdded.getSynonyms()) {
+            if (saffron.getTerm(synonym.getString()) == null)
+                throw new TermNotFoundException(synonym);
+        }
+
+        saffron.addConcept(conceptToBeAdded);
+    }
+
+    @Override
+    public void updateConcept(String runId, Concept conceptToBeUpdated)
+            throws ConceptNotFoundException, TermNotFoundException {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         if (conceptToBeUpdated.getId() == null || conceptToBeUpdated.getId().equals(""))
-        	throw new InvalidValueException("The concept id cannot be null or empty");
-        
+            throw new InvalidValueException("The concept id cannot be null or empty");
+
         Concept c = saffron.getConcept(conceptToBeUpdated.getId());
         if (c == null)
-    		throw new ConceptNotFoundException(conceptToBeUpdated);    	
-    	if (saffron.getTerm(conceptToBeUpdated.getPreferredTermString()) == null)
-    		throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
-    	for (Term synonym: conceptToBeUpdated.getSynonyms()) {
-    		if (saffron.getTerm(synonym.getString()) == null)
-        		throw new TermNotFoundException(synonym);
-    	}
-        
+            throw new ConceptNotFoundException(conceptToBeUpdated);
+        if (saffron.getTerm(conceptToBeUpdated.getPreferredTermString()) == null)
+            throw new TermNotFoundException(conceptToBeUpdated.getPreferredTerm());
+        for (Term synonym: conceptToBeUpdated.getSynonyms()) {
+            if (saffron.getTerm(synonym.getString()) == null)
+                throw new TermNotFoundException(synonym);
+        }
+
         this.removeConcept(runId, c.getId());
         this.addConcept(runId, conceptToBeUpdated);
-	}
+    }
 
-	@Override
-	public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException {
-		SaffronDataImpl saffron = data.get(runId);
+    @Override
+    public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
-        	throw new NoSuchElementException("Saffron run does not exist");
+            throw new NoSuchElementException("Saffron run does not exist");
         }
         if (saffron.getConcept(conceptId) == null)
-    		throw new ConceptNotFoundException(new Concept.Builder(conceptId, "").build());
-        
+            throw new ConceptNotFoundException(new Concept.Builder(conceptId, "").build());
+
         List<Concept> concepts = saffron.getConcepts().stream().filter((Concept c) -> !c.getId().equals(conceptId)).collect(Collectors.toList());
         saffron.setConcepts(concepts);
-	}
-	
-	//FIXME Suboptimal
-	public void removeTermFromConcepts(String runId, String term) {
-		SaffronDataImpl saffron = data.get(runId);
+    }
+
+    //FIXME Suboptimal
+    public void removeTermFromConcepts(String runId, String term) {
+        SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
-        	throw new NoSuchElementException("Saffron run does not exist");
+            throw new NoSuchElementException("Saffron run does not exist");
         }
-        
+
         for(Concept concept: getAllConcepts(runId)) {
-    		try {
-	    		if (concept.getPreferredTerm().equals(term)) {
-	    			// If term is a preferred term, then choose a random synonym to become
-	    			// a preferred term, or remove the concept if no synonym is available
-		    		if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
-		    			this.removeConcept(runId, concept.getId());
-		    		else {
-		    			concept.setPreferredTerm(concept.getSynonyms().iterator().next());
-		    			this.updateConcept(runId, concept);
-		    		}
-	    		} else if (concept.getSynonymsStrings().contains(term)) {
-	    			// If term is not a preferred term, just remove it from the list of synonyms
-	    			Set<Term> synonyms = concept.getSynonyms();
-	    			Term toBeRemoved = null;
-	    			for(Term toRemove: synonyms){
-	    				if (toRemove.getString().equals(term)) {
-	    					toBeRemoved = toRemove;
-	    					break;
-	    				}
-	    			}
-	    			synonyms.remove(toBeRemoved);
-	    			concept.setSynonyms(synonyms);
-	    			this.updateConcept(runId, concept);
-	    		}
-    		} catch (ConceptNotFoundException | TermNotFoundException e) {
-				//Include logging here
-				throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
-			}
-    	}   
-	}
+            try {
+                if (concept.getPreferredTerm().equals(term)) {
+                    // If term is a preferred term, then choose a random synonym to become
+                    // a preferred term, or remove the concept if no synonym is available
+                    if (concept.getSynonyms() == null || concept.getSynonyms().size() == 0)
+                        this.removeConcept(runId, concept.getId());
+                    else {
+                        concept.setPreferredTerm(concept.getSynonyms().iterator().next());
+                        this.updateConcept(runId, concept);
+                    }
+                } else if (concept.getSynonymsStrings().contains(term)) {
+                    // If term is not a preferred term, just remove it from the list of synonyms
+                    Set<Term> synonyms = concept.getSynonyms();
+                    Term toBeRemoved = null;
+                    for(Term toRemove: synonyms){
+                        if (toRemove.getString().equals(term)) {
+                            toBeRemoved = toRemove;
+                            break;
+                        }
+                    }
+                    synonyms.remove(toBeRemoved);
+                    concept.setSynonyms(synonyms);
+                    this.updateConcept(runId, concept);
+                }
+            } catch (ConceptNotFoundException | TermNotFoundException e) {
+                //Include logging here
+                throw new RuntimeException("An error has occurred while removing term-concept relationships",e);
+            }
+        }
+    }
 }
