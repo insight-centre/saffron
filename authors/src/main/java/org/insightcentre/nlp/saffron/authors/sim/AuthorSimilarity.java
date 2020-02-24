@@ -66,7 +66,7 @@ public class AuthorSimilarity {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
-                        topN.add(new AuthorAuthor(t1, t2, s));
+                        topN.add(new AuthorAuthor(t1, t2, s, null, null, null));
                     }
                 }
             }
