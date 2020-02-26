@@ -25,6 +25,8 @@ public class GreedyKGTest {
 	
 	private static class TestMultiRelationClassifier implements MulticlassRelationClassifier<String> {
 
+
+
         public TestMultiRelationClassifier() throws IOException {
         }
 
@@ -131,16 +133,16 @@ public class GreedyKGTest {
         addTerm(terms, "car", 0.0);
         addTerm(terms, "wheel", 0.0);
         addTerm(terms, "car wheel", 0.0);
-        
-//        GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()),
-//        		new KnowledgeGraphExtractionConfiguration());
-//        KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
-//        System.out.println(result.getTaxonomy());
-//        System.out.println(result.getPartonomy().getComponents().get(0));
-//        assertEquals("thing", result.getTaxonomy().root);
-//        assertEquals(2, result.getTaxonomy().children.size());
-//        assertEquals(2, result.getPartonomy().getComponents().size());
-//        assertEquals(1,result.getSynonymyClusters().size());
+
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), new KnowledgeGraphExtractionConfiguration());
+        GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
+        KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
+        System.out.println(result.getTaxonomy());
+        System.out.println(result.getPartonomy().getComponents().get(0));
+        assertEquals("thing", result.getTaxonomy().root);
+        assertEquals(2, result.getTaxonomy().children.size());
+        assertEquals(2, result.getPartonomy().getComponents().size());
+        assertEquals(1,result.getSynonymyClusters().size());
         
     }
     
@@ -166,21 +168,21 @@ public class GreedyKGTest {
         whiteList.add(new TypedLink("wheel", "automobile",TypedLink.Type.meronymy));
         blackList.add(new TaxoLink("automobile", "coach"));
         blackList.add(new TypedLink("car wheel", "car",TypedLink.Type.meronymy));
-        
-//        GreedyKG instance = new GreedyKG(new SumKGScore(new TestMultiRelationClassifier()),
-//        		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
-//        KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
-//
-//        assertEquals(2, result.getTaxonomy().children.size());
-//        assertEquals(1, result.getPartonomy().getComponents().size());
-//        assertEquals(1,result.getSynonymyClusters().size());
-//
-//        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
-//        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
-//        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
-//
-//        assert(result.getPartonomy().getComponents().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.accepted));
-//        assert(result.getPartonomy().getComponents().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), new KnowledgeGraphExtractionConfiguration());
+        GreedyKG instance = new GreedyKG(score,
+        		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
+        KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
+
+        assertEquals(2, result.getTaxonomy().children.size());
+        assertEquals(1, result.getPartonomy().getComponents().size());
+        assertEquals(1,result.getSynonymyClusters().size());
+
+        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.none));
+        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.root.equals("vehicles") && t.status == Status.accepted));
+        assert(result.getTaxonomy().children.stream().anyMatch((Taxonomy t) -> t.hasDescendent("vehicles")));
+
+        assert(result.getPartonomy().getComponents().get(0).children.stream().anyMatch((Taxonomy t) -> t.root.equals("wheel") && t.status == Status.accepted));
+        assert(result.getPartonomy().getComponents().get(0).children.stream().noneMatch((Taxonomy t) -> t.root.equals("car wheel") && t.hasDescendent("car")));
         
     }
 

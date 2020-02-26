@@ -2,7 +2,6 @@ package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
 import java.util.Set;
 
-import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
@@ -10,7 +9,6 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClass
 
 public abstract class ScoreFactory {
 
-    private SaffronListener log;
 	/**
      * Create an instance of knowledge graph score
      * @param config The configuration
