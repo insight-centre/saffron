@@ -64,9 +64,7 @@ public class BERTBasedRelationClassifier implements MulticlassRelationClassifier
 
 
 		float[] embedding_source = simpleCache.get(source, e -> this.bert.embedSequence(source));
-
-        //embedding_source = this.bert.embedSequence(source);
-        float[] embedding_target = simpleCache.get(target, e -> this.bert.embedSequence(target));
+		float[] embedding_target = simpleCache.get(target, e -> this.bert.embedSequence(target));
 
         INDArray features = Nd4j.zeros(1, 1, 2, 1024);
 
@@ -80,7 +78,7 @@ public class BERTBasedRelationClassifier implements MulticlassRelationClassifier
 
         double[] modelResults = prediction[0].toDoubleVector();
         Map<Type, Double> result = new HashMap<Type,Double>();
-        
+
         result.put(Type.hypernymy, modelResults[0]);
         result.put(Type.synonymy, modelResults[1]);
         result.put(Type.meronymy, modelResults[2]);
