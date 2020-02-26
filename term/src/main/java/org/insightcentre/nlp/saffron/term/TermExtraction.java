@@ -692,7 +692,7 @@ public class TermExtraction {
             final Result r = te.extractTerms(searcher);
             r.normalize();
 
-            mapper.writeValue((File) os.valueOf("t"), r.terms);
+            mapper.writerWithDefaultPrettyPrinter().writeValue((File) os.valueOf("t"), r.terms);
             mapper.writeValue((File) os.valueOf("o"), r.docTerms);
 
         } catch (Exception x) {
