@@ -16,6 +16,9 @@ import org.nd4j.linalg.factory.Nd4j;
 
 import com.robrua.nlp.bert.Bert;
 
+
+
+
 /**
  * BERT Based relation classifier. Provides an array of predictions
  *
@@ -25,7 +28,10 @@ import com.robrua.nlp.bert.Bert;
 public class BERTBasedRelationClassifier implements MulticlassRelationClassifier<String>{
 	
 	private ComputationGraph net;
+
 	private Bert bert;
+
+	private SimpleCache<String, float[]> simpleCache = new SimpleCache<>(10000);
 	
 	/**
 	 * Create a multi-relation classifier based on  BERT
@@ -54,10 +60,13 @@ public class BERTBasedRelationClassifier implements MulticlassRelationClassifier
 	 * @throws UnsupportedKerasConfigurationException
 	 * @throws InvalidKerasConfigurationException
 	 */
-    public Map<Type, Double> predict (String source, String target) {
+    public Map<Type, Double> predict(String source, String target) {
 
-        float[] embedding_source = this.bert.embedSequence(source);
-        float[] embedding_target = this.bert.embedSequence(target);
+
+		float[] embedding_source = simpleCache.get(source, e -> this.bert.embedSequence(source));
+
+        //embedding_source = this.bert.embedSequence(source);
+        float[] embedding_target = simpleCache.get(target, e -> this.bert.embedSequence(target));
 
         INDArray features = Nd4j.zeros(1, 1, 2, 1024);
 
