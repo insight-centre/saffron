@@ -27,4 +27,7 @@ public class SAFFRON {
     public static final Property author = m_model.createProperty( NS + "author" );
     public static final Property relatedAuthor = m_model.createProperty( NS + "relatedAuthor" );
     public static final Property authorTerm = m_model.createProperty( NS + "authorTerm" );
+    public static final Property partonomy = m_model.createProperty( NS + "partonomy" );
+    public static final Property taxonomy = m_model.createProperty( NS + "taxonomy" );
+    public static final Property synonmy = m_model.createProperty( NS + "synonmy" );
 }

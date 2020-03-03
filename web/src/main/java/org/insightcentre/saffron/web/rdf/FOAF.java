@@ -69,4 +69,5 @@ public class FOAF {
     public static Property weblog = m_model.createProperty(NS + "weblog");
     public static Property workInfoHomepage = m_model.createProperty(NS + "workInfoHomepage");
     public static Property workplaceHomepage = m_model.createProperty(NS + "workplaceHomepage");
+    public static Resource KnowledgeGraph = m_model.createResource(NS + "KnowledgeGraph");
 }

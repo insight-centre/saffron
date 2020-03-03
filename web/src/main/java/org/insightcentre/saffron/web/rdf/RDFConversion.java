@@ -1,22 +1,28 @@
 package org.insightcentre.saffron.web.rdf;
 
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.URLEncoder;
+import java.util.Set;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.saffron.web.SaffronDataSource;
+import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 
 /**
@@ -163,5 +169,89 @@ public class RDFConversion {
             termToRDF(term, data, datasetName, model, base);
         }
         return model;
+    }
+
+
+    public static Model knowledgeGraphToRDF(KnowledgeGraph kg, String datasetName) {
+        Model model = ModelFactory.createDefaultModel();
+        return knowledgeGraphToRDF(kg, datasetName, model);
+    }
+
+    public static Model knowledgeGraphToRDF(KnowledgeGraph kg, String datasetName, Model model) {
+        Resource res = model.createResource("http://localhost:8080/rdf/knowledgegraph/" + encode(datasetName))
+                .addProperty(RDF.type, FOAF.KnowledgeGraph).addProperty(SAFFRON.taxonomy, model.createResource()
+                    .addProperty(RDF.value, kg.getTaxonomy().toString()));
+
+        for (Taxonomy taxonomy : kg.getPartonomy().getComponents()) {
+            res.addProperty(SAFFRON.partonomy,  model.createResource()
+                    .addProperty(RDF.value, taxonomy.toString()));
+        }
+
+        for (Set<String> synonmy : kg.getSynonymyClusters()) {
+            res.addProperty(SAFFRON.synonmy,
+                    model.createResource()
+                            .addProperty(RDF.value, synonmy.toString()));
+        }
+
+        model.setNsPrefix("foaf", FOAF.NS);
+        model.setNsPrefix("saffron", SAFFRON.NS);
+        model.setNsPrefix("dct", DCTerms.NS);
+
+        return model;
+    }
+
+
+    public static void main(String[] args) {
+        try {
+            final ObjectMapper mapper = new ObjectMapper();
+            final MongoDBHandler saffron = new MongoDBHandler();
+            // Parse command line arguments
+            final OptionParser p = new OptionParser() {
+                {
+                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
+                    accepts("o", "The output file").withRequiredArg().ofType(File.class);
+                }
+            };
+            final OptionSet os;
+
+            try {
+                os = p.parse(args);
+            } catch (Exception x) {
+                badOptions(p, x.getMessage());
+                return;
+            }
+
+
+            File kgOutFile = (File) os.valueOf("o");
+            if (kgOutFile == null) {
+                badOptions(p, "Output file not given");
+            }
+
+            String datasetName = (String) os.valueOf("t");
+            if (datasetName == null ) {
+                badOptions(p, "The data set does not exist");
+            }
+
+
+
+            final Model kg = knowledgeGraphToRDF(saffron.getKnowledgeGraph(datasetName), datasetName);
+            try(OutputStream out = new FileOutputStream("filename.rdf")) {
+                kg.write( out, "RDF/XML" );
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            //mapper.writerWithDefaultPrettyPrinter().writeValue(kgOutFile, kg);
+        } catch (Exception x) {
+            x.printStackTrace();
+            return;
+        }
+    }
+
+    private static void badOptions(OptionParser p, String message) throws IOException {
+        System.err.println("Error: " + message);
+        p.printHelpOn(System.err);
+        System.exit(-1);
     }
 }
