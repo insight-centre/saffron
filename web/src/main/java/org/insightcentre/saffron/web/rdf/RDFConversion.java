@@ -209,7 +209,7 @@ public class RDFConversion {
             final OptionParser p = new OptionParser() {
                 {
                     accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
-                    accepts("o", "The output file").withRequiredArg().ofType(File.class);
+                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -222,7 +222,7 @@ public class RDFConversion {
             }
 
 
-            File kgOutFile = (File) os.valueOf("o");
+            String kgOutFile = (String) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
             }
@@ -235,7 +235,7 @@ public class RDFConversion {
 
 
             final Model kg = knowledgeGraphToRDF(saffron.getKnowledgeGraph(datasetName), datasetName);
-            try(OutputStream out = new FileOutputStream("filename.rdf")) {
+            try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
