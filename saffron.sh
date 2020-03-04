@@ -44,48 +44,56 @@ else
 fi
 
 echo "########################################"
-echo "## Step 2: Topic Extraction           ##"
+echo "## Step 2: Term Extraction           ##"
 echo "########################################"
-$DIR/extract-topics -c $CONFIG \
-    -x $CORPUS -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/doc-topics.json
+$DIR/extract-terms -c $CONFIG \
+    -x $CORPUS -t $OUTPUT/terms-extracted.json \
+    -o $OUTPUT/doc-terms.json
 
 echo "########################################"
-echo "## Step 3: Author Consolidation       ##"
+echo "## Step 3: Concept Consolidation       ##"
+echo "########################################"
+$DIR/consolidate-concepts -c $CONFIG \
+	-t $OUTPUT/terms-extracted.json \
+	-o $OUTPUT/concepts.json 
+
+echo "########################################"
+echo "## Step 4: Author Consolidation       ##"
 echo "########################################"
 $DIR/consolidate-authors -t $CORPUS 
 
 echo "########################################"
-echo "## Step 4: DBpedia Lookup             ##"
+echo "## Step 5: DBpedia Lookup             ##"
 echo "########################################"
 if [ -z $DBP_CONFIG ]
 then
     echo "Skipping"
-    cp $OUTPUT/topics-extracted.json $OUTPUT/topics.json
+    mv $OUTPUT/terms-extracted.json $OUTPUT/terms.json
 else
-$DIR/dbpedia-lookup -c $DBP_CONFIG -t $OUTPUT/topics-extracted.json \
-    -o $OUTPUT/topics.json
+$DIR/dbpedia-lookup -c $DBP_CONFIG -t $OUTPUT/terms-extracted.json \
+    -o $OUTPUT/terms.json
 fi
 
 echo "########################################"
-echo "## Step 5: Connect Authors            ##"
+echo "## Step 6: Connect Authors            ##"
 echo "########################################"
-$DIR/connect-authors -t $CORPUS -p $OUTPUT/topics.json -d $OUTPUT/doc-topics.json -o $OUTPUT/author-topics.json
+$DIR/connect-authors -t $CORPUS -p $OUTPUT/terms.json -d $OUTPUT/doc-terms.json -o $OUTPUT/author-terms.json
 
 echo "########################################"
-echo "## Step 6: Topic Similarity           ##"
+echo "## Step 7: Term Similarity           ##"
 echo "########################################"
-$DIR/topic-sim -d $OUTPUT/doc-topics.json -o $OUTPUT/topic-sim.json
+$DIR/term-sim -d $OUTPUT/doc-terms.json -o $OUTPUT/term-sim.json
 
 echo "########################################"
-echo "## Step 7: Author Similarity          ##"
+echo "## Step 8: Author Similarity          ##"
 echo "########################################"
-$DIR/author-sim -d $OUTPUT/author-topics.json -o $OUTPUT/author-sim.json
+$DIR/author-sim -d $OUTPUT/author-terms.json -o $OUTPUT/author-sim.json
 
 echo "########################################"
-echo "## Step 8: Taxonomy Extraction       ##"
+echo "## Step 9: Taxonomy Extraction       ##"
 echo "########################################"
-$DIR/taxonomy-extract -d $OUTPUT/doc-topics.json -t $OUTPUT/topics.json -o $OUTPUT/taxonomy.json -c $CONFIG
+#$DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
+$DIR/kg-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/kg.json -c $CONFIG
 
 #echo "Creating taxonomy at" $OUTPUT/taxonomy.html
-#python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-topics.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy
+#python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-terms.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

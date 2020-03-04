@@ -1,7 +1,6 @@
 package org.insightcentre.nlp.saffron.term;
 
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
-import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

@@ -8,20 +8,20 @@ distinct analysis of text. These modules are as follows
 
 1. *Corpus Indexing*: Analyses raw text documents in various formats and indexes
 them for later components
-2. *Topic Extraction*: Extracts keyphrase that are the topics of each single
+2. *Term Extraction*: Extracts keyphrases that are the terms of each single
 document in a collection
 3. *Author Consolidation*: Detects and removes name variations from the list 
 of authors of each document
-4. *DBpedia Lookup*: Links topics extracted from a document to URLs on the 
+4. *DBpedia Lookup*: Links terms extracted from a document to URLs on the 
 Semantic Web
-5. *Document-Topic Analysis*: Analyses the topics of a document and finds the relative
-importance of these topics
-6. *Author-Topic Analysis*: Associates authors with particular documents and 
+5. *Document-term Analysis*: Analyses the terms of a document and finds the relative
+importance of these terms
+6. *Author-Term Analysis*: Associates authors with particular documents and 
 identifies the importance of the document to each author
-7. *Topic Similarity*: Measures the relevance of each topic to each other topic
+7. *Term Similarity*: Measures the relevance of each term to each other term
 8. *Author Similarity*: Measures the relevance of each author to each other
 author
-9. *Taxonomy Extraction*: Organizes the topics into a single hierarchical 
+9. *Taxonomy Extraction*: Organizes the terms into a single hierarchical 
 graph that allows for easy browsing of the corpus and deep insights.
 
 ![Saffron Service Workflow](https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png)
@@ -60,11 +60,26 @@ To change the Mongo HOST and PORT, simply edit the same file on the following:
     export MONGO_URL=localhost
     export MONGO_PORT=27017
     
-By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to true: 
+By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to **true**: 
     
     export STORE_LOCAL_COPY=false
 
+Upgrading from version 3.3 to 3.4
+------
 
+Before starting Saffron, edit the following file:
+
+	upgrade3.3To3.4.sh
+	
+and change the following configurations to reflect the database you want to upgrade:
+  
+	export MONGO_URL=localhost
+    export MONGO_PORT=27017
+    export MONGO_DB_NAME=saffron_test
+    
+Run the script by executing:
+
+	./upgrade3.3To3.4.sh
    
 To start the Saffron Web server, simply choose a directory for Saffron to create
 the models and run the command as follows
@@ -82,35 +97,33 @@ Command Line Interface
 ======================
 
 All steps of Saffron can be executed by running the `saffron.sh` script. This 
-script takes two arguments
+script takes three arguments
 
 1. The corpus, which may be 
     1. A folder containing files in TXT, DOC or PDF
     2. A zip file containing files in TXT, DOC or PDF
-    3. A Json metadata file describing the corpus (see [Saffron Formats](FORMATS.md))
+    3. A Json metadata file describing the corpus (see [Saffron Formats](FORMATS.md) for more details on the format of the file)
 2. The output folder to which the results are written
+3. The configuration file (as described in [Saffron Formats](FORMATS.md))
 
 For example
 
-    ./saffron.sh corpus.json output/
+    ./saffron.sh corpus.json output/ config.json
 
-The following results are generated
+The following files are generated if STORE_LOCAL_COPY was originally set to true (see [Saffron Formats](FORMATS.md) for more details on the information contained in each file)
 
-* `corpus-unconsolidated.json`: The unconsolidated corpus metadata
-* `domain-model.json`: The domain model (domain specific keywords)
-* `topics-extracted.json`: The initial unfiltered list of extracted topics
-* `doc-topics-extracted.json`: The connection of these topics to documents
-* `corpus.json`: The corpus metadata
-* `topics-dbpedia.json`: The topics with DBpedia links
-* `doc-topics.json`: The document topic map with weights
-* `topics.json`: The topics with weights (and DBpedia links)
-* `author-topics.json`: The connection between authors and topics
-* `topic-sim.json`: The topic-topic similarity graph
+If using the Web interface, the files will be stored in /web/data/
+
+* `terms.json`: The terms with weights
+* `doc-terms.json`: The document term map with weights
+* `author-terms.json`: The connection between authors and terms
 * `author-sim.json`: The author-author similarity graph
+* `term-sim.json`: The term-term similarity graph
 * `taxonomy.json`: The final taxonomy over the corpus
+* `config.json`: The configuration file for the run
  
 
-To create a .dot file, use the command line:
+To create a .dot file for the generated taxonomy, you can use the following command:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
@@ -129,8 +142,5 @@ The Wiki describes the web interface of the review mode https://gitlab.insight-c
 API Documentation
 =================
 
-For full API documentation, see here:
-
-https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md
-
+For full API documentation, see [Saffron API Documentation](https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md)
 

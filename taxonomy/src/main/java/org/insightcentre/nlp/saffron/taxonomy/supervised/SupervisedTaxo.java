@@ -1,17 +1,18 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import java.io.BufferedReader;
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.insightcentre.nlp.saffron.data.Model;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+
 import libsvm.svm;
 import libsvm.svm_model;
-import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
 
 /**
  * Provides pairwise supervised predictions of the order of elements in a
@@ -19,15 +20,16 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-public class SupervisedTaxo {
+//TODO: The parameter should be Term rather than String
+public class SupervisedTaxo implements BinaryRelationClassifier<String>{
 
     private final Features features;
     private final svm_model classifier;
     private final ArrayList<String> attributes;
 
-    public SupervisedTaxo(List<DocumentTopic> docTopics,
-            Map<String, Topic> topicMap, Model model) throws IOException {
-        this.features = Train.makeFeatures(docTopics, topicMap, model);
+    public SupervisedTaxo(List<DocumentTerm> docTerms,
+            Map<String, Term> termMap, Model model) throws IOException {
+        this.features = Train.makeFeatures(docTerms, termMap, model);
         this.classifier = readClassifier(model);
         this.attributes = Train.buildAttributes(features.featureNames());
     }

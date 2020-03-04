@@ -2,11 +2,13 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import java.util.HashSet;
 import java.util.Iterator;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
 import java.util.Map;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
 
 /**
  *
@@ -14,41 +16,41 @@ import org.insightcentre.nlp.saffron.data.Topic;
  */
 public class BeamSearch implements TaxonomySearch {
 
-    private final TaxonomyScore emptyScore;
+    private final Score emptyScore;
     private final int beamSize;
 
-    public BeamSearch(TaxonomyScore emptyScore, int beamSize) {
+    public BeamSearch(Score emptyScore, int beamSize) {
         this.emptyScore = emptyScore;
         this.beamSize = beamSize;
         assert (beamSize > 0);
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap,
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         Beam<Soln> previous = new Beam<>(beamSize);
         Beam<Soln> complete = new Beam<>(beamSize);
-        TaxonomyScore score = emptyScore;
-        Solution soln = Solution.empty(topicMap.keySet());
+        Score score = emptyScore;
+        TaxonomySolution soln = TaxonomySolution.empty(termMap.keySet());
         double s2 = 0.0;
         Set<String> whiteHeads = new HashSet<>();
 
         for (TaxoLink sp : whiteList) {
-            soln = soln.add(sp.top, sp.bottom,
-                    topicMap.get(sp.top).score,
-                    topicMap.get(sp.bottom).score,
+            soln = soln.add(sp.getTop(), sp.getBottom(),
+                    termMap.get(sp.getTop()).getScore(),
+                    termMap.get(sp.getBottom()).getScore(),
                     score.deltaScore(sp), true);
             s2 += score.deltaScore(sp);
-            score = score.next(sp.top, sp.bottom, soln);
-            whiteHeads.add(sp.bottom);
+            score = score.next(sp, soln);
+            whiteHeads.add(sp.getBottom());
         }
         previous.push(new Soln(soln, score, s2, false), s2);
-        for (String t1 : topicMap.keySet()) {
+        for (String t1 : termMap.keySet()) {
             if(whiteHeads.contains(t1)) 
                 continue;
             Beam<Soln> next = new Beam<>(beamSize);
             // We are looking for t1's parent
-            for (String t2 : topicMap.keySet()) {
+            for (String t2 : termMap.keySet()) {
                 if (!t1.equals(t2)) {
                     final TaxoLink taxoLink = new TaxoLink(t2, t1);
                     if (blackList.contains(taxoLink)) {
@@ -59,12 +61,12 @@ public class BeamSearch implements TaxonomySearch {
                         double totalScore = prevSoln.totalScore
                                 + linkScore;
                         if (next.canPush(totalScore)) {
-                            Solution s = prevSoln.soln.add(t2, t1,
-                                    topicMap.get(t2).score,
-                                    topicMap.get(t1).score, linkScore, false);
+                            TaxonomySolution s = prevSoln.soln.add(t2, t1,
+                                    termMap.get(t2).getScore(),
+                                    termMap.get(t1).getScore(), linkScore, false);
                             if (s != null) {
                                 Soln candidate = new Soln(s,
-                                        prevSoln.score.next(t2, t1, s),
+                                        prevSoln.score.next(new TaxoLink(t2, t1), s),
                                         totalScore,
                                         prevSoln.rooted);
                                 next.push(candidate, totalScore);
@@ -92,12 +94,12 @@ public class BeamSearch implements TaxonomySearch {
 
     private static class Soln implements Comparable<Soln> {
 
-        public final Solution soln;
-        public final TaxonomyScore score;
+        public final TaxonomySolution soln;
+        public final Score score;
         public final double totalScore;
         public final boolean rooted;
 
-        public Soln(Solution soln, TaxonomyScore score, double totalScore, boolean rooted) {
+        public Soln(TaxonomySolution soln, Score score, double totalScore, boolean rooted) {
             this.soln = soln;
             this.score = score;
             this.totalScore = totalScore;

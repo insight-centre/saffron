@@ -13,9 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
  * Extract a taxonomy by using a MST
@@ -31,46 +31,46 @@ public class MSTTaxoExtract implements TaxonomySearch {
     }
 
     @Override
-    public Taxonomy extractTaxonomy(Map<String, Topic> topicMap) {
-        final ArrayList<String> topics = new ArrayList<>(topicMap.keySet());
-        final double[][] matrix = new double[topics.size()][topics.size()];
+    public Taxonomy extractTaxonomy(Map<String, Term> termMap) {
+        final ArrayList<String> terms = new ArrayList<>(termMap.keySet());
+        final double[][] matrix = new double[terms.size()][terms.size()];
         String topNode = null;
                 
         double bestScore = Double.NEGATIVE_INFINITY;
         int bestOcc = Integer.MIN_VALUE;
-        for(int i = 0; i < topics.size(); i++) {
-            Topic t1 = topicMap.get(topics.get(i));
-            for(int j = 0; j < topics.size(); j++) {
-                matrix[i][j] = i == j ? 0 : classifier.predict(topics.get(i), topics.get(j));
+        for(int i = 0; i < terms.size(); i++) {
+            Term t1 = termMap.get(terms.get(i));
+            for(int j = 0; j < terms.size(); j++) {
+                matrix[i][j] = i == j ? 0 : classifier.predict(terms.get(i), terms.get(j));
             }
-            if(t1.score > bestScore || (t1.score == bestScore && t1.occurrences > bestOcc)) {
-                bestScore = t1.score;
-                bestOcc = t1.occurrences;
-                topNode = t1.topicString;
+            if(t1.getScore() > bestScore || (t1.getScore() == bestScore && t1.getOccurrences() > bestOcc)) {
+                bestScore = t1.getScore();
+                bestOcc = t1.getOccurrences();
+                topNode = t1.getString();
             }
         }
         System.err.println("Built graph");
-        WeightedGraph<String> graph = DenseWeightedGraph.from(topics, matrix);
+        WeightedGraph<String> graph = DenseWeightedGraph.from(terms, matrix);
         
         if(topNode == null) {
-            throw new IllegalArgumentException("No topics for taxonomy construction");
+            throw new IllegalArgumentException("No terms for taxonomy construction");
         }
         System.err.println("Starting Chu-Liu Edmonds");
         final Weighted<Arborescence<String>> arbor = ChuLiuEdmonds.getMaxArborescence(graph, topNode);
         System.err.println("Finished... building taxonomy");
-        return buildTaxo(topNode, arbor, topicMap, null, topics, matrix);        
+        return buildTaxo(topNode, arbor, termMap, null, terms, matrix);        
     }
 
     @Override
-    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Topic> topicMap, Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
+    public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap, Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     
     
     private Taxonomy buildTaxo(String node, Weighted<Arborescence<String>> arbor,
-            Map<String, Topic> topicMap, String parent,
-            ArrayList<String> topic, double[][] matrix) {
+            Map<String, Term> termMap, String parent,
+            ArrayList<String> term, double[][] matrix) {
         Map<String,List<String>> invertedArbor = new HashMap<>();
         for(ImmutableMap.Entry<String,String> e : arbor.val.parents.entrySet()) {
             if(!invertedArbor.containsKey(e.getValue())) {
@@ -79,21 +79,21 @@ public class MSTTaxoExtract implements TaxonomySearch {
             invertedArbor.get(e.getValue()).add(e.getKey());
         }
         
-        return buildTaxo(node, invertedArbor, topicMap, parent, topic, matrix);
+        return buildTaxo(node, invertedArbor, termMap, parent, term, matrix);
     }
     
     private Taxonomy buildTaxo(String node, Map<String, List<String>> tree,
-            Map<String, Topic> topicMap, String parent,
-            ArrayList<String> topic, double[][] matrix) {
+            Map<String, Term> termMap, String parent,
+            ArrayList<String> term, double[][] matrix) {
         List<Taxonomy> children = new ArrayList<>();
         List<String> edges = tree.get(node);
         if(edges != null) {
             for(String s : edges) {
-                children.add(buildTaxo(s, tree, topicMap, parent, topic, matrix));
+                children.add(buildTaxo(s, tree, termMap, parent, term, matrix));
             }
         }
-        double linkScore = parent == null ? Double.NaN : matrix[topic.indexOf(parent)][topic.indexOf(node)];
-        return new Taxonomy(node, topicMap.get(node).score, linkScore, "", "", children, Status.none);
+        double linkScore = parent == null ? Double.NaN : matrix[term.indexOf(parent)][term.indexOf(node)];
+        return new Taxonomy(node, termMap.get(node).getScore(), linkScore, children, Status.none);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

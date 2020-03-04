@@ -152,9 +152,9 @@ public class TaxonomyTest {
     @Test
     public void test() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        final String data = "{\"root\":\"Root topic\",\"children\":[{\"root\": \"topic1\"}]}";
+        final String data = "{\"root\":\"Root term\",\"children\":[{\"root\": \"term1\"}]}";
         final Taxonomy taxonomy = mapper.readValue(data, Taxonomy.class);
-        assertEquals("Root topic", taxonomy.root);
+        assertEquals("Root term", taxonomy.root);
         assertEquals(1, taxonomy.children.size());
         assertEquals(0, taxonomy.children.get(0).children.size());
         final String json = mapper.writeValueAsString(taxonomy);
@@ -173,7 +173,7 @@ public class TaxonomyTest {
     public void testMinDepth2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
     	
     	assertEquals("The minimum depth is incorrect", 2,taxonomy.minDepth());
     }
@@ -235,7 +235,7 @@ public class TaxonomyTest {
     public void testMaxDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234,null, Status.none));
     	
     	assertEquals("The maximum node degree is different from expected", 5,taxonomy.maxDegree());
     }
@@ -252,7 +252,7 @@ public class TaxonomyTest {
     public void testAvgDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, "", "",null, Status.none));
+    	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
     	
     	assertEquals("The average node degree is different from expected", 28.0/15, taxonomy.avgDegree(), 0.00001);
     }
@@ -342,7 +342,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   removeDescendent(String topicString)
+     *   removeDescendent(String termString)
      * 
      */
     
@@ -528,7 +528,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   setParentChildStatus(String childTopic, Status status)
+     *   setParentChildStatus(String childTerm, Status status)
      * 
      */
     
@@ -860,7 +860,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   getParent(String topicChild)
+     *   getParent(String termChild)
      * 
      */
     
@@ -950,7 +950,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   removeChildBranch(String topicString)
+     *   removeChildBranch(String termString)
      * 
      */
     
@@ -1345,7 +1345,7 @@ public class TaxonomyTest {
      * 
      * Testing method 
      *   
-     *   updateParent(String topicChild, String topicNewParent)
+     *   updateParent(String termChild, String termNewParent)
      * 
      */
     

@@ -33,8 +33,8 @@ import libsvm.svm_problem;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.Topic;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTopic;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.wordnet.Hypernym;
 
@@ -66,9 +66,9 @@ public class Train {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("d", "The doc-topics connection").withRequiredArg().ofType(File.class);
+                    accepts("d", "The doc-terms connection").withRequiredArg().ofType(File.class);
                     accepts("t", "The taxonomies to train on").withRequiredArg().withValuesSeparatedBy(',').ofType(File.class);
-                    accepts("p", "The topics to train on").withRequiredArg().ofType(File.class);
+                    accepts("p", "The terms to train on").withRequiredArg().ofType(File.class);
                     accepts("c", "The configuration").withRequiredArg().ofType(File.class);
                 }
             };
@@ -82,9 +82,9 @@ public class Train {
             }
             final ObjectMapper mapper = new ObjectMapper();
 
-            final File topicsFile = (File) os.valueOf("p");
+            final File termsFile = (File) os.valueOf("p");
 
-            final File docTopicsFile = (File) os.valueOf("d");
+            final File docTermsFile = (File) os.valueOf("d");
             final List<File> taxoFiles = (List<File>) os.valuesOf("t");
             if (taxoFiles == null) {
                 badOptions(p, "No taxonomy files provided");
@@ -103,23 +103,23 @@ public class Train {
                 badOptions(p, "Config invalid: " + config.verify());
             }
 
-            final List<DocumentTopic> docTopics;
-            if (docTopicsFile == null) {
-                docTopics = null;
+            final List<DocumentTerm> docTerms;
+            if (docTermsFile == null) {
+                docTerms = null;
             } else {
-                docTopics = mapper.readValue(docTopicsFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTopic.class));
+                docTerms = mapper.readValue(docTermsFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             }
             final List<List<StringPair>> taxos = new ArrayList<>();
             for (File taxoFile : taxoFiles) {
                 taxos.add(loadTaxoFile(taxoFile, mapper));
             }
 
-            final List<Topic> topics = topicsFile == null ? null
-                    : (List<Topic>) mapper.readValue(topicsFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            final List<Term> terms = termsFile == null ? null
+                    : (List<Term>) mapper.readValue(termsFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
-            Map<String, Topic> topicMap = topics == null ? null : loadMap(topics, mapper, new DefaultSaffronListener());
+            Map<String, Term> termMap = terms == null ? null : loadMap(terms, mapper, new DefaultSaffronListener());
 
-            train(docTopics, topicMap, taxos, config);
+            train(docTerms, termMap, taxos, config);
 
         } catch (Exception x) {
             x.printStackTrace();
@@ -170,15 +170,15 @@ public class Train {
         }
     }
 
-    private static void train(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
+    private static void train(List<DocumentTerm> docTerms, Map<String, Term> termMap,
             List<List<StringPair>> taxos, TaxonomyExtractionConfiguration config) throws IOException {
         final Model model = new Model();
         model.features = config.features;
         final Map<String, double[]> glove = config.features == null || config.features.gloveFile == null ? null : loadGLoVE(config.features.gloveFile.toFile());
         final Set<Hypernym> hypernyms = config.features == null || config.features.hypernyms == null ? null : loadHypernyms(config.features.hypernyms.toFile());
         
-        Features features = new Features(null, null, indexDocTopics(docTopics), 
-                glove, topicMap, hypernyms, config.features == null ? null : config.features.featureSelection);
+        Features features = new Features(null, null, indexDocTerms(docTerms), 
+                glove, termMap, hypernyms, config.features == null ? null : config.features.featureSelection);
         
         features = glove == null ? features : learnSVD(taxos, features, config, model);
 
@@ -197,21 +197,21 @@ public class Train {
         mapper.writerWithDefaultPrettyPrinter().writeValue(config.modelFile.toFile(), model);
     }
 
-    public static Map<String, IntSet> indexDocTopics(List<DocumentTopic> docTopics) {
+    public static Map<String, IntSet> indexDocTerms(List<DocumentTerm> docTerms) {
         Object2IntMap<String> docIds = new Object2IntOpenHashMap<>();
         HashMap<String, IntSet> index = new HashMap<>();
         int id = 0;
-        for (DocumentTopic dt : docTopics) {
+        for (DocumentTerm dt : docTerms) {
             final int id2;
-            if (!docIds.containsKey(dt.document_id)) {
-                docIds.put(dt.document_id, id2 = id++);
+            if (!docIds.containsKey(dt.getDocumentId())) {
+                docIds.put(dt.getDocumentId(), id2 = id++);
             } else {
                 id2 = id;
             }
-            if (!index.containsKey(dt.topic_string)) {
-                index.put(dt.topic_string, new IntRBTreeSet());
+            if (!index.containsKey(dt.getTermString())) {
+                index.put(dt.getTermString(), new IntRBTreeSet());
             }
-            index.get(dt.topic_string).add(id2);
+            index.get(dt.getTermString()).add(id2);
         }
         return index;
     }
@@ -222,7 +222,7 @@ public class Train {
         final svm_problem instances = new svm_problem();
         ArrayList<Instance> instanceList = new ArrayList<>();
         for (List<StringPair> taxo : taxos) {
-            List<String> topicsList = new ArrayList<>(buildTopics(taxo));
+            List<String> termsList = new ArrayList<>(buildTerms(taxo));
             Set<StringPair> taxoSet = new HashSet<>(taxo); // Faster but uses more memory
             for (StringPair sp : taxo) {
                 double[] d1 = features.buildFeatures(sp._1, sp._2);
@@ -230,14 +230,14 @@ public class Train {
             }
             System.err.println("positive:" + instanceList.size());
             for (int i = 0; i < negSampling * taxo.size(); i++) {
-                int j = random.nextInt(topicsList.size());
-                int k = random.nextInt(topicsList.size());
+                int j = random.nextInt(termsList.size());
+                int k = random.nextInt(termsList.size());
                 if (j == k) {
                     continue;
                 }
-                StringPair topicPair = new StringPair(topicsList.get(j), topicsList.get(k));
-                if (!taxoSet.contains(topicPair)) {
-                    double[] d1 = features.buildFeatures(topicPair._1, topicPair._2);
+                StringPair termPair = new StringPair(termsList.get(j), termsList.get(k));
+                if (!taxoSet.contains(termPair)) {
+                    double[] d1 = features.buildFeatures(termPair._1, termPair._2);
                     instanceList.add(makeInstance(d1, 0));
                 }
             }
@@ -282,7 +282,7 @@ public class Train {
         return attributes;
     }
 
-    private static Set<String> buildTopics(List<StringPair> taxo) {
+    private static Set<String> buildTerms(List<StringPair> taxo) {
         Set<String> s = new HashSet<>();
         for (StringPair sp : taxo) {
             s.add(sp._1);
@@ -344,7 +344,7 @@ public class Train {
         }
     }*/
 
-    public static Features makeFeatures(List<DocumentTopic> docTopics, Map<String, Topic> topicMap,
+    public static Features makeFeatures(List<DocumentTerm> docTerms, Map<String, Term> termMap,
             Model model) throws IOException {
         Matrix svdAveMatrix = model.svdAve == null ? null 
                 : new Matrix(model.svdAve);
@@ -352,8 +352,8 @@ public class Train {
                 : new Matrix(model.svdMinMax);
         final Map<String, double[]> glove = model.features.gloveFile == null ? null : loadGLoVE(model.features.gloveFile.toFile());
         final Set<Hypernym> hypernyms = model.features.hypernyms == null ? null : loadHypernyms(model.features.hypernyms.toFile());
-        return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTopics(docTopics), 
-                glove, topicMap, hypernyms, model.features.featureSelection);
+        return new Features(svdAveMatrix, svdMinMaxMatrix, indexDocTerms(docTerms), 
+                glove, termMap, hypernyms, model.features.featureSelection);
     }
 
     private static Matrix readMatrix(File svdAveFile) throws IOException {
