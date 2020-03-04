@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 
 /**
  * Compares the result of two topic extractions
@@ -41,18 +41,18 @@ public class TopicExtractionBenchmark {
         return avp;
     }
 
-    public static Scores evaluate(List<Topic> extracted, List<Topic> gold, boolean retain) {
+    public static Scores evaluate(List<Term> extracted, List<Term> gold, boolean retain) {
         Collections.sort(extracted);
         final Set<String> extractedTopics = new TreeSet<>();
         if (retain) {
-            for (Topic t : extracted) {
-                extractedTopics.add(t.topicString.toLowerCase());
+            for (Term t : extracted) {
+                extractedTopics.add(t.getString().toLowerCase());
             }
         }
         Set<String> goldTopics = new TreeSet<>();
-        for (Topic t : gold) {
-            if (!retain || extractedTopics.contains(t.topicString.toLowerCase())) {
-                goldTopics.add(t.topicString.toLowerCase());
+        for (Term t : gold) {
+            if (!retain || extractedTopics.contains(t.getString().toLowerCase())) {
+                goldTopics.add(t.getString().toLowerCase());
             }
         }
         final int K = Math.max(extracted.size(), goldTopics.size());
@@ -60,7 +60,7 @@ public class TopicExtractionBenchmark {
         double[] recall = new double[K];
         double[] precision = new double[K];
         for (int i = 0; i < K; i++) {
-            if (i < extracted.size() && goldTopics.contains(extracted.get(i).topicString.toLowerCase())) {
+            if (i < extracted.size() && goldTopics.contains(extracted.get(i).getString().toLowerCase())) {
                 found++;
             }
             recall[i] = (double) found / goldTopics.size();
@@ -105,8 +105,8 @@ public class TopicExtractionBenchmark {
                 badOptions(p, "Gold file not given");
             }
 
-            List<Topic> extracted = mapper.readValue(outFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
-            List<Topic> gold = mapper.readValue(goldFile, mapper.getTypeFactory().constructCollectionType(List.class, Topic.class));
+            List<Term> extracted = mapper.readValue(outFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            List<Term> gold = mapper.readValue(goldFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             Scores scores = evaluate(extracted, gold, !os.has("r"));
 
