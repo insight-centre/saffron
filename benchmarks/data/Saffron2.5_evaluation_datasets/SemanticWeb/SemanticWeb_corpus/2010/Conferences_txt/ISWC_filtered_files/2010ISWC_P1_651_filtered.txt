@@ -1,0 +1,1130 @@
+Combining Approximation and Relaxation in
+
+Semantic Web Path Queries
+
+Alexandra Poulovassilis and Peter T. Wood
+
+London Knowledge Lab, Birkbeck, University of London, UK
+
+{ap,ptw}@dcs.bbk.ac.uk
+
+Abstract. We develop query relaxation techniques for regular path
+queries and combine them with query approximation in order to support flexible querying of RDF data when the user lacks knowledge of its
+full structure or where the structure is irregular. In such circumstances, it
+is helpful if the querying system can perform both approximate matching
+and relaxation of the users query and can rank the answers according
+to how closely they match the original query. Our framework incorporates both standard notions of approximation based on edit distance and
+RDFS-based inference rules. The query language we adopt comprises
+conjunctions of regular path queries, thus including extensions proposed
+for SPARQL to allow for querying paths using regular expressions. We
+provide an incremental query evaluation algorithm which runs in polynomial time and returns answers to the user in ranked order.
+
+1 Introduction
+
+The volume of semistructured data available to users on the web continues to
+grow, increasingly in the form of RDF linked data. Given the complexity and
+heterogeneity of such data, users may not be aware of its full structure and
+need to be assisted by querying systems which do not require that users queries
+necessarily match exactly the data structures being queried.
+
+In this paper we consider general semistructured data modelled as a graph,
+with RDF linked data being a particular application of this model. We are interested in developing efficient algorithms which allow for both approximate matching and relaxation of users queries on such data, with the answers to queries
+being returned to users in ranked order. We restrict our query language to that
+of conjunctive regular path queries [2]. A conjunctive regular path (CRP) query
+Q consisting of n conjuncts is of the form
+
+(Z1, . . . , Zm)  (X1, R1, Y1), . . . , (Xn, Rn, Yn)
+
+where each Xi and Yi, 1  i  n, is a variable or constant, each Zi, 1  i  m,
+is a variable appearing in the body of Q, and each Ri, 1  i  n, is a regular
+expression over the alphabet from which edge labels in the graph are drawn.
+The answer to a CRP query Q on a graph G, Q(G), is defined as follows. For
+each conjunct (Xi, Ri, Yi), 1  i  n, let ri be a binary relation over the scheme
+
+P.F. Patel-Schneider et al. (Eds.): ISWC 2010, Part I, LNCS 6496, pp. 631646, 2010.
+c Springer-Verlag Berlin Heidelberg 2010
+
+A. Poulovassilis and P.T. Wood
+
+(Xi, Yi). Let t[Xi] and t[Yi] denote the first and second components, respectively,
+of any tuple t  ri. There is a tuple t  ri if and only if there exists a path from
+node t[Xi] to node t[Yi] in G such that t[Xi] = Xi if Xi is a constant, t[Yi] = Yi
+if Yi is a constant, and the concatenation of the edge labels in the path satisfies
+the regular expression Ri. Then Q(G) = Z1,...,Zm(r1    rn).
+Using regular expressions to query data has been much studied, e.g. [2,17],
+as have approximate query matching techniques, e.g. [4,7,14,15,18]. In [13], we
+studied a combination of these and showed that approximate matching of CRP
+queries can be undertaken in polynomial time. The edit operations we allowed in
+approximate matching of queries were insertions, deletions, substitutions, transpositions and inversions of edge labels (corresponding to reverse traversal of
+edges)  each with an assumed edit cost of 1. Here, for simplicity of exposition,
+we exclude inversions and transpositions  we note though that the techniques
+we develop here extend straightforwardly to this more general case, and the
+query complexity results still hold.
+
+Example 1. The L4All system allows users to create and maintain a chronological record of their learning, work and personal episodes  their timelines 
+with the aim of supporting lifelong learners in exploring learning opportunities and in planning and reflecting on their learning [3]. Figure 1 illustrates a
+fragment of data and metadata relating to a users timeline (where sc denotes
+subclassOf). The episodes within a timeline have a start and an end date associated with them (for simplicity these are not shown). Episodes are ordered by
+their start date  as indicated by edges labelled next. There are several types
+of episode, e.g. University and Work. Associated with each type of episode are
+several properties  we show just two of these, qualif[ication] and job.
+
+Suppose that Mary is studying for a BA in English and wishes to find out
+what possible future career choices there are for her. Timelines may have edges
+labelled prereq between episodes, indicating that the timelines owner believes
+that undertaking an earlier episode was necessary in order for them to be able
+to proceed to or achieve a later episode. So Mary might pose this query, Q1
+
+1:
+
+(?E2,?P)<-(?E1,type,University),(?E1,qualif.type,EnglishStudies),
+
+(?E1,prereq+,?E2), (?E2,type,Work), (?E2,job.type,?P)
+
+However, this will return no results relating to the timeline of Figure 1, even
+though it is evident that this contains information that would be relevant to
+Mary. This is because, in practice, users may or may not create prereq metadata
+relating to their timelines. If Mary chooses to allow replacement of the edge label
+prereq in her query by the label next, she can submit a variant of Q1:
+
+(?E2,?P)<-(?E1,type,University), (?E1,qualif.type,EnglishStudies),
+APPROX(?E1,prereq+,?E2),(?E2,type,Work),(?E2,job.type,?P)
+
+The regular expression prereq+ can be approximated by the regular expression
+next.prereq* at edit distance 1 from prereq+. This allows the system to return
+
+1 In our assumed concrete syntax, variable names are preceded with ?.
+?
+
+?
+
+?
+Education
+
+Occupation
+
+sc
+
+Humanities
+
+sc
+
+sc
+
+Media Professional
+
+sc
+
+Travel Service Occupation
+
+sc
+
+Languages
+
+sc
+
+sc
+
+sc
+
+Editor
+
+sc
+
+sc
+
+sc
+
+Editor-in-Chief
+
+Associate Editor
+
+English Studies Air Travel Assistant
+
+Journalist
+
+Assistant Editor
+
+type
+
+type
+
+type
+
+type
+
+BA English
+
+j22
+
+j23
+
+j24
+
+qualif
+
+next
+
+job
+
+next
+
+job
+
+next
+
+job
+
+ep21
+
+ep22
+
+ep23
+
+ep24
+
+type
+
+type
+
+type
+
+prereq
+
+type
+
+University
+
+Work
+
+Work
+
+Work
+
+Fig. 1. A fragment of timeline data and metadata
+
+the answer (ep22,AirTravelAssistant) at an edit distance 1 from Q1. Mary
+may judge this not to be relevant and may seek further results, at a further level
+of approximation. The regular expression next.prereq* can be approximated
+by next.next.prereq*, now at edit distance 2 from Q1, allowing the following
+answers (ep23,Journalist), (ep24,AssistantEditor) to be returned. Mary
+may judge both of these as being relevant, and she can then request the system
+to return the whole of this users timeline for her to explore further.
+
+Suppose now Mary knows she wants to become an Assistant Editor and would
+like to find out how she might achieve this, given that shes done an English
+degree. Mary might pose this query, Q2:
+(?E2,?P)<-(?E1,type,University), (?E1,qualif.type,EnglishStudies),
+
+APPROX (?E1,prereq+,?E2), (?E2,job.type,?P)
+APPROX (?E2,prereq+,?Goal), (?Goal,type,Work),
+(?Goal,job.type,AssistantEditor)
+
+At distance 0 and 1 there are no results from the timeline of Figure 1. At distance
+2, the answers (ep22,AirTravelAssistant), (ep23,Journalist) are returned,
+the second of which gives Mary potentially useful information.
+
+Suppose Mary wants to know what other jobs, similar to an Assistant Editor,
+might be open to her. There are many categories of jobs classified under Media
+Professional but none of these will be matched by query Q2 above. What she
+would like to pose instead (borrowing the RELAX syntax of [12]) is query Q3:
+(?E2,?P)<-(?E1,type,University),(?E1,qualif.type,EnglishStudies),
+
+APPROX (?E1,prereq+,?E2),(?E2,job.type,?P)
+APPROX (?E2,prereq+,?Goal), (?Goal,type,Work),
+
+A. Poulovassilis and P.T. Wood
+
+RELAX (?Goal,job.type,AssistantEditor)
+
+which would relax Assistant Editor to its parent concept Editor, matching
+jobs such as Assistant Editor, Associate Editor, Editor-in-Chief etc., as
+well as in parallel approximating the two instances of prereq+. Query results
+would be returned in increasing overall distance (relaxation and approximation)
+from the original query.
+
+As a further extension, suppose another user, Joe, wants to know what jobs
+similar to being an Assistant Editor might be open to someone who has studied English or a similar subject at university. Subject disciplines are classi-
+fied, e.g. English Studies under Languages which in turn is classified under
+Humanities. So Joe may pose query Q4 which is identical to Q3 above but with
+"#
+RELAX in front of (?E1,qualif.type,EnglishStudies).
+In Section 2, we first consider computing approximate and relaxed answers for
+regular path queries consisting of a single conjunct. We show that in both cases
+answers can be computed in polynomial time in the size of the query and the
+input graph, and returned to the user in ranked order. Section 3 generalises to the
+case of multi-conjunct queries and shows that computation can still be achieved
+in polynomial time as long as the queries are acyclic and have a fixed number
+of head variables. In a multi-conjunct query, approximation and relaxation are
+combined by allowing each conjunct to be qualified by either an APPROX or a
+RELAX operator, as shown in the above example. Section 4 discusses related
+work. Section 5 presents our conclusions and future work.
+
+2 Single-Conjunct Regular Path Queries
+
+In this paper we consider a semistructured data model comprising a directed
+graph G = (V, E) and an ontology K = (VK , EK). V contains nodes representing entity instances or entity classes. E represents relationships between the
+members of V . Each node in V is labelled with a distinct constant. Each edge in
+E is labelled with a symbol drawn from a finite alphabet {type}. VK contains
+nodes representing entity classes or properties. Each node in VK is labelled with
+a distinct constant. We call a node in VK representing an entity class a class
+node and a node representing a property a property node. So V  VK contains
+the set of class nodes of V . Each edge in EK is labelled with a symbol drawn
+from {sc, sp, dom, range}. We assume that   {type, sc, sp, dom, range} = .
+We also assume that the set of labels of edges in E, except for the label type,
+is contained in the set of labels of property nodes in VK. We observe that this
+general graph model encompasses RDF data, except that it does not allow for
+the representation of RDFs blank nodes (but these are discouraged for linked
+data [10]). It also comprises a fragment of the RDFS vocabulary: rdf:type,
+rdfs:subClassOf, rdfs:subPropertyOf, rdfs:domain, rdfs:range, which we
+abbreviate by type, sc, sp, dom, range.
+
+A single-conjunct regular path query Q over a graph G is of the form:
+
+vars  (X, R, Y )
+
+(1)
+?
+
+?
+
+?
+where X and Y are constants or variables, R is a regular expression over  
+{type}, and vars is the subset of {X, Y } that are variables.
+
+A regular expression R over   {type} is defined as follows:
+ | R+
+
+| (R1  R2) | (R1|R2) | R
+
+R := 	 | a | type |
+
+where 	 is the empty string, a is any symbol in ,   denotes the disjunction
+of all constants in   {type}, and the operators have their usual meaning.
+A path p in G = (V, E) from x  V to y  V is a sequence of the form
+(v1, l1, v2, l2, v3, . . . , vn, ln, vn+1), where n  0, v1 = x, vn+1 = y and for each
+li vi+1  E. A path p conforms to a regular expression R if
+vi, li, vi+1, vi
+l1  ln  L(R), the language denoted by R.
+
+Given a single-conjunct regular path query Q and graph G, let  be a matching
+from variables and constants of Q to nodes of G, that maps each constant to
+itself. A tuple (vars) satisfies Q on G if there is a path from (X) to (Y )
+which conforms to R. The answer of Q on G is the set of tuples which satisfy Q
+on G. The answer can be found in polynomial time in the size of Q and G (from
+Lemma 1 in [17]).
+
+Below we first briefly review approximate matching of single-conjunct regular
+path queries, from [13]. We then discuss relaxation of such queries based on
+information from the ontology K. Section 3 discusses combined approximation
+and relaxation for multi-conjunct queries.
+
+2.1 Approximate Matching of Single-Conjunct Queries
+ is the minimum cost of any sequence
+The edit distance from a path p to a path p
+of edit operations which transforms the sequence of edge labels of p to the
+ (note that edge labels are treated as atomic values
+sequence of edge labels of p
+and it is sequences of such labels that are transformed using edit operations). The
+edit operations that we consider here are insertions, deletions and substitutions
+of edge labels, each with an assumed edit cost of , for some .
+
+The edit distance of a path p to a regular expression R is the minimum edit
+distance from p to any path that conforms to R. Given a matching  from
+variables and constants of a query Q to nodes in a graph G, where constants
+must be matched to themselves, we say that the tuple (vars) has edit distance
+edist(, Q) to Q, and we define this to be the minimum edit distance to R of any
+path p from (X) to (Y ) in G. Note that if p conforms to R, then (vars) has
+edit distance zero to Q.
+
+The approximate answer of Q on G is a list of pairs ((vars), edist(, Q)),
+ranked in order of non-decreasing edit distance. The approximate top-k answer
+of Q on G comprises the first k tuples in the approximate answer of Q on G.
+
+We now describe how the approximate answer can be computed in time polynomial in the size of R and G. The process is similar to that described in [13],
+but differs in a number of respects which are described below:
+
+(i) We construct a weighted NFA MR of size O(R) to recognise L(R), using
+Thompsons construction (which makes use of 	-transitions). MR has set of
+
+A. Poulovassilis and P.T. Wood
+
+ =  {type}, transition relation , start state s0, and
+states S, alphabet 
+ and a weight,
+final state sf . Each transition is labelled with a label from 
+or cost, which is zero in MR. If X (or, respectively, Y ) in the query is a
+constant n, we annotate s0 (sf ) with n; otherwise we annotate s0 (sf ) with
+a wildcard symbol  that matches any constant.
+
+(ii) We now construct the approximate automaton AR corresponding to MR. AR
+has the same set of states as MR, with the following additional transitions:
+ For each state s  S and label a  , there is a transition (s, a, , s),
+where  is the cost of insertion.
+ For each transition (s, a, 0, t) in MR where a  , there is a transition
+(s, 	, , t), where  is the cost of deletion.
+ For each transition (s, a, 0, t) in MR, where a  , and label b  
+(b = a), there is a transition (s, b, , t), where  is the cost of substitution.
+Thus AR has O(|R|  |
+
+|) transitions.
+
+(iii) We form the weighted product automaton, H, of AR with the graph G =
+(V, E), viewing each node in V as both an initial and a final state. The
+states of H are of the form (s, n), s  S and n  V .
+
+(iv) To evaluate query Q, if X is a node v of G, we perform a shortest path
+traversal of H starting from the vertex (s0, v). Whenever we reach a vertex
+(sf , m) in H we output m, provided m matches the annotation on sf . The
+distance of (v, m) to Q is given by the total cost of the shortest path from
+(s0, v) to (sf , m). If X is a variable, we perform such a traversal of H starting
+from vertex (s0, v) for every node v of G.
+
+This construction differs from that of [13] where the NFA for approximate matching of regular expression R was constructed using a number of copies of the
+NFA for recognising R, each corresponding to matching at a difference distance.
+Hence, in that NFA, distance was represented implicitly by the copy number
+of states, rather than explicitly using a weight as above. The use of annotations
+on states also does not appear in [13].
+
+Proposition 1. Let G = (V, E) be a graph and Q be a single-conjunct query
+using regular expression R over alphabet . The approximate answer of Q on G
+can be found in time O(|R|2|V |(|
+The proof follows by using Dijkstras algorithm on the product automaton H,
+which can be shown to have O(|R||V |) nodes and O(|R||
+
+||E| + |V | log(|R||V |))).
+
+||E|) edges.
+
+The above query evaluation can also be accomplished on-demand by incrementally constructing the edges of H as required, thus avoiding precomputation
+and materialisation of the entire graph H. This is performed by calling a function Succ with a node (s, n) of H. The function returns a set of transitions
+a,d (p, m), such that there is an edge in H from (s, n) to (p, m) with label a
+and cost d. We show Succ below, where the function nextStates(AR, s, a) returns the set of states in AR that can be reached from state s on reading input
+a, along with the cost of reaching each. Note that we need either to remove
+	-transitions from AR (using a standard algorithm that potentially squares the
+?
+
+?
+
+?
+Procedure. Succ(s, n)
+
+Input: state s of AR and node n of G
+Output: set of transitions which are successors of (s, n) in H
+W  
+for (n, a, m)  G and (p, d)  nextStates(AR, s, a) do
+
+add a,d (p, m) to W
+
+return W
+
+size of AR) or nextStates needs to repeatedly follow 	-transitions until it finds
+a non-	-transition, while summing costs of transitions.
+
+A set visitedR is maintained, storing tuples of the form (v, n, s) representing
+the fact that node n of G was visited in state s having started the traversal from
+node v. Also maintained is a priority queue queueR containing quadruples of
+the form (v, n, s, d), ordered by increasing values of d, where d is the distance
+associated with visiting node n in state s having started from node v. We begin by
+enqueueing the initial quadruple (v, v, s0, 0), if X is some node v, or enqueueing
+a set of initial quadruples otherwise, one for each node v of G. We maintain a list
+answersR containing tuples of the form (v, n, d) where d is the smallest distance
+of this answer tuple to Q and ordered by non-decreasing value of d. This list is
+used to avoid returning again (v, n, d
+
+) for any d
+
+  d.
+
+We then call a procedure getNext to return the next query answer, in order of
+non-decreasing distance from Q. getNext repeatedly dequeues the first quadruple of queueR, (v, n, s, d), adding (v, n, s) to visitedR, until queueR is empty.
+) for each
+
+After dequeueing the quadruple (v, n, s, d), we enqueue (v, m, s
+, d + d
+)  visitedR. If
+transition e,d
+, m) returned by Succ(s, n) such that (v, m, s
+) has not been
+s is a final state, its annotation matches n, and the answer (v, n, d
+been generated before for some d
+
+, then the triple (v, n, d) is returned.
+
+ (s
+?
+
+?
+
+?
+2.2 Ontology Relaxation of Single-Conjunct Regular Path Queries
+In [12], we considered relaxation of conjunctive queries over RDF data, and the
+formalisation of relaxation using RDFS entailment with respect to an RDFS
+ontology K. We assumed that the predicates of triples in K are in the set
+{type, dom, range, sp, sc} and we adopted an operational semantics for the notion of RDFS entailment, denoted by |= and characterised by the six rules shown
+in Fig. 2 (see [8,9] for details).
+We assumed infinite sets I (IRIs) and L (RDF literals). The elements in I  L
+are called RDF terms. A triple (v1, v2, v3)  I  I  (I  L) is called an RDF
+triple. In such a triple, v1 is called the subject, v2 the predicate and v3 the object.
+An RDF graph is a set of RDF triples.
+For RDF graphs G1 and G2, we stated that G1 |=rule G2 if G2 can be derived
+from G1 by iteratively applying the rules of Fig. 2. We used the notion of the
+closure of an RDF graph G [9], denoted cl(G), which is the closure of G under
+the rules. By a result from [9], RDFS entailment (for the fragment of RDFS we
+consider) can be characterized as follows: G1 |=RDFS G2 if and only if G2  cl(G1).
+
+A. Poulovassilis and P.T. Wood
+
+Group A (Subproperty)
+
+(1)
+
+Group B (Subclass)
+
+Group C (Typing)
+
+(3)
+
+(5)
+
+(a, sp, b) (b, sp, c)
+
+(a, sp, c)
+
+(a, sc, b) (b, sc, c)
+
+(a, sc, c)
+
+(a, dom, c) (X, a, Y )
+
+(X, type, c)
+
+(2)
+
+(4)
+
+(6)
+
+(a, sp, b) (X, a, Y )
+
+(X, b, Y )
+
+(a, sc, b) (X, type, a)
+
+(X, type, b)
+
+(a, range, c) (X, a, Y )
+
+(Y, type, c)
+
+Fig. 2. RDFS Inference Rules
+
+Given a set of variables V disjoint from the sets I and L, a triple pattern is a
+triple (v1, v2, v3)  (I  V )  (I  V )  (I  V  L). A graph pattern P is a set
+of triple patterns. We denote the variables mentioned in P by var(P ).
+
+A conjunctive query as considered in [12] is a rule whose body is a graph
+pattern. We investigated two broad classes of relaxations for such queries in
+that paper: ontology relaxation and simple relaxation. Ontology relaxation encompasses relaxations that are entailed using information from the ontology and
+are captured by the rules of Fig. 2; we note that when applying these rules to
+triple patterns, rather than (ground) triples, a, b and c must be instantiated to
+RDF terms, while X and Y can be instantiated to either RDF terms or vari-
+ables. Simple relaxation consists of relaxations that can be entailed without an
+ontology, e.g. dropping triple patterns, replacing constants with variables, and
+breaking join dependencies.
+
+In this paper, we extend the application of ontology relaxation from graph
+patterns to regular path queries, leaving consideration of simple relaxation to
+future work. Before proceeding further we introduce some assumptions and
+terminology.
+
+We consider the cost of applying rule 2 or 4 to be , and the cost of applying
+rule 5 or 6 to be . (Because queries and data graphs cannot contain sc and sp,
+rules 1 and 3 are inapplicable as far as relaxation is concerned.) We assume that
+the subgraphs of K induced by edges labelled sc and sp are acyclic; this ensures
+that the transitive reduction (see below) of each of these subgraphs is unique.
+We also assume that all the edges labelled with symbols from   {type} that
+are entailed by G  K are included in G.
+
+
+For each edge (a, type, c) in G, we also add to G the reverse edge (c, type
+
+, a).
+We do this because, while we do not consider reverse traversal of graph edges in
+general in this paper (leaving this as an area of further work), we do allow the reverse traversal of type edges, which we accommodate by generating reverse edges
+. We need these edges in order to accomodate Rule 6 of Fig. 2
+in G labelled type
+without changing the position of the variable Y in the relaxed triple. This is because (as we will see below) in our context of relaxing regular path queries, the
+relaxed triples are generally part of a sequence of relaxed triples. Thus, we use the
+
+equivalent form of (c, type
+
+, Y ) for the relaxed triple inferred by Rule 6.
+
+Finally, we assume that K = extRed(K), where extRed(K) is the extended
+reduction of K. Given ontology K, extRed(K) can be computed as follows: (i)
+compute cl(K); (ii) apply the rules of Fig. 3 in reverse until no longer applicable;
+?
+
+?
+
+?
+and (iii) apply rules 1 and 3 of Fig. 2 in reverse until no longer applicable.
+(Applying a rule in reverse means deleting the triple deduced by the rule.) Using
+this extended reduction allows us to perform what were termed direct relaxations
+in [12] which correspond to the smallest relaxation steps. This is necessary if
+we are to return query answers to users incrementally in order of increasing cost,
+which we discuss in more detail shortly.
+
+(e1)
+
+(e3)
+
+(b, dom, c) (a, sp, b)
+
+(a, dom, c)
+
+(a, dom, b) (b, sc, c)
+
+(a, dom, c)
+
+(e2)
+
+(e4)
+
+(b, range, c) (a, sp, b)
+
+(a, range, c)
+
+(a, range, b) (b, sc, c)
+
+(a, range, c)
+
+Fig. 3. Additional rules used to compute the extended reduction of an RDFS ontology
+Let t1 and t2 be triple patterns such that t1, t2  cl(G  K), and var(t2) =
+var(t1). We say that t1 relaxes to t2 (or t2 is a relaxation of t1), denoted t1  t2
+2,
+if ({t1}  G  K) |=rule t2. Let P1 and P2 be graph patterns such that for all
+t1  P1 and t2  P2, t1, t2  cl(G  K) and var(P2) = var(P1). We say that P1
+relaxes to P2 (or P2 is a relaxation of P1), denoted P1  P2, if for all t1  P1
+there is a t2  P2 such that t1  t2 and for all t2  P2 there is a t1  P1 such
+that t1  t2. We note that the relaxation relation is reflexive and transitive.
+Example 2. If we did not use the extended reduction of an ontology K, we
+) in K. Given a concould have the triples (a, dom, c), (a, dom, c
+junct (X, a, w), we could apply rule 5 in order to relax (X, a, w) to (X, type, c)
+), also with cost . However, the cost of relaxing
+with cost  and to (X, type, c
+) should really be  + , reflecting the cost of using rule
+(X, a, w) to (X, type, c
+5 to relax (X, a, w) to (X, type, c) followed by the cost of using rule 4 to relax
+). The extended reduction of K does not contain the
+(X, type, c) to (X, type, c
+) because of applying rule e3 in reverse; hence, although the rules
+triple (a, dom, c
+of Fig. 3 are not sound for RDFS entailment, using extRed(K) allows us finer
+"#
+control over computing the cost of various relaxations.
+Given a query Q with a single conjunct (X, R, Y ), let q = l1l2  ln be a string
+in L(R). We define a triple form of (Q, q) as a set of triple patterns
+
+) and (c, sc, c
+
+{(X, l1, W1), (W1, l2, W2), . . . , (Wn1, ln, Y )}
+
+where W1, . . . , Wn1 are variables not appearing in Q. Thus, a triple form of
+(Q, q) is a graph pattern which can be relaxed to another graph pattern.
+
+Example 3. Let query Q contain the single conjunct (X, R, 4), where X is a
+variable, 4 is a constant, and R = (a  b  d). Assume that K contains the triples
+). There is only a single q  L(R), namely
+(d, sp, e), (e, dom, c) and (c, sc, c
+q = abd. Consider the following triple form T of (Q, q)
+
+{(X, a, W1), (W1, b, W2), (W2, d, 4)}
+
+2 For notational simplicity we assume that the parameters G and K are implicit.
+
+A. Poulovassilis and P.T. Wood
+
+and let P be the graph pattern
+
+{(X, a, W1), (W1, b, W2), (W2, type, c
+
+)}
+
+Then T relaxes to P since (W2, d, 4)  (W2, type, c
+) by applying rules 2, 5 and
+4. We also have that (W2, d, 4)  (W2, e, 4) (by rule 2), (W2, e, 4)  (W2, type, c)
+(by rule 5) and (W2, type, c)  (W2, type, c
+
+) (by rule 4).
+
+Note that, because of our requirement that variables be preserved when performing relaxation, rules 4, 5 and 6 can only be applied to the first or last triple
+pattern of a triple form of a string. So if, for example, (b, dom, f)  K, the triple
+"#
+pattern (W1, b, W2) cannot be relaxed to (W1, type, f) by rule 5.
+We now define the relaxed semantics of such queries as follows. Let p be the path
+(v1, l1, v2, l2, v3, . . . , vn, ln, vn+1), n  1, in G. We define a triple form of p as a
+set of triple patterns
+
+{(v1, l1, W1), (W1, l2, W2), . . . , (Wn1, ln, vn+1)}
+
+where W1, . . . , Wn1 are variables. If p is of length zero, then p is of the form
+(v, 	, v) and the only triple form of p is also (v, 	, v).
+
+Given a query Q of the form (1) and a graph G, let  be a matching from
+variables and constants of Q to nodes of G such that  maps each constant to
+itself. We denote ((X), R, (Y )) by (Q). Path p in G r-conforms to (Q) if
+there is a q  L(R), a triple form Tq of ((Q), q) and a triple form Tp of p such
+that Tq  Tp. A tuple (vars) r-satisfies Q on G if there is a path in G that
+r-conforms to (Q).
+
+Note that a path in G can r-conform to a query on the basis of a triple pattern
+ differ (due to
+t relaxing to a triple pattern t
+applications of rules 5 and 6, provided Y is a constant). Hence relaxation of a
+conjunct induces a mapping on constants which may not be the identity.
+
+ such that the constants in t and t
+
+ if t
+
+ such that t  t
+
+We now consider the cost of applying relaxations in order to be able to return answers ordered by increasing cost. For this we need the notion of direct
+relaxation. In [12] we defined the direct relaxation relation, denoted by , as the
+reflexive, transitive reduction of . The direct relaxations of a triple pattern t
+) are the result of the smallest steps of
+(i.e., triple patterns t
+relaxation. We write t, o  t
+ can be derived from t and o  cl(G  K) by
+the application of a single rule from Fig. 2. We also write t, o i t
+ if rule i was
+the rule used in the derivation.
+It is shown in [12] that a single application of each of the rules in Fig. 2 to a
+triple pattern t and a triple o  extRed(K) (where applicable) yields precisely
+the direct relaxations of t with respect to K. Given graph patterns P1 and P2,
+we say that P1 directly relaxes to P2, denoted P1  P2, if P1 = {t1}  P and
+P2 = {t2} P , for some (possibly empty) graph pattern P , and t1  t2; in other
+words, t1, o i t2 for some triple o  extRed(K) and rule i. The cost of the
+direct relaxation is the cost of applying rule i. The cost of a sequence of direct
+relaxations is the sum of the costs of each relaxation in the sequence.
+Given ontology K = extRed(K), path p in G, matching , query Q as in
+(1), string q  L(R), triple form Tq for ((Q), q), triple form Tp for p such that
+?
+
+?
+
+?
+Tq  Tp (so p r-conforms to (Q)), the relaxation distance from p to ((Q), q)
+is the minimum cost of any sequence of direct relaxations which yields Tp from
+Tq. The cost of the empty sequence of direct relaxations (so that Tq is already a
+triple form of p) is zero. The relaxation distance from p to (Q) is the minimum
+relaxation distance from p to ((Q), q) for any string q  L(R).
+
+Given graph G, query Q and matching , the relaxation distance of (Q),
+denoted rdist(, Q), is the minimum relaxation distance to (Q) from any path
+p that r-conforms to (Q). The relaxed answer of Q on G is a list of pairs
+((vars), rdist(, Q)), where (vars) is an r-satisfying tuple, ranked in order of
+non-decreasing relaxation distance. The relaxed top-k answer of Q on G comprises the first k tuples in the relaxed answer of Q on G.
+
+Example 4. Consider the conjunct Q = (?Goal,job.type,AssistantEditor)
+from query Q3 in Example 1. Suppose the graph G contains the triples
+(ep24,job,j24), (j24,type,AssistantEditor) shown in Fig. 1, and also the
+triples (ep33,job,j33), (j33,type,AssociateEditor) from another timeline.
+Path (ep24,job,j24,type,AssistantEditor)r-conforms to (Q) when (?Goal)
+= ep24 with relaxation distance 0. Path (ep33,job,j33,type,AssociateEditor)
+r-conforms to (Q) when (?Goal) = ep33 with relaxation distance . So tuples
+"#
+(ep24) and (ep33) both r-satisfy Q on G.
+
+2.3 Computing the Relaxed Answer
+
+We now describe how the relaxed answer can be computed, starting from the
+weighted NFA MR that recognises L(R) which was described in Section 2.1.
+
+In computing a relaxed answer, it is useful to be able to make (possibly partial)
+copies of states in an automaton. Given an automaton M with a set of states S
+and a state s  S, a clone of s in M is a new state s
+ which is added to S such
+ has the same sets of incoming
+that s
+and outgoing transitions as s. An incoming (outgoing) clone of s is a new state
+ has the same set of incoming
+ such that s
+s
+(outgoing) transitions as s, and has no outgoing (incoming) transitions.
+
+ is an initial or final state if s is, and s
+ is an initial or final state if s is, s
+?
+
+?
+
+?
+, , S0, Sf ) of M with respect to K. The set of states S
+
+Given a weighted automaton M = (S, 
+?
+
+?
+
+?
+, , s0, sf ) and ontology K such that
+K = extRed(K), we construct as described below the relaxed automaton M K =
+ includes S as well
+(S
+as any new states defined below. S0 and Sf are sets of initial and final states,
+respectively, with S0 including s0, Sf including sf and both possibly including
+additional cloned states defined below. Each state in S0 and Sf is annotated
+either with a constant or with the wildcard symbol . The transition relation 
+includes  as well as any transitions added to  by the process defined below.
+The process continues until no further changes to  and S
+ (rule 2) For each transition (s, a, d, t)   and (a, sp, b)  K, add the transi-
+)  K
+ (rule 4 (i)) For each transition (s, type, d, t)  , t  Sf and (c, sc, c
+ of t annotated
+
+such that t is annotated with c, (i) add an outgoing clone t
+with c
+
+, and (ii) add the transition (s, type, d + , t
+
+tion (s, b, d + , t) to .
+
+ occur.
+
+) to .
+?
+
+?
+
+?
+, 
+
+ to S
+
+A. Poulovassilis and P.T. Wood
+
+ to S
+
+, and (ii) add the transition (s
+
+, d, t)  , s  S0 and (c, sc, c
+
+
+ (rule 4 (ii)) For each transition (s, type
+
+such that s is annotated with c, (i) add an incoming clone s
+with c
+
+)  K
+ of s annotated
+ (rule 5) For each (s, a, d, t)  , t  Sf and (a, dom, c)  K such that t is
+ of t annotated with
+ (rule 6) For each (s, a, d, t)  , s  S0 and (a, range, c)  K such that s is
+ of s annotated with
+
+annotated with a constant, (i) add an outgoing clone t
+c to S
+
+, and (ii) add the transition (s, type, d + , t
+
+, d + , t) to .
+
+
+, type
+
+annotated with a constant, (i) add an incoming clone s
+c to S
+
+, and (ii) add the transition (s
+
+, d + , t) to .
+
+, type
+
+) to .
+?
+
+?
+
+?
+
+
+Given a regular expression R and ontology K = extRed(K), we denote by M K
+
+the automaton obtained by first constructing the automaton MR for R and then
+constructing the relaxed automaton of MR with respect to K.
+Example 5. Consider again conjunct (X, R, 4), where R = (abd), and ontology
+)} from Example 3. The relaxed automaton
+K = {(d, sp, e), (e, dom, c), (c, sc, c
+R initially comprises the states {s0, s1, s2, sf} and the transitions labelled
+M K
+with cost zero between them, as shown in Fig. 4. Applying the transformation
+for rule 2 to the transition labelled d, 0 and the triple (d, sp, e)  K, adds the
+transition labelled e,  from s2 to sf . Applying rule 5 to this transition and the
+triple (e, dom, c)  K, adds the outgoing clone s
+
+f of sf , annotated with c, as
+
+well as the transition labelled type,  +  from s2 to s
+f . Applying rule 4(i) to
+?
+
+?
+
+?
+f of s
+f ,
+this transition and the triple (c, sc, c
+, as well as the transition labelled type, 2 +  from s2 to s
+
+annotated with c
+f .
+
+)  K, adds the outgoing clone s
+
+type, 2 + 
+
+
+
+s0
+
+a, 0
+
+s1
+
+b, 0
+
+s2
+
+e, 
+
+d, 0
+
+type,  + 
+?
+
+?
+
+?
+s
+f
+?
+
+?
+
+?
+c
+
+sf
+?
+
+?
+
+?
+s
+f
+
+c
+
+Fig. 4. Relaxed automaton M K
+
+R for conjunct (X, (a  b  d), 4)
+
+Given a graph G, automaton M K
+
+R will match (i) paths labelled a  b  d from
+any node to node 4 with distance 0, (ii) paths labelled a  b  e from any node to
+node 4 with distance , (iii) paths labelled a  b  type from any node to node c
+with distance  + , and (iv) paths labelled a  b  type from any node to node
+"#
+ with distance 2 + .
+c
+Proposition 2. Let Q be a query comprising a single conjunct (X, R, Y ). Let
+, , S0, Sf ) be the relaxed automaton for regular expression R and
+M K
+R .
+ontology K = extRed(K), where the 	-transitions have been removed from M K
+Let G be a graph and H be the product automaton of M K
+R and G. Let  be a
+matching from Q to G such that (X) = v0 and (Y ) = vn. (i) There is a path
+
+R = (S
+
+, 
+?
+
+?
+
+?
+r = (v0, l1, . . . , ln, vn) in G that r-conforms to (Q) if and only if there is a path
+p = ((s0, v0), (l1, c1), . . . , (ln, cn), (sn, vn)) in H, where s0  S0 and sn  Sf .
+(ii) Consider all paths of the form of p in (i). The relaxation distance from r to
+((Q), q), where q = l1  ln, is given by the minimum value of c1 +  + cn.
+The proof of (i) follows from the fact that the rules used to add transitions to
+R correspond to direct relaxations applied to triples. The proof of (ii) follows
+M K
+from the definition of relaxation distance.
+
+Proposition 3. Given a query Q comprising a single conjunct (X, R, Y ) and
+R has at most O(|R||K|)
+ontology K = extRed(K), the relaxed automaton M K
+states and O(|R||K|2) transitions.
+The proof follows from the fact that automaton MR contains O(|R|) states, for
+each of which we can potentially add O(|K|) cloned states. Each of the rules
+adds no more than O(|K|) transitions for each of the O(|R||K|) states in M K
+R .
+Proposition 4. Let G = (V, E) be a graph, Q be a single-conjunct query using
+regular expression R, and K = extRed(K) be an ontology. The relaxed answer
+of Q on G can be found in time O(|R|2|K|2|V |(|E| + |V | log(|R||K||V |))).
+The proof follows from Propositions 2 and 3, along with using Dijkstras algorithm on the product automaton H, which can be shown to have O(|R||K||V |)
+nodes and O(|R||K|2|E|) edges.
+
+In order to compute the relaxed answers incrementally, we can use the getNext
+function from Section 2.1 along with the same initialisation of program variables.
+The only difference is that the Succ function now uses the relaxed automaton
+M K
+
+R rather than approximate automaton AR.
+
+3 General Queries
+
+Combining the possibility of approximating and relaxing query conjuncts, a general query Q is of the form
+
+(Z1, . . . , Zm)  (X1, R1, Y1), . . . , (Xj, Rj, Yj),
+AP P ROX(Xj+1, Rj+1, Yj+1), . . . , AP P ROX(Xj+k, Rj+k, Yj+k),
+RELAX(Xj+k+1, Rj+k+1, Yj+k+1), . . . , RELAX(Xj+k+n, Rj+k+n, Yj+k+n)
+where j, k, n  0, the Xi and Yi are constants or variables, the Ri are regular
+expressions, and each Zi is one of X1, . . . , Xj+k+n or Y1, . . . , Yj+k+n. In the
+concrete syntax, conjuncts may be specified in any order.
+
+Let  be a matching from variables and constants of Q to nodes in graph G.
+
+The distance from  to Q, dist(, Q), is defined as
+
+wA(edist(, (Xj+1, Rj+1, Yj+1)) +  + edist(, (Xj+k, Rj+k, Yj+k))) +
+
+wR(rdist(, (Xj+k+1, Rj+k+1, Yj+k+1))++rdist(, (Xj+k+n, Rj+k+n, Yj+k+n)))
+where the coefficients wA and wR are set according to the preferences of the user.
+For example, they can be set to the same value if the same cost is associated
+
+A. Poulovassilis and P.T. Wood
+
+with query approximation and query relaxation, or to different relative values
+to penalise one or the other more. Let (Z1, . . . , Zm) = (a1, . . . , am). We call
+ a minimum-distance matching if for all matchings  from Q to G such that
+(Z1, . . . , Zm) = (a1, . . . , am), dist(, Q)  dist(, Q).
+
+The answer of Q on G is the list of pairs ((Z1, . . . , Zm), dist(, Q)), for some
+minimum-distance matching , ranked in order of non-decreasing distance. The
+top-k answer of Q on G comprises the first k tuples in the answer of Q on G.
+
+The query Q can be evaluated by joining the answers arising from the evaluation of each of its conjuncts. For each APPROXed or RELAXed conjunct we
+can use the techniques described in Sections 2.1 and 2.3, respectively, to incrementally compute a relation ri with scheme (Xi, Yi, ED, RD). If i  j, then
+t[ED] = t[RD] = 0. If j < i  j + k, then for any tuple t  ri, t[RD] = 0 and
+t[ED] is the edit distance for that tuple. If j + k < i  j + k + n, then for any
+tuple t  ri, t[ED] = 0 and t[RD] is the relaxation distance for that tuple.
+
+To ensure polynomial-time evaluation, we require that the conjuncts of Q are
+acyclic [6]. Hence a query evaluation tree can be constructed for Q, consisting
+of nodes denoting join operators and nodes representing conjuncts of Q. Given
+that the answers for single conjuncts are ordered by non-decreasing distance,
+we can use a pipelined execution of any rank-join operator, such as the recent
+instance-optimal FRPA operator proposed in [5], to produce the answers to Q
+on graph G in order of non-decreasing distance.
+Example 6. Consider query Q4 from Example 1. Suppose graph G contains the
+triples shown in Fig. 1 and also the triples
+(ep31,type,University),(ep31,qualif,BA History),
+(ep32,type,Work),(ep32,job,j32),(j32,type,Writer)
+(ep33,type,Work),(ep33,job,j33),(j33,type,AssociateEditor)
+(BA History,type,History),(ep31,next,ep32),(ep32,next,ep33)
+from another timeline. Suppose also that in the ontology, there are triples
+(History,sc,Humanities) and (Writer,sc,MediaProfessional). We set the
+approximation cost  = 1, the two relaxation costs  =  = 2 and wA = wR = 1.
+Then, answers are produced for query Q4 as shown in the table below:
+
+?E1 ?E1,RD ?E1,?E2,ED ?E2,?P ?E2,?Goal,ED ?Goal ?Goal,RD ?E2,P,D
+ep21 ep21,0 ep23,ep24,0
+ep23,J,2
+ep31 ep31,4 ep21,ep22,1 ep23,J
+ep22,AT,6
+ep32,W,8
+
+ep22 e24,0
+ep23 e33,2
+ep24 e23,4
+ep32 e32,4
+ep33,OE ep32,ep33,1 ep33 e22,6
+
+ep22,AT ep23,ep24,0
+ep21,ep22,1
+ep22,ep23,1
+ep24,IE ep22,ep23,1
+ep31,ep32,1 ep32,W ep31,ep32,1
+ep32,ep33,1
+ep21,ep23,2
+ep21,ep24,2
+ep31,ep33,2
+
+ep21,ep23,2
+ep21,ep24,2
+ep31,ep33,2
+
+The first seven columns refer to the answers produced for the individual conjuncts of Q4. For brevity, we do not show the full four-attribute answer tuples,
+only the non-zero distances and the variable instantiations. We also abbreviate
+Air Travel Assistant by AT, Journalist by J, Writer by W, Assistant Editor by
+IE and Associate Editor by OE. The final column shows the overall query answers and distances. Tuples contributing to the first two answers are italicised
+"#
+and those contributing to the third answer are bold.
+?
+
+?
+
+?
+4 Related Work
+
+Various forms of query approximation and relaxation have been studied for a
+number of data models and query languages. For approximate querying, [14] considered querying semistructured data using flexible matchings which allow paths
+whose edge labels simply contain those appearing in the query to be matched.
+Such semantics can be captured by the edit operations of transposition and
+insertion. More generally, [7] used weighted regular transducers for performing
+transformations to regular path queries (but not CRP queries) to allow them
+to match semi-structured data approximately. The approximate queries of [18]
+are simply selections placed on attributes of form-based web data, where value
+constraints can be relaxed according to their perceived importance to the user.
+In terms of query relaxation, work has been done on relaxing tree pattern
+queries for XML, recently in [16]. Relaxation of conjunctive queries on RDF is
+considered in [4,12]. Rewriting rules are used on query patterns in [4] to perform
+both query refinement by including user preferences as well as query relaxation.
+Building on the work of [12], [11] develops a similarity measure for relaxed queries
+in an attempt to improve the relevance of answers. Similarity-based querying was
+also the focus of iSPARQL [15], where resources (rather than paths connecting
+them) are compared using similarity measures. Flexible querying of RDF using
+SPARQL and preferences expressed as fuzzy sets is investigated in [1].
+
+In contrast to all the above, our work combines within one framework both
+query approximation and query relaxation, and applies it to the more general
+query language of conjunctive regular path queries on graph-structured data.
+
+5 Concluding Remarks
+
+We have discussed query relaxation for conjunctive regular path queries, and
+have shown how this can be combined with query approximation in order to provide greater flexibility in the querying of complex, irregular seminstructured data
+sets. Using the techniques proposed here, users are able to specify approximations and relaxations to be applied to their original query, and the relative costs
+of these. Query results are returned incrementally, ranked in order of increasing distance from the users original query. We have presented polynomial-time
+algorithms for incrementally computing the top-k answers to such queries.
+
+In practice, we expect that a visual query interface would be required, providing users with readily understandable options from which to select their query
+formulation, approximation and relaxation requirements, and set the relative
+cost associated with each operation they have selected. Our future work includes
+the design, prototyping and evaluation of such a query interface, or interfaces,
+and the empirical evaluation of our query processing algorithms, in domains such
+as querying of lifelong learners metadata and heterogeneous medical data sets.
+Another direction of ongoing research is to merge the APPROX and RELAX
+operations into one integrated FLEX operation that applies concurrently both
+approximation and relaxation to a regular path query. For this, we are taking
+advantage of the common NFA-based approach that we have adopted.
+
+A. Poulovassilis and P.T. Wood

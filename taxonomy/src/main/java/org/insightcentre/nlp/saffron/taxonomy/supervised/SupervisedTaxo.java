@@ -1,17 +1,18 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import java.io.BufferedReader;
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import libsvm.svm;
-import libsvm.svm_model;
+
 import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+
+import libsvm.svm;
+import libsvm.svm_model;
 
 /**
  * Provides pairwise supervised predictions of the order of elements in a
@@ -19,7 +20,8 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-public class SupervisedTaxo {
+//TODO: The parameter should be Term rather than String
+public class SupervisedTaxo implements BinaryRelationClassifier<String>{
 
     private final Features features;
     private final svm_model classifier;

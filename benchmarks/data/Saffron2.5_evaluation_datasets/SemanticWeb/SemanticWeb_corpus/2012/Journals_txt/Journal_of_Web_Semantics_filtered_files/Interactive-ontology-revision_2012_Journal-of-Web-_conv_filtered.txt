@@ -1,0 +1,1689 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+Contents lists available at SciVerse ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+j o u r n a l h o m e p a g e : h t t p : / / w w w . e l s e v i e r . c o m / l o c a t e / w e b s e m
+
+Interactive ontology revision q
+Nadeschda Nikitina a,
+
+, Sebastian Rudolph a, Birte Glimm b,1
+
+a Institute AIFB, Karlsruhe Institute of Technology, Building 11.40, Englerstr. 11, Karlsruhe D-76131, Germany
+b Ulm University, Institute of Artificial Intelligence, Building O27, Room 448, James-Franck-Ring, Ulm D-89081, Germany
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Available online 17 December 2011
+
+Keywords:
+Ontologies
+Knowledge representation
+Automated reasoning
+Quality assurance
+
+When ontological knowledge is acquired automatically, quality control is essential. Which part of the
+automatically acquired knowledge is appropriate for an application often depends on the context in
+which the knowledge base or ontology is used. In order to determine relevant and irrelevant or even
+wrong knowledge, we support the tightest possible quality assurance approach  an exhaustive manual
+inspection of the acquired data. By using automated reasoning, this process can be partially automatized:
+after each expert decision, axioms that are entailed by the already confirmed statements are automatically approved, whereas axioms that would lead to an inconsistency are declined.
+
+Starting from this consideration, this paper provides theoretical foundations, heuristics, optimization
+strategies and comprehensive experimental results for our approach to efficient reasoning-supported
+interactive ontology revision.
+
+We introduce and elaborate on the notions of revision states and revision closure as formal foundations
+of our method. Additionally, we propose a notion of axiom impact which is used to determine a beneficial
+order of axiom evaluation in order to further increase the effectiveness of ontology revision. The initial
+notion of impact is then further refined to take different validity ratios  the proportion of valid statements within a dataset  into account. Since the validity ratio is generally not known a priori  we show
+how one can work with an estimate that is continuously improved over the course of the inspection pro-
+cess.
+
+Finally, we develop the notion of decision spaces, which are structures for calculating and updating the
+revision closure and axiom impact. We optimize the computation performance further by employing partitioning techniques and provide an implementation supporting these optimizations as well as featuring
+a user front-end. Our evaluation shows that our ranking functions almost achieve the maximum possible
+automatization and that the computation time needed for each reasoning-based, automatic decision
+takes less than one second on average for our test dataset of over 25000 statements.
+
+O 2011 Elsevier B.V. All rights reserved.
+
+1. Introduction
+
+Many real-world applications in the Semantic Web make use of
+ontologies, also called knowledge bases, in order to enrich the
+semantics of the data on which the application is based. As a popular example, consider DBpedia, which consists of structured information extracted from Wikipedia. DBpedia uses a background
+ontology defining the meaning of and relationships between terms.
+For example, if two terms are related via the property river, the first
+one can be inferred to be an instance of the class Place and the latter one of the class River.
+
+q This is a revised and extended version of previous work [1,2].
+
+ Corresponding author. Tel.: +49 (721) 608 47362; fax: +49 (721) 608 45998.
+
+E-mail addresses: nadejda.nikitina@kit.edu (N. Nikitina),
+
+rudolph@kit.edu
+
+(S. Rudolph), birte.glimm@uni-ulm.de (B. Glimm).
+
+1 Tel.: +49 (731) 50 24125; fax: +49 (731) 50 24199.
+
+1570-8268/$ - see front matter O 2011 Elsevier B.V. All rights reserved.
+doi:10.1016/j.websem.2011.12.002
+
+In order to ensure a very high quality, the DBpedia background
+ontology has been created manually. For many applications, how-
+ever, the time costs of a completely manual knowledge acquisition
+process are too high. Thus, the additional application of (semi-)
+automatic knowledge acquisition methods such as ontology
+learning or matching techniques is often considered a reasonable
+way to reduce the expenses of ontology development. The results
+produced by such automatic methods usually need to be manually
+inspected either partially, in order to estimate the overall quality of
+the resulting data, or to the full extent, in order to keep the quality
+of the developed ontology under control. Even when we aim at taking an ontology that has been developed in another area or as part
+of another application, it might not be appropriate to simply use
+the ontology as it is since statements that hold in the context of
+one application not necessarily hold in a different context.
+
+So far, knowledge representation (KR) research has been focusing on restoring the consistency of knowledge bases enriched with
+new axioms as done in various belief revision and repair
+
+approaches, see, e.g., [37]. Thereby, new axioms not causing an
+inconsistency are accepted as valid facts not requiring further
+inspection. We aim at a more restrictive quality control process
+in which a domain expert inspects a set of candidate axioms and
+decides for each of them whether it is a desired logical conse-
+quence. We call this exhaustive manual inspection of the acquired
+data ontology revision. If we assume that the deductive closure of
+the confirmed statements must be disjoint from the set of declined
+statements, then this process can be partially automatized: based
+on the decisions taken by the expert, we can automatically discard
+or include yet unevaluated axioms depending on their logical relationships with the already evaluated axioms. On the one hand, we
+can automatically approve axioms that are entailed by the already
+confirmed statements, since declining them would violate our
+assumption. On the other hand, we can automatically decline
+axioms that would cause any of the declined axioms to become a
+consequence of the confirmed ones, since accepting them would
+again violate our assumption.
+
+Throughout the paper, we use the following running example
+written in OWLs functional-style syntax [8]. We use an imaginary
+prefix ex to abbreviate IRIs:
+
+Example 1. Consider the ontology in Table 1. Let us assume that
+we have already confirmed that the axioms in the upper part,
+which state subclass relations between classes, belong to the
+desired consequences.
+
+We further assume that Axioms (1)(8) in the lower part, which
+define several different types for the individual ex:nanotube1, are
+still to be evaluated.
+
+If Axiom (8) is declined, we can immediately also decline
+Axioms (1)(6) assuming OWL or RDFS reasoning since accepting
+the axioms would implicitly lead to the undesired consequence (8).
+Note that no automatic decision is possible for Axiom (7) since it is
+not a consequence of Axiom (8) and the already approved
+subsumption axioms. Similarly, if Axiom (1) is approved, Axioms
+(2)(8) are implicit consequences, which can be approved auto-
+matically. If we start, however, with declining Axiom (1), no
+automatic evaluation can be performed.
+
+In the previous example, we only made decisions about class
+assertion axioms since we assumed that all subclass axioms were
+already approved or part of an already established ontology. This
+is, however, not a restriction of the approach. The following example shows that we can also make decisions about terminological
+axioms in the process of revising an ontology. We characterize
+the formalisms and kinds of axioms to which our approach can
+be applied more precisely in the following section. We use imaginary prefixes a and b to abbreviate IRIs in this example:
+
+Table 1
+An example ontology from the nano technology domain.
+
+SubClassOf(ex:AluminiumNitrideNanotube ex:AluminiumNitride)
+SubClassOf(ex:AluminiumNitride ex:NonOxideCeramics)
+SubClassOf(ex:NonOxideCeramics ex:Ceramics)
+SubClassOf(ex:Ceramics ex:MaterialByMaterialClass)
+SubClassOf(ex:MaterialByMaterialClass ex:Material)
+SubClassOf(ex:Material ex:PortionOfMaterial)
+SubClassOf(ex:Material ex:TangibleObject)
+
+ClassAssertion(ex:AluminiumNitrideNanotube ex:nanotube1)
+ClassAssertion(ex:AluminiumNitride ex:nanotube1)
+ClassAssertion(ex:NonOxideCeramics ex:nanotube1)
+ClassAssertion(ex:Ceramics ex:nanotube1)
+ClassAssertion(ex:MaterialByMaterialClass ex:nanotube1)
+ClassAssertion(ex:Material ex:nanotube1)
+ClassAssertion(ex:PortionOfMaterial ex:nanotube1)
+ClassAssertion(ex:TangibleObject ex:nanotube1)
+
+Example 2. Let us assume that we have already approved the
+axioms in the upper part of Table 2, which state subclass relations
+between classes. We further assume that Axioms (9)(11) in the
+lower part of Table 2 are still to be evaluated. If Axiom (9) is
+approved, we can immediately also approve Axiom (10) since it
+is already a consequence of the approved axioms: a:Employee is
+interpreted as a subset of the extension of a:Person and b:Lecture
+is interpreted as a subset of the extension of b:Event, but if
+a:Person and b:Event are disjoint due the just approved Axiom (9)
+then so are a:Employee and b:Lecture. Moreover, we can decline
+Axiom (11), since approving this axiom would implicitly lead to
+incoherency, again since a:Ordinary and b:Ordinary have to be
+interpreted as subsets of disjoint sets and can, therefore, not be
+equivalent.
+
+From the above examples, it can be observed that
+
+ a high grade of automation requires a good evaluation order and
+ approval and decline of an axiom has a different impact.
+
+Which axioms have the highest impact on decline or approval
+and which axioms can be automatically evaluated once a particular
+decision has been made can be determined with the help of algorithms for automated reasoning, e.g., for RDFS or OWL reasoning.
+One of the difficulties is, however, that it is not known in advance,
+which of the two decisions the domain expert takes. We show that,
+in some cases, a realistic prediction about the decision of the user
+can be made: if the quality is fairly high, the user is likely to
+approve an axiom. Hence, axioms that have a high impact on approval (approval impact) should be evaluated with higher priority.
+For low quality data, the situation is reversed, i.e., axioms that have
+a high impact on decline (decline impact) should be considered
+first. We measure the quality by means of the validity ratio, i.e.,
+the proportion of (manually and automatically) accepted axioms,
+and show that, depending on the validity ratio of a dataset, different impact measures used for axiom ranking are beneficial. While
+approval and decline impact measures yield fairly good results for
+validity ratios close to 100% or 0%, the optimality of results is left to
+chance in case of validity ratios close to 50%. To close this gap, we
+introduce an advanced ranking function based on these simple impact measures but parametrized by an estimated validity ratio. In
+our evaluation, we show that the revision based on the novel ranking function almost achieves the maximum possible automation. In
+particular the parametrized ranking functions achieve very good
+results for arbitrary validity ratios.
+
+Further, since the expected validity ratio is usually not known in
+advance, we suggest a ranking function where the validity ratio is
+learned on-the-fly during the revision. We show that, even for
+small datasets (50100 axioms), it is worthwhile to rank axioms
+based on this learned validity ratio instead of evaluating them in
+a random order. Furthermore, we show that, in case of larger datasets (e.g., 5000 axioms and more) with an unknown validity ratio,
+learning the validity ratio is particularly effective (with only 0.3%
+loss of effectiveness) due to the law of large numbers, thereby
+making the assumption of a known or expected validity ratio
+unnecessary. For such datasets, our experiments show that the
+proportion of automatically evaluated axioms when learning the
+
+Table 2
+An example ontology from the enterprise domain.
+
+SubClassOf(a:Ordinary a:Employee)
+SubClassOf(a:Employee a:Person)
+SubClassOf(b:Ordinary b:Lecture)
+SubClassOf(b:Lecture b:Event)
+
+DisjointClasses(a:Person b:Event)
+DisjointClasses(a:Employee b:Lecture)
+EquivalentClasses(a:Ordinary b:Ordinary)
+
+(1)
+(2)
+(3)
+(4)
+(5)
+(6)
+(7)
+(8)
+
+(9)
+(10)
+(11)
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+validity ratio is nearly the same (difference of 0.3%) as in case
+where the validity ratio is known in advance.
+
+Even for light-weight knowledge representation formalisms,
+reasoning is often expensive and in an interactive setting it is
+crucial to minimize the number of reasoning tasks while still maximizing the number of automated decisions. Inspired by the techniques used to optimize ontology classification [9], we reduce the
+number of reasoning tasks by introducing the notion of decision
+spaces  auxiliary data structures that allow for storing the results
+of reasoning and reading-off the impact that an axiom will have
+upon approval or decline. Decision spaces exploit the characteristics of the logical entailment relation between axioms to maximize
+the amount of information gained by reasoning, and, therefore, in
+particular in case of logics for which entailment checking is not
+tractable, decision spaces reduce the computational effort. In addition to the performance gain achieved by using decision spaces, we
+show that partitioning  dividing the datasets under revision into
+logically independent subsets  further decreases the number of
+required reasoning calls.
+
+We implemented the proposed techniques in the tool revision
+helper, which even for expressive OWL reasoning and our dataset
+of 25,000 axioms requires on average only 0.84 s (7.4 reasoning
+calls) per expert decision, where the automatic evaluation significantly reduces the number of expert decisions.
+
+From our evaluation, it can be observed that, on the one hand, a
+considerable proportion (up to 80%) of axioms can be evaluated
+automatically by our revision support, and, on the other hand, an
+application of decision spaces and partitioning significantly reduces
+the number of required reasoning operations, resulting in a considerable performance gain  83% of reasoning calls could be avoided.
+The paper is organized as follows: In Section 2, we formalize the
+basic notions of reasoning-supported ontology revision. In Section 3,
+we define decision spaces and show how they can be updated during the revision. Section 4 describes the proposed parameterized
+ranking function. Section 5 introduces the partitioning optimization
+and we evaluate the approach in Section 6. We then present the user
+front-end revision helper in Section 7 and discuss existing related
+approaches in Section 8 before we conclude in Section 9.
+
+The paper combines and extends previous work [1,2] with full
+
+proofs.
+
+2. Revision of ontologies
+
+The approach proposed here is not specific to a particular KR for-
+malism. The only requirement for the chosen formalism is that it is
+logic-based, there is a procedure for deciding whether an ontology
+entails an axiom, and that taking all consequences is a closure oper-
+ation. The latter means that, for O; O0 ontologies, the underlying
+entailment relation, denoted , has the following properties2:
+
+1. it is extensive, i.e., any statement logically follows from itself:
+
+fag  a,
+
+2. it is monotone, i.e., adding further statements does not invali-
+
+date previous consequences: O  a implies O [ O0  a, and
+
+3. it is idempotent, i.e., extending an ontology with an entailed
+axiom does not yield new consequences: O  a and
+O [ fag  b imply O  b.
+
+Most commonly used ontology languages for the Semantic Web
+such as RDFS or OWL fulfill these requirements. For OWL ontologies
+we are, however, restricted to the Description Logic based OWL Direct Semantics [10] since we require the existence of a decision procedure for logical entailment. The OWL 2 RL profile [11] allows for
+
+2 Throughout this paper, we assume that an ontology is a set of axioms, and will
+
+use a; b, and c to denote axioms.
+
+decidable reasoning under OWLs RDF-Based Semantics, but it is defined in terms of rules that materialize only certain inferences,
+namely assertions about individuals in the ontology such as class
+memberships or property relations between individuals. Other entailed consequences are not necessarily derived by the OWL 2 RL
+rules. Thus, completeness can only be guaranteed when the entailment checks are only for assertions about individuals in the ontology
+and our approach is only applicable for revising assertions, whereas,
+in general, any kind of axiom can be used in the revision.
+
+The revision of an ontology O aims at a separation of its axioms
+(i.e., logical statements) into two disjoint sets: the set of wanted
+consequences O and the set of unwanted consequences O2. This
+motivates the following definitions.
+
+2 ; O2
+
+Definition 1 (Revision State). A revision state is defined as a tuple
+
+O; O; O2 of ontologies with O # O; O2
+# O, and O \ O2 14 ;.
+Given two revision states O; O
+2, we call
+2 and O; O
+2, if O
+a refinement of O; O
+O; O
+1 # O
+2. A
+revision state is complete, if O 14 O [ O2, and incomplete other-
+wise. An incomplete revision state O; O; O2 can be refined by
+evaluating
+obtaining
+O; O [ fag; O2 or O; O; O2 [ fag. We call the resulting revision state an elementary refinement of O; O; O2.
+
+axiom a 2 O n O [ O2,
+
+1 ; O2
+1 ; O2
+
+2 and O2
+
+1 # O2
+
+further
+
+2 ; O2
+
+We introduce the notion of consistency of revision states to
+express the condition that the deductive closure of the wanted consequences in O must not contain unwanted consequences. If we
+want to maintain consistency, a single evaluation decision can predetermine the decision for several yet unevaluated axioms. These
+implicit consequences of a refinement are captured in the revision
+closure.
+
+is
+
+c ; O2
+
+O; O
+
+c with O
+
+Definition 2 (Revision State Consistency & Closure). A (complete or
+incomplete) revision state O; O; O2 is consistent if there is no
+a 2 O2 such that O  a. The revision closure closO; O; O2 of
+O; O; O2
+and
+c :14 fa 2 OjO [ fag  b for some b 2 O2g.
+O2
+Note that, in order to be able to maintain the consistency of a
+revision state, O2
+c must contain all axioms that, in case of an accept,
+would lead to an entailment of any unwanted consequences. We
+can show the following useful properties of the closure of consistent revision states:
+
+c :14 fa 2 OjO  ag
+
+Lemma 1. For O; O; O2 a consistent revision state,
+
+1. closO; O; O2 is consistent,
+2. every elementary refinement of closO; O; O2 is consistent,
+3. every consistent and complete refinement of O; O; O2 is a
+
+refinement of closO; O; O2.
+
+Proof. The first claim is immediate by the definition of consistency
+and closures of revisions. For the second claim, O; O; O2 is consistent by assumption and closO; O; O2 is then consistent (by
+the first claim). Since closO; O; O2 is a closure of O; O; O2,
+we have closO; O; O2 14 O;fa 2 OjO  ag;fa 2 OjO [ fag 
+b for some b 2 O2g. Since an elementary revision of closO;
+O; O2 has to be for an axiom a 2 O n fbjO  bg [ fbjO2[
+b  c for some c 2 O2g, we immediately get that the elementary
+refinement is consistent. For the last claim, if closO; O; O2 is
+already complete, the claim trivially holds. Otherwise, since
+O; O; O2 is consistent, we cannot make elementary refinements
+that add an axiom a 2 fbjO  bg to O2 since this would result in
+an inconsistent
+refinement, neither can we add an axiom
+a 2 fbjO2 [ b  c for some c 2 O2g to O. Thus, a complete and
+consistent
+refinement of
+closO; O; O2. h
+
+O; O; O2
+
+refinement of
+
+is
+
+Algorithm 1 employs the above properties to implement a gen-
+
+eral methodology for interactive ontology revision.
+
+0 ; O
+
+0 ; O
+
+Algorithm 1. Interactive Ontology Revision
+0 a consistent revision state
+Input: O; O
+Output: O; O; O2 a complete and consistent revision state
+1: O; O; O2   closO; O
+2: while O [ O2  O do
+3:
+4:
+5:
+6:
+7:
+8:
+9: end while
+
+choose a 2 O n O [ O2
+if expert confirms a then
+
+O; O; O2   closO; O; O2 [ fag
+
+O; O; O2   closO; O [ fag; O2
+
+end if
+
+else
+
+Instead of starting with empty O
+
+0, we can initialize
+these sets with approved and declined axioms from a previous
+revision or add axioms of the ontology that is being developed to
+
+0 with axioms expressing inconsistency and unsatisfiability of predicates (i.e. of classes or relations)
+in O, which we assume to be unwanted.
+
+0 . We can further initialize O
+
+0 and O
+
+In line 3, an axiom is chosen that is evaluated next. As mentioned earlier, choosing randomly can have a detrimental effect
+on the number of manual decisions needed. Ideally, we want to
+rank the axioms and choose one that allows for a high number of
+consequential automatic decisions. The notion of axiom impact refers to the number of axioms that can be automatically evaluated
+upon approval or decline of an axiom. Note that after an approval,
+the closure might extend both O and O2, whereas after a decline
+only O2 can be extended. We further define ?O; O; O2 as the
+number of yet unevaluated axioms and write jSj to denote the cardinality of a set S:
+
+Definition 3 (Impact). Let O; O; O2 be a consistent revision
+state with a 2 O and let ?O; O; O2 :14 jO n O [ O2j. For an
+axiom a, we define its approval impact, impacta, its decline
+impact, impacta, and its guaranteed impact, guaranteeda :
+impacta 14 ?O; O; O2
+
+ ?closO; O [ fag; O2;
+
+impacta 14 ?O; O; O2
+
+ ?closO; O; O2 [ fag;
+
+guaranteeda 14 minimpacta; impacta:
+
+Table 3
+Example axiom dependency graph and the corresponding ranking values.
+
+We further separate impacta into the number of automatic
+impactaa, and the number of automatic declines,
+approvals,
+impactda:
+impactaa 14 jfb 2 OjO [ fag  bgj;
+impactda 14 jfb 2 OjO [ fa; bg  c;
+
+for some c 2 O2gj:
+
+Note that impacta 14 impactaa  impactda. Ranking axioms by impact privileges axioms for which the number of automatically evaluated axioms in case of an accept is high. Going
+back to our running example, Axiom (1), which yields 7 automatically accepted axioms in case it is approved, will be ranked high-
+est. The situation is the opposite for impact, which privileges
+axioms for which the number of automatically evaluated axioms
+in case of a decline is high (Axioms (7) and (8)). Ranking by guaranteed privileges axioms with the highest guaranteed impact, i.e.,
+axioms with the highest number of automatically evaluated axioms in the worst-case (Axioms (4) and (5)).
+
+Table 3 lists the values for all ranking functions for the axioms
+
+from Example 1.
+
+Since computing such an impact as well as computing the closure after each evaluation (lines 1, 5, and 7) can be considered very
+expensive, we next introduce decision spaces, auxiliary data structures which significantly reduce the cost of computing the closure
+upon elementary revisions and provide an elegant way of determining high impact axioms.
+
+3. Decision spaces
+
+Intuitively, the purpose of decision spaces is to keep track of the
+dependencies between the axioms in such a way, that we can
+read-off the consequences of revision state refinements upon an
+approval or a decline of an axiom, thereby reducing the required
+reasoning operations. Furthermore, we will show how we can
+update these structures after a refinement step avoiding many
+costly recomputations.
+
+Definition 4 (Decision Space). Given a revision state O; O; O2
+with O2  ;, the according decision space DO;O;O2 14 O?; E; C
+contains the set
+O? :14 O n fajO  ag [ fajO [ fag  b; b 2 O2g
+of unevaluated axioms and two binary relations, E (entails) and C
+(conflicts) defined by
+aEb iff O [ fag  b and
+aCb iff O [ fa; bg  c for some c 2 O2
+
+The requirement that O2  ; is without loss of generality since
+we can always add an axiom that expresses an inconsistency,
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+which is clearly undesired. On the other hand, the non-emptiness
+condition ensures that two axioms which together lead to an
+inconsistency are indeed recognized as conflicting. For example,
+consider the following two axioms:
+
+SameIndividualex : a ex : b
+
+DifferentIndividualsex : a ex : b
+We assume that Axiom (12) has just been approved and belongs,
+therefore, to O, whereas Axiom (13) is a not yet evaluated axiom.
+Clearly, Axiom (12) and (13) cannot be true at the same time and, con-
+sequently, the inconsistent ontology O[ {(13)} entails any axiom,
+but, unless we have some axiom b in O2, this will not be recognized.
+2 14
+2. The following properties follow immediately from
+
+As a direct consequence of this definition, we have DO;O;O
+
+DclosO;O;O
+the above definition:
+
+Lemma 2. For any decision space DO;O;O2 14 O?; E; C, the following hold:
+
+P1 O?; E is a quasi-order (i.e., reflexive and transitive),
+P2 C is symmetric,
+P3 aEb and bCc imply aCc for all a; b; c 2 O?, and
+P4 if aEb then aCb does not hold.
+
+Proof. For P1, due to the required properties of the underlying logic
+we have fag  a (extensivity) and O [ fag  a (monotonicity) and
+it follows that E is reflexive. Given O [ fag  b and O [ fbg  c,
+idempotency ensures O [ fag  c, hence E is transitive. For P2,
+symmetry of C is an immediate consequence from its definition.
+For showing P3, suppose O [ fag  b and O [ fb; cg  d for some
+d 2 O2. Monotonicity allows to get O [ fa; cg  b from the former
+and O [ fa; b; cg  d from the latter, whence O [ fa; b; cg  d follows via idempotency. To see that E and C are mutually exclusive
+(P4), assume the contrary, i.e., O [ fag  b and O [ fa; bg  c for
+some c 2 O2 hold simultaneously. Yet, idempotency allows to conclude O [ fag  d. However then a cannot be contained in O? by
+definition, which gives a contradiction and proves the claim. h
+
+In fact, the properties established in Lemma 2 are characteristic.
+This means that no other than the above established properties
+hold for decision spaces. We show this by proving that any structure satisfying these properties can be seen as the decision space
+for an appropriate revision state3:
+
+Lemma 3. Let V be finite set and let E; C # V 
+ V be relations for
+which V; E is a quasi-order, C 14 C, E  C # C and E \ C 14 ;. Then
+there is a decision space DO;O;O2 isomorphic to V; E; C.
+
+let O 14 fpv ! pv0jvEv0g [ f:pv _ :pv0jvCv0g
+
+Proof. As a very basic formalism, we choose propositional logic as
+KR language. Let O contain one atomic proposition pv for every
+v 2 V,
+and let
+O2 14 ffalseg. First observe that O? 14 O. Next, we claim that the
+function f : V ! O with v#pv
+is an isomorphism between
+V; E; C and ?DO;O ;O
+2. Clearly, f is a bijection. Moreover, vEv0
+implies pvEpv0 by modus ponens since pv ! pv0 2 O. Likewise,
+vCv0 implies pvCpv0 due to :pv _ :pv0 2 O. The two other directions are shown indirectly.
+To show that pvEpv0 implies vEv0 assume there are pv ; pv0 with
+pv Epv0 , but vEv0 does not hold. Now, consider the propositional
+interpretation mapping p~v to true whenever ~v 2" v and to false
+otherwise. It can be verified that this interpretation is a model of
+O and satisfies pv as well as :pv0 , hence O [ fpvg 2 pv0 and
+consequently pv Epv0 cannot hold, so we have a contradiction.
+
+3 As usual, we let R 14 fy; xjx; y 2 Rg as well as R  S 14 fx; zjx; y 2 R;y; z
+2 S for some yg.
+
+To show that pvCpv0 implies vCv0 assume there are pv ; pv0 with
+pv Cpv0 , but vCv0 does not hold. Now, consider the propositional
+interpretation mapping p~v to true whenever ~v 2 " v[ " v0 and to
+false otherwise. It can be verified that this interpretation is a model
+of O and satisfies pv as well as pv0 , hence O [ fpv ; pv0g 2 false and
+consequently pvCpv0 cannot hold, so we have a contradiction. h
+
+The following lemma shows how decision spaces can be used for
+calculating closures of updated revision states and impacts of
+axioms. As usual for (quasi)orders, we define "a 14 fbjaEbg and
+#a 14 fbjbEag. Moreover, we let oa 14 fbjaCbg.
+Lemma 4. Given DO;O;O2 14 O?; E; C
+for a revision state
+O; O; O2 such that O; O; O2 14 closO; O; O2 with O2  ;
+and a 2 O?, then
+
+1. closO; O [ fag; O2 14 O; O[ "a; O2 [ oa,
+2. closO; O; O2 [ fag 14 O; O; O2[ #a,
+3. impacta 14 j "aj  j oaj, and
+4. impacta 14 j #aj.
+
+Proof
+
+c ; O2
+
+c for O
+
+c 14 fb 2 OjO [ fag  bg and O2
+
+1. By definition of closures, we have that closO; O [ fag; O2 is
+c 14 fb 2 OjO
+
+O; O
+[fa; bg  c; c 2 O2g.
+By definition of the entails and conflicts relation we obtain
+c 14 O [ fb 2 O?jaEbg and O2
+
+By definition of "a and oa follows O
+c 14 O[ "a and
+c 14 O2 [ oa.
+
+Thus we obtain closO; O [ fag; O2 14 O; O[ "a; O2 [ oa as
+claimed.
+
+c 14 O2 [ fb 2 O?jaCbg.
+
+2. Since O; O; O2 is already closed, closO; O; O2 [ fag is
+c 14 fb 2 OjO [ fbg  c for some c 2
+
+O; O; O2
+O2
+O2 [ fagg. Due to the prior closedness, a is the only possibly
+c 14 O2 [ fb 2 O?jO[
+c that will yield some b, hence O2
+fbg  ag. By definition of the conflicts relation, this implies
+c 14 O2 [ fb 2 O?jaCbg, whence by definition of #a follows
+
+c 14 O2[ #a. Therefore closO; O; O2 [ fag 14 O; O; O2[ #a.
+
+impacta 14 ?O; O; O2  ?closO; O[
+fag; O2. By Definition 2, ?closO; O [ fag; O2 equals
+
+3. By Definition 3,
+
+with
+
+?O;fb 2 OjO [ fag  bg;
+
+fb 2 OjO [ fa; bg  c; c 2 O2g:
+By the definition of ?	 (Definition 3), impacta 14 jOn O [ O2j
+a 14
+aj where O
+zjO n O
+fb 2 OjO [ fa; bg  c; c 2 O2g.
+By definition of the entails and conflicts relations the line above
+equals
+
+a 14 fb 2 OjO [ fag  bg
+
+a [ O2
+
+and O2
+
+jO n O [ fb 2 O?jaEbg [ O2 [ fb 2 O?jaCbgj;
+
+which, by definition of " and o, is jO n O[ "a [ O2 [ oaj. Overall
+we then have impacta 14 jOj  jOj  jO2j jOj  jOj
+j "aj  jO2j  j oaj, which is j "aj  j oaj.
+4. By Definition 3, impacta 14 ?O; O; O2  ?closO; O; O2[
+fag. By Definition 2, the latter is ?O; O; O2 [ fb 2 OjO[
+fbg  ag. Using Definition 3, impacta then is:
+
+jO n O [ O2j  jO n O [ O2 [ fb 2 OjO [ fbg  agj
+
+By definition of the entails relation the latter is jO n O [ O2[
+fb 2 O?jbEagj, which, by definition of #, is jO n O [ O2[ #aj.
+Thus impacta 14 jOj  jOj  jO2j  jOj  jOj  jO2j  j
+#aj 14 j #aj. h
+
+Hence, the computation of the revision closure (lines 5 and 7)
+and axiom impacts does not require any entailment checks if the
+according decision space is available. For the computation of deci-
+
+sion spaces, we exploit the structural properties established in
+Lemmas 2 and 3 in order to reduce the number of required entailment checks in cases where the relations E and C are partially
+known. For this purpose, we define the rules R0R9 displayed in
+Table 4, which describe the interplay between the relations E and
+C and their complements E and C. The rules can serve as production
+rules to derive new instances of these relations thereby minimizing
+calls to costly reasoning procedures. By virtue of Lemma 3, we also
+have the guarantee that no further rules of this kind can be created,
+i.e., the rule set is complete for decision spaces.
+
+An analysis of the dependencies between the rules R0R9 reveals an acyclic structure (indicated by the order of the rules).
+Therefore E; C; C, and E can be saturated one after another. More-
+over, the exhaustive application of the rules R0R9 can be condensed into the following operations:
+E   E
+C   E  C [ C  E
+C   E  C [ Id [ C  E;
+E   E  C  C [ E  E
+
+C
+
+C  E
+R3
+
+E  C
+
+The correctness of the first operation (where 	 denotes the
+reflexive and transitive closure) is a direct consequence of R0
+and R1. For the second operation, we exploit the relationships
+E  C  E
+R2
+
+E  C  E
+that can be further composed into
+E  C  E [ E  C  E 14 E  C [ C  E
+Conversely, iterated backward chaining for C w.r.t. R2 and R3 yields
+E  C [ C  E as a fixpoint, under the assumption E 14 E. The correctness of the last two operations can be shown accordingly.
+
+C  E
+R2
+
+E  C #
+
+# C:
+
+R3
+
+R3
+
+R2
+
+C;
+
+R2
+
+Algorithm 2 realizes the cost-saving identification of the complete entailment and conflict relations of a decision space. Maintaining sets of known entailments E, non-entailments E,
+conflicts C and non-conflicts C, the algorithm always closes
+these sets under the above operations before it cautiously executes
+expensive deduction checks to clarify missing cases. First, the initially known (non-)entailments and (non-)conflicts are closed in
+the aforementioned way (lines 17). There and in the subsequent
+lines, we split computations into several ones where appropriate
+in order to minimize the size of sets subject to the join operation
+. Lines 826 describe the successive clarification of the entailment relation (for cases where neither entailment nor non-entail-
+ment is known yet) via deduction checks. After each such
+clarification step, the sets E; E; C; and C are closed. Thereby, we
+exploit known properties of intermediate results such as already
+being transitive or symmetric to avoid redoing the according
+closure operations unnecessarily (transupdatediff computes,
+for a relation R and a pair of elements a; b, the difference between
+the reflexive transitive closure of R extended with a; b and R, i.e.,
+R [ fa; bg n R). Likewise, we also avoid redundant computa-
+
+Table 4
+Completion rules for partially known decision spaces.
+
+R0
+R1
+R2
+R3
+R4
+R5
+R6
+R7
+R8
+R9
+
+Ex; y ^ Ey; z
+Ex; y ^ Cy; z
+Cx; y
+Ex; y
+Cx; y
+Ex; y ^ Cx; z
+Cx; y
+Cx; y ^ Cy; z
+Ex; y ^ Ex; z
+
+Ex; x
+Ex; z
+Cx; z
+Cy; x
+Cx; y
+Cy; x
+Cy; z
+Ex; y
+Ex; z
+Ey; z
+
+Reflexivity of E
+Transitivity of E
+(P3)
+Symmetry of C
+Disjointness of E and C
+Symmetry of C
+(P3)
+Disjointness of E and C
+(P3)
+Transitivity of E
+
+tions and reduce the size of the input sets for the join operations
+by explicitly bookkeeping sets E0
+; C0, and E0 containing only
+the instances newly added in the current step. Lines 2738 proceed
+in the analog way for stepwise clarification of the conflicts relation.
+
+; C0
+
+Algorithm 2. Decision Space Completion
+Input: O; O; O2 a consistent revision state; E; E; C; C
+
+subsets of the entailment and conflict relations and their
+complements
+
+pick one a; b 2 O? 
+ O? n E [ E
+if O [ fag  b then
+
+E0   transupdatediffE;a; b
+E   E [ E0
+C0   E0  C n C
+C0   C0 [ C0  E0 n C
+C   C [ C0
+C0   E0  C n C
+C0   C0 [ C0  E0 n C
+C   C [ C0
+E0   C0  C [ C  C0 n E
+E   E [ E0
+E0   E0  E [ E  E0 n E
+E   E [ E0 [ E0  E [ E  E0
+
+Output: O?; E; C the corresponding decision space
+1: E   E
+2: C   E  C  E
+3: C   C [ C
+4: C   E  C [ IdO?  E
+5: C   C [ C
+6: E   C  C [ E
+7: E   E  E  E
+8: while E [ E  O? 
+ O? do
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+18:
+19:
+20:
+21:
+22:
+23:
+24:
+25:
+26: end while
+27: while C [ C  O? 
+ O? do
+28:
+29:
+30:
+31:
+32:
+33:
+34:
+35:
+36:
+37:
+38: end while
+
+C0   E  fa; b;b; ag  E n C
+C   C [ C0
+E   E [ E  C0  C  E
+
+pick one a; b 2 O? 
+ O? n C [ C
+if O [ fa; bg  c for some c 2 O2 then
+
+C0   E  fa; b;b; ag  E
+C   C [ C0
+E   E [ E  C  C0  E
+
+E   E [ E  fa; bg  E
+
+end if
+
+end if
+
+else
+
+else
+
+Since the complexity of entailment checking will almost always
+outweigh the complexity of the other operations in Algorithm 2,
+we first analyze the complexity of the algorithm under the
+assumption that entailment checking is done by a constant time
+oracle. We then show how entailment checking can be factored in.
+
+Lemma 5. Let O; O; O2 be a revision state with O2  ; and
+E; E; C; C (possibly empty) subsets of the entailment and conflicts
+relations. We denote the size jOj of O with n. Given O; O; O2 and
+E; E; C; C as input, Algorithm 2 runs in time bounded by On5 and
+space bounded by On2 if we assume that entailment checking is a
+constant time operation.
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+is bounded by n since
+Proof. We first note
+that O?
+jO?j 14 jOj  jOj  jO2j. Similarly,
+the size of each relation
+E; E; C, and C is bounded by n2 since the relations are binary relations over axioms in O. We first analyze the individual operations.
+Computing the transitive reflexive closure of a relation can be done
+in cubic time, i.e., for E with E a relation over at most n axioms, we
+get a bound of n3. The computation of transupdatediff is in the
+worst case the same as computing the reflexive transitive closure.
+For a binary join operation , the output is again a binary relation
+over O of size bounded by n2. Each binary join can be computed in
+at most n3 steps. Note that multiple joins can be seen as several binary joins since each intermediate for formalisms where entailment
+checking is harder than PTime relation is again over axioms from
+O and is of size at most n2. The union operation [ corresponds to
+the addition of axioms. Each of the while loops is executed at most
+n2 times and requires a fixed number of join operations and possibly
+in one case the computation of transupdatediff, which gives an
+upper bound of On2 	 n3 14 On5 for both while loops. Together
+with the reflexive transitive closure and the fixed number of join
+operations before the while loops, we have that the time complexity
+of Algorithm 2 is On5 and its space complexity is On2 assuming
+that entailment checking is a constant time operation. h
+
+Note that the approach is targeted towards logics where the
+entailment checking problem is not tractable, i.e., harder than
+PTime. Otherwise, the performance benefit is only due to avoiding
+applying the same entailment checks multiple times.
+
+Lemma 6. Let O; O; O2 be a revision state with O2  ;; jOj :14 n
+and the axioms in O expressed in a logic L in which taking all
+consequences is a closure operation and for which there is a decision
+procedure for logical entailment of complexity cn where n is the size
+of the input to the procedure. Let E; E; C; C be (possibly empty)
+subsets of the according entailment and conflicts relations. Then there
+is a polynomial p such that the runtime of Algorithm 2, given
+O; O; O2 and E; E; C; C as input, is bounded by pn 	 cn.
+
+Proof. The input to the entailment checking algorithm is in all
+cases of size n. Both while loops perform at most n2 entailment
+checks, which together with the analysis from Lemma 5 give the
+desired result. h
+
+3.1. Updating decision spaces
+
+We proceed by formally describing the change of the decision
+space as a consequence of approving or declining one axiom with
+the objective of again minimizing the required number of entailment checks. We first consider the case that an expert approves
+an axiom a 2 O?, and hence a is added to the set O of wanted
+consequences.
+
+Lemma 7. Let DO;O;O2 14 O?; E; C; a 2 O?, and DO;O[fag;O2 14
+O?
+
+new; E0; C0. Then
+
+new 14 O? n " a [ oa,
+
+ O?
+ bEc implies bE0c for b; c 2 O?
+ bCc implies bC0c for b; c 2 O?
+
+new, and
+new.
+
+Essentially, the lemma states that all axioms entailed by a (as witnessed by E) as well as all axioms conflicting with a (indicated by C)
+will be removed from the decision space if a is approved. Moreover
+due to monotonicity, all positive information about entailments
+and conflicts remains valid. Algorithm 3 runs in time bounded by
+
+On5 and space bounded by On2 and takes advantage of these
+correspondences when fully determining the updated decision
+space.
+
+Lemma 8. Let DO;O;O2 be a decision space, a 2 O? an axiom. We
+denote the size jOj of O with n. Given DO;O;O2 and a as input,
+Algorithm 3 runs in time bounded by On5 and space bounded by On2
+if we assume that entailment checking is a constant time operation.
+
+Proof. Lines 15 of Algorithm 3 can be executed in cubic time and
+quadratic space using the same arguments as in Lemma 5. By
+Lemma 5, executing lines 838 from Algorithm 2 under the
+assumption that entailment checking is a constant time operation
+can be done in time On5, which proves the claim.
+
+Algorithm 3. Update of Decision Space DO;O;O2 on
+Approving a
+Input: DO;O;O2; a 2 O?
+Output: DO;O[fag;O2 updated decision space
+1: O?   O? n "a [ oa
+2: E   E \ O? 
+ O?
+3: C   C \ O? 
+ O?
+4: C   E  E
+5: E   E  C  C  E
+6: execute lines 838 from Algorithm 2
+
+Algorithm 4. Update of Decision Space DO;O;O2 on Declining
+
+Input: DO;O;O2; a 2 O?
+Output: DO;O;O2[fag updated decision space
+1: O?   O?n #a,
+2: E   E \ O? 
+ O?
+3: E   E \ O? 
+ O?
+4: C   C \ O? 
+ O?
+5: C   E  E
+6: while C [ CO? 
+ O? do
+7:
+8:
+9:
+10:
+11:
+12:
+13: end while
+
+pick one b; c 2 O? 
+ O? n C [ C
+if O [ fb; cg  a then
+
+C   C [ E  fb; c;c; bg  E
+
+C   C [ E  fb; c;c; bg  E
+
+else
+
+end if
+
+The next lemma considers changes to be made to the decision
+space on the denial of an axiom a by characterizing it as unwanted
+consequence.
+
+Lemma 9. Let DO;O;O2 14 O?; E; C; a 2 O?, and DO;O;O2[fag 14
+O?
+
+new; E0; C0. Then
+ O?
+new 14 O?n #a,
+ bEc exactly if bE0c for b; c 2 O?
+ bCc implies bC0c for b; c 2 O?
+new.
+
+new, and
+
+The lemma shows that the updated decision space can be obtained by removing all axioms that entail a. Furthermore entailments between remaining axioms remain unaltered whereas the
+set of conflicts may increase. Algorithm 4 implements the respective decision space update, additionally exploiting that new conflicts can only arise from derivability of the newly declined
+axiom a. Algorithms 3 and 4 have to be called in Algorithm 1 after
+the accept (line 5) or decline revision step (line 7), respectively.
+
+For n the number of involved axioms, Algorithms 24 run in
+time bounded by On5 and space bounded by On2 if we treat
+entailment checking as a constant time operation. Without the latter assumption, the complexity of reasoning usually dominates. For
+example, if the axioms use all features of OWL 2 DL, entailment
+checking is N2ExpTime-complete [12], which then also applies to
+our algorithm.
+
+Lemma 10. Let DO;O;O2 be a decision space, a 2 O? an axiom. We
+denote the size jOj of O with n. Given DO;O;O2 and a as input,
+Algorithm 4 runs in time bounded by On5 and space bounded by On2
+if we assume that entailment checking is a constant time operation.
+
+Proof. The execution lines 15 of Algorithm 4 can be performed in
+quadratic space and cubic time using the same arguments as in
+Lemma 5. We execute the operations within the while loop at most
+n2 times, and under the assumption that entailment checking is a
+constant time operation, we find that the operations can again be
+performed in cubic time and quadratic space resulting in an overall
+the time complexity of On5 and On2 space
+bound for
+complexity. h
+
+4. Parametrized ranking
+
+Let us look again at our running example, but assume that Axioms (1) and (2) are incorrect, i.e., the validity ratio is 75%. The so
+far introduced ranking functions do not take this into account: if
+we use impact, which shows the highest value of 7 for Axiom (1),
+then the user would decline the axiom and no automatic decisions
+are possible. Next, Axiom (2) is highest ranked, but again declined.
+Finally, after presenting Axiom (3) to the user, the axiom is approved and all remaining axioms can be approved automatically.
+The ranking function impact even takes 7 steps, whereas guaranteed performs slightly better with (theoretically) 2.8 expert deci-
+sions. This is an average for the different possible choices among
+the highest ranked axioms assuming that these have the same probability of being chosen. If we look at impact again, the problem is
+that the function ignores the validity ratio, i.e., Axiom (1) is presented to the user in the hope of an approval knowing that this could
+only happen if the validity ratio was 100% (due to the automatic
+approval of all remaining axioms). To address this issue, we now
+present a ranking function that takes the validity ratio into account.
+
+4.1. The ranking function norm
+
+N and impact
+
+We now define the ranking function normR, which minimizes
+the deviation of the fraction of accepted and declined axioms from
+the expected overall ratios of desired and undesired consequences.
+To determine this deviation for each axiom a, we first have to compute the fraction of accepted and declined axioms by normalizing
+impacts of a to values between 0 and 1. For this purpose, we define
+functions impact
+N. Since in the case of an approval, we
+can possibly both accept and decline axioms automatically, an approval influences both, the ratio of accepted and declined axioms.
+To take both influences into account, in Definition 3 we split the
+approval impact accordingly into impacta and impactd. Along
+the same lines, we obtain impacta
+N by normalizing
+these two components with respect to the expected validity ratio.
+On the contrary, in the case of a decline, we can only decline axioms automatically. Therefore, we do not split impact.
+
+N and impacta
+
+Definition 5. Let O? be a connected component of the decision
+space and R the expected validity ratio. The normalized impact
+functions are:
+
+impacta
+
+impactd
+
+impact
+
+N a 14 1  impactaa
+jO?j
+N a 14 impactda
+Na 14 1  impacta
+
+jO?j
+
+jO?j
+
+defined by
+R a 14 jR  impacta
+N aj;
+norma
+R a 14 j1  R  impactd
+normd
+R a 14 j1  R  impact
+norm
+
+N aj;
+Naj:
+
+The ranking functions norma
+
+R ; normd
+
+and norm
+
+R are then
+
+Finally, the ranking function normR for an axiom a is defined as
+max norma
+
+R a; normd
+
+R a; norm
+
+R a
+
+When computing impacta
+
+N , we increment it by 1, since we are
+interested in the overall fraction of accepted axioms, and, a itself
+is one of the accepted axioms. For the same reason, we also increment impact
+N , where a itself is accepted and
+does not increment the number of declined axioms.
+
+N by 1, but not impactd
+
+Table 5 shows the computation of norm0:75 for Example 1. The
+function norma
+captures how the fraction of automatically accepted axioms deviates from the expected overall ratio of wanted
+consequences, e.g., accepting Axiom (2) or (4) deviates by 12.5%:
+for the former axiom we have automatically accepted too many
+axioms, while for the latter we do not yet have accepted enough
+under the premise that the validity ratio is indeed 75%. Since
+Example 1 does not allow for automatic declines after an approval,
+the function normd
+shows that for each accept, we still deviate
+25% from the expected ratio of invalid axioms, which is 1  R.
+The function norm
+R works analogously for declines. Hence, normR
+is defined in a way that it takes the greatest value if the chance that
+all wanted (unwanted) axioms are accepted (declined) at once becomes maximal.
+
+Note that the expected validity ratio within the corresponding
+connected decision space component needs to be adjusted after each
+expert decision, to reflect the expected validity ratio of the remaining unevaluated axioms. For instance, after Axiom (2) has been de-
+clined, norm1:00 needs to be applied to rank the remaining axioms.
+If, however, Axiom (3) has been accepted, norm0:00 is required.
+
+Further, it is interesting to observe that employing norm0:00 for
+ranking yields the same behavior as impact. On the other hand,
+norm1:00 corresponds to impact in case no conflicting axioms are
+involved, which is in fact very probable if R is close to 100%. There-
+fore, norm represents a generalization of the earlier introduced impact functions impact and impact.
+
+4.2. Learning the validity ratio
+
+Users might only have a rough idea or even no idea at all of the
+validity ratio of a dataset in advance of the revision. Hence, it might
+be difficult or impossible to decide upfront which R to use for
+normR. To address this problem, we investigate how efficiently
+we can learn the validity ratio on the fly. In this setting, the user
+gives a prior estimate for R (or we use 50% as default) and with
+each revision of another connected decision space component, R
+is adjusted to reflect exactly the actual validity ratio at the current
+stage the proportion of (manually and automatically) approved
+axioms within the total set of the evaluated axioms so far. Thus,
+the algorithm tunes itself towards an optimal ranking function,
+which relieves the user from choosing a validity ratio. We call
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+Table 5
+The values for norm0:75 and the intermediate functions (shown in percentage).
+
+the according ranking function dynnorm as it dynamically adapts
+the estimated validity ratio over the course of the revision.
+
+In our experiments, we show that, already for small datasets,
+dynnorm outperforms random ordering and, in case of sufficiently
+large datasets, the estimate converges towards the actual validity ra-
+tio, thereby making the assumption of a known validity ratio
+obsolete.
+
+5. Partitioning
+
+Since reasoning operations, in particular for expressive formalisms such as OWL, are very expensive (the reasoner methods take
+99.2% of the computation time in our experiments according to our
+profiling measurements), we combine the optimization using decision spaces with a straight-forward partitioning approach that is
+applicable for OWL ontologies and splits ABox axioms (i.e., class
+and property assertions) into disjoint subsets. Thus, the subsequent discussion is specific to OWL reasoning.
+
+Definition 6. Let A be a set of ABox axioms, indA the set of
+individual names used in A, then A is connected if, for all pairs of
+individuals a; a0 2 indA, there exists a sequence a1; . . . ; an such
+that a 14 a1; a0 14 an, and, for all 1 6 i < n, there exists a property
+assertion in A containing ai and ai1. A collection of ABoxes
+A1; . . . ; Ak is a partitioning of A if A 14 A1 [ 			 [ Ak,
+indAi \ indAj 14 ; for 1 6 i < j 6 k, and each Ai is connected.
+The proposed partitioning process can be done in linear time,
+since it is more or less straight-forward product of the computation
+of the connected components of the ABox graph. In the absence of
+nominals (OWLs oneOf constructor), the above described partitions or clusters of an ABox are indeed independent. Thus, the
+above partitioning does not split any connected decision space
+components, and, therefore, we obtain an equivalent complete
+revision state and an equivalent evaluation order within each connected decision space component. We apply partitioning once at
+the beginning of the revision to the whole set of unevaluated axioms and then perform the revision for each partition separately by
+joining the partition with the remaining terminological axioms. So
+far, we abstract from the possibility to update the partitioning to a
+more fine-grained one over the course of revision.
+
+In order to also partition non-Abox axioms or to properly take
+axioms with nominals into account, other partitioning techniques
+can be applied, e.g., the signature decomposition approach by Konev
+et al. [13] that partitions the vocabulary of an ontology into subsets
+that are independent regarding their meaning. The resulting independent subsets of the ontology can then be reviewed independently from each other analogously to the clusters of ABox axioms
+used in our evaluation. We made the following general
+observations:
+
+ In particular in case of large datasets containing several parti-
+tions, the additional partitioning-based optimization significantly reduces the computational effort.
+
+ Partitioning intensifies the effectiveness of decision spaces,
+since the density of entailment and contradiction relations
+are significantly higher within each partition than the density
+within a set of independent partitions.
+
+6. Experimental results
+
+We evaluated our revision support methodology within the
+project NanOn aiming at ontology-supported literature search.
+During this project, a hand-crafted ontology modeling the scientific
+domain of nano technology has been developed, capturing
+substances, structures, and procedures used in that domain. The
+ontology, denoted here with O, is specified in the Web Ontology
+Language OWL 2 DL [14] and comprises 2289 logical axioms. This
+ontology is used as the core resource to automatically analyze scientific documents for the occurrence of NanOn classes and properties by the means of lexical patterns. When such classes and
+properties are found, the document is automatically annotated
+with them to facilitate topic-specific information retrieval on a
+fine-grained level. Note that these annotations are modeled as
+ABox facts and must not be confused with OWL annotations, which
+do not carry any semantics in OWL 2 DL. In this way, one of the
+project outputs is a large amount of class and property assertions
+associated with the NanOn ontology. In order to estimate the accuracy of such automatically added annotations, they need to be inspected by human experts, which provides a natural application
+scenario for our approach. The manual inspection of annotations
+provided us with sets of valid and invalid annotation assertions
+(denoted by A and A, respectively). To investigate how the quality and the size of each axiom set influences the results, we created
+several distinct annotation sets with different validity ratios
+jAj=jAj  jAj. As the annotation tools provided rather reliable
+data, we had to manually create additional wrong frequently
+occurring patterns and apply them for annotating texts to obtain
+datasets with a lower validity ratio.
+
+For each set, we applied our methodology starting from the
+revision state O [ O [ A [ A
+; O; O with O containing the axioms of the NanOn ontology and with O containing axioms
+expressing inconsistency and class unsatisfiability. We obtained a
+; O [ A
+complete
+where on-the-fly expert decisions about approval or decline were
+simulated according to the membership in A or A. For computing the entailments, we used the OWL reasoner HermiT.4
+
+O [ O [ A [ A
+
+revision state
+
+; O [ A
+
+For each set, our baseline is the reduction of expert decisions
+when axioms are evaluated in random order, i.e., no ranking is
+applied and only the revision closure is used to automatically evaluate axioms. The upper bound for the in principle possible reduction of expert decisions is called the optimal ranking, obtained by
+applying the impact oracle for each axiom a that is to be
+evaluated:
+
+4 http://www.hermit-reasoner.com.
+
+70 %
+
+60 %
+
+50 %
+
+40 %
+
+30 %
+
+20 %
+
+10 %
+
+0 %
+
+0 % 10 %
+
+25 %
+
+50 %
+
+76 %
+
+90 %
+
+optimal
+norm
+
+impact+
+guaranteed
+
+impact-
+random
+
+Fig. 1. Revision results of norm in comparison with other ranking functions for the sets L1L5.
+
+KnownImpacta 14 impacta
+impacta
+
+if a 2 A
+if a 2 A
+
+6.1. Evaluation of norm
+
+To compare the effectiveness of impact
+
+; impact, and guaranteed with the parametrized ranking norm, we created five sets of
+annotations L1 to L5, each comprising 5000 axioms with validity ratios varying from 10% to 90%.
+
+The table in Fig. 1 shows the results for the different ranking
+techniques: the column optimal shows the upper bound achieved
+by using the impact oracle, norm shows the results for norm
+parameterized with the actual validity ratio, best unparameterized
+shows the best possible value achievable with the unparameterized functions, and, finally, the column random states the effort
+reduction already achieved by presenting the axioms in random
+order. The results show that norm consistently achieves almost
+the maximum effort reduction with an average difference of
+0.1%. The unparameterized functions only work well
+for the
+high and low quality datasets, as expected, where impact works
+well for the former case, while impact works well for the latter.
+For the dataset with validity ratio 50%, norm achieves an
+additional 11.1% of automatization by using the parameterized
+ranking.
+
+In general, the actual difference in performance achieved by the
+more precise parameterized ranking increases for a higher average
+maximum path length within connected decision space graphs. To
+see this, consider again the decision space shown in Table 3. It is
+clear that the distance between the highest ranked axioms for different ranking functions increases as the height of the presented
+tree becomes greater.
+
+6.2. Evaluation of dynnorm
+
+In order to evaluate our solution for situations where the validity ratio is unknown or only very rough estimates can be given
+
+upfront, we analyzed the effectiveness of the dynamically learning
+ranking function dynnorm. To this end, we created the following
+annotation sets in addition to the datasets L1  L5:
+ small datasets S1S5 with the size constantly growing from 29
+ medium-sized datasets M1M5 with 500 axioms each and valid-
+
+to 102 axioms and validity ratios varying from 10% to 90%,
+
+ity ratios varying from 10% to 91%.
+
+Table 6 shows the results of the revision: the columns optimal
+and random are as described above, the column norm shows the results that we would obtain if we were to assume that the validity
+ratio is known and given as parameter to the norm ranking func-
+tion, the columns dynnorm0:50, dynnorm1:00 and dynnorm0:00 show
+the results for starting the revision with a validity ratio of 50%,
+100%, and 0%, respectively, where over the course of the revision,
+we update the validity ratio estimate.
+
+We observe, that, in case of small datasets (Si), the deviation
+from norm (on average 5%) as well as the dependency of the results on the initial value of the validity ratio are clearly visible.
+However, the results of dynnorm are significantly better (45.0%)
+than those of a revision in random order. It is also interesting
+to observe that the average deviation from norm decreases with
+the size of a dataset (6.9%, 10.5%, 2.7%, 3.3%, 1.9% for S1 to S5,
+respectively) and that the probability of a strong deviation is lower for datasets with an extreme validity ratio (close to 100% or
+0%).
+
+For medium-sized and large datasets (Mi and Li), the deviation
+from norm (on average 0.3% for both) as well as the dependency
+on the initial value of the validity ratio are significantly lower, as
+displayed in Fig. 2.
+
+We conclude that
+
+ ranking based on learning validity ratio is already useful for
+small datasets (30-100 axioms), and improves significantly with
+the growing size of the dataset under revision;
+
+ in case of large datasets, the performance difference between
+the the results with a validity ratio known in advance and a
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+Table 6
+Revision results for datasets S1S5; M1M5, and L1L5.
+
+learned validity ratio almost disappears, thereby making the
+assumption of known average validity ratio obsolete for axiom
+ranking.
+
+6.3. Computational effort
+
+During our experiments, we measured the average number of
+seconds after each expert decision required for the automatic evaluation and ranking as well as the average number of reasoning
+calls. If we compute the average values for the revision based on
+dynnorm ranking for all 15 datasets, the revision took 0.84 s (7.4
+reasoning calls) after each expert decision. In the case of small
+datasets, partitioning yields an additional improvement by an order of magnitude in terms of reasoning calls. For medium-sized
+datasets without partitioning, the first step out of on average 153
+evaluation steps took already 101101 reasoning calls (ca. 3 h) even
+when using decision spaces. Without decision spaces and parti-
+tioning, the required number of reasoning calls for the revision of
+the sets M1M5 would be more than 500000, judging by the required reasoning calls to build the corresponding decision space
+in the worst case. For this reason, we did not try to run the experiment without partitioning for large datasets, which would require
+more than 50 million reasoning calls without decision in the worst
+case. In contrast to that, the average number of required reasoning
+calls for a complete revision of the sets M1M5 with partitioning
+amounts to 3380. The revision of datasets L1L5 with partitioning
+required overall on average 16175 reasoning calls, which corresponds to between 6 and 7 reasoning calls per evaluation decision.
+We can summarize the evaluation results as follows:
+
+ The proposed reasoning-based support performs well in an
+interactive revision process with on average 0.84 seconds per
+expert decision.
+
+ In particular in case of large datasets containing several parti-
+tions, partitioning significantly reduces the computational
+effort.
+
+ The employment of decision spaces saves in our experiments on
+average 75% of reasoner calls. As measured in the case of small
+datasets, partitioning further intensifies the effect of decision
+spaces and we save even 80% of reasoner calls.
+
+7. User front-end
+
+Fig. 3 shows the user front-end of the revision helper tool. It allows the user to load the set O of axioms under revision and save
+or load an evaluation state for the currently loaded set O. Thereby,
+the user can interrupt the revision at any time and proceed later
+on. If partitioning is activated, revision helper shows the partitions
+one after another and the revision of each partition is independent
+from the revision of all other partitions.
+
+By default, revision helper initializes the set O2 of undesired
+statements with the minimal set of statements expressing the
+inconsistency of the ontology or unsatisfiability of its classes. The
+set of desired statements O can be initialized by loading an arbitrary ontology. A statement can be evaluated by choosing one of
+the values Accept and Decline, and it can be excluded from the revision process by choosing Exclude. The latter option should be used,
+if the meaning of a statement is not clear and the user cannot decide whether to accept or to decline it. After the statement has
+
+Fig. 2. Effect of learning validity ratio for different data set sizes.
+
+Fig. 3. Revision helper GUI.
+
+been evaluated, it disappears from the revision list as well as all
+statements that could be evaluated automatically, unless the
+checkbox Propagate Decisions is deactivated. The ranking strategy
+used for sorting the statements can be selected or deactivated at
+any time and is taken into account after the next evaluation deci-
+sion. At any stage of the revision, it is possible to export the current
+set O of accepted statements as an ontology. For the export, we
+exclude, however, axioms with which O has been initialized at
+the beginning of the revision.
+
+8. Related work
+
+In our previous work [15], we proposed an approach for
+determining a beneficial order of axiom evaluation under the
+assumption of a high validity ratio within the axiom set under inves-
+tigation. The latter approach aims at reducing the manual effort of
+revision by eliminating the redundancy within the corresponding
+axiom set, which is the major factor leading to automatic axiom
+evaluation under the assumption of a high validity ratio.
+
+In addition to our own work, we are aware of two approaches
+for supporting the revision of ontological data based on logical
+appropriateness: an approach by Meilicke et al. [16] and another
+one called ContentMap by Jimenez-Ruiz et al. [17]. Both approaches
+are applied in the context of mapping revision. An extension of
+ContentMap called ContentCVS [18] supports an integration of
+changes into an evolving ontology. In all of these approaches,
+dependencies between evaluation decisions are determined based
+on a set of logical criteria each of which is a subset of the criteria
+that can be derived from the notion of revision state consistency
+introduced in Def. 1.
+
+In contrast to our approach, ContentMap and ContentCVS focus
+on the visualization of consequences and user guidance in case of
+difficult evaluation decisions. These approaches selectively materialize and visualize the logical consequences caused by the axioms
+under investigation and support the revision of those conse-
+quences. Subsequently, the approved and declined axioms are
+determined in correspondence with the revision of the conse-
+quences. The minimization of the manual and computational effort
+required for the revision is not considered. In contrast to our ap-
+proach, which requires at most a polynomial number of entailment
+checks, ContentMap and ContentCVS require an exponential num-
+
+ber of reasoning operations compared to the size of the ontology
+under revision. The reason for this is that ContentMap and ContentCVS determine the dependencies between the consequences by
+comparing their justifications, i.e., sets of axioms causing the entailment of the consequence.
+
+Similarly to our approach, Meilicke et al. aim at reducing the
+manual effort of mapping revision. However, their results are difficult to generalize to the revision of ontologies, since the notion of
+impact is defined based on specific properties of mapping axioms.
+For every mapping axiom possible between the entities of the two
+mapped ontologies O1 and O2, they define the impact as the corresponding number of possible entailed and contradicting mapping
+axioms. The assumption is that the set of possible mapping axioms
+and the set of possible axioms in O1 and O2 are mostly disjoint,
+since axioms in O1 and O2 usually refer only to entities from the
+same ontology, while mapping axioms are assumed to map only
+entities from different ontologies. In case of ontology revision in
+general, no such natural distinction criteria for axioms under revision can be defined. Moreover, in contrast to our approach, Meilicke et al. abstract from the interactions between more than one
+mapping axiom.
+
+Another strand of work is related to the overall motivation of
+enriching ontologies with additional expert-curated knowledge
+in a way that minimizes the workload of the human expert: based
+on the attribute exploration algorithm from formal concept analysis
+[19], several approaches have proposed structured interactive enumeration strategies of axioms of certain fragments of OWL which
+then are to be evaluated by an expert [20,21]. While similar in
+terms of the workflow, the major difference of these approaches
+to ours is that the axioms are not pre-specified but created on
+the fly and, therefore, the exploration may require (in the worst
+case exponentially) many human decisions.
+
+9. Summary
+
+In this paper, we proposed a methodology for supporting ontology revision based on logical criteria. We stated consistency criteria for revision states and introduced the notion of revision closure,
+based on which the revision of ontologies can be partially
+automatized.
+
+N. Nikitina et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1213 (2012) 118130
+
+Even though a significant effort reduction can be achieved when
+axioms are chosen randomly for each expert decision, an evaluation
+of the axioms in an appropriate order usually yields a higher effort
+reduction. We introduced the notion of axiom impact, which can
+directly be used to define axiom ranking functions that work well
+for data of either high or low quality. In order to achieve significant
+improvements for data with an arbitrary validity ratio, we further
+refine the ranking functions to take into account the estimated
+validity ratio of the ontology under revision. We then show how
+the validity ratio can be learned on-the-fly over the course of the
+revision, which alleviates the user from having to provide such an
+estimate.
+
+Moreover, we provide an efficient and elegant way of determining the revision closure and axiom impact by computing and
+updating structures called decision spaces which saved 75% of reasoner calls during our evaluation.
+
+We present the implementation of the approach including an
+optimization based on partitioning, which significantly reduces
+the required computational effort. We evaluate our implementation in a revision of ontology-based annotations of scientific publications comprising over 25000 statements and show that
+
+ On average, we were able to reduce the number of required
+evaluation decisions by 36% when the statements were
+reviewed in an arbitrary order, and by 55.4% when the unparameterized ranking techniques were used. The parametrized
+ranking technique almost achieved the maximum possible
+automatization (59.4% of
+thereby
+reducing the manual effort of revision by 59.3%. The gain of
+the parametrized compared to the unparameterized ranking
+functions is particularly important for datasets with a validity ratio close to 50% (we observed an up to 11.1% improve-
+ment), since for those datasets the potential of automatization
+cannot be fully exploited without parameterizing the ranking
+function.
+
+evaluation decisions)
+
+ In case of large datasets with an unknown validity ratio, learning the validity ratio is particularly effective due to the law of
+large numbers. In our experiments, the proportion of automatically evaluated statements is nearly the same as in case where
+the validity ratio is known a priori and is used as a fixed parameter of norm, thereby making the assumption of known average
+validity ratio not necessary for axiom ranking.
+
+ The proposed reasoning-based support is feasible for an interactive revision process requiring on average less than one second
+after each expert decision in our evaluation.
+
+As part of our future work, we intend to study more general
+partitioning methods, e.g., [13], to increase the applicability of
+the partitioning optimization. Also the currently proposed partitioning could be further developed. The initially determined sets
+remain independent during the whole revision process. However,
+a single partition could potentially be further divided after some
+evaluation decisions, e.g., after rejecting an axiom a partition might
+fall apart into two partitions. We do not yet take such further
+refinements into account and simply stick to the originally defined
+partition, however it would be interesting to investigate whether
+such an additional partition refinement pays off. Another interesting approach in this direction would also be to study the effects of
+separating the ontology into parts that are not logically indepen-
+dent. In such a case, we might miss automatic decisions, but the
+potential performance gain, due to the reasoning with smaller subsets of the ontology, might compensate for this drawback.
+
+Acknowledgments
+
+This work is supported by the German Federal Ministry of Education and Research (BMBF) under the SAW-Project NanOn. Birte
+Glimm acknowledges the support of the Transregional Collaborative Research Center SFB/TRR 62 Companion-Technology for Cognitive Technical Systems
+funded by the German Research
+Foundation (DFG).

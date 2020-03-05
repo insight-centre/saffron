@@ -27,9 +27,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.google.common.flogger.FluentLogger;
 import org.apache.commons.io.FileUtils;
 import org.bson.Document;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.insightcentre.nlp.saffron.SaffronListener;
@@ -54,7 +55,6 @@ import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
@@ -72,8 +72,11 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.google.common.flogger.FluentLogger;
 import com.google.common.io.Files;
 import com.mongodb.client.FindIterable;
 
@@ -139,9 +142,7 @@ public class Executor extends AbstractHandler {
                 doExecute(name, response, baseRequest, hsr);
             } else if (corpus != null && (target.startsWith("/execute/advanced/"))) {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
-                if (doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest)) {
-                    return;
-                }
+                doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest);
 
             } else if (target.startsWith("/api/v1/run/rerun")) {
                 final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
@@ -219,7 +220,7 @@ public class Executor extends AbstractHandler {
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         ConceptConsolidationConfiguration conceptConsolidationConfiguration
-        		= new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
+                = new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
@@ -293,6 +294,8 @@ public class Executor extends AbstractHandler {
             x.printStackTrace();
             return true;
         }
+        // Clear the 'advanced' status so the system switches to the spinner
+        statuses.get(saffronDatasetName).advanced = false;
         new Thread(new Runnable() {
             @Override
             @SuppressWarnings("UseSpecificCatch")
@@ -427,30 +430,29 @@ public class Executor extends AbstractHandler {
                 try {
                     ObjectMapper mapper = new ObjectMapper();
                     Corpus corpus = CorpusTools.fromJson(tmpFile);
-                    
-                    /*List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
-                    if (corpus.getDocuments() != null) {
-                        for (org.insightcentre.nlp.saffron.data.Document doc : corpus.getDocuments()) {
-                            if (doc.file != null) {
-                                FileReader reader = new FileReader(doc.file.toFile());
-                                Writer writer = new StringWriter();
-                                char[] buf = new char[4096];
-                                int i = 0;
-                                while ((i = reader.read(buf)) >= 0) {
-                                    writer.write(buf, 0, i);
-                                }
-                                org.insightcentre.nlp.saffron.data.Document newDoc
-                                        = new org.insightcentre.nlp.saffron.data.Document(doc.file,
-                                            doc.id, doc.url, doc.name, doc.mimeType,
-                                        doc.authors, doc.metadata, writer.toString(), doc.date);
-                                newDocs.add(newDoc);
-                            }
-                        }
-
-                        if (newDocs.size() > 0) {
-                            corpus = CorpusTools.fromJsonFiles(tmpFile);
-                        }
-                    }*/
+//                    List<org.insightcentre.nlp.saffron.data.Document> newDocs = new ArrayList<>();
+//                    if (corpus.getDocuments() != null) {
+//                        for (org.insightcentre.nlp.saffron.data.Document doc : corpus.getDocuments()) {
+//                            if (doc.file != null) {
+//                                FileReader reader = new FileReader(doc.file.toFile());
+//                                Writer writer = new StringWriter();
+//                                char[] buf = new char[4096];
+//                                int i = 0;
+//                                while ((i = reader.read(buf)) >= 0) {
+//                                    writer.write(buf, 0, i);
+//                                }
+//                                org.insightcentre.nlp.saffron.data.Document newDoc
+//                                        = new org.insightcentre.nlp.saffron.data.Document(doc.file,
+//                                            doc.id, doc.url, doc.name, doc.mimeType,
+//                                        doc.authors, doc.metadata, writer.toString(), doc.date);
+//                                newDocs.add(newDoc);
+//                            }
+//                        }
+//
+//                        if (newDocs.size() > 0) {
+//                            corpus = CorpusTools.fromJsonFiles(tmpFile);
+//                        }
+//                    }
                     if (advanced) {
                         Executor.this.corpus = corpus;
                         _status.advanced = true;
@@ -479,10 +481,11 @@ public class Executor extends AbstractHandler {
         }
     }
 
-    void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun) throws IOException {
-        BlackWhiteList bwList = extractBlackWhiteList(saffronDatasetName);
-        if (bwList == null) {
-            bwList = new BlackWhiteList();
+    void execute(Corpus corpus, Configuration config, SaffronDataSource data, String saffronDatasetName, Boolean isInitialRun)
+            throws IOException, UnsupportedKerasConfigurationException, InvalidKerasConfigurationException {
+        AllowanceDenialList allowDenyList = extractAllowanceDenialList(saffronDatasetName);
+        if (allowDenyList == null) {
+            allowDenyList = AllowanceDenialList.getInstance(Taxonomy.class);
 
         }
         data.deleteRun(saffronDatasetName);
@@ -513,7 +516,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Extracting Terms", saffronDatasetName);
         TermExtraction extractor = new TermExtraction(config.termExtraction);
-        TermExtraction.Result res = extractor.extractTerms(searcher, bwList.termWhiteList, bwList.termBlackList, _status);
+        TermExtraction.Result res = extractor.extractTerms(searcher, allowDenyList.getTermAllowanceList(), allowDenyList.getTermDenialList(), _status);
         List<Term> terms = new ArrayList<>(res.terms);
         data.setTerms(saffronDatasetName, terms);
 
@@ -534,7 +537,7 @@ public class Executor extends AbstractHandler {
         List<Concept> concepts = conceptConsolidation.consolidate(terms);
         data.addConcepts(saffronDatasetName, concepts);
         _status.setStageComplete("Consolidating concepts", saffronDatasetName);
-        
+
         _status.stage++;
 
         _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
@@ -576,7 +579,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Connecting authors to authors", saffronDatasetName);
         AuthorSimilarity as = new AuthorSimilarity(config.authorSim);
-        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, _status);
+        final List<AuthorAuthor> authorSim = as.authorSimilarity(authorTerms, saffronDatasetName, _status);
         if (storeCopy.equals("true"))
             ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "author-sim.json"), authorSim);
         data.setAuthorSim(saffronDatasetName, authorSim);
@@ -592,24 +595,35 @@ public class Executor extends AbstractHandler {
         Model model = mapper.readValue(config.taxonomy.modelFile.toFile(), Model.class);
         SupervisedTaxo supTaxo = new SupervisedTaxo(res.docTerms, termMap, model);
         TaxonomySearch search = TaxonomySearch.create(config.taxonomy.search, supTaxo, termMap.keySet());
-        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, bwList.taxoWhiteList, bwList.taxoBlackList);
-        Taxonomy topRootGraph = new VirtualRootTaxonomy(graph);
+        final Taxonomy graph = search.extractTaxonomyWithBlackWhiteList(termMap, allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
         if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), topRootGraph);
-        data.setTaxonomy(saffronDatasetName, topRootGraph);
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "taxonomy.json"), graph);
+        data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
+
+        /*_status.stage++;
+
+        _status.setStageStart("Building knowledge graph", saffronDatasetName);
+        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
+        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+        if (storeCopy.equals("true"))
+            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+        data.setKnowledgeGraph(saffronDatasetName, kGraph);
+        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
+         */
         _status.completed = true;
     }
 
-    public BlackWhiteList extractBlackWhiteList(String datasetName) {
+    public AllowanceDenialList extractAllowanceDenialList(String datasetName) throws JsonParseException, JsonMappingException, IOException {
 
         MongoDBHandler mongo = new MongoDBHandler();
 
-        if (!mongo.getTerms(datasetName).iterator().hasNext()) {
-            return new BlackWhiteList();
+        if (!mongo.getAllTerms(datasetName).iterator().hasNext()) {
+            return AllowanceDenialList.getInstance(Taxonomy.class);
         } else {
-            return BlackWhiteList.from(mongo.getTerms(datasetName), mongo.getTaxonomy(datasetName));
-
+            return AllowanceDenialList.from((List) mongo.getAllTerms(datasetName), mongo.getTaxonomy(datasetName));
         }
     }
 
@@ -693,18 +707,19 @@ public class Executor extends AbstractHandler {
                 setErrorMessage("Failed: " + message);
             }
             data.remove(name);
-            if(cause != null)
+            if(cause != null) {
                 cause.printStackTrace();
-            if (out != null) {
-                cause.printStackTrace(out);
+                if (out != null) {
+                    cause.printStackTrace(out);
+                }
+                logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
+            }
+            else {
+                logger.atSevere().log("Failed: " + message);
             }
             if (out != null) {
                 out.flush();
             }
-            if(cause != null)
-                logger.atSevere().log("Failed due to " + cause.getClass().getName() + ": " + message);
-            else 
-                logger.atSevere().log("Failed: " + message);
         }
 
         @Override

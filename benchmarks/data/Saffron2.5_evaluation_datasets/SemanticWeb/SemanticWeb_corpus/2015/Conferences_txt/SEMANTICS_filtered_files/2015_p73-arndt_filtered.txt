@@ -1,0 +1,1065 @@
+Knowledge Base Shipping to the Linked Open Data Cloud
+
+Natanael Arndt
+Universitat Leipzig
+Augustusplatz 10
+
+04109 Leipzig, Germany
+
+arndt@informatik.uni-leipzig.de
+
+Martin Brummer
+Universitat Leipzig
+Augustusplatz 10
+
+04109 Leipzig, Germany
+bruemmer@informatik.uni-
+
+leipzig.de
+
+Markus Ackermann
+
+Universitat Leipzig
+Augustusplatz 10
+
+04109 Leipzig, Germany
+ackermann@informatik.uni-
+
+leipzig.de
+
+Thomas Riechert
+
+Hochschule fur Technik,
+
+Wirtschaft und Kultur Leipzig
+
+Gustav-Freytag-Str. 42A
+04277 Leipzig, Germany
+
+thomas.riechert@htwk-leipzig.de
+
+ABSTRACT
+Popular knowledge bases that provide SPARQL endpoints
+for the web are usually experiencing a high number of re-
+quests, which often results in low availability of their in-
+terfaces. A common approach to counter the availability
+issue is to run a local mirror of the knowledge base. Running a SPARQL endpoint is currently a complex task which
+requires a lot of efort and technical support for domain experts who just want to use the SPARQL interface. With
+our approach of containerised knowledge base shipping we
+are introducing a simple to setup methodology for running a
+local mirror of an RDF knowledge base and SPARQL endpoint with interchangeable exploration components. The
+lexibility of the presented approach further helps maintaining the publication infrastructure for dataset projects.
+We are demonstrating and evaluating the presented methodology at the example of the dataset projects DBpedia,
+Catalogus Professorum Lipsiensium and Sachsisches Pfar-
+rerbuch.
+
+Keywords
+Docker, Knowledge Base, Linked Open Data, Web of Data,
+Semantic Web, SPARQL Service, Container-based Virtual-
+isation
+
+1.
+
+INTRODUCTION
+
+Modelling and representing knowledge using RDF has become an established tool throughout diverse domains. How-
+ever, the process of publishing and maintaining RDF knowledge bases on the World Wide Web in general and on the
+
+Permission to make digital or hard copies of all or part of this work
+for personal or classroom use is granted without fee provided that
+copies are not made or distributed for proit or commercial advantage and that copies bear this notice and the full citation on the irst
+page. Copyrights for components of this work owned by others than
+the author(s) must be honored. Abstracting with credit is permitted.
+To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior speciic permission and/or a fee. Request
+permissions from permissions@acm.org.
+SEMANTiCS 15, September 15 - 17, 2015, Vienna, Austria
+ 2015 Copyright held by the owner/author(s). Publication rights
+licensed to ACM. ISBN 978-1-4503-3462-4/15/09...$15.00
+DOI: http://dx.doi.org/10.1145/2814864.2814885
+
+Linked Open Data cloud (LOD cloud) in particular requires
+technical expertise. While allocating resources to knowledge engineers who model the domain of interest and create the knowledge bases is easy to justify, making these
+datasets available as Linked Data is equally important. Although this should be a mere technicality to Linked Data
+experts, setup and maintenance of knowledge bases published as Linked Data are time consuming tasks that are
+often overlooked. These complications become clearer by
+looking at evaluations of LOD cloud datasets, such as by
+47% of proprietSchmachtenberg et al. [13], where only 19
+ary vocabularies were fully dereferenceable and only 9
+96%
+of datasets provided SPARQL endpoints.
+
+Another facet of this issue is reproducibility of experiments performed on RDF knowledge bases. Properly comparing own approaches to prior research entails working with
+the same data. However, knowledge bases evolve and public
+endpoints may either stop serving the data that was originally used in experiments, or they might not be powerful
+enough to provide the data in reasonable time spans. Finding the data, loading it into a local triple store and using
+this local mirror to perform the experiments is the usual way
+to counter this problem. Publication of knowledge bases to
+the LOD cloud usually comprises the following steps:
+
+1. Installation of a triple store
+2. Loading the data to be published into the triple store
+3. Setting up a (publicly available) SPARQL endpoint
+4. Providing a presentation application to support the
+
+exploration of the knowledge base
+
+5. Ensuring de-referencability of IRIs occurring in the
+
+published knowledge base
+
+6. Maintain the setup and ensure its availability
+Performing these steps requires a certain level of technical knowledge and understanding of the individual server
+components. This often requires a knowledge engineer resp.
+domain expert to either consult a system administrator or
+to invest a signiicant amount of time to selectively acquire
+DevOp-competences that often diverge far from the original
+domain and core research interests of the knowledge engin-
+eer.
+
+
+of Dockerizing Linked Data (DLD, http://dld.aksw.org/):
+an approach of a containerised Linked Data publication in-
+frastructure. By using Docker container virtualisation, it
+provides beneits regarding the maintainability and ease of
+setup, through modularisation of individual components following the principle of micro services1. In addition, it enables easy mirroring of a setup on other computer systems.
+Apart from the pure presentation of the knowledge base we
+are also taking a look at use cases where write access is
+needed. A detailed description of the overall architecture is
+given in section 3. In section 3.1 we specify a way of containerising a triple store together with the used access and
+management interfaces. Diferent ways for loading the actual data into a containerised triple store and how to backup
+the data are presented in section 3.2. In section 3.3 we show
+how to create and attach containers for a HTML representation of the data, in addition to the SPARQL endpoint. We
+are using the presented approach to provide a ready-to-run
+DBpedia SPARQL endpoint setup to create a local mirror as
+replacement for the highly demanded central endpoint (sec-
+tion 4.1). The approach is also used to run and maintain
+the two prosopographical knowledge bases Catalogus Professorum Lipsiensium (section 4.2) and Sachsisches Pfarrerbuch (section 4.3) which both share many requirements
+to the software setup and thus can beneit from a modular
+reusable software stack.
+
+2. BACKGROUND AND TOOLING
+
+Container-based operating system virtualisation is a technology used to provide an isolated execution environment
+for multiple individual applications sharing the complete
+hardware and the hosts core operating system components
+while each container has its own ilesystem [12]. In contrast,
+with full- and para-virtualisation technologies each virtual
+machine brings its own operating system kernel which increases the resource footprint on the host system. Examples
+of container-based operating system virtualisation technologies are e. g. FreeBSD jail2, Linux Containers (LXC)3 and
+Docker4.
+
+Docker, albeit a comparatively young project started in
+2013, experienced a very rapid increase in its popularity and
+community uptake [10]. Initially, the main contribution of
+Docker was not advancing operating system or virtualisation
+technology itself, but rather providing a feature-rich and
+straightforward way to use APIs and interfaces by combing
+pre-existing and maturing open-source virtualisation tech-
+nologies. At its inception, Docker utilised LXC to create
+kernel-level process namespaces and control groups for each
+container to establish an isolated process tree with holistic
+facilities to control and modify its resource consumption and
+network traic. Current releases of Docker now use a pro-
+
+1We understand micro services as small independently deployable services, each responsible for a well deined sub-task
+of the whole setup; cf. http://martinfowler.com/articles/
+microservices.html
+2FreeBSD jails
+in the FreeBSD handbook:
+//www.freebsd.org/doc/en_US.ISO8859-1/books/
+handbook/jails.html
+3LinuxContainers.org
+//linuxcontainers.org/
+4The Docker project webpage: http://docker.io/
+
+webpage:
+
+project
+
+http:
+
+http:
+
+cess container library called libcontainer, a sub-project of
+the original Docker initiative.
+
+Another important Docker feature is the manner in which
+ilesystems for the isolated processes are managed. On boot-
+strapping, each container has its own replica of a root ilesystem deined by a Docker image. Harnessing layered and versioning copy-on-write ilesystems (AuFS or btrfs), changed
+parts of the ilesystem (difs) are stored alongside a copy of
+the corresponding ilesystem parts before destructive oper-
+ations, allowing to restore any ilesystem state during the
+lifecycle of a container and to trace the history of write op-
+erations. Each of these states of the ilesystem can be tagged
+and reused as a new image, allowing new containers to start
+their lifecycle with that exact ilesystem state.
+
+In addition to the aforementioned prototypical ilesystem
+tree, a Docker image groups information about which root
+process resp. entry point to invoke, potentially required adjustment to the execution environment of the process (i. e.
+the working directory and environment variables) and which
+resource limits must be respected. The preferred way to create an image is deining aforementioned details in a Docker-
+ile5. This Dockerile also allows to declare process invocations and to add additional iles to the base image to adjust
+aspects of the coniguration in the base image. Dockeriles
+also have the advantage of an even more transparent formal
+description of steps to obtain a desired initial coniguration
+environment for processes to be run in containers.
+
+With volumes Docker provides the possibility to mount
+directories of the host ilesystem or other containers into
+the ilesystem of a container6, exempt from the versioning
+by the copy-on-write ilesystem in favour of increased I/O
+performance. Each container receives its own virtual network interface, allowing it to connect to other nodes on the
+internal virtual network and to the Internet through a host
+bridge. With the EXPOSE keyword a container can select
+which ports are available to the host system. To provide
+services via network connections from within a container
+to other containers, Docker ofers a linking mechanism7.
+Using links, stable host names and ports can be achieved
+for inter-container network communication, further environment variables from upstream containers are made available
+as well. It provides a simple but efective way to interchange
+small pieces of information required for successful orchestra-
+tion.
+
+Container-based operating system virtualisation has the
+advantage of keeping all dependencies necessary to run an
+application together while major parts (hardware and operating system kernel) are shared between instances. We
+expect that the main technical setup for users of this project will be commodity hardware with moderate performance characteristics. In such a context, the desired orchestration of numerous micro services in isolated environments
+with a complete full- or para-virtualised system for each service would be prohibitively taxing on limited computation
+power. However, recent comparative research also indicates
+signiicant performance advantages in using container-based
+
+5Reference documentation about the syntax of a Dockerile:
+http://docs.docker.com/reference/builder/
+6Docker documentation about volumes:
+docker.com/en/latest/use/working_with_volumes/
+7Docker
+linking
+about
+tem:
+#connect-with-the-linking-system
+
+documentation
+sys-
+http://docs.docker.com/userguide/dockerlinks/
+
+https://docs.
+
+the
+
+
+proach also for scenarios when a DLD setup is deployed to
+cater services for a broader user audience. Docker in particular provides tooling which allows simple setup of new
+images and containers and provides means for portable and
+reproducible image creation with Dockeriles. Furthermore,
+Docker can be installed on the three mayor operating systems Linux, Mac OS X and Windows and can be deployed
+to mayor cloud platforms as well8.
+
+Docker Compose9 (formerly known as ig10; in this paper just Compose) is a command line tool for coniguring
+and managing complex setups of Docker containers. These
+setups are declared in YAML11 coniguration iles that declare a set of images for which containers should be spawned.
+They also specify desired links, shared volumes and other
+parameters for image instantiation. These additional coniguration options would otherwise always needed to be manually (re-)speciied on the command line interface for the
+Docker process. Compose coordinates simultaneous starting and stopping of all containers belonging to a Composeconiguration as a group and ofers helpful aggregation of
+the log outputs from member containers.
+
+3. ARCHITECTURE
+
+In our architecture we are dividing the components needed
+for shipping a knowledge base in a number of general types
+of containers: store, load & back-up and presentation & edit
+components as depicted in ig. 1. Each of those components
+is exchangeable by containers implementing the necessary
+tasks resp. interfaces. The triple store component can be
+considered the core of the setup while all other components
+are reading from it or writing to it.
+It contains an RDF
+graph database, is responsible for persisting the knowledge
+base and provides interfaces for querying and optionally altering the contained data. A load component is responsible
+for loading the knowledge base into the triple store if it is
+not shipped with preloaded data. Back-up components are
+responsible for frequently saving the contained data in a secure place to avoid data loss, if writing access is implemented
+in the setup. The presentation & edit components can be
+any service which provides means for browsing and exploring the data of the knowledge base.
+In an authoring use
+case, these components also provide services for updating
+the knowledge base.
+
+When designing the architecture we were following the
+following principles: Convention-over-coniguration: to decrease the amount of coniguration items required for a DLD
+setup. We introduce conventions (especially naming con-
+ventions) that the coniguration tool expects to be fulilled.
+Docker images as component boundaries (resp. micro ser-
+vices): whenever possible, create the individual component
+images self-suicient, with little or no assumptions of the
+modes of operation of accompanying components in a DLD
+8Docker installation instructions for Linux, Mac OS X, Win-
+dows, various cloud computing platforms and other operating systems: https://docs.docker.com/installation/
+9Docker Compose in the Docker Documentation: http://
+docs.docker.com/compose/
+10Project webpage of the Docker Compose predecessor ig:
+http://www.fig.sh/
+11The YAML speciication in the current version 1
+2: http:
+//www.yaml.org/spec/1.2/spec.html; YAML is a superset
+of JSON
+
+Load
+
+Back-Up
+
+ODBC/
+SPARQL
+
+Triple Store
+(Virtuoso,
+Open RDF,
+Fuseki, ...)
+
+ODBC/HTTP/
+
+SPARQL
+
+Presentation,
+Exploration
+
+& Edit
+
+Components
+
+HTTP/
+SPARQL
+
+
+Git Repository/
+Local Filesystem
+
+Database
+
+Files
+
+Host System
+
+Figure 1: Architecture and data-low of the containerized micro services for publishing knowledge bases
+
+setups. Agnostic to the choice of a programming language:
+speciications are formulated and data formats were chosen
+so that a broad choice of programming languages provide the
+capabilities and libraries to allow implementation of component coniguration and supervision for additional component submissions by third parties. Another simplifying
+convention in the current state of the project is allowing
+for at most one load, backup and store component each per
+setup, that will be referenced by exactly that name in the
+Compose-coniguration. (However, an arbitrary number of
+present & edit components is possible.)
+
+3.1 Triple Storage
+
+A triple store is a graph database management system
+capable of storing the RDF triples of RDF knowledge bases.
+It usually provides a SPARQL Query [14] interface which
+can also be used with SPARQL Update for adding and removing triples. Containers for the store component typically
+consist of the store binaries and their dependencies together
+with its coniguration iles and a script-based management
+process. This process, if necessary, adjusts the coniguration
+iles prior to store initialisation and supervises the store pro-
+cess, possibly also restarts the store process on (unexpected)
+termination for basic failover. To ensure the persistent storage of saved triples independent of the lifetime of the store
+container, data directories for the provided store are kept in
+a volumes (depending on coniguration either a ilesystem
+location of the host system or a Docker-managed volume).
+For the proof of concept we started with component images for the triple store implementations Open Link Vir-
+tuoso12, Apache Jena Fuseki13 and Sesame Native Store14.
+Other DLD-compliant store images can also be provided by
+third parties if they can be set up in a Linux environment
+and conigured to work according to a small set of conventions detailed in section 3.4.
+
+3.2 Load and Back-Up
+
+A load component is responsible for pre-loading a triple
+store with an RDF knowledge base when initialising a container setup. The actual RDF knowledge base ile can either
+be provided as a ile on the host system, can be fetched
+12Open Link Virtuoso product webpage: http://virtuoso.
+openlinksw.com/
+13Apache Fuseki
+documentation/serving_data/
+14Sesame alias RDF4J project webpage: http://rdf4j.org/
+
+documentation:http://jena.apache.org/
+
+
+ation. During the data loading phase, right after the coniguration phase, a loading container starts to connect to
+the conigured triple store and injects the necessary data,
+which is then available at the triple store during the service
+phase (cf. section 3.4). A load container can either connect
+to the triple store via the standard SPARQL interface or use
+proprietary side-loading mechanisms.
+
+Back-up containers provide a service for querying the data
+of a triple store and storing it in a safe location. They have
+the same lifecycle as the triple store to backup. This is
+usually done by coniguring a cron job which is executed
+in ixed intervals to dump all data from the triple store.
+Components responsible for synchronising diferent setups
+also belong to this category of images.
+
+3.3 Presentation and Publication
+
+Presentation and publication images are meant to provide
+exploration interfaces to the knowledge base. This can be
+any application capable of fetching data from a triple store
+to provide the user with some generic or special view to
+the data.
+In this proof of concept we are providing the
+generic exploration interfaces pubby [5], snorql15 and OntoWiki [7]. OntoWiki also provides the possibility to create
+very speciic exploration and publication interfaces with its
+site extension16. The capability of providing domain speciic views and editing components is used in the Catalogus
+Professorum Lipsiensium (cf. section 4.2) and Sachsisches
+Pfarrerbuch (cf. section 4.3) use cases. A limitation of OntoWiki is that it currently only supports the Virtuoso triple
+store.
+
+A presentation container is linked to the triple store and
+connects to the database with the credentials given in the
+environment variables from the triple store container.
+It
+is available throughout the whole service phase (cf. section 3.4). Communication with the triple store is implemented in SPARQL or any custom interfaces available. The
+presentation interface inally is usually exposed as HTTP
+interface (at port 80) which than can be made available to
+the WWW through the host network bridge.
+
+3.4 Container Design and Conventions
+
+DLD-compatible images expose a set of required metadata items using the Docker LABEL17 declarations. Labels
+are arbitrary key/value-pairs that can be attached to docker
+images and containers. The DLD labels are used for deining
+the type, special requirements and coniguration options of
+an image. Special coniguration options can be for example
+expected environment variables or volumes required to be
+provided.
+
+Label values for DLD keys are JSON strings, which also
+allow to deine Compose coniguration fragments to be de-
+clared. Table 1 exempliies the usage of labels in DLD.
+
+Settings adjusting the behaviour of component containers
+during their execution are deined by declaring environment
+15The original SNORQL source code: http://d2rq-map.
+cvs.sourceforge.net/viewvc/d2rq-map/d2r-server/webapp/
+snorql/ and the currently active source code fork at GitHub:
+https://github.com/kurtjx/SNORQL
+16OntoWiki Site Extension at GithHub: https://github.
+com/AKSW/site.ontowiki
+17Labels on images were introduced in Docker 1
+//docs.docker.com/userguide/labels-custom-metadata/
+
+6: https:
+
+Label Key
+
+Label Value
+Description of Semantics
+org.aksw.dld.type
+
+"store"
+Virtuoso Open Source 7 is a triple store.
+"present"
+OntoWiki is for authoring (implies presenta-
+tion).
+
+org.aksw.dld.subtype
+
+"vos7"
+This store is speciically Virtuoso Open Source
+7.
+
+Component
+
+VOS 7
+
+OntoWiki
+
+VOS 7
+
+VOS 7
+
+Ontowiki
+
+VOS load
+
+org.aksw.dld.component-constraints
+
+{"load": "vos"}
+VOS should be illed with suitable load component using its bulk laoding facilities.
+{"store": "vos[67]"}
+OntoWiki is only compatible with recent VOS
+versions (value interpreted as regular expres-
+sion).
+org.aksw.dld.volumes-from
+["store"]
+VOS load needs to copy data into the ilesystem
+of the store, thus mount volumes from the store
+to obtain a shared part of the store ilesystem.
+
+Table 1: Examples for the usage of Docker labels for
+meta-information on component images for Virtuoso
+Open Source (VOS) and OntoWiki
+
+variables. This implicitly allows component containers to inspect settings of components that it is linked to. This allows
+for instance load components to be informed about credentials that have been set for the store to gain additional privileges for side-loading operations18. Some environment variables like SPARQL_ENDPOINT_URL and DEFAULT_GRAPH are expected by convention for all components and can be deined
+universally in the DLD coniguration ile.
+
+Usually the lifecycle of component containers is split into
+a short coniguration phase immediately after their instan-
+tiation, which is followed by an optional data loading phase
+before each container starts serving their encapsulated service in the service phase. The coniguration phase allows
+for adjustments of the service setup, e. g. desired authentication details for a triple store, which named graph should
+be presented by default by a presentation component or the
+host name under which such a component is exposed to the
+WWW (e. g. to ensure correct minting of de-referenceable
+Linked Data descriptions for resources).
+
+In addition to aforementioned conventions applicable to
+all components, DLD also builds on some conventions for
+speciic component types. For instance RDF data dumps to
+be processed by load components are expected to be placed
+in a mounted volume named /import inside the container.
+
+18A PASSWORD environment variable from the store e.g. is
+provided as STORE_ENV_PASSWORD in the linking load con-
+tainer.
+
+
+The requirements for the presented architecture are the
+Dockerizing Linked Data (DLD) tools as described at our
+project webpage (http://dld.aksw.org), including a running
+Docker engine installation as well as the Docker Compose19
+tool.
+datasets:
+
+dbpedia -2015-endpoint:
+
+graph_name: "http://dbpedia.org"
+location_list: "dbp -2015-download. 
+
+list"
+
+components:
+store:
+
+image: aksw/dld-store -virtuoso7
+ports: ["8891:8890"]
+environment:
+
+PWDDBA: tercesrepus
+
+mem_limit: 8G
+
+load: aksw/dld-load -virtuoso
+present:
+
+ontowiki:
+
+image: aksw/dld-present - 
+
+ontowiki
+
+ports: ["8088:80"]
+
+environment_global:
+
+DEFAULT_GRAPH: "http://dbpedia.org"
+SPARQL_ENDPOINT_URL: "http://store 
+
+:8890/sparql"
+
+Listing 1: A DLD coniguration ile for a setup
+with the Virtuoso Open Source triple store,
+a suitable load component and OntoWiki
+for
+presentation/edits, retrieving DBpedia data via
+downloads listed in a separate ile
+
+local ile(s)
+download(s)
+
+in-lined in
+conig ile
+
+file:
+
+location:
+
+listed in
+
+external ile
+file_list:
+
+location_list
+
+Table 2: Options for speciiying RDF data dumps to
+be imported
+
+Listing 1 shows an example of a DLD coniguration ile. In
+addition to speciications for desired components, data to be
+served by the store can be speciied in the datasets-section.
+In this case, a separate ile is referenced that lists URLs
+of dataset dumps to be retrieved and loaded (Table 2 also
+enumerates other alternative directives for specifying RDF
+data to import). The DLD coniguration tool, provided with
+this coniguration, will perform several tasks to prepare the
+setup:
+
+3. The DLD-speciic LABEL meta-data of the images will
+be extracted, checks for declared and implicit setup
+constraints will be performed, and entailed additional
+Compose coniguration items are incorporated to the
+inal setup. E. g.
+the image for the store component must carry the org.aksw.dld.type label with the
+value store.
+
+4. Speciied Linked Data dumps are downloaded and aggregated into the models directory inside the working
+directory, augmented with iles specifying the named
+graph URIs according to the conventions of the Virtuosos bulk loader20.
+
+The procedure of creating, fetching and coniguring the individual components of a container setup is depicted in ig. 2.
+
+LOD-Cloud
+
+RDF Knowledge Bases
+
+Setup
+
+Configuration
+
+Docker
+
+Compose
+
+Configuration
+
+Volumes
+
+Docker
+Daemon
+
+image meta information
+
+Docker Registry
+
+(http://registry.hub.docker.com/)
+
+Docker Images
+
+Container Setup
+
+Figure 2: Worklow for creating a container setup
+
+load:
+
+environment: {DEFAULT_GRAPH: 'http:// 
+dbpedia.org', SPARQL_ENDPOINT_URL: ' 
+http://store:8890/sparql '}
+
+image: aksw/dld-load -virtuoso
+links: [store]
+volumes: ['/opt/dld/wd-dbp2015 -ontowiki 
+
+/models:/import ']
+
+volumes_from: [store]
+
+presentontowiki:
+
+environment: {DEFAULT_GRAPH: 'http:// 
+dbpedia.org', SPARQL_ENDPOINT_URL: ' 
+http://store:8890/sparql '}
+
+image: aksw/dld-present -ontowiki
+links: [store]
+ports: ['8088:80']
+
+store:
+
+environment: {MEM_LIMIT: '8G', 
+
+DEFAULT_GRAPH: 'http://dbpedia.org', 
+SPARQL_ENDPOINT_URL: 'http://store 
+:8890/sparql ', PWDDBA: 'tercesrepus '}
+
+image: aksw/dld-store -virtuoso7
+mem_limit: 8G
+ports: ['8891:8890']
+
+1. A working directory is created that will contain the
+compiled Compose coniguration and (if speciied) data
+dumps to load.
+
+Listing 2: Compose coniguration ile compiled by
+the DLD conig tool based on the coniguration in
+listing 1
+
+2. Referenced images will be pulled.
+
+19Installation instructions for Docker Compose: http://docs.
+docker.com/compose/install/
+
+20Description of
+//virtuoso.openlinksw.com/dataspace/doc/dav/wiki/
+Main/VirtBulkRDFLoader
+
+the Virtuosos bulk loader:
+
+http:
+
+
+can either be submitted directly by the coniguration tools
+to Compose to start the conigured services or checked and
+revised by the user before a subsequent manual start by
+invoking docker-compose up. The apparent close correspondences between fragments of the DLD coniguration and
+the resulting Compose is intended as this lowers the entry
+barrier for new users of DLD harbouring prior experience
+with Compose and allows to develop an intuition how the
+inal coniguration is created more easily.
+In the example
+presented, the user can (after completion of initialisation
+and import processes) reach OntoWiki at port 8088 and the
+SPARQL interface of Virtuoso at port 8891 of the host sys-
+tem.
+
+Although not presented in detail in this paper, it should be
+mentioned that setups without load and backup components
+are possible as well. A prime example is the usage of a store
+component that links in a volume with database iles that
+contain a selection of RDF datasets already pre-loaded.
+
+4. USE CASES
+
+We have evaluated this architecture in three use cases.
+The best-known scenario we investigate is setting up a local
+mirror of the DBpedia dataset. As the availability of the DBpedia SPARQL endpoint is limited and not all DBpedia data
+is served by it, running a mirror is the only way to efectively access all knowledge it contains. Our other use cases
+are the prosopographical knowledge bases Catalogus Professorum Lipsiensium and Sachsisches Pfarrerbuch. These
+knowledge bases, used by digital humanities researchers, are
+exemplary for many smaller knowledge modelling and representation projects throughout diverse domains, that do
+not have the resources necessary to employ Linked Data ex-
+perts. These projects can beneit signiicantly from an easy
+to deploy Linked Data publication infrastructure.
+
+4.1 DBpedia
+
+DBpedia21 [9] is one of the most widely used Linked Data
+sources on the Web of Data, a large  scale knowledge base
+relecting content and structure of 125 Wikipedia language
+editions, Wikimedia Commons and Wikidata. Major longstanding contributions of the project include a general knowledge OWL ontology for all kinds of entities described in
+Wikipedia and thus being relected in DBpedia and a framework for extracting machine-actionable fact statements from
+Wikipedia info boxes (guided by community curated mapping deinitions) as well as additional structural features of
+Wikipedia pages. Although the English version of DBpedia
+is most widely used and was designated with special canonicalisation status, the facts are extracted analogously in
+internationalised DBpedia versions for 124 other Wikipedia
+editions as well. The DBpedia project provides supplementary datasets for each language version containing structural
+information (e. g. redirecting structures between the Wikipedia pages, Wikipedia categories or disambiguation links)
+and dataset aggregation text data for NLP purposes.
+
+DBpedia publishes major releases of holistic extraction
+results based on complete Wikipedia dumps at least once a
+year. The big volume of information to be found in the
+totality of a major release called for a selective decision
+for a subset that can still be catered by the oicial DBpe21The DBpedia project webpage: http://dbpedia.org/
+
+dia SPARQL endpoints with some performance guarantees,
+based on frequency of requests for certain types of facts by
+users of the oicial endpoint and Linked Data services. A
+user of DBpedia with the intent of achieving higher availability and better performance for their queries with a local
+endpoint thus is facing the non-trivial and onerous task of
+inding the applicable subset out of hundreds of RDF dump
+iles provided by the DBpedia download server, depending
+on language, release version and relevant information categories to achieve. To mitigate this problem, ready-to-use
+descriptions of relevant DBpedia data compilations will be
+provided in the context of this project to be automatically
+consumed and loaded into the provided triple store compon-
+ents, harnessing information from DataID.
+
+DataID [3] descriptions provide machine-readable dataset
+level meta-data and can thus help increase the discoverability of datasets. Because DataID descriptions mandatorily
+contain direct links to data iles used to distribute the datasets as well as additional information about these iles, such
+as ile format and modiication dates, they provide a convenient way to select the iles to be loaded into the Docker
+containers. At the same time, DataID can be used to ship
+the container setup conigurations, allowing to distribute deployment meta-data with the data itself. We will further
+explain this future work in section 6.
+
+4.2 Catalogus Professorum Lipsiensium
+
+It comprises more than 14
+
+The Catalogus Professorum Lipsiensium (CPL) [11] is
+a prosopographical knowledge base of professors who have
+taught at Leipzig University from its foundation in 1409 to
+the presence.
+000 entities and
+is tightly interlinked with other nodes in the LOD cloud.
+The knowledge base is curated by researchers as well as historically interested citizen scientists. The container-based
+infrastructure is used to run the CPL curation infrastructure which is constantly improved by software engineers to
+meet the requirements of the contributors and editors. Since
+the irst release of CPL the software stack was improved and
+other universities are as well interested in reusing the software system setup.
+
+The CPL infrastructure consists of several web applications that provide speciic adapted interfaces for domain
+users  the project team members (Content Editors), experienced users (Researchers) and general web users. Figure 3
+depicts the architecture of CPL that is based on a protected web interface for the project team and two public inter-
+faces. According to the speciic interfaces, CPL is build on a
+stable OntoWiki Framework application, that provides precise authoring and visioning information, and an up-to-date
+experimental version of OntoWiki to provide latest exploration features for researchers that consume data from the
+knowledge base. The experiential OntoWiki version is also
+using inferred information and is linked to other datasets on
+the LOD cloud. The third component is to provide historical information about Leipzig University integrated in the
+universitys website.
+
+The CPL Docker infrastructure22 provides a setup that
+supports software engineers in replacing and updating com-
+ponents, such as the RDF editing forms and HTML output
+without needing to touch the knowledge base store. We can
+22Docker
+the Catalogus Professorum
+infrastructure of
+Lipsiensium at GitHub:
+https://github.com/AKSW/
+dockerinfrastrukturecpl
+
+
+general
+web user
+
+browse, search
+
+HTML GUI
+
+[stable]
+
+CPL Frontend
+
+Persistency Layer
+
+b r o w s e ,   a n n o t a t e ,   d i s c u s s
+
+HTML GUI
+
+query, search
+
+SPARQL 
+Endpoint
+
+ synchronize 
+        Model Data
+
+[experimental]
+OntoWiki
+
+experienced
+
+web user
+
+[protected zone]
+
+configure
+
+u r e
+
+getData
+
+n fi g
+query, search
+
+add, edit, maintain
+
+content editor
+(Project Team)
+
+Persistency Layer
+
+     synchronize 
+Model Data
+
+SPARQL 
+Endpoint
+
+HTML GUI
+
+[stable]
+OntoWiki
+
+Persistency Layer
+
+Figure 3: Architecture of CPL (cf. [11])
+
+also easily deploy the complete setup with a new knowledge
+base for further tenants without a need to adapt it to the
+given server environment, while all required components can
+be reused independently.
+
+4.3 Sachsisches Pfarrerbuch
+
+The project Sachsisches Pfarrerbuch (engl. Saxonian
+pastors book )23 is a catalogue of all pastors serving in the
+Lutheran church in Saxony since the reformation in 1517.
+Currently the dataset is under curation and only a very
+small excerpt of the uncurated data is published. All other
+data will be released as Linked Open Data after the curation phase. Due to the similarity in the domains, the setup
+of the software system is highly inspired by the Catalogus
+Professorum Lipsiensium, while the audience is diferent. By
+using the approach of the containerised Linked Data publication infrastructure we can reuse most of the containers
+among the two projects while still loading diferent datasets
+to the triple stores.
+
+5. RELATED WORK
+
+Linked Data [1] publishing has mainly been tackled in
+foundational works. Heath et al. [8] stresses the importance
+of publishing Linked Data according to its criteria and explains basic publishing recipes, such as hosting RDF/XML
+iles or serving them via custom server-side scripts or, ideally,
+using a triple store. However, the technical deployment issues are not stressed further.
+
+On the subject of Docker containers, Merkel [10] details
+that Docker containers are a lightweight solution to resolve
+dependency and security problems as well as platform difer-
+ences. Docker containers have also been explored to enhance
+reproducible research (Chamberlain et al. [4] and Boettiger
+[2]). Chamberlain et al. [4] detail that software and exper23The Pfarrerbuch project webpage: http://pfarrerbuch.de
+and the current curation system: http://pfarrerbuch.aksw.
+org
+
+imental setups in research are often not well-documented
+enough to provide exact information about the systems they
+were executed on, hindering reproducibility of experiments.
+Computational environments are very complex and containerisation provides a way to isolate experimental setups from
+some external variables of the systems they are executed
+on. Boettiger [2] further states that many existing solu-
+tions, such as virtual machines, worklow software and continuous integration services provide signiicant barriers to
+adoption by being hard to realise and often not suiciently
+low-level to solve the mentioned problems of dependencies
+and documentation. Both works therefore use Docker as
+local development environments for reproducible scientiic
+research.
+
+The web service Dydra (http://dydra.com/) is a graph
+database hosting service on the World Wide Web.
+It offers to the user the possibility to create graphs, load RDF
+data and query it using SPARQL. Currently it is in its beta
+period. In contrast to our approach the data can not be hosted on a local machine and thus will not give the user control
+over the availability of the services or the data. Further a
+local service has the advantage of full access-control, while
+for a cloud hosting service it is still in doubt whether it is
+suitable for sensible data, even though the service provides
+an authentication mechanism.
+
+6. DISCUSSION AND CONCLUSION
+
+We have presented a methodology and procedure to signiicantly ease knowledge base deployment and maintenance by using Docker containers and the principle of micro services. Working with Linked Data one often encounters knowledge bases that face regular downtimes, signiicant load or completely lack Linked Data publication. The
+approach together with current proof of concept implementations for pre-conigured knowledge base exploration and
+authoring setups shows several desirable properties.
+
+The same setup can be reused for diferent knowledge
+bases or under recurring requirements to the software setup,
+while only the data to load has to be exchanged. On the
+other hand with the presented modular architecture it is also
+possible to exchange individual components without major
+dependencies to other components. One can select diferent
+triple store implementations with diferent advantages and
+disadvantages in respect to the data to be published and the
+associated use case.
+
+Portability of knowledge base setups is improved by transferring a customised DLD speciication and optionally the
+data to load to collaborators. Even though the collaborators
+might be using diferent platforms, the presented tool allows
+them to easily setup a mirror which signiicantly reduces
+collaboration overhead. Shipping knowledge bases together
+with the deployment coniguration that was used during experiments also increases the reproducibility of research by
+eliminating errors in the data setup.
+
+Large, well established and popular Linked Data projects
+like DBpedia can beneit also indirectly from the establishment of the presented approach or a similar scheme. It can
+incentivise a share of users to reduce load on public endpoints by choosing to setup their private mirror which entails further beneits, like stability and faster access. As a
+result the easy distributed deployment of mirrors can reduce
+the load on a central infrastructure.
+
+
+Support Reproducible Research. 07 2014.
+
+[5] R. Cyganiak and C. Bizer. Pubby - a linked data
+
+frontend for sparql endpoints, 2008.
+
+[14] The W3C SPARQL Working Group. SPARQL 1.1
+
+Overview. Technical report, Mar. 2013.
+http://www.w3.org/TR/sparql11-overview/.
+
+[6] W. Felter, A. Ferreira, R. Rajamony, and J. Rubio.
+
+An updated performance comparison of virtual
+machines and linux containers. pages 171172, 2015.
+
+[7] P. Frischmuth, M. Martin, S. Tramp, T. Riechert, and
+
+S. Auer. OntoWikiAn Authoring, Publication and
+Visualization Interface for the Data Web. Semantic
+Web Journal, 2014.
+
+[8] T. Heath and C. Bizer. Linked Data: Evolving the Web
+
+into a Global Data Space. Morgan & Claypool, 2011.
+
+[9] J. Lehmann, R. Isele, M. Jakob, A. Jentzsch,
+D. Kontokostas, P. N. Mendes, S. Hellmann,
+M. Morsey, P. van Kleef, S. Auer, and C. Bizer.
+DBpedia - a large-scale, multilingual knowledge base
+extracted from wikipedia. Semantic Web Journal,
+6(2):167195, 2015.
+
+[10] D. Merkel. Docker: Lightweight linux containers for
+consistent development and deployment. Linux J.,
+2014(239), Mar. 2014.
+
+[11] T. Riechert, U. Morgenstern, S. Auer, S. Tramp, and
+M. Martin. Knowledge engineering for historians on
+the example of the catalogus professorum lipsiensis. In
+P. F. Patel-Schneider, Y. Pan, P. Hitzler, P. Mika,
+L. Zhang, J. Z. Pan, I. Horrocks, and B. Glimm,
+editors, Proceedings of the 9th International Semantic
+Web Conference (ISWC2010), volume 6497 of Lecture
+Notes in Computer Science, pages 225240, Shanghai
+/ China, 2010. Springer.
+
+[12] M. J. Scheepers. Virtualization and containerization of
+
+application infrastructure: A comparison. 2014.
+[13] M. Schmachtenberg, C. Bizer, and H. Paulheim.
+
+Adoption of the linked data best practices in diferent
+topical domains. In The Semantic Web - ISWC 2014 -
+13th International Semantic Web Conference, Riva del
+Garda, Italy, October 19-23, 2014. Proceedings, Part
+I, pages 245260, 2014.
+
+We have also shown that small knowledge bases without
+large community backing can gain from dockerised data de-
+ployment. In the future, we want to further improve data
+deployment by providing a visual front-end for conigura-
+tion. We also want to further concentrate on reproducibility
+by enabling data deployment Docker recipes to be shipped
+via DataID. By adding essential coniguration properties in a
+DataID ontology module, dataset descriptions using DataID
+will be able to provide information on how to set up the data
+locally. This will make it possible to ship machine readable
+descriptions of the complete data backend of experiments
+and further improving reproducibility. Introducing a common light-weight network message bus infrastructure integrated in all provided images to allow for more detailed queries of coniguration and environment parameters for tighter
+integration as well as status requests appears worthwhile.
+
+7. ACKNOWLEDGEMENTS
+
+We want to thank the students from Business Information Systems practical in summer semester 2015, especially
+we want to thank the students Georges Alkhouri and Tom
+Neumann for helping us with the preparation and implementations of the Docker infrastructure. We also want to
+thank Konrad Abicht for providing the semicon icons (https:
+//github.com/k00ni/semicon) under the terms of CC BYSA 3.0 used in ig. 2 and ig. 3. This work was supported by
+grants from the EUs 7th Framework Programme provided
+for the projects LIDER (GA no. 610782) and GeoKnow (GA
+no. 318159).

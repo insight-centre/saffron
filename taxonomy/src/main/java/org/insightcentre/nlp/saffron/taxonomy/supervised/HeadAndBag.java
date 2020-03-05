@@ -61,7 +61,7 @@ public class HeadAndBag {
         HeadResult head = findHead(terms, scoresByChild);
         terms.remove(head.head);
         List<Set<String>> bags = buildBags(terms, scoresByChild);
-        Taxonomy taxonomy = new Taxonomy(head.head, head.score, head.score, "", "", new ArrayList<Taxonomy>(), Status.none);
+        Taxonomy taxonomy = new Taxonomy(head.head, head.score, head.score, new ArrayList<Taxonomy>(), Status.none);
         for(Set<String> bag : bags) {
             taxonomy.children.add(buildTaxonomy(bag, scoresByChild));
         }

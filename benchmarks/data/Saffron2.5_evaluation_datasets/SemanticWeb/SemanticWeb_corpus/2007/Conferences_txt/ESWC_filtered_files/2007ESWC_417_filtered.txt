@@ -1,0 +1,850 @@
+Algorithms for Paraconsistent Reasoning with OWL
+
+Yue Ma1,2, Pascal Hitzler2, and Zuoquan Lin1
+
+1 Department of Information Science, Peking University, China
+
+{mayue,lz}@is.pku.edu.cn, {yum,hitzler}@aifb.uni-karlsruhe.de
+
+2 AIFB, Universit at Karlsruhe, Germany
+
+Abstract. In an open, constantly changing and collaborative environment like
+the forthcoming Semantic Web, it is reasonable to expect that knowledge sources
+will contain noise and inaccuracies. Practical reasoning techniques for ontologies therefore will have to be tolerant to this kind of data, including the ability to
+handle inconsistencies in a meaningful way. For this purpose, we employ paraconsistent reasoning based on four-valued logic, which is a classical method for
+dealing with inconsistencies in knowledge bases. Its transfer to OWL DL, how-
+ever, necessitates the making of fundamental design choices in dealing with class
+inclusion, which has resulted in differing proposals for paraconsistent description logics in the literature. In this paper, we build on one of the more general
+approaches which due to its flexibility appears to be most promising for further
+investigations. We present two algorithms suitable for implementation, one based
+on a preprocessing before invoking a classical OWL reasoner, the other based on
+a modification of the KAON2 transformation algorithms. We also report on our
+implementation, called ParOWL.
+
+1 Introduction
+
+Real knowledge bases and data for Semantic Web applications will rarely be perfect.
+They will be distributed and multi-authored. They will be assembled from different
+sources and reused. It is unreasonable to expect such realistic knowledge bases to be
+always logically consistent, and it is therefore important to study ways of dealing with
+inconsistent knowledge. This is particularly important if the full power of logic-based
+approaches like the Web Ontology Language OWL [1] shall be employed, as classical
+logic breaks down in the presence of inconsistent knowledge.
+
+The study of inconsistency handling in Artificial Intelligence has a long tradition, and
+corresponding results are recently being transferred to description logics, which underly
+OWL. Two fundamentally different approaches can be distinguished. The first is based
+on the assumption that inconsistencies indicate erroneous data which is to be repaired in
+order to obtain a consistent knowledge base, e.g. by selecting consistent subsets for the
+reasoning process [2,3]. The other approach yields to the insight that inconsistencies
+
+ We acknowledge support by the German Federal Ministry of Education and Research (BMBF)
+under the SmartWeb project (grant 01 IMD01 B), by the EU under the IST project NeOn
+(IST-2006-027595, http://www.neon-project.org/), by the Deutsche Forschungsgemeinschaft (DFG) in the ReaSem project, and by China Scholarship Council, and partially
+by NSFC (grant numbers 60373002 and 60496322) and by NKBRPC (2004CB318000).
+
+E. Franconi, M. Kifer, and W. May (Eds.): ESWC 2007, LNCS 4519, pp. 399413, 2007.
+c Springer-Verlag Berlin Heidelberg 2007
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+are a natural phenomenon in realistic data which are to be handled by a logic which
+tolerates it [4,5,6]. Such logics are called paraconsistent, and the most prominent of
+them are based on the use of additional truth values standing for undefined (i.e. neither
+true nor false) and overdefined (or contradictory, i.e. both true and false). Such logics
+are appropriately called four-valued logics [7]. We believe that either of the approaches
+is useful, depending on the application scenario.
+
+In this paper, we contribute to the paraconsistency approach. We indeed extend on
+
+the preliminary work in [6], which has the following features.
+
+ It is grounded in prominent research results from Artificial Intelligence [8].
+ It is very flexible in terms of design choices which can be made when developing a
+paraconsistent description logic. This concerns the issues arising from the fact that
+there are different ways of defining the notion of logical implication in four-valued
+logics. The approach which we follow allows the full and simultaneous use of the
+different notions of implication.
+
+ It does not increase worst-case computational complexity of reasoning if compared
+
+to standard reasoning methods for consistent knowledge bases.
+
+In this paper, we present two algorithms for practical paraconsistent reasoning based
+on this approach. The first one is based on a transformation from a paraconsistent ontology O to a classical two-valued ontology O in such a way that paraconsistent reasoning
+on O can be simulated by classical reasoning on O. The second algorithm is based on
+an adaptation of the algorithms underlying the KAON2 OWL Reasoner1 [9] by realizing a resolution-based decision procedure for paraconsistent reasoning. We spell out the
+details for the description logic ALC, which is considered to be the most foundational
+one and comprises a large fragment of OWL DL.
+
+The paper is structured as follows. We first review briefly preliminaries in Section 2.
+In Section 3 we then describe the syntax and semantics of the paraconsistent description logic which we will use. Sections 4 and 5 describe the two reasoning procedures,
+respectively based on a transformation for preprocessing and on an adaptation of the
+KAON2 algorithms. In Section 6, we describe the prototype of our paraconsistent approach to reasoning with a possible inconsistent ontology, and discuss future work and
+conclude in Section 7.
+
+This paper is a substantial continuation of work presented as preliminary results in
+[6]. Due to space limitations, proofs are omitted. They can be found in a technical report
+available from http://www.aifb.uni-karlsruhe.de/WBS/phi/pub/parowltr.pdf.
+
+2 Preliminaries
+2.1 The Description Logic ALC
+We briefly review notation and terminology of the description logic ALC, but we basically assume that the reader is familiar with description logics. For comprehensive
+background reading, please refer to [10].
+
+1 http://kaon2.semanticweb.org
+?
+
+?
+
+?
+Table 1. Syntax and semantics of ALC
+
+Constructor Name Syntax
+atomic concept A
+abstract role RA
+?
+
+?
+
+?
+o
+
+
+
+Semantics
+AI  I
+oI  I
+
+RI  I  I
+
+I
+
+
+individuals I
+top concept
+
+bottom concept
+
+conjunction
+disjunction
+negation
+
+exists restriction
+value restriction
+
+C1  C2
+C1  C2
+C
+{x | y, (x, y)  RI and y  C I}
+R.C
+R.C {x | y, (x, y)  RI implies y  C I}
+
+C I  DI
+C I  DI
+I \ C I
+
+Syntax
+Axiom Name
+concept inclusion C1  C2
+concept assertion
+C(a)
+R(a, b)
+
+role assertion
+
+Semantics
+1  C I
+C I
+aI  C I
+(aI, bI )  RI
+
+We assume that we are given a set of atomic concepts (or concept names), a set of
+roles (or role names), and a set of individuals. With the symbols  and  we furthermore denote the top concept and the bottom concept, respectively.
+
+Complex concepts in ALC can be formed from these inductively as follows.
+1. , , and each atomic concept are concepts;
+2. If C, D are concepts, then C  D, C  D, and C are concepts;
+3. If C is a concept and R is a role, then R.C and R.C are concepts.
+An ALC ontology consists of a set of assertions, called the ABox of the ontology,
+and a set of inclusion axioms, calld the T Box of the ontology. Assertions are of the
+form C(a) or R(a, b), where a, b are individuals and C and R are concepts and roles,
+respectively. Inclusion axioms are of the form C  D, where C and D are concepts.
+Informally, an assertion C(a) means that the individual a is an instance of concept
+C, and an assertion R(a, b) means that individual a is related with individual b via
+the property R. The inclusion axiom C  D means that each individual of C is an
+individual of D.
+The formal definition of the (model-theoretic) semantics of ALC is given by means
+of interpretations I = (I ,I) consisting of a non-empty domain I and a mapping I
+satisfying the conditions in Table 1, interpreting concepts as subsets of the domain and
+roles as binary relations on the domain. An interpretation satisfies an ALC ontology
+(i.e. is a model of the ontology) iff it satisfies each axiom in both the ABox and the
+T Box. An ontology is called satisfiable (unsatisfiable) iff there exists (does not exist)
+such a model. In ALC, reasoning tasks, i.e. the derivation of logical consequences, can
+be reduced to satisfiability checking of ontologies [10,11].
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+Table 2. Truth table for 4-valued connectives
+f f f f t t t t                
+
+f t     f t     f t     f t    
+
+ t t t t f f f f                
+   f f f f f t     f     f f   f  
+   f t     t t t t   t   t   t t  
+   t t t t f t       t   t   t t  
+   t t t t f t     f t     t t t t
+   t t t t f t f   f t       t   t
+
+2.2
+
+Four-Valued Logic
+
+The major studies of four-valued logics have been carried out in the setting of propositional logic. We will very briefly review the preliminaries which set the state for the
+four-valued version of ALC which we will present later in Section 3.
+
+The idea of four-valued logic is based on the idea of having four truth values, instead
+of the classical two. The four truth values stand for true, false, unknown (or undefined)
+and both (or overdefined, contradictory). We use the symbols t, f,  ,  , respectively,
+for these truth values, and the set of these four truth values is denoted by FOUR. The
+truth value   stands for contradictory information, hence four-valued logic lends itself
+to dealing with inconsistent knowledge. The value   thus can be understood to stand
+for true and false, while   stands for neither true nor false, i.e. for the absence of any
+information about truth or falsity.
+
+Syntactically, four-valued logic is very similar to classical logic. Care has to be taken,
+however, in defining meaningful notions of implication, as there are several ways to do
+this. Indeed, there are three major notions of implication in the literature, all of which
+we will employ in our approach. The logical connectives we allow are thus negation
+, disjunction , conjunction , material implication , internal implication , and
+strong implication . We will discuss them in detail later on as the presence of all
+three implications is crucial for our approach.
+
+Four-valued interpretations for formulae (i.e. 4-interpretations) are obviously mappings from formulae to (the set of four) truth values, respecting the truth tables for the
+logical connectives, as detailed in Table 2.
+and   are the designated truth values.
+
+Four-valued models (4-models) are defined in the obvious way, as follows, where t
+
+Definition 1. Let I be a 4-interpretation, let  be a theory (i.e. set of formulae) and
+let  be a formula in four-valued logic. Then I is a 4-model of  if and only if I() 
+{t,  }. I is a 4-model of  if and only if I is a 4-model of each formula in . 
+four-valued entails , written  |=4 , if and only if every 4-model of  is a 4-model
+of .
+?
+
+?
+
+?
+Proposition 1. We note the following general properties.
+ The language L = {,,,,  ,  } is functional complete for the set FOURof
+truth values, i.e. every function from FOURn to FOURis representable by some
+formula in L [8, Theorem 12].
+ Any formula containing only connectives from {,,,} always has a four-
+
+valued model.
+
+Some general remarks about the different notions of implication are in order. They are
+the major notions of implication used in the literature, and are discussed in detail in
+[8,12]. The basic rationales behind them are the following: Material implication can be
+defined by means of negation and disjunction as known from classical logic. However,
+it does not satisfy Modus Ponens or the deduction theorem, and is thus of limited use as
+an implication in the intuitive sense. Internal implication satisfies Modus Ponens and the
+deduction theorem, but cannot be defined by means of other connectives. Furthermore,
+internal implication does not satisfy contraposition. Strong implication is stronger than
+internal implication, in that it additionally satisfies contraposition. Indeed, an alternative
+view on the truth tables for the implication connectives is as follows.
+
+   is definable as   .
+   evaluates to
+   is definable as (  )  (  )
+
+ if   {t,  }
+t if   {f,  }
+?
+
+?
+
+?
+(Material Implication)
+
+(Internal Implication)
+
+(Strong Implication)
+
+Further properties of the implication connectives are summarised in the following
+proposition (as shown in [8, Corollary 9] and [12]).
+
+Proposition 2. The following claims hold, where  is a theory and ,  are formulae.
+ Internal implication is not definable in terms of the connectives ,,.
+ ,  |=4  iff  |=4   .
+ If  |=4  and  |=4    then  |=4 .
+    implies that   .
+Apart from the formal properties of the different notions of implication, it is obviously
+important to consider their intuitive meaning and their usefulness for knowledge base
+modelling. We will discuss this in detail in the next section.
+
+3 The Four-Valued Description Logic ALC4
+We describe the syntax and semantics of our four-valued description logic ALC4. The
+approach is fairly standard apart from the fact that we allow the simultaneous use of all
+three notions of implication introduced in Section 2.2. We will thus devote significant
+space to a detailed discussion of the intuitions behind these different implications.
+Syntactically, ALC4 hardly differs from ALC. Complex concepts and assertions are
+defined in exactly the same way. For class inclusion, however, the question arises how to
+interpret the underlying implication connective in the four-valued setting. We thus allow
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+Table 3. Semantics of ALC4 Concepts
+
+Constructor Syntax
+?
+
+?
+
+?
+o
+
+
+
+C1  C2
+C1  C2
+C
+R.C
+R.C
+
+Semantics
+
+AI = P, N, where P, N  I
+
+RI = RP , RN, where RP , RN  I  I
+
+oI  I
+I ,
+, I
+
+i = Pi, Ni for i = 1, 2
+P1  P2, N1  N2, if C I
+P1  P2, N1  N2, if C I
+i = Pi, Ni for i = 1, 2
+(C)I = N, P, if C I = P, N
+{x | y, (x, y)  proj+(RI ) and y  proj+(C I )},
+{x | y, (x, y)  proj+(RI ) implies y  proj
+(C I )}
+{x | y, (x, y)  proj+(RI ) implies y  proj+(C I )},
+{x | y, (x, y)  proj+(RI ) and y  proj
+(C I )}
+
+
+
+
+three kinds of class inclusions, corresponding to the three implication connectives we
+have discussed. They are as follows, C  D, C  D, and C  D, called material
+inclusion axiom, internal inclusion axiom, and strong inclusion axiom, respectively.
+
+Semantically, interpretations map individuals to elements of the domain of the inter-
+pretation, as usual. For concepts, however, we need to make modifications to the notion
+of interpretation in order to allow for reasoning with inconsistencies.
+
+() by proj+P, N = P and proj
+
+Intuitively, in four-valued logic we need to consider four situations which can occur
+in terms of containment of an individual in a concept: (1) we know it is contained, (2)
+we know it is not contained, (3) we have no knowledge whether or not the individual
+is contained, (4) we have contradictory information, namely that the individual is both
+contained in the concept and not contained in the concept. There are several equivalent
+ways how this intuition can be formalised, one of which is described in the following.
+For a given domain I and a concept C, an interpretation over I assigns to C a pair
+P, N of (not necessarily disjoint) subsets of I. Intuitively, P is the set of elements
+known to belong to the extension of C, while N is the set of elements known to be not
+contained in the extension of C. For simplicity of notation, we define functions proj+()
+
+and proj
+Formally, a four-valued interpretation is a pair I = (I ,I) with I as domain,
+where I is a function assigning elements of I to individuals, and subsets of (I)2
+to concepts, such that the conditions in Table 3 are satisfied. Note that the conditions
+in Table 3 for role restrictions are designed in such a way that the logical equivalences
+(R.C) = R.(C) and (R.C) = R.(C) are retained  this is the most convenient way for us for handling role restrictions, as it will allows for a straightforward
+translation from ALC4 to classical ALC. Note also that for roles we actually require
+only the positive part of the extension  we nevertheless require interpretations to assign pairs of sets to roles, which is a technical formality to retain consistency of notation
+with possible extensions to more expressive description logics (see [6]).
+Obviously, under the constraints P  N =  and P  N = , four-valued interpre-
+
+P, N = N.
+
+tations become just standard two-valued interpretations.
+?
+
+?
+
+?
+Table 4. Semantics of inclusion axioms in ALC4
+
+Syntax
+
+Semantics
+Axiom Name
+material inclusion C1  C2 I \ proj
+1 )  proj+(C I
+
+(C I
+2 )
+1 )  proj+(C I
+internal inclusion C1  C2
+proj+(C I
+2 )
+1 )  proj+(C I
+strong inclusion C1  C2 proj+(C I
+2 ) and
+2 )  proj
+
+
+(C I
+(C I
+proj
+1 )
+aI  proj+(C I )
+(aI, bI )  proj+(RI)
+
+concept assertion C(a)
+R(a, b)
+
+role assertion
+
+The correspondence between truth values from FOUR and concept extensions is the
+
+obvious one: For instances a  I and concept name C we have
+ CI(a) = t(  ), iff aI  proj+(CI) and aI  ()proj
+
+(CI),
+ CI(a) = f(  ), iff aI  proj+(CI) and aI  ()proj
+
+(CI),
+When defining the semantics as we just did, we ensure that a number of useful equiv-
+
+alences from classical logic hold, as follows.
+
+Proposition 3. For any four-valued interpretation I and concepts C, D, the following
+claims hold.
+(C  )I = CI , (C  )I = I, (C  )I = I, (C  )I = CI ,
+(C)I = CI , ()I = I , ()I = I , ((C  D))I = (C  D)I ,
+((C  D))I = (C  D)I , ((R.C))I = (R.C)I , ((R.C))I = (R.C)I .
+We now come to the semantics of the three different types of inclusion axioms. It is
+formally defined in Table 4 (together with the semantics of concept assertions). We say
+that a four-valued interpretation I satisfies a four-valued ontology O (i.e. is a model
+of it) iff it satisfies each assertion and each inclusion axiom in O. An ontology O is
+satisfiable (unsatisfiable) iff there exists (does not exist) such a model.
+
+With the formal definitions out of the way, it remains to address the intuitions underlying the different inclusion axioms. These intuitions are evidenced by the formal properties of the underlying implications as discussed in Section 2.2 as well as the behaviour
+of the implications in practice. We actually foresee a possible workflow for handling
+inconsistent ontologies, as follows. In a first step, inclusion axioms are classified into
+the three types of four-valued inclusion axioms available. Then four-valued reasoning is
+performed based on the classification, in order to arrive at a meaningful 4-valued con-
+clusion. The question, how such a classification can be performed, will not be addressed
+in this paper. It constitutes a seperate substantial piece of work which is under investigation by the authors. A combination of automated detection and a user-interaction process
+may be the most workable solution, where the user-interaction process may be guided
+by the intuitive explanations which we will now give for the three types of inclusion. An
+example which displays the effects of the different inclusions is given in Section 6.
+
+Strong inclusion respects the deduction theorem and contraposition reasoning. In a
+paraconsistent context, it is thus the inclusion to be used for universal truth, such as
+Square  FourEdged.
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+Internal inclusion propagates contradictory information forward, but not backward as
+it does not allow for contraposition reasoning. It can thus be characterized as a brave
+way of handling inconsistency. It should be used whenever it is important to infer the
+consequent even if the antecedent may be contradictory. To give an example, consider a
+robot fault diagnosis system and an axiom stating that oil leakage is indicative of a robot
+malfunction. Obviously, it is important to check on a possible malfunction even in case
+there is contradictory information about an oil leakage. In a paraconsistent context,
+the axiom is thus best modeled by means of internal inclusion, i.e. as OilLeakage 
+RobotMalfunction.
+Material inclusion is cautious in the sense that contradictory information is not propa-
+gated. The intuition behind material inclusion becomes apparent by studying the truth
+table for material implication: a  b indicates that the only way for b to be not true
+(i.e. to be f or  ) is if there is information of falsity of a (i.e. it is f or  ). This kind
+of modeling becomes important if an inclusion has to be second-guessed e.g. after a
+merging of knowledge bases. Consider, for example, an ontology about marathon runs
+containing the axiom Healthy  eqMarathonParticipant which is supposed to say that
+somebody (i.e. a person who has signed up for a run) participates in a marathon if he
+checks out to be healthy. The axiom is reasonable if the domain is for the management of marathon participants data only. Now imagine that this ontology is merged
+with other sports knowledge bases, e.g. a boxing domain. It is wrong to infer that every
+healthy boxer will participate in the marathon, so the original axiom will likely lead to
+contradictions. We propose to handle this kind of information by modelling the axiom
+as material inclusion, i.e. as Healthy  MarathonParticipant, which will indeed not
+infer participation from a positive health status. However, the weak form of contraposition reasoning featured by material inclusion results in the following situation: If an
+individual is not known to be contained in MarathonParticipant, then it is known to be
+not Healthy, resulting in a possible contradiction on health status while avoiding contradiction in terms of marathon participation, which may be preferred in the domain.
+Material inclusion may thus propagate contradictory information backwards (to the an-
+tecedent), while internal inclusion may propagate contradictory information forward (to
+the consequent).
+
+We remark here that different inclusion axioms provide ontology engineers with a
+flexible way to define different ontologies according to the intuition explained above.
+In case only one kind of inclusion shall be used, we recommend to use strong inclu-
+sion, as it should serve the ontology engineers original intention most closely. To give
+an example, consider the inconsistent subontology of BuggyPolicy2 (with additional
+assertions) which says GeneralReliabilityUsernamePolicy (G for short) is a subset of
+Reliable, G and Messaging are disjoint, Reliable is a subset of Messaging, p1 is an
+individual of G and p2 is an individual of Reliable. Using strong inclusion results
+in the ontology {R  M, G  R, M  G, G  M, G(p1), R(p2)}, where we
+use obvious abbreviations for the class names. Under the semantics of strong inclu-
+sion, M(p1), R(p1), M(p2), G(p1), and M(p1) hold, but G(p2) does not hold. This
+example shows that our four-valued semantics can give meaningful answers when an
+ontology is inconsistent, while classical semantics fails to do so.
+
+2 http://www.mindswap.org/2005/debugging/ontologies/
+?
+
+?
+
+?
+4 Transforming ALC4 to ALC
+It is a pleasing property of ALC4, that it can be translated easily into classical ALC,
+such that paraconsistent reasoning can be simulated using standard ALC reasoning al-
+gorithms. We briefly present the translation, a preliminary report has appeared in [6].3
+For any given concept C, its transformation C is the concept obtained from C by the
+
+following inductively defined transformation.
+
+, where A
+
+
+
+is a new concept;
+
+ If C = A for A an atomic concept, then C = A+, where A+ is a new concept;
+ If C = A for A an atomic concept, then C = A
+
+ If C = , then C = ;
+ If C = , then C = ;
+ If C = E  D for concepts D, E, then C = E  D;
+ If C = E  D for concepts D, E, then C = E  D;
+ If C = R.D for D a concept and R is a role, then C = R.D;
+ If C = R.D for D a concept and R is a role, then C = R.D;
+ If C = D for a concept D, then C = D;
+ If C = (E  D) for concepts D, E, then C = E  D;
+ If C = (E  D) for concepts D, E, then C = E  D;
+ If C = (R.D) for D a concept and R is a role, then C = R.D;
+ If C = (R.D) for D a concept and R is a role, then C = R.D;
+Based on this, axioms are transformed as follows, where C1, C2 are concepts.
+ C1  C2 = C1  C2
+ C1  C2 = C1  C2;
+ C1  C2 = {C1  C2,C2  C1}.
+ C(a) = C(a), R(a, b) = R(a, b), where a, b are individuals, C a concept, R a role.
+
+The following theorem shows that paraconsistent reasoning can indeed be simulated
+
+on standard reasoners by means of the transformation just given.
+Theorem 1. For any ontology O we have O |=4  if and only if O |=2 , where |=2 is
+the entailment in classical ALC.
+We note that the transformation algorithm is linear in the size of the ontology. This implies that paraconsistent reasoning in our paradigm is not more expensive than classical
+reasoning.
+
+5 Resolution-Based Reasoning with ALC4
+
+There exist two fundamentally different approaches to reasoning with description log-
+ics. The first, historic approach is based on an adaptation of the tableaux method from
+first-order predicate logic (see [10]), and is implemented in most current reasoners.
+The second approach is based on resolution and has been realised in the KAON2
+reasoner [9]. While the first method invokes a classical reasoner as a black-box by a
+3 In [6], it was actually spelled out for SHOIN .
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+preprocessing spelled out in Section 4, the paraconsistent resolution given in this section views the classical reasoner KAON2 as a glass-box, thus avoiding the preprocessing step. We basically follow [9, Chapter 4], and indeed we have to assume that the
+reader is familiar with the KAON2-approach because space restrictions do not allow us
+to spell everything out in detail.
+
+We first note that resolution relies heavily on the tertium non datur, and thus does
+not lend itself easily to a paraconsistent setting. In particular, resolution cannot be based
+on the negation present in paraconsistent logics, as in this case A B and A C does
+not imply B  C. We thus start by introducing a second kind of negation, called the
+total negation, denoted by . In order to avoid confusion, we will refer to the standard
+negation as paraconsist negation.
+Definition 2. The total negation  on {P, N | P, N  } is defined by
+
+P, N =  \ P,  \ N.
+
+The intuition behind total negation is to reverse both the information of being true and of
+being false. Notice that we do not extend our four-valued DLs to have the total negation
+as a concept constructor. We rather use it only to provide a resolution-based decision
+procedure for four-valued DLs.
+
+Proposition 4. For total negation, the following hold for all concepts C, D and roles
+R. For any four-valued interpretation I,
+
+(C)I = CI , ()I = I , ()I = I , (C)I = (C)I
+((C  D))I = (C  D)I , ((C  D))I = (C  D)I ,
+((R.C))I = (R.C)I , ((R.C))I = (R.C)I .
+
+A second issue which we have to address when adjusting resolution to the paraconsistent setting, is to obtain a representation of internal implication (i.e. of internal in-
+clusion) in terms of clauses. We have already remarked in Section 2.2 that internal
+implication cannot be represented by means of the connectives conjunction, disjunction
+and paraconsistent negation. However, with total negation a representation of C  D
+as C  D is possible. The representation is actually not logically equivalent, but it is
+equisatisfiable, which suffices for setting up a resolution procedure. We indeed have the
+following theorem.
+Theorem 2. Let O be a four-valued ALC4 ontology, C, D be concepts, I be an interpretation and  be a new individual not occurring in O. Then the following hold.
+1. (C  D)I  {t,  } if and only if (C  D)I  {t,  }.
+2. O |=4 C(a) if and only if O  {C(a)} is four-valued unsatisfiable.
+3. O |=4 C  D if and only if O  {(C  D)()} is four-valued unsatisfiable.
+4. O |=4 C  D if and only if O  {(C  D)()} is four-valued unsatisfiable.
+5. O |=4 C  D if and only if O  {(C  D)(), (D  C)()} is four-valued
+
+unsatisfiable.
+?
+
+?
+
+?
+5.1 Translating ALC4 into Clauses
+Resolution-based calculi operates on sets of clauses in normal form, so we introduce
+next clausal forms for ALC4 expressions. We were inspired by [13]. We first define a
+negation normal form for ALC4 concepts, which we call quasi-NNF.
+Definition 3. A concept C is a quasi-atom, if it is an atomic concept, or in form A
+where A is an atomic concept. A concept C is a quasi-literal, if it is a quasi-atomic
+concept, or in form L where L is a quasi-atomic concept. A concept C is in quasi-
+NNF, if the total negation  occurs only in front of quasi-literals.
+To give an example, let A, B, and C be atomic concepts. Then (AB)R.(C)
+is in quasi-NNF. By propositions 3 and 4, the following is obvious.
+Theorem 3. All ALC4 concepts can be transformed into equivalent expressions in
+quasi-NNF.
+We next define the Definitorial form of ALC4 concepts, which is a technicality to control the size of clauses (see to [9] for details). If C is a concept, then we set
+?
+
+?
+
+?
+Def(C) =
+
+{C}
+
+{Q  C|p}  Def(C[Q]|p) if p is eligible for replacement in C.
+
+if C is a literal concept,
+
+where C|p is the position p in concept C, as defined in [14,9].
+As an example, we have Def(A  R.(A  B)) = {A  R.Q,Q  (A  B)}.
+Note that Q  (A  B) can be interpreted as internal inclusion Q  (A  B), which
+allows us to use Q as a new name for (A  B) in R.(A  B)).
+
+The following proposition is as expected.
+
+Proposition 5. For an ALC4 concept C in quasi-NNF, C(x) has information to be
+true for all individuals x if and only if all concepts Di(x) with Di  Def(C) have the
+information to be true. Formally, {  C} is four-valued satisfiable iff {  Def(Di) |
+Di  Def(C)} is.
+We next translate the concepts into predicate logic. This is done by the standard translation as e.g. spelled out in [9] in terms of the function y  we just have to provide for
+the total negation. This is done by allowing the total negation to occur in the predicate
+logic formulae as well, and by translating total negation in the same way as paraconsistent negation. We make one exception, namely for unversal restriction, where we set
+y(R.C, x) = y.(R(x, y)  C(y)).
+Following the above transformations step by step, any ALC4 concept can be translated into a set of first order predicate logic clauses (with total negation) in polynomial
+size of the original concepts.
+
+The obtained predicate logic formulae (with total negation) can now be translated
+into clauses in the standard way, i.e. by first casting them into Skolem form, and then
+into conjunctive normal form by exhaustive application of well-known logical equivalences (see e.g. [14]), which are adjusted for total negation in the obvious straightforward way.
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+Table 5. Clause Types
+
+()()Ci(x)  R(x, f (x))
+
+()()Ci(x)  ()()D(f (x))
+?
+
+?
+
+?
+4 ()()Ci(x)  R(x, y)  ()()D(y)
+?
+
+?
+
+?
+()()Ci(x)
+()()C(a)
+()()R(a, b)
+
+If C is a concept (where the additional use of total negation is allowed), then we
+denote by Cls(C) the set of clauses which is obtained by the just mentioned transfor-
+mation. These clauses are predicate logic formulae (with total negation).
+We finally translate an ALC4 knowledge base KB into a set (KB) of predicate logic clauses (with total negation), as follows. The knowledge base (KB) is
+the smallest set satisfying the following conditions:
+ For each ABox axiom  in ABox, Cls()  (KB)
+ For each T Box axiom C  D in T Box, Cls(C  D)  (KB)
+ For each T Box axiom C  D in T Box, Cls(C  D)  (KB)
+ For each T Box axiom C  D in T Box, Cls(C  D,D  C)  (KB)
+Theorem 4. Let KB be an ALC4 ontology. Then, the following hold.
+ KB is satisfiable iff (KB) is satisfiable.
+ (KB) can be computed in time polynomial in |KB|.
+ Each clause in (KB) is of one of the syntactic forms listed in Table 5. We refer
+
+to these clauses as 4-valued clauses.
+
+5.2 Ordered Resolution with Selection Function O4DL for ALC4
+The KAON2 approach for ALC is based on a modification of the original resolution
+calculus, known as ordered resolution (see [9] for the necessary preliminaries). We
+will now define the corresponding notions of clause ordering and of selection function,
+which we require for this. We assume in the sequel that all 4-valued clauses are of the
+form described in theorem 4.
+Given any fixed ordering  on ground quasi-atoms which is total and well-founded,
+
+we can obtain an ordering on sets of clauses as follows.
+1. Extend  to an ordering L on ground literals by setting A L A for any A, and
+[]A L []B, if A  B.
+2. Extend L to an ordering C on ground clauses by setting C= (L)mul to be
+the multi-set extension of L (see [9] for formal definition). The intuition is that
+C1 C C2 iff the maximal quasi-literal in clause C1 is greater then that in clause
+C2 w.r.t. L.
+
+By a slight abuse of notation, we use  also for L and C where the meaning is clear
+from the context.
+?
+
+?
+
+?
+By a selection function we mean a mapping S that assigns to each clause C a (possi-
+bly empty) multiset S(C) of literals with the prefix  in C. For example, both {A}
+and {A,D} can be selected in clause A  D  B  C.
+
+An ordered resolution step with selection function can now be described by the in-
+
+ference rule
+
+where
+
+C  A D  B
+
+C  D
+
+are quasi-clauses.
+
+  = M GU(A, B) is the most general unifier of the quasi-atoms A, B, and C, D
+ A is strictly maximal in C  A, and no literal is selected in C  A;
+ B is either selected in D B, or it is maximal in D B and no literal
+
+is selected in D  B.
+The corresponding ordered factorization rule is
+C  A  B
+(C  A)
+
+ iff N is four-valued unsatisfiable.
+
+where  = M GU(A, B) and A is maximal in C  A and nothing is selected in C.
+Theorem 5. (Soundness and Completeness of O4DL) Let N be an ALC4 knowledge
+base. Then (N) O4DL
+We can now select suitable parameters in order to arrive at a decision procedure based
+on O4DL. This can be done as follows.
+ The literal ordering  is defined such that R(x, f(x))  C(x) and D(f(x)) 
+ The selection function selects every binary literal which is preceeded by .
+Theorem 6. (Decidability) For an ALC4 knowledge base KB, saturating (KB) by
+O4DL decides satisfiability of KB and runs in time exponential in |KB|.
+
+C(x), for all function symbols f , and predicates R, C, and D.
+
+6 Implementation
+
+ParOWL4 is a prototype implementation of our paraconsistent reasoning approach. It realises the algorithm from Section 4 by means of a command line tool based on KAON2.
+In order to allow the use of standard OWL syntax, the tool expects four input files as
+parameters, all of which are standard OWL documents. In the first file, class inclusion
+is interpreted as material inclusion, in the second as internal inclusion, and in the third
+as strong inclusion. The fourth file is expected to contain an ABox. ParOWL outputs an
+OWL file which contains the translation.
+To display the usage of the different inclusion axioms in ParOWL, consider the
+following example ontology O, which consists of the axioms Bird  FlyAnimal,
+4 http://logic.aifb.uni-karlsruhe.de/wiki/Paraconsistent reasoning
+
+Y. Ma, P. Hitzler, and Z. Lin
+
+Table 6. Paraconsistent reasoning examples
+
+Ontology Bird FlyAnimal Penguin notBird notFlyAnimal notPenguin
+
+O1
+O2
+O3
+O4
+
+
+
+
+
+tweety
+tweety
+tweety
+
+tweety
+tweety
+
+
+
+tweety
+tweety
+tweety
+tweety
+
+
+
+
+
+tweety
+
+
+
+tweety
+tweety
+tweety
+
+
+
+
+
+tweety
+
+Penguin  Bird, Penguin  FlyAnimal, and Penguin(tweety), which is obviously
+inconsistent. We compare the following different four-valued ontologies which can be
+derived from O: For O1 all inclusions are material, for O2 all inclusions are internal,
+for O3 all inclusions are strong. For O4, the first inclusion is material, the second is
+internal, and the third is strong. Table 6 shows the extensions of the concepts in these
+ontologies as computed with ParOWL. The desired result may be O4, and indeed the
+choice of inclusion axioms in this case follows the intuitions laid out in Section 3.
+
+7 Conclusions and Further Work
+
+We have motivated and formally described an approach for paraconsistent reasoning
+with ontologies, which is based on the simultaneous use of different kinds of paraconsistent inclusion. We have provided guidelines for the use of these different inclusions.
+We have provided algorithms for implementing our approach and presented a publicly
+available tool which realises it.
+
+Concerning the two algorithms provided in Sections 4 and 5, it is rather apparent
+that all the benefits from the KAON2 system  like the ability to handle large ABoxes 
+can also be achieved by invoking KAON2 after employing the transformation algorithm
+from Section 4 in a preprocessing manner using ParOWL. However, although the transformation algorithm is polynomial, it may be time consuming for large ontologies. This
+can possibly be improved by the direct algorithm from Section 5. Most of the technical
+details of the KAON2 implementation can indeed be carried over to our algorithm from
+Section 5.
+
+In the literature, there are basically two other approaches to four-valued description
+logics, namely [4] and [5]. Our approach differes from theirs in two important aspects.
+The first is that we allow for simultaneous usage of different inclusions. The second is
+that we propose a translation from our logic into standard description logic such that
+established reasoners can be used. We thus benefit directly from the highly optimised
+systems currently available. The logics in [4,5] have neither of these features.
+
+Obviously, much work remains to be done to make our approach fit for practice. Besides the obvious task of providing a better implementation than just a prototype, we
+also have to address in more detail the question, which kinds of paraconsistent inclusion are to be chosen when translating paraconsistent ontologies to standard ontologies.
+We envision a combination of system recommendations with user interactions. Alterna-
+tively, inclusions could be weakened gradually from strong inclusion to weaker versions
+ probably involving even further notions of inclusion  until a reasonable answer to a
+query is found. These issues are currently under investigation by the authors.
+?
+
+?
+

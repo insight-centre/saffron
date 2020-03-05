@@ -1,0 +1,1360 @@
+Dynamic Querying of Mass-Storage RDF Data with
+
+Rule-Based Entailment Regimes
+
+Giovambattista Ianni1, Thomas Krennwallner2, Alessandra Martello1,
+
+and Axel Polleres3
+
+1 Dipartimento di Matematica, Universit`a della Calabria, I-87036 Rende (CS), Italy
+
+{ianni,a.martello}@mat.unical.it
+
+2 Institut f ur Informationssysteme 184/3, Technische Universit at Wien, Austria
+
+3 Digital Enterprise Research Institute, National University of Ireland, Galway
+
+tkren@kr.tuwien.ac.at
+
+axel.polleres@deri.org
+
+Abstract. RDF Schema (RDFS) as a lightweight ontology language is gaining
+popularity and, consequently, tools for scalable RDFS inference and querying
+are needed. SPARQL has become recently a W3C standard for querying RDF
+data, but it mostly provides means for querying simple RDF graphs only, whereas
+querying with respect to RDFS or other entailment regimes is left outside the current specification. In this paper, we show that SPARQL faces certain unwanted
+ramifications when querying ontologies in conjunction with RDF datasets that
+comprise multiple named graphs, and we provide an extension for SPARQL that
+remedies these effects. Moreover, since RDFS inference has a close relationship
+with logic rules, we generalize our approach to select a custom ruleset for specifying inferences to be taken into account in a SPARQL query. We show that
+our extensions are technically feasible by providing benchmark results for RDFS
+querying in our prototype system GiaBATA, which uses Datalog coupled with a
+persistent Relational Database as a back-end for implementing SPARQL with dynamic rule-based inference. By employing different optimization techniques like
+magic set rewriting our system remains competitive with state-of-the-art RDFS
+querying systems.
+
+1 Introduction
+
+Thanks to initiatives such as DBPedia or the Linked Open Data project,1 a huge amount
+of machine-readable RDF [1] data is available, accompanying pervasive ontologies describing this data such as FOAF [2], SIOC [3], or YAGO [4].
+
+A vast amount of Semantic Web data uses rather small and lightweight ontologies
+that can be dealt with rule-based RDFS and OWL reasoning [5,6,7], in contrast to the
+full power of expressive description logic reasoning. However, even if many practical use cases do not require complete reasoning on the terminological level provided
+
+ This work has been partially supported by the Italian Research Ministry (MIUR) project Interlink II04CG8AGG, the Austrian Science Fund (FWF) project P20841, by Science Foundation
+Ireland under Grant No. SFI/08/CE/I1380 (Lion-2).
+
+1 http://dbpedia.org/ and http://linkeddata.org/
+
+A. Bernstein et al. (Eds.): ISWC 2009, LNCS 5823, pp. 310327, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+?
+
+?
+
+?
+by DL-reasoners, the following tasks become of utter importance. First, a Semantic
+Web system should be able to handle and evaluate (possibly complex) queries on large
+amounts of RDF instance data. Second, it should be able to take into account implicit
+knowledge found by ontological inferences as well as by additional custom rules involving built-ins or even nonmonotonicity. The latter features are necessary, e.g., for
+modeling complex mappings [8] between different RDF vocabularies. As a third point,
+joining the first and the second task, if we want the Semantic Web to be a solution to 
+as Ora Lassila formulated it  those problems and situations that we are yet to define,2
+we need triple stores that allow dynamic querying of different data graphs, ontologies,
+and (mapping) rules harvested from the Web. The notion of dynamic querying is in
+opposition to static querying, meaning that the same dataset, depending on context,
+reference ontology and entailment regime, might give different answers to the same
+query. Indeed, there are many situations in which the dataset at hand and its supporting
+class hierarchy cannot be assumed to be known upfront: think of distributed querying
+of remotely exported RDF data.
+
+Concerning the first point, traditional RDF processors like Jena (using the default
+configuration) are designed for handling large RDF graphs in memory, thus reaching
+their limits very early when dealing with large graphs retrieved from the Web. Current RDF Stores, such as YARS [9], Sesame, Jena TDB, ThreeStore, AllegroGraph, or
+OpenLink Virtuoso3 provide roughly the same functionality as traditional relational
+database systems do for relational data. They offer query facilities and allow to import large amounts of RDF data into their persistent storage, and typically support
+SPARQL [10], the W3C standard RDF query language. SPARQL has the same expressive power as non-recursive Datalog [11,12] and includes a set of built-in predicates in
+so called filter expressions.
+
+However, as for the second and third point, current RDF stores only offer limited support. OWL or RDF(S) inference, let alone custom rules, are typically fixed
+in combination with SPARQL querying (cf. Section 2). Usually, dynamically assigning
+different ontologies or rulesets to data for querying is neither supported by the SPARQL
+specification nor by existing systems. Use cases for such dynamic querying involve,
+e.g., querying data with different versions of ontologies or queries over data expressed
+in related ontologies adding custom mappings (using rules or bridging ontologies).
+
+To this end, we propose an extension to SPARQL which caters for knowledgeintensive applications on top of Semantic Web data, combining SPARQL querying
+with dynamic, rule-based inference. In this framework, we overcome some of the above
+mentioned limitations of SPARQL and existing RDF stores. Moreover, our approach is
+easily extensible by allowing features such as aggregates and arbitrary built-in predicates to SPARQL (see [8,14]) as well as the addition of custom inference and mapping
+rules. The contributions of our paper are summarized as follows:
+ We introduce two additional language constructs to the normative SPARQL lan-
+guage. First, the directive using ontology for dynamically coupling a dataset with
+
+2 http://www.lassila.org/publications/2006/SCAI-2006-keynote.pdf
+3 See http://openrdf.org/, http://jena.hpl.hp.com/wiki/TDB/, http://
+
+threestore.sf.net/, http://agraph.franz.com/allegrograph/,
+http://openlinksw.com/virtuoso/, respectively.
+
+G. Ianni et al.
+
+an arbitrary RDFS ontology, and second extended dataset clauses, which allow to specify datasets with named graphs in a flexible way. The using ruleset directive can
+be exploited for adding to the query at hand proper rulesets which might used for a variety of applications such as encoding mappings between entities, or encoding custom
+entailment rules, such as RDFS or different rule-based OWL fragments.
+ We present the GiaBATA system [15], which demonstrates how the above extensions
+can be implemented on a middle-ware layer translating SPARQL to Datalog and SQL.
+Namely, the system is based on known translations of SPARQL to Datalog rules. Ar-
+bitrary, possibly recursive rules can be added flexibly to model arbitrary ontological
+inference regimes, vocabulary mappings, or alike. The resulting program is compiled to
+SQL where possible, such that only the recursive parts are evaluated by a native Datalog
+implementation. This hybrid approach allows to benefit from efficient algorithms of deductive database systems for custom rule evaluation, and native features such as query
+plan optimization techniques or rich built-in functions (which are for instance needed
+to implement complex filter expressions in SPARQL) of common database systems.
+ We compare our GiaBATA prototype to well-known RDF(S) systems and provide
+experimental results for the LUBM [16] benchmark. Our approach proves to be competitive on both RDF and dynamic RDFS querying without the need to pre-materialize
+inferences.
+
+In the remainder of this paper we first introduce SPARQL along with RDF(S) and
+partial OWL inference by means of some motivating example queries which existing
+systems partially cannot deal in a reasonably manner in Section 2. Section 3 sketches
+how the SPARQL language can be enhanced with custom ruleset specifications and
+arbitrary graph merging specifications. We then briefly introduce our approach to translate SPARQL rules to Datalog in Section 4, and how this is applied to a persistent storage system. We evaluate our approach with respect to existing RDF stores in Section 5,
+and then conclusions are drawn in Section 6.
+
+2 SPARQL and Some Motivating Examples
+
+Similar in spirit to structured query languages like SQL, which allow to extract, combine and filter data from relational database tables, SPARQL allows to extract, combine
+and filter data from RDF graphs. The semantics and implementation of SPARQL in-
+volves, compared to SQL, several peculiarities, which we do not focus on in this paper,
+cf. [10,18,11,19] for details. Instead, let us just start right away with some illustrating
+example motivating our proposed extensions of SPARQL; we assume two data graphs
+describing data about our well-known friends Bob and Alice shown in Fig. 1(b)+(c).
+Both graphs refer to terms in a combined ontology defining the FOAF and Relationship4 vocabularies, see Fig. 1(a) for an excerpt.
+
+On this data the SPARQL query (1) intends to extract names of persons mentioned in
+those graphs that belong to friends of Bob. We assume that, by means of rdfs:seeAlso
+statements, Bob provides links to the graphs associated to the persons he is friend with.
+
+4 http://vocab.org/relationship/
+?
+
+?
+
+?
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix rel: <http://purl.org/vocab/relationship/>.
+...
+rel:friendOf rdfs:subPropertyOf foaf:knows.
+foaf:knows rdfs:domain foaf:Person.
+foaf:knows rdfs:range foaf:Person.
+foaf:homepage rdf:type owl:inverseFunctionalProperty.
+...
+
+(a) Graph GM (<http://example.org/myOnt.rdfs>), a combination of the
+FOAF&Relationship ontologies.
+
+<http://bob.org#me> foaf:name "Bob"; a foaf:Person;
+
+foaf:homepage <http://bob.org/home.html>;
+rel:friendOf [ foaf:name "Alice";
+
+rdfs:seeAlso <http://alice.org> ].
+
+(b) Graph GB (<http://bob.org>)
+
+<http://alice.org#me> foaf:name "Alice"; a foaf:Person;
+rel:friendOf [ foaf:name "Charles" ],
+
+[ foaf:name "Bob";
+
+foaf:homepage <http://bob.org/home.html>
+
+].
+
+(c) Graph GA (<http://alice.org>)
+
+Fig. 1. An ontology and two data graphs
+
+select ?N from <http://example.org/myOnt.rdfs>
+
+from <http://bob.org>
+from named <http://alice.org>
+
+where { <http://bob.org#me> foaf:knows ?X . ?X rdfs:seeAlso ?G .
+
+graph ?G { ?P rdf:type foaf:Person; foaf:name ?N } }
+
+(1)
+
+Here, the from and from named clauses specify an RDF dataset. In general, the dataset
+DS = (G, N) of a SPARQL query is defined by (i) a default graph G obtained by the
+RDF merge [20] of all graphs mentioned in from clauses, and (ii) a set N = {(u1, G1),
+. . . , (uk, Gk)} of named graphs, where each pair (ui, Gi) consists of an IRI ui, given in
+a from named clause, paired with its corresponding graph Gi. For instance, the dataset
+of query (1) would be DS 1 = ( GM $ GB, {(<http://alice.org>, GA)}), where
+$ denotes merging of graphs according to the normative specifications.
+
+Now, let us have a look at the answers to query (1). Answers to SPARQL select
+queries are defined in terms of multisets of partial variable substitutions. In fact the
+answer to query (1) is empty when  as typical for current SPARQL engines  only
+simple RDF entailment is taken into account, and query answering then boils down to
+simple graph matching. Since neither of the graphs in the default graph contain any
+triple matching the pattern <http://bob.org#me> foaf:knows ?X in the where
+clause, the result of (1) is empty. When taking subproperty inference by the statements
+of the ontology in GM into account, however, one would expect to obtain three substitutions for the variable ?N: {?N/"Alice", ?N/"Bob", ?N/"Charles"}. We will explain
+in the following why this is not the case in standard SPARQL.
+
+In order to obtain the expected answer, firstly SPARQLs basic graph pattern matching needs to be extended, see [10, Section 12.6]. In theory, this means that the graph
+patterns in the where clause needs to be matched against an enlarged version of the
+original graphs in the dataset (which we will call the deductive closure Cl()) of a given
+entailment regime. Generic extensions for SPARQL to entailment regimes other than
+simple RDF entailment are still an open research problem,5 due to various problems:
+(i) for (non-simple) RDF entailment regimes, such as full RDFS entailment, Cl(G) is
+infinite, and thus SPARQL queries over an empty graph G might already have infinite
+answers, and (ii) it is not yet clear which should be the intuitive answers to queries over
+
+5 For details, cf. http://www.polleres.net/sparqltutorial/, Unit 5b.
+
+G. Ianni et al.
+
+inconsistent graphs, e.g. in OWL entailment, etc. In fact, SPARQL restricts extensions
+of basic graph pattern matching to retain finite answers. Not surprisingly, many existing implementations implement finite approximations of higher entailment regimes
+such as RDFS and OWL [6,5,21]. E.g., the RDF Semantics document [20] contains
+an informative set of entailment rules, a subset of which (such as the one presented
+in Section 3.2 below) is implemented by most available RDF stores. These rule-based
+approximations, which we focus on in this paper, are typically expressible by means
+of Datalog-style rules. These latter model how to infer a finite closure of a given RDF
+graph that covers sound but not necessarily complete RDF(S) and OWL inferences. It
+is worth noting that Rule-based entailment can be implemented in different ways: rules
+could be either dynamically evaluated upon query time, or the closure wrt. ruleset R,
+ClR(G), could be materialized when graph G is loaded into a store. Materialization of
+inferred triples at loading time allows faster query responses, yet it has drawbacks: it is
+time and space expensive and it has to be performed once and statically. In this setting,
+it must be decided upfront.
+
+(a) which ontology should be taken into account for which data graph, and
+(b) to which graph(s) the inferred triples belong, which particularly complicates the
+
+querying of named graphs.
+
+As for exemplifying (a), assume that a user agent wants to issue another query on
+graph GB with only the FOAF ontology in mind, since she does not trust the Relationship ontology. In the realm of FOAF alone, rel:friendOf has nothing to deal
+with foaf:knows. However, when materializing all inferences upon loading GM and
+: a would be inferred from GM $ GB and
+GB into the store, bob:me foaf:knows
+would contribute to such a different query. Current RDF stores prevent to dynamically
+parameterize inference with an ontology of choice at query time, since indeed typically
+all inferences are computed upon loading time once and for all.
+
+As for (b), queries upon datasets including named graphs are even more problematic.
+Query (1) uses GB in order to find the IRI identifiers for persons that Bob knows by
+following rdfs:seeAlso links and looks for persons and their names in the named
+RDF graphs found at these links. Even if rule-based inference was supported, the answer to query (1) over dataset DS 1 is just {?N/"Alice"}, as Alice is the only
+(explicitly) asserted foaf:Person in GA. Subproperty, domain and range inferences
+over the GM ontology do not propagate to GA, since GM is normatively prescribed
+to be merged into the default graph, but not into the named graph. Thus, there is no
+way to infer that "Bob" and "Charles" are actually names of foaf:Persons within
+the named graph GA. Indeed, SPARQL does not allow to merge, on demand, graphs
+into the named graphs, thus there is no way of combining GM with the named graph
+GA.
+
+To remedy these deficiencies, we suggest an extension of the SPARQL syntax, in
+order to allow the specification of datasets more flexibly: it is possible to group graphs
+to be merged in parentheses in from and from named clauses. The modified query,
+obtaining a dataset DS 2 = ( GM $ GB, {(http://alice.org, GM $ GA)}) looks as
+follows:
+?
+
+?
+
+?
+select ?N
+
+from (<http://example.org/myOnt.rdfs> <http://bob.org/>)
+from named <http://alice.org>
+
+(<http://example.org/myOnt.rdfs> <http://alice.org/>)
+
+where { bob:me foaf:knows ?X . ?X rdfs:seeAlso ?G .
+
+graph ?G { ?X foaf:name ?N . ?X a foaf:Person . } }
+
+(2)
+
+For ontologies which should apply to the whole query, i.e., graphs to be merged into
+the default graph as well as any specified named graph, we suggest a more convenient
+shortcut notation by adding the keyword using ontology in the SPARQL syntax:
+
+select ?N
+
+using ontology <http://example.org/myOnt.rdfs>
+from <http://bob.org/>
+from named <http://alice.org/>
+
+where { bob:me foaf:knows ?X . ?X foaf:seeAlso ?G .
+
+graph ?G { ?X foaf:name ?N . ?X a foaf:Person. } }
+
+(3)
+
+Hence, the using ontology construct allows for coupling the entire given dataset
+with the terminological knowledge in the myOnt data schema. As our investigation
+of currently available RDF stores (see Section 5) shows, none of these systems easily
+allow to merge ontologies into named graphs or to dynamically specify the dataset of
+choice.
+
+In addition to parameterizing queries with ontologies in the dataset clauses, we also
+allow to parameterize the ruleset which models the entailment regime at hand. Per de-
+fault, our framework supports a standard ruleset that emulates (a finite subset of) the
+RDFS semantics. This standard ruleset is outlined in Section 3 below. Alternatively, different rule-based entailment regimes, e.g., rulesets covering parts of the OWL semantics
+ a la ter Horst [5], de Bruijn [22, Section 9.3], OWL2 RL [17] or other custom rulesets
+can be referenced with the using ruleset keyword. For instance, the following query
+returns the solution {?X/<http://alice.org#me>, ?Y/<http://bob.org#me>},
+by doing equality reasoning over inverse functional properties such as foaf:homepage
+when the FOAF ontology is being considered:
+
+select ?X ?Y
+using ontology <http://example.org/myOnt.rdfs>
+using ruleset rdfs
+using ruleset <http://www.example.com/owl-horst>
+from <http://bob.org/>
+from <http://alice.org/>
+where { ?X foaf:knows ?Y }
+
+(4)
+
+Query (4) uses the built-in RDFS rules for the usual subproperty inference, plus a ruleset
+implementing ter Horsts inference rules, which might be available at URL http://
+www.example.com/owl-horst. This ruleset contains the following additional rules,
+that will equate the blank node used in GA for Bob with <http://bob.org#me>:6
+
+?P rdf:type owl:iFP . ?S1 ?P ?O . ?S2 ?P ?O .  ?S1 owl:sameAs ?S2.
+?X owl:sameAs ?Y
+?X ?P ?O . ?X owl:sameAs ?Y
+?S ?X ?O . ?X owl:sameAs ?Y
+?S ?P ?X . ?X owl:sameAs ?Y
+
+ ?Y owl:sameAs ?X.
+ ?Y ?P ?O.
+ ?S ?Y ?O.
+ ?S ?P ?Y.
+
+(5)
+
+6 We use owl:iFP as shortcut for owl:inverseFunctionalProperty.
+
+G. Ianni et al.
+
+3 A Framework for Using Ontologies and Rules in SPARQL
+
+In the following, we will provide a formal framework for the SPARQL extensions outlined above. In a sense, the notion of dynamic querying is formalized in terms of the
+from a variable ontology O and ruleset R.
+dependence of BGP pattern answers [[P ]]O,R
+For our exposition, we rely on well-known definitions of RDF datasets and SPARQL.
+Due to space limitations, we restrict ourselves to the bare minimum and just highlight
+some standard notation used in this paper.
+
+Preliminaries. Let I, B, and L denote pairwise disjoint infinite sets of IRIs, blank
+nodes, and RDF literals, respectively. A term is an element from I  B  L. An RDF
+graph G (or simply graph) is defined as a set of triples from I  B  I  B  I  B  L
+(cf. [18,12]); by blank(G) we denote the set of blank nodes of G.7
+A blank node renaming  is a mapping I  B  L  I  B  L. We denote by t
+the application of  to a term t. If t  I  L then t = t, and if t  B then t  B. If
+(s, p, o) is a triple then (s, p, o) is the triple (s, p, o). Given a graph G, we denote
+by G the set of all triples {t | t  G}. Let G and H be graphs. Let G
+H be an arbitrary
+H) = . The merge of G by H,
+blank node renaming such that blank(G)  blank(HG
+denoted G $ H, is defined as G  HG
+H.
+An RDF dataset D = (G0, N) is a pair consisting of exactly one unnamed graph,
+the so-called default graph G0, and a set N = {u1, G1, . . . ,un, Gn} of named
+graphs, coupled with their identifying URIs. The following conditions hold: (i) each Gi
+(0  i  n) is a graph, (ii) each uj (1  j  n) is from I, and (iii) for all i = j,
+ui, Gi,uj, Gj  N implies ui = uj and blank(Gi)  blank(Gj) = .
+
+The syntax and semantics of SPARQL can now be defined as usual, cf. [10,18,12]
+for details. For the sake of this paper, we restrict ourselves to select queries as shown
+in the example queries (1)(4) and just provide an overview of the necessary concepts.
+A query in SPARQL can be viewed as a tuple Q = (V, D, P ), where V is the set of
+variables mentioned in the select clause, D is an RDF dataset, defined by means of
+from and from named clauses, and P is a graph pattern, defined in the where clause.
+Graph patterns are in the simplest case sets of RDF triples (s, p, o), where terms
+and variables from an infinite set of variables Var are allowed, also called basic graph
+patterns (BGP). More complex graph patterns can be defined recursively, i.e., if P1 and
+P2 are graph patterns, g  I  Var and R is a filter expression, then P1 optional P2,
+P1 union P2, P1 filter R, and graph g P1 are graph patterns.
+
+Graph Pattern Matching. Queries are evaluated by matching graph patterns against
+graphs in the dataset. In order to determine a querys solution, in the simplest case BGPs
+are matched against the active graph of the query, which is one particular graph in the
+dataset, identified as shown next.
+
+Solutions of BGP matching consist of multisets of bindings for the variables mentioned in the pattern to terms in the active graph. Partial solutions of each subpattern
+are joined according to an algebra defining the optional, union and filter opera-
+tors, cf. [10,18,12]. For what we are concerned with here, the most interesting operator
+though is the graph operator, since it changes the active graph. That is, the active graph
+
+7 Note that we allow generalized RDF graphs that may have blank nodes in property position.
+?
+
+?
+
+?
+is the default graph G0 for any basic graph pattern not occurring within a graph sub
+pattern. However, in a subpattern graph g P1, the pattern P1 is matched against the
+named graph identified by g, if g  I, and against any named graph ui, if g  Var,
+where the binding ui is returned for variable g. According to [12], for a RDF dataset D
+and active graph G, we define [[P ]]D
+G as the multiset of tuples constituting the answer to
+the graph pattern P . The solutions of a query Q = (V, D, P ) is the projection of [[P ]]D
+
+to the variables in V only.
+
+3.1 SPARQL with Extended Datasets
+
+What is important to note now is that, by the way how datasets are syntactically defined
+in SPARQL, the default graph G0 can be obtained from merging a group of different source graphs, specified via several from clauses  as shown, e.g., in query (1) 
+whereas in each from named clause a single, separated, named graph is added to the
+dataset. That is, graph patterns will always be matched against a separate graph only.
+To generalize this towards dynamic construction of groups of merged named graphs,
+we introduce the notion of an extended dataset, which can be specified by enlarging the
+syntax of SPARQL with two additional dataset clauses:
+ For i, i1, . . . , im distinct IRIs (m  1), the statement from named i(i1 . . . im)
+is called extended dataset clause. Intuitively, i1 . . . im constitute a group of graphs
+to be merged: the merged graph is given i as identifying IRI.
+ For o  I we call the statement using ontology o an ontological dataset
+clause. Intuitively, o stands for a graph that will merged with all graphs in a given
+query.
+
+Extended RDF datasets are thus defined as follows. A graph collection G is a set of RDF
+graphs. An extended RDF dataset D is a pair (G0,{u1,G1, . . . ,un,Gn}) satisfying
+the following conditions: (i) each Gi is a nonempty graph collection (note that {}
+is a valid nonempty graph collection), (ii) each uj is from I, and (iii) for all i = j,
+ui,Gi,uj,Gj  D implies ui = uj and for G  Gi and H  Gj, blank(G) 
+blank(H) = . We denote G0 as dg(D), the default graph collection of D.
+Let D and O be an extended dataset and a graph collection, resp. The ordinary RDF
+dataset obtained from D and O, denoted D(D,O), is defined as
+?
+
+?
+
+?
+ 
+?
+
+?
+
+?
+g $
+
+o,
+
+oO
+
+u,
+
+g $
+
+gG
+
+oO
+
+gdg(D)
+
+o | u,G  D
+
+.
+
+We can now define the semantics of extended and ontological dataset clauses as follows.
+Let F be a set of ordinary and extended dataset clauses, and O be a set of ontological
+dataset clauses. Let graph(g) be the graph associated to the IRI g: the extended RDF
+dataset obtained from F , denoted edataset(F ), is composed of:
+(1) G0 = {graph(g) | from g  F}. If there is no from clause, then G0 = .
+(2) A named graph collection u,{graph(u)} for each from named u in F .
+(3) A named graph collection i,{graph(i1), . . . , graph(im)}for each from named
+
+i(i1 . . . im) in F .
+?
+
+?
+
+?
+The graph collection obtained from O, denoted ocollection(O), is the set {graph(o) |
+using ontology o  O}. The ordinary dataset of O and F , denoted dataset(F, O),
+is the set D(edataset(F ), ocollection(O)).
+Let D and O be as above. The evaluation of a graph pattern P over D and O having
+, is the evaluation of P over D(D,O) having
+active graph collection G, denoted [[P ]]
+D,O
+
+G = [[P ]]D(D,O)
+D,O
+active graph G =
+gG g, that is, [[P ]]
+
+Note that the semantics of extended datasets is defined in terms of ordinary RDF
+datasets. This allows to define the semantics of SPARQL with extended and ontological
+dataset clauses by means of the standard SPARQL semantics. Also note that our extension is conservative, i.e., the semantics coincides with the standard SPARQL semantics
+whenever no ontological clauses and extended dataset clauses are specified.
+?
+
+?
+
+?
+.
+
+3.2 SPARQL with Arbitrary Rulesets
+
+Extended dataset clauses give the possibility of merging arbitrary ontologies into any
+graph in the dataset. The second extension herein presented enables the possibility of
+dynamically deploying and specifying rule-based entailments regimes on a per query
+basis. To this end, we define a generic R-entailment, that is RDF entailment associated
+to a parametric ruleset R which is taken into account when evaluating queries. For each
+such R-entailment regime we straightforwardly extend BGP matching, in accordance
+with the conditions for such extensions as defined in [10, Section 12.6].
+We define an RDF inference rule r as the pair (Ante,Con), where the antecedent
+Ante and the consequent Con are basic graph patterns such that V(Con) and V(Ante)
+are non-empty, V(Con)  V(Ante) and Con does not contain blank nodes.8 As in
+Example (5) above, we typically write RDF inference rules as
+
+Ante  Con .
+
+(6)
+
+We call sets of inference rules RDF inference rulesets, or rulesets for short.
+?
+
+?
+
+?
+Rule Application and Closure. We define RDF rule application in terms of the immediate consequences of a rule r or a ruleset R on a graph G. Given a BGP P , we denote
+as (P ) a pattern obtained by substituting variables in P with elements of I  B  L.
+Let r be a rule of the form (6) and G be a set of RDF triples, then:
+Tr(G) = {(Con) |  such that (Ante)  G}.
+
+rR Tr(G). Also, let G0 = G and Gi+1 = Gi  TR(Gi)
+Accordingly, let TR(G) =
+for i  0. It can be easily shown that there exists the smallest n such that Gn+1 = Gn;
+we call then ClR(G) = Gn the closure of G with respect to ruleset R.
+We can now further define R-entailment between two graphs G1 and G2, written
+G1 |=R G2, as ClR(G1) |= G2. Obviously for any finite graph G, ClR(G) is finite.
+In order to define the semantics of a SPARQL query wrt. R-entailment we now extend
+graph pattern matching in [[P ]]D
+
+G towards respecting R.
+
+8 Unlike some other rule languages for RDF, the most prominent of which being CONSTRUCT
+statements in SPARQL itself, we forbid blank nodes; i.e., existential variables in rule consequents which require the invention of new blank nodes, typically causing termination issues.
+?
+
+?
+
+?
+ClR(G).
+
+G , is [[P ]]D
+
+Dynamic Querying of Mass-Storage RDF Data with Rule-Based Entailment Regimes
+
+Definition 1 (Extended Basic Graph Pattern Matching for R-Entailment). Let D
+be a dataset and G be an active graph. The solution of a BGP P wrt. R-entailment,
+denoted [[P ]]D,R
+The solution [[P ]]D,R
+naturally extends to more complex patterns according to the
+SPARQL algebra. In the following we will assume that [[P ]]D,R
+is used for graph pattern matching. Our extension of basic graph pattern matching is in accordance with the
+conditions for extending BGP matching in [10, Section 12.6]. Basically, these conditions say that any extension needs to guarantee finiteness of the answers, and defines
+some conditions about a scoping graph. Intuitively, for our extension, the scoping
+graph is just equivalent to ClR(G). We refer to [10, Section 12.6] for the details.
+To account for this generic SPARQL BGP matching extension parameterized by an
+RDF inference ruleset RQ per SPARQL query Q, we introduce another novel language
+construct for SPARQL:
+ For r  I we call using ruleset r a ruleset clause.
+Analogously to IRIs denoting graphs, we now assume that an IRI r  I may not only
+refer to graphs but also to rulesets, and denote the corresponding ruleset by ruleset(r).
+Each query Q may contain zero or more ruleset clauses, and we define the query ruleset
+RQ =
+
+rR ruleset(r), where R is the set of all ruleset clauses in Q.
+
+The definitions of solutions of a query and the evaluation of a pattern in this query
+on active graph G is now defined just as above, with the only difference that answer to
+a pattern P are given by [[P ]]D,RQ
+We observe that whenever R = , then R-entailment boils down to simple RDF
+entailment. Thus, a query without ruleset clauses will just be evaluated using standard
+BGP matching. In general, our extension preserve full backward compatibility.
+Proposition 1. For R =  and RDF graph G, [[P ]]D,R
+Analogously, one might use R-entailment as the basis for RDFS entailment as follows.
+We consider here the DF fragment of RDFS entailment [6]. Let RRDFS denote the
+ruleset corresponding to the minimal set of entailment rules (2)(4) from [6]:
+?P rdfs:subPropertyOf ?Q . ?Q rdfs:subPropertyOf ?R .  ?P rdfs:subPropertyOf ?R.
+?P rdfs:subPropertyOf ?Q . ?S ?P ?O .
+?C rdfs:subClassOf ?D . ?D rdfs:subClassOf ?E .
+?C rdfs:subClassOf ?D . ?S rdf:type ?C .
+?P rdfs:domain ?C . ?S ?P ?O .
+?P rdfs:range ?C . ?S ?P ?O .
+
+ ?S ?Q ?O.
+ ?C rdfs:subClassOf ?E.
+ ?S rdf:type ?D.
+ ?S rdf:type ?C.
+ ?O rdf:type ?C.
+
+G = [[P ]]D
+G .
+
+.
+
+Since obviously G |=RDFS ClRRDFS (G) and hence ClRRDFS (G) may be viewed as
+a finite approximation of RDFS-entailment, we can obtain a reasonable definition for
+defining a BGP matching extension for RDFS by simply defining [[P ]]D,RDFS
+=
+[[P ]]D,RRDFS
+. We allow the special ruleset clause using ruleset rdfs to conveniently refer to this particular ruleset. Other rulesets may be published under a Web
+dereferenceable URI, e.g., using an appropriate RIF [23] syntax.
+
+Note, eventually, that our rulesets consist of positive rules, and as such enjoy a natural
+
+monotonicity property.
+?
+
+?
+
+?
+, and graph G1 and G2, if
+
+Proposition 2. For rulesets R and R
+G1 |=R G2 then G1 |=R G2.
+Entailment regimes modeled using rulesets can thus be enlarged without retracting former inferences. This for instance would allow to introduce tighter RDFS-entailment approximations by extending RRDFS with further axioms, yet preserving inferred triples.
+
+, such that R  R
+
+4 Translating SPARQL into Datalog and SQL
+
+Our extensions have been implemented by reducing both queries, datasets and rulesets
+to a common ground which allows arbitrary interoperability between the three realms.
+This common ground is Datalog, wherein rulesets naturally fit and SPARQL queries can
+be reduced to. Subsequently, the resulting combined Datalog programs can be evaluated
+over an efficient SQL interface to an underlying relational DBMS that works as triple
+store.
+
+From SPARQL to Datalog. A SPARQL query Q is transformed into a corresponding Datalog program DQ. The principle is to break Q down to a series of Datalog
+rules, whose body is a conjunction of atoms encoding a graph pattern. DQ is mostly
+a plain Datalog program in dlvhex [24] input format, i.e. Datalog with external predicates in the dlvhex language. These are explained along with a full account of the
+translation in [11,19]. Main challenges in the transformation from SPARQL to Datalog
+are (i) faithful treatment of the semantics of joins over possibly unbound variables [11],
+(ii) the multiset semantics of SPARQL [19], and also (iii) the necessity of Skolemization
+of blank nodes in construct queries [8]. Treatment of optional statements is carried out by means of an appropriate encoding which exploits negation as failure. Special
+external predicates of dlvhex are used for supporting some features of the SPARQL lan-
+guage: in particular, importing RDF data is achieved using the external &rdf predicate,
+which can be seen as a built-in referring to external data. Moreover, SPARQL filter
+expressions are implemented using the dlvhex external &eval predicate in DQ.
+
+Let us illustrate this transformation step by an example: the following query A asking
+
+for persons who are not named Alice and optionally their email addresses
+
+select * from <http://alice.org/>
+where { ?X a foaf:Person. ?X foaf:name ?N.
+
+filter ( ?N != "Alice") optional { ?X foaf:mbox ?M } }
+
+(7)
+
+is translated to the program DA as follows:
+
+(r1) "triple"(S,P,0,default)
+(r2) answer1(X_N,X_X,default)
+
+:- &rdf[ "alice.org" ](S,P,0).
+:- "triple"(X_X,"rdf:type","foaf:Person",default),
+
+"triple"(X_X,"foaf:name",X_N,default),
+&eval[" ?N != Alice ","N", X_N ](true).
+
+(r3) answer2(X_M,X_X,default)
+(r4) answer_b_join_1(X_M,X_N,X_X,default) :- answer1(X_N,X_X,default),
+answer2(X_M,X_X,default).
+(r5) answer_b_join_1(null,X_N,X_X,default) :- answer1(X_N,X_X,default),
+
+:- "triple"(X_X,"foaf:mbox",X_M,default).
+
+not answer2_prime(X_X,default).
+
+(r6) answer2_prime(X_X,default) :- answer1(X_N,X_X,default),
+answer2(X_M,X_X,default).
+
+(r7) answer(X_M,X_N,X_X)
+
+:- answer_b_join1(X_M,X_N,X_X,default).
+?
+
+?
+
+?
+where the first rule (r1) computes the predicate "triple" taking values from the
+built-in predicate &rdf. This latter is generally used to import RDF statements from the
+specified URI. The following rules (r2) and (r3) compute the solutions for the filtered
+basic graph patterns { ?X a foaf:Person. ?X foaf:name ?N. filter (?N !=
+"Alice")} and { ?X foaf:mbox ?M}. In particular, note here that the evaluation of
+filter expressions is outsourced to the built-in predicate &eval, which takes a filter
+expression and an encoding of variable bindings as arguments, and returns the evaluation value (true, false or error, following the SPARQL semantics). In order to emulate SPARQLs optional patterns a combination of join and set difference operation
+is used, which is established by rules (r4)(r6). Set difference is simulated by using
+both null values and negation as failure. According to the semantics of SPARQL, one
+has to particularly take care of variables which are joined and possibly unbound (i.e.,
+set to the null value) in the course of this translation for the general case. Finally, the
+dedicated predicate answer in rule (r7) collects the answer substitutions for Q. DQ
+might then be merged with additional rulesets whenever Q contains using ruleset
+clauses.
+
+From Datalog to SQL. For this step we rely on the system DLVDB [25] that implements Datalog under stable model semantics on top of a DBMS of choice. DLVDB is
+able to translate Datalog programs in a corresponding SQL query plan to be issued to
+the underlying DBMS. RDF Datasets are simply stored in a database D, but the native
+dlvhex &rdf and &eval predicates in DQ cannot be processed by DLVDBdirectly over
+D. So, DQ needs to be post-processed before it can be converted into suitable SQL
+statements.
+
+Rule (r1) corresponds to loading persistent data into D, instead of loading triples
+via the &rdf built-in predicate. In practice, the predicate "triple" occurring in program DA is directly associated to a database table TRIPLE in D. This operation is
+done off-line by a loader module which populates the TRIPLE table accordingly, while
+(r1) is removed from the program. The &eval predicate calls are recursively broken
+down into WHERE conditions in SQL statements, as sketched below when we discuss
+the implementation of filter statements.
+
+After post-processing, we obtain a program D
+?
+
+?
+
+?
+Q, which DLVDBallows to be executed
+
+Q is coupled with a
+on a DBMS by translating it to corresponding SQL statements. D
+mapping file which defines the correspondences between predicate names appearing in
+?
+
+?
+
+?
+Q and corresponding table and view names stored in the DBMS D.
+For instance, the rule (r4) of DA, results in the following SQL statement issued to
+
+the RDBMS by DLVDB:
+
+INSERT INTO answer_b_join_1
+
+SELECT DISTINCT answer2_p2.a1, answer1_p1.a1, answer1_p1.a2, default
+FROM answer1 answer1_p1, answer2 answer2_p2
+WHERE (answer1_p1.a2=answer2_p2.a2)
+AND (answer1_p1.a3=default)
+AND (answer2_p2.a3=default)
+EXCEPT (SELECT * FROM answer_b_join_1)
+
+G. Ianni et al.
+
+Whenever possible, the predicates for computing intermediate results such as answer1,
+answer2, answer b join 1, . . . , are mapped to SQL views rather than materialized
+tables, enabling dynamic evaluation of predicate contents on the DBMS side.9
+
+Schema Rewriting. Our system allows for customizing schemes which triples are
+stored in. It is known and debated [26] that in choosing the data scheme of D several
+aspects have to be considered, which affect performance and scalability when handling
+large-scale RDF data. A widely adopted solution is to exploit a single table storing
+quadruples of form (s, p, o, c) where s, p, o and c are, respectively, the triple subject,
+predicate, object and context the triple belongs to. This straightforward representation
+is easily improved [27] by avoiding to store explicitly string values referring to URIs
+and literals. Instead, such values are replaced with a corresponding hash value.
+
+Other approaches suggest alternative data structures, e.g., property tables [27,26].
+These aim at denormalizing RDF graphs by storing them in a flattened representation,
+trying to encode triples according to the hidden schema of RDF data. Similarly to
+a traditional relational schema, in this approach D contains a table per each known
+property name (and often also per class, splitting up the rdf:type table).
+
+Our system gives sufficient flexibility in order to program different storage schemes:
+while on higher levels of abstraction data are accessible via the 4-ary triple predicate,
+
+Q to the current database
+a schema rewriter module is introduced in order to match D
+
+scheme. This module currently adapts D
+Q by replacing constant IRIs and literals with
+their corresponding hash value, and introducing further rules which translate answers,
+converting hash values back to their original string representation.
+?
+
+?
+
+?
+Magic Sets. Notably, DLVDB can post-process D
+Q using the magic sets technique,
+an optimization method well-known in the database field [28]. The optimized program
+
+Q tailors the data to be queried to an extent significantly smaller than the original
+mD
+Q. The application of magic sets allows, e.g., to apply entailment rules RRDFS only
+?
+
+?
+
+?
+on triples which might affect the answer to Q, preventing thus the full computation
+and/or materialization of inferred data.
+
+Implementation of filter Statements. Evaluation of SPARQL filter statements
+is pushed down to the underlying database D by translating filter expressions to appropriate SQL views. This allows to dynamically evaluate filter expressions on the DBMS
+side. For instance, given a rule r  DQ of the form
+
+h(X,Y) :- b(X,Y), &eval[f_Y](bool).
+
+where the &eval atom encodes the filter statement (f Y representing the filter ex-
+pression), then r is translated to
+
+h(X,Y) :- b(X,Y).
+
+where b is a fresh predicate associated via the mapping file to a database view. Such a
+view defines the SQL code to be used for the computation of f Y, like
+
+CREATE VIEW B AS ( SELECT X,Y FROM B WHERE F_Y )
+
+9 For instance, recursive predicates require to be associated with permanent tables, while re-
+
+maining predicates are normally associated to views.
+?
+
+?
+
+?
+where F Y is an appropriate translation of the SPARQL filter expression f Y at
+hand to an SQL Boolean condition,10 while B is the DBMS counterpart table of the
+predicate b.
+
+5 Experiments
+
+In order to illustrate that our approach is practically feasible, we present a quantitative
+performance comparison between our prototype system, GiaBATA, which implements
+the approach outlined before, and some state-of-the-art triple stores. The test were done
+on an Intel P4 3GHz machine with 1.5GB RAM under Linux 2.6.24. Let us briefly
+outline the main features and versions of the triple stores we used in our comparison.
+
+AllegroGraph works as a database and application framework for building Semantic
+Web applications. The system assures persistent storage and RDFS++ reasoning, a semantic extension including the RDF and RDFS constructs and some OWL constructs
+(owl:sameAs, owl:inverseOf, owl:TransitiveProperty, owl:hasValue). We
+tested the free Java edition of AllegroGraph 3.2 with its native persistence mechanism.11
+
+ARQ is a query engine implementing SPARQL under the Jena framework.12 It can
+be deployed on several persistent storage layers, like filesystem or RDBMS, and it includes a rule-based inference engine. Being based on the Jena library, it provides inferencing models and enables (incomplete) OWL reasoning. Also, the system comes
+with support for custom rules. We used ARQ 2.6 with RDBMS backend connected to
+PostgreSQL 8.3.
+
+GiaBATA [15] is our prototype system implementing the SPARQL extensions described above. GiaBATA is based on a combination of the DLVDB [25] and dlvhex [24]
+systems, and caters for persistent storage of both data and ontology graphs. The former
+system is a variant of DLV [13] with built-in database support. The latter is a solver
+for HEX-programs [24], which features an extensible plugin system which we used
+for developing a rewriter-plugin able to translate SPARQL queries to HEX-programs.
+The tests were done using development versions of the above systems connected to
+PostgreSQL 8.3.
+
+Sesame is an open source RDF database with support for querying and reasoning.13 In
+addition to its in-memory database engine it can be coupled with relational databases or
+deployed on top of file systems. Sesame supports RDFS inference and other entailment
+regimes such as OWL-Horst [5] by coupling with external reasoners. Sesame provides
+an infrastructure for defining custom inference rules. Our tests have been done using
+Sesame 2.3 with persistence support given by the native store.
+
+First of all, it is worth noting that all systems allow persistent storage on RDBMS.
+All systems, with the exception of ours, implement also direct filesystem storage. All
+
+10 A version of this translation can be found in [29].
+11 System available at http://agraph.franz.com/allegrograph/
+12 Distributed at https://jena.svn.sourceforge.net/svnroot/jena/ARQ/
+13 System available at http://www.openrdf.org/
+
+G. Ianni et al.
+
+cover RDFS (actually, disregarding axiomatic triples) and partial or non-standard OWL
+fragments. Although all the systems feature some form of persistence, both reasoning
+and query evaluation are usually performed in main memory. All the systems, except
+AllegroGraph and ours, adopt a persistent materialization approach for inferring data.
+All systems  along with basic inference  support named graph querying, but, with
+the exception of GiaBATA, combining both features results in incomplete behavior as
+described in Section 2. Inference is properly handled as long as the query ranges over
+the whole dataset, whereas it fails in case of querying explicit default or named graphs.
+That makes querying of named graphs involving inference impossible with standard
+systems.
+For performance comparison we rely on the LUBM benchmark suite [16]. Our tests
+involve the test datasets LUBMn for n  {1, 5, 10, 30} with LUBM30 having roughly
+four million triples (exact numbers are reported in [16]). In order to test the additional
+performance cost of our extensions, we opted for showing how the performance figures
+change when queries which require RDFS entailment rules (LUBM Q4-Q7) are consid-
+ered, w.r.t. queries in which rules do not have an impact (LUBM Q1-Q3, see Appendix
+of [16] for the SPARQL encodings of Q1Q7). Experiments are enough for comparing performance trends, so we didnt consider at this stage larger instances of LUBM.
+Note that evaluation times include the data loading times. Indeed, while former performance benchmarks do not take this aspect in account, from the semantic point of view,
+pre-materialization-at-loading computes inferences needed for complete query answering under the entailment of choice. On further reflection, dynamic querying of RDFS
+moves inference from this materialization to the query step, which would result in an
+apparent advantage for systems that rely on pre-materialization for RDFS data. Also,
+the setting of this paper assumes materialization cannot be performed una tantum, since
+inferred information depends on the entailment regime of choice, and on the dataset at
+hand, on a per query basis. We set a 120min query timeout limit to all test runs.
+
+Our test runs include the following system setup: (i) Allegro (native) and Alle-
+gro (ordered) (ii) ARQ; (iii) GiaBATA (native) and GiaBATA (ordered); and
+(iv) Sesame. For (i) and (iii), which apply dynamic inference mechanisms, we use
+(native) and (ordered) to distinguish between executions of queries in LUBMs native ordering and in a optimized reordered version, respectively. The GiaBATA test runs
+both use Magic Sets optimization. To appreciate the cost of RDFS reasoning for queries
+Q4Q7, the test runs for (i)(iv) also include the loading time of the datasets, i.e., the
+time needed in order to perform RDFS data materialization or to simply store the raw
+RDF data.
+
+The detailed outcome of the test results are summarized in Fig. 2. For the RDF test
+queries Q1Q3, GiaBATA is able to compete for Q1 and Q3. The systems ARQ and
+Sesame turned out to be competitive for Q2 by having the best query response times,
+while Allegro (native) scored worst. For queries involving inference (Q4Q7) Allegro shows better results. Interestingly, systems applying dynamic inference, namely
+Allegro and GiaBATA, query pattern reordering plays a crucial role in preserving performance and in assuring scalability; without reordering the queries simply timeout. In
+particular, Allegro is well-suited for queries ranging over several properties of a single
+class, whereas if the number of classes and properties increases (Q7), GiaBATA exhibits
+?
+
+?
+
+?
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (native)
+Sesame 2.3
+
+l
+
+)
+e
+a
+c
+s
+g
+o
+l
+(
+ 
+s
+c
+e
+s
+ 
+/
+ 
+
+e
+m
+
+i
+t
+ 
+
+n
+o
+
+i
+t
+
+l
+
+a
+u
+a
+v
+e
+
+ 0.1
+
+Q1
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+ 0.1
+
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (native)
+Sesame 2.3
+
+Q2
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (native)
+Sesame 2.3
+
+ 0.1
+
+Q3
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+Allegro 3.2 (ordered)
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (ordered)
+GiaBATA (native)
+Sesame 2.3
+
+Q4
+
+l
+
+)
+e
+a
+c
+s
+g
+o
+l
+(
+ 
+s
+c
+e
+s
+ 
+/
+ 
+
+e
+m
+
+i
+t
+ 
+
+n
+o
+
+i
+t
+
+l
+
+a
+u
+a
+v
+e
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+Allegro 3.2 (ordered)
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (ordered)
+GiaBATA (native)
+Sesame 2.3
+
+Q6
+
+l
+
+)
+e
+a
+c
+s
+g
+o
+l
+(
+ 
+s
+c
+e
+s
+ 
+/
+ 
+
+e
+m
+
+i
+t
+ 
+
+n
+o
+
+i
+t
+
+l
+
+a
+u
+a
+v
+e
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+Allegro 3.2 (ordered)
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (ordered)
+GiaBATA (native)
+Sesame 2.3
+
+Q5
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+Allegro 3.2 (ordered)
+Allegro 3.2 (native)
+ARQ 2.6
+GiaBATA (ordered)
+GiaBATA (native)
+Sesame 2.3
+
+Q7
+
+t
+
+t
+
+u
+o
+e
+m
+
+u
+o
+e
+m
+
+t
+
+t
+
+u
+o
+e
+m
+
+u
+o
+e
+m
+
+t
+
+t
+
+u
+o
+e
+m
+
+u
+o
+e
+m
+
+i
+t
+
+i
+t
+
+i
+t
+
+i
+t
+
+i
+t
+
+i
+t
+
+t
+
+u
+o
+e
+m
+
+i
+t
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+LUBM1
+
+LUBM5
+
+LUBM10
+
+LUBM30
+
+Fig. 2. Evaluation
+
+better scalability. Finally, a further distinction between systems relying on DBMS support and systems using native structures is disregarded, and since figures (in logarithmic
+scale) depict overall loading and querying time, this penalizes in specific cases those
+systems that use a DBMS.
+
+6 Future Work and Conclusion
+
+We presented a framework for dynamic querying of RDFS data, which extends SPARQL
+by two language constructs: using ontology and using ruleset. The former is
+geared towards dynamically creating the dataset, whereas the latter adapts the entailment regime of the query. We have shown that our extension conservatively extends the
+
+G. Ianni et al.
+
+standard SPARQL language and that by selecting appropriate rules in using ruleset,
+we may choose varying rule-based entailment regimes at query-time. We illustrated
+how such extended SPARQL queries can be translated to Datalog and SQL, thus providing entry points for implementation and well-known optimization techniques. Our
+initial experiments have shown that although dynamic querying does more computation at query-time, it is still competitive for use cases that need on-the-fly construction
+of datasets and entailment regimes. Especially here, query optimization techniques play
+a crucial role, and our results suggest to focus further research in this direction. Further-
+more, we aim at conducting a proper computational analysis as it has been done for Hypothetical datalog [30], in which truth of atoms is conditioned by hypothetical additions
+to the dataset at hand. Likewise, our framework allows to add ontological knowledge
+and rules to datasets before querying: note however that, in the spirit of [31], our framework allows for hypotheses (also called premises) on a per query basis rather than a
+per atom basis.

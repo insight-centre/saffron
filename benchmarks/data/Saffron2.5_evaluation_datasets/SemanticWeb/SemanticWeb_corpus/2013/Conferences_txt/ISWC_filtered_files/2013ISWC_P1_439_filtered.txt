@@ -1,0 +1,1327 @@
+Simplifying Description Logic Ontologies
+
+Nadeschda Nikitina1 and Sven Schewe2
+
+1 University of Oxford, UK
+2 University of Liverpool, UK
+
+Abstract. We discuss the problem of minimizing TBoxes expressed in the lightweight description logic EL, which forms a basis of some large ontologies like
+SNOMED, Gene Ontology, NCI and Galen. We show that the minimization of
+TBoxes is intractable (NP-complete). While this looks like a bad news result,
+we also provide a heuristic technique for minimizing TBoxes. We prove the correctness of the heuristics and show that it provides optimal results for a class of
+ontologies, which we define through an acyclicity constraint over a reference relation between equivalence classes of concepts. To establish the feasibility of our
+approach, we have implemented the algorithm and evaluated its effectiveness on
+a small suite of benchmarks.
+
+1 Introduction
+
+It is well-known that the same facts can be represented in many different ways, and that
+the size of these representations can vary significantly. This is also reflected in ontology
+engineering, where the syntactic form of ontologies can be more complex than neces-
+sary. For instance, throughout the development (and the life-cycle) of an ontology, the
+way in which concepts and the relationship between them are represented within the
+ontology are constantly changing. For example, a name for a complex concept expression is often introduced only after it has been used several times and has proved to be
+important. Another example are dependencies between concepts that evolve over time,
+resulting in new subsumption relations between concepts (A1  A2). As a result, previously reasonable concept expressions may become unnecessarily complex. In the given
+example, A1  A2 becomes equivalent to A1.
+
+Clearly, unnecessary complexity impacts on the maintenance effort as well as the
+usability of ontologies. For instance, keeping track of dependencies between complex
+concept expressions and relationships between them is more cumbersome when it contains unnecessarily complex or unnecessarily many different concept expressions. As
+a result, the chance of introducing unwanted consequences is higher. Moreover, unintended redundancy decreases the overall quality of the ontology.
+
+Removing unnecessary syntactic complexity from ontologies by hand is a difficult
+task: for the average ontology, it is almost impossible to obtain the minimal representation without tool support. Thus, automated methods that help to assess the current
+succinctness of an ontology and generate suggestions on how to increase it would be
+highly valued by ontology engineers.
+
+It is easy to envision scenarios that demonstrate the usefulness of rewriting for reducing the cognitive complexity of axioms. For instance, when a complex concept C is
+
+H. Alani et al. (Eds.): ISWC 2013, Part I, LNCS 8218, pp. 411426, 2013.
+c Springer-Verlag Berlin Heidelberg 2013
+
+N. Nikitina and S. Schewe
+
+frequently used in the axioms of an ontology and there is an equivalent atomic concept
+AC, the ontology will diminish in size when occurrences of C are replaced by AC.
+Example 1. Consider the following excerpt from the ontology Galen [1]:
+
+Clotting 
+
+LiquidState 
+LiquidBlood 
+
+ actsSpecificallyOn.(Blood   hasPhysicalState.
+(PhysicalState   hasState.liquid)) 
+
+hasOutcome.(Blood   hasPhysicalState.solidState)
+PhysicalState   hasState.liquid
+Blood   hasPhysicalState.LiquidState
+
+(1)
+
+(2)
+(3)
+
+Given concepts defined in Axioms 2 and 3 above, we can easily rewrite Axiom 1 to obtain the
+following, simpler axiom containing only 6 references to concepts and roles (as opposed to 10
+references in Axiom 1):
+
+Clotting 
+
+ actsSpecificallyOn.LiquidBlood 
+hasOutcome.(Blood   hasPhysicalState.solidState)
+
+(4)
+
+In description logics [2], few results towards simplifying ontologies have been obtained so far. Grimm et al. [3] propose an algorithm for eliminating semantically redundant axioms from ontologies. In the above approach, axioms are considered as atoms
+that cannot be split into parts or changed in any other way. With the specific goal of
+improving reasoning efficiency, Bienvenu et al. [4] propose a normal form called prime
+implicates normal form for ALC ontologies. However, as a side-effect of this transfor-
+mation, a doubly-exponential blowup in concept size can occur.
+In this paper, we investigate the succinctness for the lightweight description logic
+EL. The tractable OWL 2 EL profile [5] of the W3C-specified OWL Web Ontology
+Language [6] is based on DLs of the EL family [7]. We consider the problem of finding
+a minimal equivalent representation for a given EL ontology. First, we demonstrate
+that we can reduce the size of a representation by up to an exponent even in the case
+that the ontology does not contain any redundant axioms. We show that the related
+decision problem (is there an equivalent ontology of size  k?) is NP-complete by
+a reduction from the set cover problem, which is one of the standard NP-complete
+problems. We also show that, just as for other reasoning problems in EL, ontology
+minimization becomes simpler under the absence of a particular type of cycles. We
+identify a class of TBoxes, for which the problem can be solved in PTIME instead
+of NP and implement a tractable algorithm that computes a minimal TBox for this
+class of TBoxes. The algorithm can also be applied to more expressive and most cyclic
+TBoxes1, however without a guarantee of minimality. We apply an implementation of
+the algorithm to various existing ontologies and show that their succinctness can be
+improved. For instance, in case of Galen, we managed to reduce the number of complex
+concepts occurrences by 955 and the number of references to atomic concepts and roles
+by 1130.
+
+The paper is organized as follows: In Section 2, we recall the necessary preliminaries on description logics. Section 3 demonstrates the potential of minimization. In the
+
+1 The extension to general TBoxes is a trivial modification of the algorithm.
+?
+
+?
+
+?
+same section, we also introduce the basic definitions of the size of ontologies and formally state the corresponding decision problem. In Section 4, we derive the complexity
+bounds for this decision problem. Section 5 defines the class of TBoxes, for which the
+problem can be solved in PTIME instead of NP and presents a tractable algorithm that
+computes a minimal TBox for this class of TBoxes. In Section 6, we present experimental results for a selection of ontologies. Finally, we discus related approaches in Section
+7 before we conclude and outline future work in Section 8. Further details and proofs
+can be found in the extended version of this paper.
+
+2 Preliminaries
+
+We recall the basic notions in description logics [2] required in this paper. Let NC
+and NR be countably infinite and mutually disjoint sets of concept symbols and role
+symbols. An EL concept C is defined as
+
+C ::= A||C  C|r.C,
+
+where A and r range over NC and NR, respectively. In the following, we use
+symbols A, B to denote atomic concepts and C, D, E to denote arbitrary concepts.
+A terminology or TBox consists of concept inclusion axioms C  D and concept
+equivalence axioms C  D used as a shorthand for C  D and D  C. The signature of an EL concept C or an axiom , denoted by sig(C) or sig(), respectively,
+is the set of concept and role symbols occurring in it. To distinguish between the set
+of concept symbols and the set of role symbols, we use sigC(C) and sigR(C), re-
+spectively. The signature of a TBox T , in symbols sig(T ) (correspondingly, sigC (T )
+and sigR(T )), is defined analogously. Additionally, we denote the set of subconcepts
+occurring in a concept C as sub(C) and the set of all subconcepts including partconjunctions as sub(C). For instance, for C = r.(A1A2A3) we obtain sub(C) =
+{r.(A1  A2  A3), A1  A2  A3, A1, A2, A3} and sub(C) = {r.(A1  A2 
+A3), A1  A2  A3, A1  A2, A1  A3, A2  A3, A1, A2, A3}. Accordingly, we denote
+the set of subconcepts occurring in a TBox T as sub(T ) and the set of all subconcepts
+including part-conjunctions as sub(T ).
+Next, we recall the semantics of the above introduced DL constructs, which is defined by means of interpretations. An interpretation I is given by the domain 
+
+and a
+function I
+and each role r  NR
+
+of 
+. The interpretation of  is fixed to 
+?
+
+?
+
+?
+a subset r
+. The interpretation
+of an arbitrary EL concept is defined inductively, i.e., (C  D)
+
+and
+(r.C)
+I}. An interpretation I satisfies an axiom C  D
+?
+
+?
+
+?
+. I is a model of a TBox, if it satisfies all of its axioms. We say that a TBox
+if C
+T entails an axiom  (in symbols, T |= ), if  is satisfied by all models of T . A TBox
+T entails another TBox T 
+is a
+shortcut for T |= T 
+
+assigning each concept A  NC a subset A
+
+of 
+
+= {x | (x, y)  r
+
+and T  |= T .
+
+, in symbols T |= T 
+
+, if T |=  for all   T 
+
+. T  T 
+
+I  
+
+I  D
+
+= C
+
+I  D
+
+, y  C
+
+3 Reducing the Complexity of Ontologies
+The size of a TBox T is often measured by the number of axioms contained in it
+(|T |). This is, however, a simplified view of the size, which neither reflects cognitive
+
+N. Nikitina and S. Schewe
+
+complexity, nor the reasoning complexity. In this paper, we measure the size of a con-
+cept, an axiom, or a TBox by the number of references to signature elements as stated
+in the definition below.
+Definition 1. The size of an EL concept D is defined as follows:
+ for D  sig(T )  {},  (D) = 1;
+ for D = r.C,  (D) =  (C) + 1 where r  sigR(T ) and C is an arbitrary
+concept;
+ for D = C1  C2,  (D) =  (C1) +  (C2) where C1, C2 are arbitrary concepts;
+The size of an EL axiom (one of C1  C2, C1  C2) and a TBox T is accordingly
+defined as follows:
+  (C1  C2) =  (C1) +  (C2) for concepts C1, C2;
+  (C1  C2) =  (C1) +  (C2) for concepts C1, C2.
+  (T ) =
+
+T  () for a TBox T .
+?
+
+?
+
+?
+The above definition, for instance, can serve as a basis for computing the average size
+of axioms ( (T )  |T |) within an ontology. In addition to the above measure of size,
+the number of distinct complex concept expressions sub(T ) and the overall number of
+occurrences of such concept expressions (with the corresponding values related to |T |)
+can serve as an indication of how complex are concept expressions within the ontology.
+In the following example, we demonstrate the difference between the two measures |T |
+and  (T ) and show how the complexity of an ontology can be reduced in principle (by
+up to an exponent for ontologies without redundant axioms, i.e., axioms that can be
+omitted without losing any logical consequences).
+Example 2. Let concepts Ci be inductively defined by C0 = A, Ci+1 = r.Ci 
+s.Ci. Intuitively, Ci of concepts have the shape of binary trees with exponentially
+many leaves. Clearly, the concepts grow exponentially with i, since  (Ci) = 2 + 2 
+ (Ci1). For a natural number n, consider the TBox Tn:
+
+Cn1  B
+Bi  Ci
+
+1  i  n  1
+
+While Tn does not contain any redundant axioms, it can easily be represented in a more
+compact way by recursively replacing each Ci by the corresponding Bi, yielding T 
+n:
+
+Bn1  B
+B1  C1
+Bi+1  r.Bi  s.Bi
+
+1  i  n  1
+
+While the number of axioms is the same in both cases, the complexity of Tn is clearly
+lower. E.g., for n = 5, we obtain  (Tn) = 134 and  (T 
+
+n) = 24.
+
+We now consider the problem of finding the minimal equivalent EL representation
+for a given TBox. The corresponding decision problem can be formulated as follows:
+?
+
+?
+
+?
+Simplifying Description Logic Ontologies
+
+Definition 2 (P1). Given an EL TBox T and a natural number k, is there an EL TBox
+T 
+In general, the corresponding minimal result is not unique. We denote the set {T  |
+T   T } by [T ]. Note that the minimality of the result is trivially checked by deciding
+P1 for a decreasing number k until the answer is negative.
+
+)  k such that T   T .
+
+In literature, there are different variations of the ontology minimization problem that
+cover specific cases. Perhaps the simplest examples for avoidable non-succinctness are
+axioms that follow from other axioms and that can be removed from the ontology without losing any logical consequences. While some axioms including the last axiom in
+the above example can be removed in any representations, in general, subsets of axioms
+can be exchangeable.
+Example 3. Consider the ontology T :
+C  r.C
+C  D
+
+r.D  D
+r.C  r.D
+
+T has two subset ontologies, T1 and T2:
+
+T1 = {C  r.C,r.C  r.D,r.D  D}
+
+T2 = {C  r.C, C  D,r.D  D}
+
+Neither of the two contains any axioms that are entailed by the remainder of the on-
+tology. There are also no sub-expressions that can be removed. However, T2 is less
+complex than T1, because C  D is simpler (shorter) than r.C  r.D.
+
+While the above problem is already known to be non-tractable and can have many
+solutions, the ability to rewrite axioms of the ontology can further increase the difficulty and the number of possible solutions: While in the above cases a minimal ontology contains only subconcepts sub(T ) of the original ontology T , in general, a
+minimal ontology can introduce new concept expressions as demonstrated in the
+following example.
+Example 4. Consider the following TBox T :
+
+We notice that the original ontology T does not contain the expression s.A2 
+sub(Tm).
+
+Assume that  (C1) and  (C3) are large. Then the axiom s.C1  D needs to be
+exchanged by s.A2  D to obtain a smaller TBox. The TBox Tm given below is a
+minimal representation of T .
+
+C1  A2
+r.D  D
+
+A2  C3
+s.C1  D
+
+s.C3  r.(s.C1)
+
+C1  A2
+r.D  D
+
+A2  C3
+s.A2  D
+
+s.C3  r.(s.C1)
+
+N. Nikitina and S. Schewe
+
+We can conclude that considering subsumption relations between subconcepts
+sub(T ) of T is not sufficient when looking for a minimal equivalent representation.
+In the next section, we show that the corresponding decision problem P1 is in fact NP-
+complete.
+
+4 NP-Completeness
+
+n
+?
+
+?
+
+?
+CC C.
+
+In this section, we first show the NP-hardness of the problem and then establish its NP-
+
+completeness. We show NP-hardness by a reduction from the set cover problem, which
+is one of the standard NP-complete problems. For a given set S = {S1, S2, . . . , Sn}
+i=1 Si, a cover C  S is a subset of S, such that the union of the
+with carrier set S =
+sets in C covers S, i.e., S =
+The set cover problem is the problem to determine, for a given set S = {S1, S2, . . . ,
+Sn} and a given integer k, if there is a cover C of S with at most k  |C| elements. We
+will use a restricted version of the set cover problem, which we call the dense set cover
+problem (DSCP). In the dense set cover problem, we require that
+ neither the carrier set S nor the empty set is in S,
+ all singleton subsets (sets with exactly one element) of S are in S, and
+ if a non-singleton set S is in S, so is some subset S
+
+  S, which contains only one
+
+element less than S (|S  S
+
+| = 1).
+
+Lemma 1. The dense set cover problem is NP-complete.
+
+Proof Sketch. For the full version of the proof, see extended version of the paper.
+The proof shows how to convert the cover of the non-dense set into a cover of the
+!
+corresponding dense set and vise versa.
+Given the above NP-completeness result, we show that the size of minimal equivalents specified in P1 is a linear function of the size of the minimal cover. To this end,
+we use the lemma below to obtain a lower bound on the size of equivalents. Intuitively,
+it states that for each entailed non-trivial equivalence C  A, the TBox must contain at
+least one axiom that is at least as large as C
+Lemma 2. Let T be an EL TBox, A  sig(T ) and C, D EL concepts such that T |=
+C  A, T |= A  D (the latter is required for induction). Then, one of the following
+is true:
+
+with T |= C  C
+
+  A for some C
+
+:
+?
+
+?
+
+?
+1. A is a conjunct of C (including the case C = A);
+2. there exists an EL concept C
+
+such that T |= C  C
+
+  T for some  {,} and some concept D
+
+ A  D
+?
+
+?
+
+?
+.
+
+and C
+?
+
+?
+
+?
+ A  T or
+
+Proof Sketch. For the full version of the proof, see extended version of the paper. We
+use the sound and complete proof system for general subsumption in EL terminologies
+introduced in [8] and prove the lemma by induction on the depth of the derivation of
+C  A  D. We assume that the proof has minimal depth and consider the possible
+rules that could have been applied last to derive C  A  D. In each case the lemma
+!
+holds.
+?
+
+?
+
+?
+  A
+
+}. Clearly, T 
+
+S  TS.
+
+S of size
+
+  S, B  A, A
+?
+
+?
+
+?
+, A
+
+  {B}, A
+
+= A
+
+S = TSbase  {A  
+
+We now show how to encode the dense set cover problem as an ontology minimization problem. Consider an instance of the dense set cover problem with the carrier set
+A = {B1, . . . , Bn}, the set S = {A1, . . . , Am,{B1}, . . . ,{Bn}} of subsets that can
+be used to form a cover. By interpreting the set and element names as atomic concepts,
+we can construct TSbase as follows:
+TSbase = {A
+ = A
+  B | A
+}.
+
+Observe that the size of TSbase is at least 3m. Clearly, TSbase |= Ai  
+Let TS = TSbase  {A  
+BAi B.
+BA B}. We establish the connection between the size of
+TS equivalents and the size of the cover of S as follows:
+Lemma 3. TS has an equivalent of size  (TSbase) + k + 1 if, and only if, S has a cover
+of size k.
+Proof. For the if-direction, assume that S has a cover of size k. We construct T 
+ (TSbase) + k + 1 as follows: T 
+For the only-if-direction, we assume that k is minimal and argue that no equivalent
+T   [TS] of size   (TSbase) + k can exist. Assume that T is a minimal TBox with
+T  [TS]. With the observation, that the m + n atomic concepts that represent elements
+of S are pairwise not equivalent with each other or the concept A that represents the
+carrier set, we can conclude that no two atomic concepts are equivalent. From Lemma
+2 it follows that, for each Ai with i  {1, . . . , m}, there is an axiom Ci  C
+ T or
+
+Ci  C
+?
+
+?
+
+?
+i
+i. Since
+i or Ai = C
+there are no equivalent atomic concepts and Ci = Ai due to the minimality of T , the
+size of each such axiom is at least 3 and none of these axioms coincide. Additionally,
+since TS |= Ai  A, A cannot occur as a conjunct of Ci or as a conjunct of C
+
+i;
+size is > k. It also follows from Lemma 2 that there exists an axiom C  C
+or C  C
+holds that T |= C  
+T |=
+be  k + 1. Thus, the overall size of T must be   (TSbase) + k + 1.
+Theorem 1. P1 is in NP.
+Proof. We ask the non-deterministic algorithm to guess a TBox of the size  k. It
+remains to verify T   T , which can be done in PTIME [7].
+!
+Theorem 2. P1 is NP-complete.
+
+Finally, we estimate the size of the remaining axioms and show that their cumulative
+  T
+. It
+
+  A holds
+BS B  C. Thus, we have found a cover of S and the size of the axiom must
+!
+
+  T such that T |= C  A and A is a conjunct of C
+
+ T such that T |= Ci  Ai and Ai is a conjunct of C
+
+BA B. We also know that for no proper subset S
+?
+
+?
+
+?
+i
+
+AC A
+?
+
+?
+
+?
+or A = C
+?
+
+?
+
+?
+Proof. The problem is NP-hard as an immediate consequence of Lemmas 3 and 1.
+!
+Given the result of Theorem 1, we establish NP-completeness of the problem.
+
+5 Minimizing Acyclic TBoxes
+
+In this section, we develop an algorithm for minimizing TBoxes in polynomial time,
+which is guaranteed to provide a minimal TBox for a class of EL TBoxes satisfying a
+certain type of acyclicity conditions. The algorithm can also be applied to more expressive and some cyclic TBoxes, however without the guarantee of minimality.
+
+N. Nikitina and S. Schewe
+
+5.1 Acyclicity Conditions
+
+  sub(T ) | T |= C  C
+
+In this subsection, we introduce equivalence classes on concepts and discuss cyclic
+dependencies between equivalence classes and their impact on computing minimal rep-
+resentations. Let T be an EL TBox and let C be a concept in sub(T ). We use the
+notation [C]T = {C
+} to denote the equivalence class of the
+concept C and CT = {[C]T | C  sub(T )} to denote the set of all equivalence classes
+over the set sub(T ). In case T is clear from the context, we omit the index. We base
+the acyclicity conditions on the following reference relations, which use both syntactic
+and semantic dependencies between equivalence classes:
+Definition 3. Let T be an EL TBox. The reference relations , and s, all subsets of C  C, are given as follows:
+ [C] s [C
+
+ [C]  [C
+ [C]  [C
+
+T |= C1  C2;
+T |= C1 . C2.
+We call a TBox cyclic, if any of the above relations ,,s is cyclic. We say
+that a TBox T is strongly cyclic if s is cyclic. The algorithm presented in this paper
+is applicable for TBoxes not containing strong cycles. Most of the large bio-medical
+ontologies including Galen, Gene Ontology and NCI do not contain strong cycles. This
+was also the case for earlier versions of SNOMED, e.g., the one dated 09 February
+2005 [9]. Note that asking for the absence of cycles in s is a weaker requirement than
+for  or , as s  . But the reverse relationship between the conditions
+holds.
+
+] if, for some C1  [C], C2  [C
+] if, for some C1  [C], C2  [C
+
+] if, for some C1  [C], C2  [C
+
+], it holds that [C1] s [C2] or
+], it holds that [C1] s [C2] or
+
+], it holds that C2 occurs in C1;
+?
+
+?
+
+?
+In some cases, TBoxes contain cycles that are caused by redundant conjuncts and
+
+  C
+?
+
+?
+
+?
+We call conjunctions C
+
+in sub(T ) such that T |= C
+
+can easily be removed.
+Example 5. {A  B  C, A  B} has a cyclic  relation due to a cycle between
+A  B and A. It can be transformed into an acyclic TBox {A  C, A  B}.
+?
+
+?
+
+?
+subsumer-
+containing conjunctions. We can easily eliminate subsumer-containing conjunctions
+in TBoxes before applying the algorithm: for each subsumer-containing conjunction
+  C
+, and
+
+to T . We can show that the closure of each equivalence
+add the axiom C
+class [C] of an acyclic TBox T is finite if we exclude subsumer-containing conjunc-
+
+is not a
+tions. We denote such a closure with [C]
+subsumer-containing conjunction}. We denote the extended set of subconcepts of T by
+sub(T )
+
+
+in sub(T ) with T |= C
+?
+
+?
+
+?
+ | T |= C  C
+
+in T by C
+
+, we replace C
+
+  C
+
+  C
+
+  C
+?
+
+?
+
+?
+  C
+?
+
+?
+
+?
+= {C
+
+
+
+.
+?
+
+?
+
+?
+and C
+?
+
+?
+
+?
+=
+
+[C]C[C]
+
+Another kind of removable cyclic dependencies are conjunctions on the right-hand
+side. We use a simple decomposition, in which all conjunctions on the right-hand side
+of axioms are replaced by separate inclusion axioms for each conjunct. We obtain the
+of a TBox T by replacing each C  D1  D2  Tm by
+decomposed version T 
+C  D1, C  D2 until a fixpoint is reached. Composition is the dual transformation:
+?
+
+?
+
+?
+we replace any two axioms C  D1, C  D2 by C  D1  D2 until a fixpoint is
+reached.
+
+Unless we state otherwise, in the following we assume that TBoxes are decomposed
+
+and do not contain subsumer-containing conjunctions.
+
+5.2 Uniqueness of Minimal TBoxes
+
+  [C]
+
+
+
+Acyclic TBoxes are better behaved not only with respect to the complexity of mini-
+mization, but they also have a unique minimal TBox modulo replacement of equivalent
+concepts by one another (if we assume that the TBox with the lower number of equivalence axioms should be preferred in case of equally large TBoxes).
+To be able to determine a unique syntactic representation of a TBox T , we choose
+for each equivalence class [C]  C and denote it using the
+. We say that r is
+occurs in r([D])
+= r([C]), i.e., representatives can only contain other representatives, but not
+
+a representative C
+representative selection function r : C  sub(T )
+
+valid, if for all [C], [D]  C with [C] = [D] it holds that C
+only if C
+other elements of equivalence classes.
+Definition 4. Let T be a TBox and  {,}. We say that T is aligned with r, if for
+each C  D  T one of the following conditions holds:
+ if T |= C  D, then C = r([C]) and D = r([D]);
+ if T |= C  D, then for each C
+]).
+?
+
+?
+
+?
+with r([C]) = C
+  [C]
+
+
+ = D and C
+
+or D it holds that C
+
+ = C, C
+?
+
+?
+
+?
+= r([C
+?
+
+?
+
+?
+such that C
+?
+
+?
+
+?
+occurs in C
+
+In other words, the only axioms, in which we allow an occurrence of a non-
+
+representative C are axioms relating C with concepts equivalent to it.
+
+Since minimal TBoxes can sometimes contain subsumption axioms relating two
+equivalent concepts with each other, the otherwise unique TBox result can vary in the
+choice between subsumption and equivalence axioms. For the sake of uniqueness, we
+assume that, whenever we have a choice between equivalence () and subsumption
+axioms () in the resulting TBox, we prefer subsumption axioms.
+We call a TBox non-redundant, if there is no   T such that T {} |= . In order
+to show how to compute a minimal equivalent TBox for an acyclic initial TBox, we first
+show that we do not need new equivalence classes or new relations between them to obtain any non-redundant, decomposed, equivalent TBox. In other words, non-redundant,
+decomposed axioms encoding relations between equivalence classes are unique up to
+exchanging equivalent concepts.
+Lemma 4. Let T1,T2 be two non-redundant, acyclic EL TBoxes such that T1  T2.
+  D.
+Let C  D  T2. Then there is C
+While the above lemma addresses relations between equivalence classes in non-
+redundant, decomposed TBoxes, it does not allow us to draw conclusions about axioms
+representing relations within equivalence classes. The purpose of the below lemma is
+to determine the part of the TBox that encodes relations between equivalent concepts
+within equivalence classes. For this, we divide the TBox into partitions: one for nonequivalence axioms T 0 = {C  D  T | T |= C  D} and one for axioms encoding
+
+  T1 such that T1 |= C
+
+  C, T1 |= D
+
+  D
+?
+
+?
+
+?
+N. Nikitina and S. Schewe
+
+] within each T full,[C
+
+] = {C  D | C, D  [C
+
+] = {C  D  T | C, D  [C
+
+]} for each
+]  C. We denote the set of all subsumption dependencies holding within a partition
+]}. In each (equivalence class) partition, a part
+
+relations within each equivalence class: T [C
+[C
+by T full,[C
+of dependencies can be deducible from the remainder of the TBox.
+Example 6. Consider the TBox T = {A  B,r.A  r.B}. For the equivalence
+class {r.A,r.B}, the subsumption r.A  r.B follows from A  B.
+] = {C 
+] by T red,[C
+We denote entailed dependencies for an equivalence class [C
+D | C, D  [C
+]}. We now consider alternative representations of each partition T [C
+].
+We first show that, in any acyclic TBox T aligned with some valid r, we can determine
+the entailed dependencies T red,[C
+Lemma 5. Let T be a non-redundant, acyclic EL TBox aligned with a valid represen-
+]  C(T )
+tative selection function r. Then, for each non-singleton equivalence class [C
+and each pair C, D  [C
+] exactly if one of the
+following conditions is true:
+1. D = 
+2. there are concepts C
+T |= C
+As a consequence, each equivalence class partition can be considered independently
+from other equivalence class partitions. In particular, this implies that, for any syntactic
+], we can obtain T full,[C
+representation T [C] of a partition for equivalence class [C
+
+]
+from T [C]  T red,[C] by computing its transitive closure 2.
+Lemma 6. Let T be a non-redundant, acyclic EL TBox aligned with a valid representative selection function r. Then, for each equivalence class [C]  C(T ) it holds that
+(T [C]  T red,[C])
+
+
+], it holds that C  D  T red,[C
+
+such that C = r.C
+
+] based on T 0.
+
+and T |= C
+
+, D = r.D
+
+= T full,[C
+
+  D
+
+  D
+
+, D
+?
+
+?
+
+?
+.
+?
+
+?
+
+?
+,
+?
+
+?
+
+?
+].
+?
+
+?
+
+?
+1, D
+
+  [C]
+
+Let [C]nonred = [C]  {C
+
+Since our implementation operates on ontologies represented in the OWL Web Ontology Language, we consider here an important detail of this language. In addition
+to constructs mentioned in preliminaries, OWL Web Ontology Language allows for
+OwlEquivalentClassesAxioms - axioms, in which we can specify a set of equivalent
+concepts. With the exception of equivalence classes containing , for which there exists an equally small representation without an OwlEquivalentClassesAxiom, this is
+clearly the smallest representation for equivalence class partitions.
+ T red,[C] for
+}. Let T nonred,[C] be the corresponding OWLEquivalentClassesAxiom
+some D
+with [C]nonred as the set of equivalent concepts. Note that, according to the semantics of OwlEquivalentClassesAxioms, it holds that T nonred,[C] |= T full,[C]nonred. Thus,
+T nonred,[C]  T red,[C] |= T full,[C]. Note that  (T nonred,[C]) =
+Lemma 7. Let T be a non-redundant, acyclic EL TBox aligned with a valid representative selection function r. Then,  (T nonred,[C])   (T [C]) for each equivalence class
+[C]  C(T ).
+2 For a set T of axioms, the transitive closure (T )
+
+with T |= {C  C
+
+C, D such that there exists C
+
+ . D
+
+C[C]nonred  (C
+
+is obtained by including C  D for any
+  D}.
+, C
+?
+
+?
+
+?
+1 and C
+
+  D
+
+| C
+?
+
+?
+
+?
+).
+?
+
+?
+
+?
+Algorithm 1. Rewriting Tin
+Data: Tin acyclic decomposed TBox
+Result: Tout minimal equivalent TBox
+1 Call  C;
+2 CTODO  Call;
+3 Tout  remove equivalence axioms from Tin;
+4 while CTODO =  do
+
+for [C]  leaves(CTODO) do
+
+choose minimal representative r([C]);
+replace C
+replace C
+replace C
+CTODO  CTODO \ {[C]};
+
+  [C] in Tout by r([C]);
+  [C] in CTODO \ {[C]} by r([C]);
+  [C] in Call \ {[C]} by r([C]);
+
+11 Te  
+12 for   Tout do
+
+[C]Call,|[C]|2
+
+T nonred,[C];
+if Tout  Te \ {} |=  then
+
+Tout  Tout \ {};
+
+15 Tout  Tout  Te ;
+16 Tout  compose(Tout);
+
+Based on the above two lemmas, we can show that, in the acyclic case, we can compute a minimal TBox by eliminating redundant axioms, fixing the representative selection function r to some minimal value, constructing the core representation T nonred,[C]
+for each non-singleton equivalence class [C] and composing T again.
+Definition 5. Let T be an EL TBox and r a corresponding valid representative selection function. We say that r is minimal, if for each [C]  C holds: there is no C  [C]
+
+such that  (C) <  (r([C])).
+
+We can now state the minimality of the composed TBox containing T 0 and a parti-
+
+resentative selection function. Let the TBox Tn = T 0 
+
+tion T nonred,[C] for each non-singleton equivalence class [C]  C.
+Theorem 3. Let T be a non-redundant, acyclic EL TBox and r a minimal, valid rep-
+T nonred,[C] be
+aligned with r. Let T 
+n be a composed version of Tn. Then, for any minimal TBox Tm
+with Tm  T it holds that  (Tm) =  (T 
+n).
+
+[C]C,|[C]|2
+
+Algorithm 1 implements the iterative computation of r and the minimal TBox T 
+n.
+It takes an acyclic decomposed TBox Tin and computes the corresponding minimal
+equivalent TBox Tout. Line 3 is not strictly necessary, but allows for a more efficient
+processing. In Lines 4-10, a minimal representative selection function r is iteratively
+determined  for one equivalence class at a time  and all data structures are aligned
+with r. We distinguish two versions of equivalence classes: CTODO contains equivalence
+classes, for which the minimal representative has not been selected yet. In each iteration,
+we process the leaves in CTODO ordered with the reference relation s and remove those
+
+N. Nikitina and S. Schewe
+
+equivalence classes from CTODO. Call contains all equivalence classes that are stepwise
+aligned with a minimal representative selection function r. In each step, we also align
+axioms Tout corresponding to the partition T 0 with r by replacing concepts with the
+representative r([C]) fixed in Line 6.
+In Line 11, we build partitions for non-singleton equivalence classes. In Lines 12-
+14, we compute the non-redundant part of Tout. The function compose(Tout) in Line
+16 composes subsumption axioms with identical left-hand sides into a single axiom.
+Clearly, Algorithm 1 runs in PTIME. sub(T ) is polynomially large in the size of T
+and C can be computed in PTIME due to tractable reasoning in EL. Equivalence axioms
+can be removed in linear time. Lines 4-10 are executed |C| times and can be executed
+in PTIME. The same holds for building partitions for non-singleton equivalence classes
+and computing the non-redundant part of Tout. Composition can be performed in linear time. Note that the algorithm remains tractable only assuming the tractability of
+reasoning in the underlying logic. Otherwise, the complexity of reasoning dominates.
+In principle, the result could be obtained after computing the representatives for each
+equivalence class by simply selecting all subsumption relations between classes. How-
+ever, this would result in a less efficient implementation with large intermediary results.
+Theorem 4. Let T be an acyclic EL TBox. Algorithm 1 computes a minimal equivalent
+TBox in PTIME.
+Minimality is a consequence of Theorem 3. Equivalence follows from T nonred,[C] 
+T red,[C] |= T full,[C] for each non-singleton equivalence class [C] and from Lemma 4.
+
+6 Experimental Results
+
+For our evaluation, we have implemented the algorithm using the latest version of OWL
+API and Hermit reasoner. We have used an optimized version of Algorithm 1, where
+entailment checking is done in two phases, the first of which can be run by several
+threads.
+A selection of publicly available ontologies (as shown in Table 1) that vary in size and
+expressivity have been used in the experiments3. Table 2 shows the number |CONo(T )|
+of occurrences of complex concepts CON(T ) = sub(T )  sigC(T ) in the first two
+columns (the original value followed by the new value relative to the original one).
+The two subsequent columns show the number of pairwise different complex concepts
+|CON(T )|. The last two columns show  (T )  the size of each ontology measured as the
+number of occurrences of entities in sig(T ).
+
+The implementation was first applied to Snomed [10]. However, the available fullyfledged reasoners Pellet and Hermit run out of heap space when classifying the ontology even with 10 GB memory assigned to the corresponding Java process. The ELK
+reasoner [11] is capable of classifying Snomed, but it does not currently implement
+entailment, which is essential for our implementation.
+
+3 The wine
+
+can be
+
+ontology
+
+retrieved from http://www.w3.org/TR/2003/
+PR-owl-guide-20031209/wine. All other ontologies used can be found in the
+TONES ontology repository at http://owl.cs.manchester.ac.uk/repository
+?
+
+?
+
+?
+Logic
+
+Table 1. Properties of ontologies used in experiments
+ (T )/|T | CON(T )/|T | CONo(T )/|T |
+EL + +
+2.57
+EL + +
+0.27
+ALCH(D)
+0.14
+ALEHIF+
+1.13
+EL + +
+0.48
+SHOIN (D)
+0.40
+ALCHF(D)
+0.40
+EL + +
+0.16
+
+0.14
+ALHN (D)
+7.26
+SHIN (D)
+1.33
+0.03 ALCHOIN (D)
+ALCHO(D)
+0.36
+ALCOIF
+1.21
+
+0.43
+
+|T |
+83,259
+?
+
+?
+
+?
+4.99
+3.37
+1.10
+2.81
+2.48
+1.03
+2.18
+2.16
+1.42
+25.21
+6.19
+0.48
+2.33
+1.87
+1.38
+
+1.14
+1.20
+0.00
+0.52
+0.15
+0.21
+0.29
+0.09
+0.13
+2.60
+1.02
+0.03
+0.22
+0.58
+0.38
+
+Snomed
+Gene Ontology
+
+Galen
+Adult Mouse
+Wine
+Nautilus
+Cell
+DOLCE-lite
+Software
+Family Tree
+General Ontology
+Substance
+Generations
+Periodic Table
+
+From the ontologies used in our experiments, only Snomed did not satisfy the acyclicity conditions for s sufficient to guarantee termination of our algorithm. On the one
+hand, Snomed contains cyclic concept definitions. For instance, Mast cell leukemia
+is defined by means of the corresponding equivalence axiom as
+
+Leukemia disease 
+Mast cell malignancy 
+ RoleGroup.
+
+( Associated morphology. Mast cell leukemia 
+ Finding site. Hematopoietic system structure)) 
+
+ RoleGroup.(
+
+ Has definitional manifestation. White blood cell finding)
+
+On the other hand, Snomed contains a cyclic reference relation between the concepts
+Wound and Wound finding, which is the only cyclic dependency with more than one
+element.
+
+We have manually evaluated how the rewriting has affected ontologies. In all cases
+where concepts became smaller, the improvement has been achieved by either elimination of redundant axioms or exchanging complex expressions by atomic concepts.
+
+In case of the Galen ontology [1], the algorithm managed to reduce the number
+of occurrences of complex concepts by 955, which is 17%. The size of the ontology
+in number of references was reduced by 1130 (9%). The number of distinct complex
+concepts used in the ontology was reduced by 76 (3%). The situation is similar for the
+NCI [12] ontology.
+
+The other large medical ontology  Gene Ontology [13]  does not contain any equivalent concepts, i.e., each equivalence class has only one element. The current algorithm
+did not find any possibility to rewrite the ontology. The same holds for Adult Mouse
+and Periodic Table ontologies.
+
+N. Nikitina and S. Schewe
+
+Table 2. Minimization results for different ontologies
+
+Snomed
+Gene Ontology
+
+Galen
+Adult Mouse
+Wine
+Nautilus
+Cell
+DOLCE-lite
+Software
+Family Tree
+General Ontology
+Substance
+Generations
+Periodic Table
+
+|CON(T )|
+
+ (T )
+
+CONo(T )
+ 95,315
+213,856
+8,508
+11,686
+
+13,961 0.87
+4,000
+2,475
+5,368 0.83
+
+1,649 0.99
+
+262 0.89
+?
+
+?
+
+?
+206 0.87
+
+49 0.92
+
+1,728 0.81
+
+48 0.77
+281 0.83
+?
+
+?
+
+?
+46 0.65
+?
+
+?
+
+?
+ 415,541
+1 143,900
+0.99 107,841
+13,285
+0.97
+8,575
+?
+
+?
+
+?
+0.98
+?
+
+?
+
+?
+2,732
+0.96
+
+0.98
+6,001
+?
+
+?
+
+?
+0.78
+0.83
+4,182
+1,417
+?
+
+?
+
+?
+
+
+0.94
+0.91
+0.99
+0.93
+0.86
+0.96
+0.66
+0.81
+0.83
+0.83
+0.95
+0.90
+
+Results for the other, relatively small ontologies are similar to those of Galen and in
+some cases more prominent (Table 2). The highest improvement (66% of  (T )) was
+achieved in the DOLCE-Lite ontology [14].
+
+7 Related Work
+
+The work on knowledge compilation [15] is closely related to the work presented in
+this paper. Knowledge compilation is a family of approaches, in which a knowledge
+base is transformed in an off-line phase into a normal form, for which reasoning is
+cheaper. The hope is that the one-off cost of the initial preprocessing will be justified by
+the computational savings made on subsequent reasoning. One of such normal forms
+proposed in description logics is the prime implicates normal form for ALC ontologies [4]. Prime implicates of a logical formula are defined to be their strongest clausal
+consequences. Concepts in the prime implicates normal form are expected to be easier
+to read and understand. Reasoning is also expected to be more efficient for knowledge
+bases in this normal form. For example, concept subsumption can be tested in quadratic
+time. However, the problem with such normal forms is the blowup caused by the trans-
+formation. For ALC ontologies, a doubly-exponential blowup in the concept size can
+occur. Given that reasoning in ALC is PSPACE-complete [16], such a transformation
+can be disadvantageous in general.
+
+Grimm et al. [3] propose two different algorithms for eliminating semantically redundant axioms from ontologies, which is one of the sources of non-succinctness. How-
+ever, as shown in Section 3, it does not guarantee that we obtain a minimal TBox in
+[(]T ). The advantage of this restricted approach to improving succinctness is that the
+result contains only axioms that are familiar to the users of the ontology.
+
+Work on laconic and precise justifications [17] (minimal parts of the ontology implying a particular axiom or axioms) is also related to this paper. The authors propose
+?
+
+?
+
+?
+an algorithm for computing laconic justifications  justifications that do not contain
+any logically superfluous parts. Laconic justifications can then be used to derive precise
+justifications  justifications that consist of flat, small axioms, and are important for the
+generation of semantically minimal repairs.
+
+Nikitina et al. [18] propose an algorithm for an efficient handling of redundancy in
+inconsistent ontologies during their repair. Similarly to the approach by Grimm et al.
+axioms are considered as atoms that cannot be further separated into parts.
+
+8 Summary and Outlook
+
+We have considered the problem of finding minimal equivalent representations for ontologies expressed in the lightweight description logic EL. We have shown that the task
+of finding such a representation (or rather: its related decision problem) is NP-complete.
+Further, we have identified a class of TBoxes for which the problem is tractable. We
+have implemented a polynomial algorithm for minimizing the above class of TBoxes.
+For general TBoxes, the algorithm can be used as a heuristic. We have implemented the
+algorithm and presented experimental results, which show that the complexity of various existing ontologies can be improved. For instance, in case of Galen, the number of
+complex concepts occurrences could be reduced by 955 and the number of references
+to atomic concepts and roles by 1130.
+There are various natural extensions of this work. Inspired by recent results on uniform interpolation in EL [8], the problem can be extended to finding minimal representations for ontologies using a signature extension. The results in [8] imply that, even for
+the minimal equivalent representation of an ontology, an up to triple-exponentially more
+succinct representation can be obtained by extending its signature. Auxiliary concept
+symbols are therefore important contributors towards the succinctness of ontologies,
+e.g., used as shortcuts for complex EL concepts or disjunctions thereof. The results of
+our evaluation indicate that there are many complex concept expression that occur repeatedly in ontologies but do not have an equivalent atomic concept that could be used
+instead. Therefore, introducing names for such frequently used concepts could yield a
+further decrease of the ontologys complexity.
+
+The results obtained within this paper can be transferred to the context of ontology
+reuse, where rewriting is applied to obtain a compact representation of the facts about
+a subset of terms [19], in particular in its extended form as suggested above.
+
+Finally, minimizing representations is an interesting problem for knowledge representation formalisms in general, and similar questions can (and should) be asked for
+more expressive ontology languages.

@@ -1,17 +1,19 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
-import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
+
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 /**
  * Implements a simple greedy search for the best taxonomy
@@ -20,22 +22,22 @@ import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
  */
 public class Greedy implements TaxonomySearch {
 
-    private final TaxonomyScore emptyScore;
+    private final Score emptyScore;
 
-    public Greedy(TaxonomyScore score) {
+    public Greedy(Score score) {
         this.emptyScore = score;
     }
 
     @Override
     public Taxonomy extractTaxonomyWithBlackWhiteList(Map<String, Term> termMap,
             Set<TaxoLink> whiteList, Set<TaxoLink> blackList) {
-        TaxonomyScore score = this.emptyScore;
+        Score score = this.emptyScore;
         ArrayList<TaxoLink> candidates = new ArrayList<>();
         if(termMap.size() == 0) {
-            return new Taxonomy("NO TERMS", 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
+            return new Taxonomy("NO TERMS", 0, 0, Collections.EMPTY_LIST, Status.none);
         } else if(termMap.size() == 1) {
             // It is not possible to construct a taxonomy from 1 term
-            return new Taxonomy(termMap.keySet().iterator().next(), 0, 0, "", "", Collections.EMPTY_LIST, Status.none);
+            return new Taxonomy(termMap.keySet().iterator().next(), 0, 0, Collections.EMPTY_LIST, Status.none);
         }
         for (String t1 : termMap.keySet()) {
             for (String t2 : termMap.keySet()) {
@@ -47,14 +49,14 @@ public class Greedy implements TaxonomySearch {
         candidates.removeAll(blackList);
         candidates.removeAll(whiteList);
 
-        Solution soln = Solution.empty(termMap.keySet());
+        TaxonomySolution soln = TaxonomySolution.empty(termMap.keySet());
         for (TaxoLink sp : whiteList) {
-            if (termMap.get(sp.top) != null && termMap.get(sp.bottom) != null) {
-                soln = soln.add(sp.top, sp.bottom,
-                        termMap.get(sp.top).getScore(),
-                        termMap.get(sp.bottom).getScore(),
+            if (termMap.get(sp.getTop()) != null && termMap.get(sp.getBottom()) != null) {
+                soln = soln.add(sp.getTop(), sp.getBottom(),
+                        termMap.get(sp.getTop()).getScore(),
+                        termMap.get(sp.getBottom()).getScore(),
                         score.deltaScore(sp), true);
-                score = score.next(sp.top, sp.bottom, soln);
+                score = score.next(sp, soln);
             }
         }
         SOLN_LOOP:
@@ -74,14 +76,14 @@ public class Greedy implements TaxonomySearch {
             });
             while (!candidates.isEmpty()) {
                 TaxoLink candidate = candidates.remove(0);
-                Solution soln2 = soln.add(candidate.top, candidate.bottom,
-                        termMap.get(candidate.top).getScore(),
-                        termMap.get(candidate.bottom).getScore(),
+                TaxonomySolution soln2 = soln.add(candidate.getTop(), candidate.getBottom(),
+                        termMap.get(candidate.getTop()).getScore(),
+                        termMap.get(candidate.getBottom()).getScore(),
                         scores.getDouble(candidate), false);
                 // soln2 = null means adding this link would create an invalid taxonomy
                 if (soln2 != null) {
                     soln = soln2;
-                    score = score.next(candidate.top, candidate.bottom, soln);
+                    score = score.next(candidate, soln);
                     continue SOLN_LOOP;
                 }
             }

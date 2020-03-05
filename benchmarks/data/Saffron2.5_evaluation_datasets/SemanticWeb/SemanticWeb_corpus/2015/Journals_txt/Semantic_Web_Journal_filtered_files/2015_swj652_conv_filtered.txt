@@ -1,0 +1,2574 @@
+Semantic Web 0 (0) 1
+IOS Press
+
+Sound, Complete and Minimal
+UCQ-Rewriting for Existential Rules
+
+Editor(s): Wolfgang Faber, University of Huddersfield, UK; Domenico Lembo, Sapienza University of Rome, Italy
+Solicited review(s): Giorgio Orsi, University of Oxford, UK; Stijn Heymans, SRI International, Menlo Park, USA; one anonymous reviewer
+
+Melanie Konig a, Michel Leclere a,, Marie-Laure Mugnier a, Michael Thomazo b,
+a LIRMM, University Montpellier 2, CC 477, 161 rue Ada, 34095 Montpellier Cedex 5,
+France
+E-mail: {mkonig,leclere,mugnier}@lirmm.fr
+b TU Dresden, Nothnitzer Strasse 46, 01187 Dresden,
+Germany
+E-mail: michael.thomazo@tu-dresden.de
+
+Abstract. We address the issue of Ontology-Based Data Access, with ontologies represented in the framework of existential
+rules, also known as Datalog. A well-known approach involves rewriting the query using ontological knowledge. We focus
+here on the basic rewriting technique which consists of rewriting the initial query into a union of conjunctive queries. First, we
+study a generic breadth-first rewriting algorithm, which takes any rewriting operator as a parameter, and define properties of
+rewriting operators that ensure the correctness of the algorithm. Then, we focus on piece-unifiers, which provide a rewriting
+operator with the desired properties. Finally, we propose an implementation of this framework and report some experiments.
+
+Keywords: Ontology-Based Data Access, Existential Rules, Conjunctive Query Answering, Finite Unification Sets, Query
+Rewriting
+
+1. Introduction
+
+We address the issue of Ontology-Based Data Ac-
+cess, which aims at exploiting knowledge expressed
+in ontologies while querying data. In this paper, ontologies are represented in the framework of existential rules [2,22], also known as Datalog [4,5]. Existential rules allow one to assert the existence of new
+unknown individuals, which is a key feature in an
+open-world perspective, as for instance in incomplete
+databases [8]. These rules are of the form body 
+head, where the body and the head are conjunctions of
+atoms (without functions) and variables that occur only
+in the head are existentially quantified. They general-
+
+*Corresponding author. E-mail: Michel.Leclere@lirmm.fr.
+**This work was done when M. Thomazo was a PhD student at
+
+University Montpellier 2.
+
+ize lightweight description logics (DLs), which form
+the core of the tractable profiles of OWL2 [27].
+The general query answering problem can be expressed as follows: given a knowledge base (KB) K
+composed of a set of facts or data and an ontology
+(a set of existential rules here), and a query Q, compute the set of answers to Q in K. In this paper, we
+consider Boolean conjunctive queries (Boolean CQs
+or BCQs). Note however that all our results are easily
+extended to non-Boolean conjunctive queries as well
+as to unions of conjunctive queries. The fundamental
+problem, called BCQ entailment hereafter, can be recast as follows: given a KB K, composed of facts and
+existential rules, and a Boolean conjunctive query Q,
+is Q entailed by K?
+
+BCQ entailment is undecidable for general existential rules (e.g., [3,10], on the implication problem for
+tuple-generating dependencies, which have the same
+
+1570-0844/0-1900/$27.50 c 0  IOS Press and the authors. All rights reserved
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+form as existential rules). There has been an intense
+research effort aimed at finding decidable subsets of
+rules that provide good tradeoffs between expressivity and complexity of query answering (see e.g., [25]
+for a survey on decidable classes of rules). These decidable rule fragments overcome some of the limitations of DLs. In particular, they have unrestricted predicate arity, while DLs consider unary and binary predicates only, which allows one for a natural coupling
+with database schemas, in which relations may have
+any arity; moreover, adding information, such as data
+provenance, is made easier by the unrestricted predicate arity, since this information can be added as a new
+predicate argument.
+
+There are two main approaches to solve BCQ entail-
+ment, which are linked to the classical paradigms for
+processing rules, namely forward and backward chain-
+ing, as illustrated by the next example.
+
+Example 1 Let us consider data on movies, with
+unary relations movie and actor, and a binary relation play (intuitively, play(x, y) means that x plays
+a role in y). Let Q be a query asking if a given per-
+son, whose identifier is B, plays a role somewhere, i.e.,
+Q = y play(B, y). Let R be an existential rule expressing that every actor plays a role in some movie,
+i.e., x(actor(x)  y(play(x, y)  movie(y))). Assume that the data contain actor(B). If Q is asked on
+these data, the answer is no. However, the rule allows
+to infer that actor B plays in a movie, thus the answer
+to Q should be yes. Rule R can be used in a forward
+manner, i.e., it can be applied to the data: then, the
+knowledge y0(play(B, y0)  movie(y0)) is added,
+where y0 is a new variable. Query Q can be mapped to
+the enriched data, which allows to answer positively.
+Now, R can also be used in a backward manner, i.e., to
+rewrite Q, which yields the new query Q = actor(B).
+This query can be mapped to the (initial) data, which
+provides the positive answer.
+
+Both approaches can be seen as ways of reducing the
+problem to a classical database query answering problem by eliminating the rules, see Figure 1. The first approach consists in applying the rules to the data, thus
+materializing entailed facts into the data. Then, Q is
+entailed by K if and only if it can be mapped to this
+materialized database. This approach is applicable either when the forward chaining procedure stops naturally (see [16] for a survey on these cases), or when
+it stops by taking some parameters into consideration,
+typically the size of the query [4,23]. The second ap-
+
+Fig. 1. Forward / Backward Chaining.
+
+proach consists in using the rules to rewrite the query
+into a first-order query (typically a union of conjunctive queries [9,28,14,34,29]) or a non-recursive Datalog program [30,26,15]. Then, Q is entailed by K if
+and only if the rewritten query is entailed by the initial
+database.
+
+Materialization has the advantage of enabling efficient query answering but may be not appropriate for
+data size, data access rights or data maintenance rea-
+sons. Query rewriting has the advantage of avoiding
+changes in the data, however its drawback is that the
+rewritten query may be large, even exponential in the
+size of initial query, hence less efficiently processed,
+at least with current database techniques. Finally, techniques combining both approaches have been devel-
+oped, in particular so-called combined approach [24,
+21] for lightweight description logics, as well as a similar algorithm for a large class of existential rules [33].
+In this paper, we focus on rewriting techniques, and
+more specifically on rewriting the initial conjunctive
+query Q into a union of conjunctive queries, that we
+will see as a set of conjunctive queries. This set is
+called a rewriting set of Q and each element of a
+rewriting set is called a rewriting. While most previously cited work focuses on specific rule sublanguages
+(mostly DL-Lite, linear and sticky existential rules),
+we consider general existential rules. This means that
+our algorithm does not make any syntactic assumption on the input set of rules, but will terminate only
+in some cases (so-called finite unification sets of rules,
+see hereafter).
+
+The goal is to compute a rewriting set both sound (if
+one of its elements maps to the initial database, then
+K entails Q) and complete (if K entails Q then there
+is an element that maps to the initial database). Minimality may also be a desirable property. In particular,
+let us consider the generalization relation (a preorder)
+induced on Boolean conjunctive queries by homomor-
+phism: we say that Q1 is more general than Q2 if there
+is a homomorphism from Q1 to Q2; it is well-known
+that the existence of such a homomorphism is equiva-
+
+lent to the following property: for any set of facts F ,
+if the answer to Q2 in F is positive, then so is the answer to Q1. We point out that any sound and complete
+rewriting set of a query Q remains sound and complete
+when it is restricted to its most general elements. Since
+BCQ entailment is undecidable, there is no guarantee
+that such a finite set exists for a given query and general existential rules. A set of existential rules ensuring that a finite sound and complete set of most general rewritings exists for any query is called a finite
+unification set (fus) [2]. The fus property is not recognizable [2], but several easily recognizable fus classes
+have been exhibited in the literature: atomic-body rules
+[1], also known as linear TGDs [5], multi-linear TGDs
+[6], sticky(-join) rules [7,14], weakly-recursive rules
+[13] and sets of rules with an acyclic graph of rule
+dependencies [1]. By definition, the fus property is a
+specific case of first-order rewritability, which means
+that the set of rules allows to rewrite any CQ into a
+(sound and complete) first-order query; it is suspected
+that both properties are actually equivalent, however,
+to the best of our knowledge, no proof of this result has
+been published.
+
+Paper contributions. We start from a generic algorithm which, given a BCQ and a set of existential
+rules, computes a rewriting set. This task can be recast in terms of exploring a potentially infinite space
+of queries, composed of the initial conjunctive query
+and its (sound) rewritings, structured by the generalization preorder. The algorithm explores this space in
+a breadth-first way, with the aim of computing a complete rewriting set. It maintains a rewriting set Q and
+iteratively performs the following tasks: (1) generate
+all the one-step rewritings from unexplored queries in
+Q; (2) add these rewritings to Q and update Q in order to keep only incomparable most general elements.
+A rewriting operator is a function that, given a query
+and a set of rules, returns the one-step rewritings of
+this query. Note that it may be the case that the set of
+sound rewritings of the query is infinite while the set
+of its most general sound rewritings is finite. It follows
+that a simple breadth-first exploration of the rewriting
+space is not sufficient to ensure finiteness of the pro-
+cess, even for fus rules; one also has to maintain a set of
+the most general rewritings. This algorithm is generic
+in the sense that it is not restricted to a particular kind
+of existential rules nor to a specific rewriting operator
+(without guarantee of termination though).
+
+This algorithmic scheme established, we then asked
+
+ourselves the following questions:
+
+1. Assuming that
+
+the algorithm outputs a finite
+sound and complete set rewritings, composed of
+pairwise incomparable queries, is this set of minimal cardinality, in the sense that no sound and
+complete rewriting set produced by any other algorithm can be strictly smaller?
+
+2. At each step of the algorithm, some queries are
+discarded, because they are more specific than
+other rewritings, even if they have not been explored yet. The question is whether this dynamic
+pruning of the search space keeps the completeness of the output. More generally, which properties have to be fulfilled by the operator to ensure
+the correctness of the algorithm and its termination for fus rules?
+
+3. Finally, design a rewriting operator that fulfills
+the desired properties and leads to the effective
+computation of a sound and complete rewriting
+set.
+
+With respect to the first question, we show that all
+sound and complete sets of rewritings, restricted to
+their most general elements, have the same cardinal-
+ity, which is minimal with respect to the completeness property. Moreover, if we delete redundant atoms
+from the obtained CQs (which can be performed by a
+polynomial number of homomorphism tests for each
+query)1, then we obtain a unique minimal sound and
+complete set of CQs of minimal size; uniqueness is of
+course up to a bijective variable renaming.
+
+To answer the second question, we define several
+properties that a rewriting operator has to satisfy and
+show that these properties actually ensure the correctness of the algorithm and its termination for fus rules.
+In particular, we point out that the fact that a query
+may be removed from the rewriting set before being
+explored may prevent the completeness of the out-
+put, even if the rewriting operator is theoretically able
+to generate a complete output. The prunability of the
+rewriting operator ensures that this dynamic pruning
+can be safely performed. Briefly, this property holds if,
+for all queries Q1 and Q2, when Q1 is more general
+than Q2 then any one-step rewriting of Q2 is less general than Q1 itself or one of the one-step rewritings of
+Q1; intuitively, this allows to discard the rewriting Q2
+even when its one-step rewritings have not been generated yet. Note that this kind of properties ties in with
+
+1See e.g. [11], Section 2.6, on basic conceptual graphs. The algorithm can even by made linear, noticing that an atom needs to be
+considered only once.
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+an issue raised in [18] about the gap between theoretical completeness of some methods and the effective
+completeness of their implementation, this gap being
+mainly due to algorithmic optimizations (here the dynamic pruning).
+
+Concerning the third question, we proceed in several steps. First, we rely on a specific unifier, called a
+piece-unifier, that was designed for backward chaining with conceptual graph rules (whose logical translation is exactly existential rules [31]). As in classical
+backward chaining, the rewriting process is based on a
+unification operation between the current query and a
+rule head. However, existential variables in rule heads
+induce a structure that has to be considered to keep
+soundness. Thus, instead of unifying a single atom of
+the query at once, our unifier processes a subset of
+atoms from the query. A piece is a minimal subset of
+atoms from the query that have to be erased together,
+hence the name piece-unifier. We present below a very
+simple example of piece unification (in particular, the
+head of the existential rule is restricted to a single
+atom).
+Example 2 Let R = x (q(x)  y p(x, y)) and the
+BCQ Q = uvw(p(u, v)  p(w, v)  r(u, w)). Assume we want to unify the atom p(u, v) from Q with
+p(x, y), for instance by a substitution {(u, x), (v, y)}.2
+Since v is unified with the existential variable y,
+all other atoms from Q containing v must also be
+considered: indeed, simply rewriting Q into Q1 =
+wxy(q(x) p(w, y) r(x, w)) would be unsound:
+intuitively, the fact that the atoms p(u, v) and p(w, v)
+in Q share a variable would be lost in atoms q(x)
+and p(w, y); for instance F = q(a)  p(b, c)  r(a, b)
+would answer Q1 despite Q being not entailed by F
+and R. Thus, p(u, v) and p(w, v) have to be both unified with the head of R, for instance by means of the
+following substitution:  = {(u, x), (v, y), (w, x)}.
+{p(u, v), p(w, v)} is called a piece. The corresponding
+rewriting of Q is x(q(x)  r(x, x)).
+
+Piece-unifiers lead to a logically sound and complete rewriting method. As far as we know, it is the
+only method accepting any kind of existential rules,
+while staying in this fragment, i.e., without Skolemization of rule heads to replace existential variables with
+Skolem functions.
+
+2A substitution is given as a set of pairs, where a pair (x, e) means
+
+that x is substituted by e.
+
+We show that the piece-based rewriting operator fulfills the desired properties ensuring the correctness of
+the generic algorithm, and its termination in the case
+of fus rules.
+
+The next question was how to optimize the rewriting
+step. Indeed, the problem of deciding whether there is
+a piece-unifier between a query and a rule head is NPcomplete and the number of piece-unifiers can be exponential in the size of the query. To cope with these
+sources of complexity, we consider so-called singlepiece unifiers, which unify a single-piece of the query
+at once (like  in Example 2). When, additionally, the
+head of a rule R is restricted to an atom, which is a frequent case, each atom in a query Q belongs to at most
+one piece with respect to R; then, the number of (most
+general) single-piece unifiers of Q with the head of R
+is bounded by the size of Q.
+
+We show that the single-piece based rewriting operator is able to generate a sound and complete rewriting set. However, as pointed out in several examples,
+it is not prunable. Hence, single-piece unifiers have
+to be combined to recover prunability. We thus define
+the aggregation of single-piece unifiers and show that
+the corresponding rewriting operator fulfills all desired
+properties and generates fewer queries than the piecebased rewriting operator. Detailed algorithms are given
+and first experiments are reported.
+
+Paper organization. Section 2 recalls some basic notions about the existential rule framework. Section 3
+defines sound, complete and minimal sets of rewrit-
+ings. In Section 4, the generic breadth-first algorithm
+is introduced and general properties of rewriting operators are studied. Section 5 presents the piece-based
+rewriting operator. In Section 6, we focus on exploiting
+single-piece unifiers and introduce the rewriting operator based on their aggregation. Finally, Section 7 is devoted to detailed algorithms and experiments, as well
+as to further work.
+
+This is an extended version of papers by the same
+authors published at RR 2012 and RR 2013 (Interna-
+tional Conference on Web Reasoning and Rule Sys-
+tems).
+
+2. Preliminaries
+
+An atom is of the form p(t1, . . . , tk) where p is a
+predicate with arity k, and the ti are terms, i.e., variables or constants. Given an atom or a set of atoms
+A, vars(A), consts(A) and terms(A) denote its sets of
+
+variables, constants and terms, respectively. In all the
+examples in this paper, the terms are variables (denoted
+by x, y, z, etc.). |= denotes the classical logical conse-
+quence. Two formulas f1 and f2 are said to be equivalent if f1 |= f2 and f2 |= f1.
+
+A fact
+
+is an existentially closed conjunction of
+atoms.3 A conjunctive query (CQ) is an existentially
+quantified conjunction of atoms. When it is a closed
+formula, it is called a Boolean CQ (BCQ). Hence, facts
+and BCQs have the same logical form. In the follow-
+ing, we will see them as sets of atoms. A union of conjunctive queries (UCQ) is a disjunction of CQs, which
+will see as a set of CQs.
+
+Given sets of atoms A and B, a homomorphism h
+from A to B is a substitution of vars(A) by terms(B)
+such that h(A)  B. We say that A is mapped to B
+by h. If there is a homomorphism from A to B, we
+say that A is more general than B, which is denoted
+A  B.
+Given a fact F and a BCQ Q, the answer to Q in F is
+positive if F |= Q. It is well-known that F |= Q if and
+only if there is a homomorphism from Q to F . If Q is a
+non-Boolean CQ, let x1 . . . xq be the free variables in
+Q. Then, a tuple of constants (a1 . . . aq) is an answer
+to Q in F if there is a homomorphism from Q to F that
+maps xi to ai for each i. In other words, (a1 . . . aq) is
+an answer to Q in F if and only if the answer to the
+BCQ obtained from Q by substituting each xi with ai
+is positive.
+
+In this paper, we consider only Boolean queries for
+simplicity reasons. This is not a restriction, since our
+mechanisms can actually process a CQ with free variables x1 . . . xq by translating it into a BCQ with an
+added atom ans(x1 . . . xq), where ans is a special
+predicate not occurring in the knowledge base. Since
+ans can never be erased by a rewriting step, the xi can
+only be substituted and will not disappear. We can
+thus compute the rewriting set of a CQ as a Boolean
+CQ with a special ans atom, then transform the rewritings into non-Boolean CQs by removing the ans atom
+and consider its arguments as free variables. Note that
+our the generic algorithm can accept as input a union
+of conjunctive queries as well, since it works exactly
+in the same way if it takes as input a set of CQs instead
+of a single CQ.
+
+Definition 1 (Existential rule) An existential rule (or
+simply a rule) is a formula R = (cid:126)x(cid:126)y(B[(cid:126)x, (cid:126)y] 
+
+3We generalize the classical notion of a fact in order to take exis-
+
+tential variables into account.
+
+(cid:126)zH[(cid:126)y, (cid:126)z]), where (cid:126)x, (cid:126)y and (cid:126)z are tuple of variables,
+B = body(R) and H = head(R) are conjunctions of atoms, resp. called the body and the head
+of R. The frontier of R, denoted by fr(R), is the set
+vars(B)vars(H) = (cid:126)y. The set of existential variables
+in R is the set vars(H) \ fr(R) = (cid:126)z.
+
+In the following, we omit quantifiers in rules and
+queries, as there is no ambiguity. For instance, the rule
+R = x (q(x)  y p(x, y)) from Example 2 will be
+written q(x)  p(x, y).
+A knowledge base (KB) K = (F,R) is composed of
+a fact F and a finite set of existential rules R. The BCQ
+entailment problem takes as input a KB K = (F,R)
+and a BCQ Q, and asks if F,R |= Q holds.
+
+3. Desirable Properties of Rewriting Sets
+
+Given a query Q and a set of existential rules R,
+rewriting techniques compute a set of queries Q, which
+we call a rewriting set hereafter. It is generally desired
+that such a set satisfies at least three properties: sound-
+ness, completeness and minimality.
+Definition 2 (Sound and Complete set) Let R be a
+set of existential rules and Q be a BCQ. Let Q be a set
+of BCQs. Q is said to be sound w.r.t. Q and R if for
+all facts F , for all Q  Q, if Q can be mapped to F
+then F,R |= Q. Reciprocally, Q is said to be complete
+w.r.t. Q and R if for all facts F , if F,R |= Q then there
+is Q  Q such that Q can be mapped to F .
+
+We mentioned in the introduction that only the most
+general elements of a rewriting set need to be con-
+sidered. Indeed, let Q1 and Q2 be two elements of a
+rewriting set such that Q1  Q2. Then, for any fact
+F , the set of answers to Q2 in F is included in the set
+of answers to Q1 in F . Hence, removing Q2 will not
+undermine completeness (and it will not undermine
+soundness either). The output of a rewriting algorithm
+should thus be a minimal set of incomparable queries
+that covers the set of all the sound rewritings of the
+initial query.
+Definition 3 (Covering relation) Let Q1 and Q2 be
+two sets of BCQs. Q1 covers Q2, which is denoted
+Q1  Q2, if for all Q2  Q2 there is Q1  Q1 with
+Q1  Q2.
+
+Note that covering can also be defined in terms of
+classical database query containment, i.e., Q1 covers
+Q2 if and only if the UCQ Q2 is included in the UCQ
+Q1.
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+// from Q3 and R1
+and so on . . .
+However, the set of the most general rewritings is
+{Q0, Q1} since any other query that can be obtained
+is more specific than Q0 or Q1.
+
+1 (resp. Qc
+
+1  Qc
+
+1 such that Q
+
+It can be easily checked that all covers of a given
+set have the same cardinality. We now prove that this
+property can be extended to the covers of all sound and
+complete finite rewriting sets of Q, irrespective of the
+rewriting technique used to compute these sets.
+Theorem 1 Let R be a set of rules and Q be a BCQ.
+Any finite cover of a sound and complete rewriting set
+of Q with R is of minimal cardinality (among all sound
+and complete rewriting sets of Q).
+Proof: Let Q1 and Q2 be two arbitrary sound and complete rewriting sets of Q with R. Let Qc
+2) be
+one of the finite covers of Q1 (resp. Q2). Qc
+1 (resp. Qc
+2)
+is also sound and complete, as well as smaller than or
+equal to Q1 (resp. Q2). We show that they have the
+same cardinality. Let Q1  Qc
+1. There exists Q2  Qc
+such that Q2  Q1. If not, Q would be entailed by
+F = Q1 and R since Qc
+1 is a sound rewriting set
+of Q (and Q1 maps to itself), but no elements of Qc
+
+would map to F : thus, Qc
+2 would not be complete. Sim-
+1  Q2. Then
+ilarly, there exists Q
+1  Q1, which implies that Q
+
+1 = Q1 by assumption
+on Qc
+2 such
+that Q2  Q1 and Q1  Q2. Such a Q2 is unique: in-
+deed, two such elements would be comparable for ,
+which is not possible by construction of Qc
+2. The function associating Q2 with Q1 is thus a bijection from
+Qc
+1 to Qc
+2, which shows that these two sets have the
+
+same cardinality.
+Furthermore, the proof of the preceding theorem
+shows that, given any two sound and complete rewriting sets of Q, there is a bijection from any cover of
+the first set to any cover of the second set such that
+two elements in relation by the bijection are equiva-
+lent. However, these elements are not necessarily isomorphic (i.e., equal up to a variable renaming) because
+they may contain redundancies. Consider the preorder
+induced by homomorphism on the set of all BCQs definable on some vocabulary. It is well-known that this
+preorder is such that any of its equivalence classes possesses a unique element of minimal size (up to isomor-
+phism), called its core (notion introduced for graphs4,
+but easily transferable to queries).
+
+1, there exists Q2  Qc
+
+1. For all Q1  Qc
+
+4See for instance [17], where the notion of a core is traced back
+
+to the late sixties.
+
+Fig. 2. Cover (Example 3).
+
+Definition 4 (Minimal set of BCQs, Cover) Let Q be
+a set of BCQs. Q is said to be minimal if there is no
+Q  Q such that (Q \ {Q})  Q. A cover of Q is a
+minimal set Qc  Q such that Qc  Q.
+
+Since a cover is a minimal set, its elements are pair-
+
+wise incomparable.
+Example 3 Let Q = {Q1, . . . , Q6} and consider the
+following preorder over Q: Q1  Q2, Q4, Q5, Q6 ;
+Q2  Q1, Q4, Q5, Q6 ; Q3  Q4 ; Q5  Q6 (note
+that Q1 and Q2 are equivalent). There are two covers
+of Q, namely {Q1, Q3} and {Q2, Q3}. See Figure 2.
+A set of (sound) rewritings may have a finite cover
+even when it is infinite, as illustrated by Example 4.
+Example 4 Let Q = t(u), R1 = t(x)  p(x, y) 
+r(y), R2 = r(x)  p(x, y)  t(y). R1 and R2 have
+a head restricted to a single atom and no existential
+variable, hence the classical most general unifier can
+be used, which unifies the first atom in the query with
+the atom of a rule head. The rewriting set of Q with
+{R1, R2} is infinite. The first generated queries are the
+following (note that rule variables are renamed when
+needed):
+Q0 = t(u)
+Q1 = r(x)  p(x, y) // from Q0 and R2 with {(u, y)}
+Q2 = t(x0)  p(x0, y0)  p(y0, y) // from Q1 and R1
+with {(x, y0)}
+Q3 = r(x1)  p(x1, y1)  p(y1, y0)  p(y0, y) // from
+Q2 and R2 with {(x0, y1)}
+Q4 = t(x2)p(x2, y2)p(y2, y1)p(y1, y0)p(y0, y)
+
+Every query can be transformed into its equivalent
+core by removing redundant atoms. We recall that a
+set of existential rules ensuring that a finite sound and
+complete set of most general rewritings exists for any
+query is called a finite unification set (fus).5
+
+By the remark above and Theorem 1, we obtain:
+
+Corollary 2 Let R be a fus and Q be a BCQ. There is
+a unique finite sound and complete rewriting set of Q
+with R that has both minimal cardinality and elements
+of minimal size.
+
+4. A Generic Rewriting Algorithm
+
+We will now present a generic rewriting algorithm
+that takes as input a set of existential rules and a query,
+and as parameter a rewriting operator. The studied
+question is the following: which properties should this
+operator satisfy in order that the algorithm outputs a
+sound, complete, finite and minimal set?
+
+4.1. Rewriting Algorithm
+
+Definition 5 (Rewriting operator) A rewriting operator rew is a function which takes as input a BCQ Q
+and a set of rules R and outputs a set of BCQs denoted
+by rew(Q,R).
+
+Since the elements of rew(Q,R) are BCQs, it is
+possible to apply further steps of rewriting to them.
+This naturally leads to the notions of k-rewriting and
+k-saturation.
+
+Definition 6 (k-rewriting) Let Q be a conjunctive
+query, R be a set of rules and rew be a rewriting op-
+erator. A 1-rewriting of Q (w.r.t. rew and R) is an element of rew(Q,R). A k-rewriting of Q, for k > 1,
+(w.r.t. rew and R) is a 1-rewriting of a (k  1)-
+rewriting of Q.
+
+The term k-saturation is convenient to name the set
+of queries that can be obtained in at most k rewriting
+steps.
+
+5The notion of a finite unification set was first introduced in [1]
+and defined with respect to piece-unifiers. However, since pieceunifiers provide a sound and complete rewriting operator (see Section 5) and all the covers of a given set have the same cardinality, the
+two definitions are equivalent.
+
+Algorithm 1: A GENERIC REWRITING ALGO-
+
+Data: A set of rules R, a BCQ Q
+Access: A rewriting operator rew , a covering
+
+function cover
+
+Result: A cover of the set of all Qs rewritings
+QF  {Q} ; // resulting set
+QE  {Q} ; // queries to explore
+while QE =  do
+
+// update cover
+QC  cover(QF  rew(QE,R)) ;
+// select unexplored queries
+QE  QC \ QF ;
+// update resulting set
+QF  QC ;
+
+return QF
+
+single BCQ Q: rew(Q,R) = 
+rewk(Q,R) =
+
+Definition 7 (k-saturation) Let Q be a BCQ, R be a
+set of rules and rew be a rewriting operator. We denote
+the set of k-rewritings of Q by rewk(Q,R). We call
+k-saturation, and denote by Wk(Q,R), the set of i-
+rewritings of Q for all i  k. We denote W(Q,R) =
+kN Wk(Q,R).
+In the following, we extend the notations rew,
+rewk and Wk to a set of BCQs Q instead of a
+QQ rew(Q,R),
+QQ rewk(Q,R) and Wk(Q,R) =
+ik rewi(Q,R).
+Algorithm 1 performs a breadth-first exploration of
+the rewriting space of a given query.6 At each step,
+only the most general elements are kept thanks to a
+covering function, denoted by cover , that computes
+a cover of a given set.
+
+For termination reasons (see the proof of Property 6), already explored queries are preferred to nonexplored queries in the computation of the cover. More
+precisely, if both Qc  {q} and Qc  {q} are covers
+of QF  rew(QE,R), with q and q homomorphically
+equivalent and {q} belongs to QF , then cover does
+not output Qc  {q}. If rew fulfills some good properties (specified below), then, after the ith iteration of
+the while loop, the i-saturation of Q (with respect to
+R and rew) is covered by QF , while QE contains the
+queries that remain to be explored.
+
+In the remainder of this section, we study the conditions that a rewriting operator must meet in order that:
+
+6Note that a depth-first exploration would not ensure termination
+
+for fus rules.
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+(i) the algorithm halts and outputs a cover of all the
+rewritings that can be obtained with this rewriting op-
+erator, provided that such a finite cover exists; (ii) the
+output cover is sound and complete.
+
+4.2. Correctness and Termination of the Algorithm
+
+We now define a property on the rewriting operator,
+called prunability. This property is sufficient to ensure
+that Algorithm 1 outputs a cover of W(Q,R). Intu-
+itively, if an operator is prunable then, for every Q1
+more general than Q2, the one-step rewritings of Q2
+are covered by the one-step rewritings of Q1 or by Q1
+itself. It follows that all the rewritings of Q2 are covered by Q1 and its rewritings. Hence, Q2 can be safely
+removed from the current rewriting set.
+
+Definition 8 (Prunable) A rewriting operator rew
+for any set of rules R
+is said to be prunable if
+2 such that Q1  Q2,
+and for all BCQs Q1, Q2, Q
+
+2  rew(Q2,R) and Q1  Q
+
+1  Q
+rew(Q1,R) such that Q
+2.
+
+2, there is Q
+
+The following lemma states that this can be gener-
+
+alized to k-rewritings for any k.
+
+Lemma 3 Let rew be a prunable rewriting operator,
+and let Q1 and Q2 be two sets of BCQs. If Q1  Q2,
+then W(Q1,R)  W(Q2,R).
+Proof: We prove by induction on i that Wi(Q1,R) 
+rewi(Q2,R).
+For i = 0, W0(Q1,R) = Q1  Q2 = rew0(Q2,R).
+For i > 0, for any Q2  rewi(Q2,R), there is
+2,R).
+2  rewi1(Q2,R) such that Q2  rew(Q
+
+1  Wi1(Q1,R)
+By induction hypothesis, there is Q
+such that Q
+2. rew is prunable, thus either
+1,R) such that
+1  Q2 or there is Q1  rew(Q
+
+1,R) are
+Q1  Q2. Since Wi1(Q1,R) and rew(Q
+both included in Wi(Q1,R), we can conclude.
+
+This lemma would not be sufficient to prove the correctness of Algorithm 1, as will be discussed in Section 6.1. We need a stronger version, which checks that
+a query whose 1-rewritings are covered needs not to be
+explored.
+
+1  Q
+
+Lemma 4 Let rew be a prunable rewriting operator,
+and let Q1 and Q2 be two sets of BCQs. If (Q1Q2) 
+rew(Q1,R), then (Q1  W(Q2,R))  W(Q1 
+Q2,R).
+
+Proof: We prove by induction on i that Q1Wi(Q2,R) 
+rewi(Q1  Q2,R).
+For i = 0, rew0(Q1  Q2,R) = Q1  Q2 =
+Q1  W0(Q2,R).
+For i > 0, for any Qi  rewi(Q1  Q2,R),
+there is Qi1  rewi1(Q1  Q2,R) such that
+Qi  rew(Qi1,R). By induction hypothesis, there
+i1  Q1Wi1(Q2,R) such that Q
+i1  Qi1.
+is Q
+i1  Qi or there is
+Since rew is prunable, either Q
+i  Qi. Then, there
+i1,R) such that Q
+i  rew(Q
+
+are two possibilities:
+
+ either Q
+
+we have Q1  Q2  {Q
+Wi(Q2,R)  {Q
+i}.
+
+i1  Q1: since Q1Q2  rew(Q1,R),
+i} and so Q1 
+i  Wi(Q2,R).
+
+Finally, the correctness of Algorithm 1 is based on
+
+i1  Wi1(Q2,R): then Q
+
+ or Q
+
+the following loop invariants.
+
+Property 5 (Invariants of Algorithm 1) Let rew be
+a rewriting operator. After each iteration of the while
+loop of Algorithm 1, the following properties hold:
+
+1. QE  QF  W(Q,R);
+2. QF  rew(QF \ QE,R);
+3. if rew is prunable then (QF  W(QE,R)) 
+4. for all distinct Q, Q  QF , Q  Q and Q 
+
+W(Q,R);
+
+Q.
+
+Proof: Invariants are proved by induction on the num-
+F and Qi
+ber of iterations of the while loop. Below Qi
+denote the value of QF and QE after i iterations.
+Invariant 1: QE  QF  W(Q,R).
+
+F rew(Qi1
+
+F = {Q} = W0(Q,R) 
+
+E = Q0
+basis: Q0
+W(Q,R).
+induction step: by construction, Qi
+F and
+Qi
+E ,R). For any Q 
+F  Qi1
+Qi
+F we have: either Q  Qi1
+and then by
+induction hypothesis Q  W(Q,R); or
+Q  rew(Qi1
+E ,R) and then by induction
+E  W(Q,R),
+hypothesis we have Qi1
+which implies Q  W(Q,R).
+
+E  Qi
+
+Invariant 2: QF  rew(QF \ QE,R).
+
+basis: rew(Q0
+induction step: by construction, Qi
+
+E,R) = rew(,R) =  and
+F  Qi1
+
+E ,R); since by induction hypoth-
+E ,R), we
+F  rew(Qi1
+
+F \Q0
+any set covers it.
+rew(Qi1
+esis Qi1
+
+\ Qi1
+
+have Qi
+F  rew(Qi1
+rew(Qi1
+E ,R) = rew(Qi1
+more, by construction, Qi
+thus Qi
+F \ Qi
+E  Qi1
+Qi
+E,R)  rew(Qi1
+E,R).
+F \ Qi
+rew(Qi
+
+\ Qi1
+E ,R) 
+F ,R). Further-
+F \ Qi1
+E = Qi
+F ;
+and so rew(Qi
+F \
+F ,R). Thus Qi
+
+then (QF 
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+F  W(Q,R). Thus,
+ward induction on i). Thus Qm
+rew(Qm
+E ,R) is covered by Qm
+F , and since already explored queries are taken first for the computation of a
+= . Hence Algorithm 1
+cover, we have that Qm+1
+
+halts.
+Theorem 7 Let rew be a rewriting operator, R be a
+set of rules and Q be a BCQ. If W(Q,R) has a finite
+cover and rew is prunable then Algorithm 1 outputs
+this cover (up to query equivalence).
+
+Invariant 3: if rew is prunable
+W(QE,R))  W(Q,R).
+basis: (Q0
+induction step: we first show that (i): (Qi
+
+F  W(Q0
+
+E,R))  W(Qi
+
+F , thus (Qi
+E)  Qi
+
+E,R)) = ({Q} 
+
+F ,R), then we
+F ,R) 
+
+W({Q},R)) = W(Q,R).
+W(Qi
+prove by induction that (ii): W(Qi
+W(Q,R):
+F \
+E  Qi
+(i) by construction Qi
+Qi
+E)  Qi
+E = Qi
+F , and by Invari-
+
+F \ Qi
+ant 2, we have (Qi
+E,R). Lemma 4 then en-
+F \ Qi
+rew(Qi
+E,R)) 
+E)  W(Qi
+F \ Qi
+tails that ((Qi
+W((Qi
+F \ Qi
+E)  Qi
+E,R) and we can
+E)  Qi
+F \ Qi
+F = (Qi
+conclude since Qi
+E.
+
+E ,R); so, by Lemma 3,
+Qi1
+F  rew(Qi1
+
+F ,R)  W(Qi1
+we have W(Qi
+rew(Qi1
+F ,R) 
+E ,R),R) = W(Qi1
+E ,R),R).
+W(rew(Qi1
+Moreover,
+ Qi1
+ W(Qi1
+F ,R),
+Qi1
+F ,R)
+
+Qi1
+
+thus W(Qi
+ W(rew(Qi1
+Qi1
+E ,R),R) =
+E ,R). Using (i), we
+Qi1
+F  W(Qi1
+F ,R)  W(Qi1
+F ,R) and
+have W(Qi
+conclude by induction hypothesis.
+
+(ii) by construction, we have Qi
+
+F  W(Qf
+
+Proof: By Property 6, Algorithm 1 halts. By Invariant 3
+from Property 5, (Qf
+E,R))  W(Q,R)
+F and Qf
+where Qf
+E denote the final values of QF and
+E =  when Algorithm 1
+QE in Algorithm 1. Since Qf
+halts, we have Qf
+F  W(Q,R). Thanks to Invariants
+1 and 4 from Property 5 we conclude that Qf
+F is a cover
+of W(Q,R).
+
+4.3. Preserving Soundness and Completeness
+
+We consider two further properties of a rewriting op-
+erator, namely soundness and completeness, with the
+aim of ensuring the soundness and completeness of the
+obtained rewriting set within the meaning of Definition
+2.
+
+Definition 9 (Soundness/completeness) Let rew be
+a rewriting operator. rew is sound if for any set of
+rules R, for any BCQ Q, for any Q  rew(Q,R),
+for any fact F , F |= Q implies that F,R |= Q. rew
+is complete if for any set of rules R, for any BCQ
+Q, for any fact F such that F,R |= Q, there exists
+Q  W(Q,R) such that F |= Q.
+
+Property 8 If rew is sound, then the output of Algorithm 1 is a sound rewriting set of Q and R.
+
+Proof: Direct consequence of Invariant 1 from Prop-
+
+erty 5.
+Perhaps surprisingly, the completeness of the rewriting operator is not sufficient to ensure the completeness of the output rewriting set. Examples are provided
+in Section 6.1. This is due to the dynamic pruning
+performed at each step of Algorithm 1. Therefore the
+prunability of the operator is also required.
+
+Property 9 If rew is prunable and complete, then the
+output of Algorithm 1 is a complete rewriting set of Q
+and R.
+
+Invariant 4: for all distinct Q, Q  QF , Q  Q and
+Q  Q. Trivially satisfied thanks to the properties of cover .
+
+The next property states that if rew is prunable then
+Algorithm 1 halts for each case where W(Q,R) has
+a finite cover.
+Property 6 Let rew be a rewriting operator, R be a
+set of rules and Q be a BCQ. If W(Q,R) has a finite
+cover and rew is prunable then Algorithm 1 halts.
+Proof: Let Q be a finite cover of W(Q,R) and let m
+be the largest k for a k-rewriting in Q.
+We thus have Wm(Q,R)  Q  W(Q,R).
+Since the operator is prunable, we have Qi
+
+Wi(Q,R) for all i  0 (proved with a straightfor-
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+Proof: Algorithm 1 returns QF when QE is empty.
+By Invariant 3 of Property 5, we know that (QF 
+W(,R))  W(Q,R). Since W(,R)) = ,
+we obtain that QF  W(Q,R).
+
+Finally, as stated by the next theorem, when the
+rewriting operator is sound, complete and prunable,
+Algorithm 1 is correct and terminates for any finite unification set of rules. We remind that expressive classes
+of fus rules are known (see the introduction). In partic-
+ular, the main members of DL-Lite family are generalized by the simple class of linear existential rules. See
+also Section 7 for examples of such ontologies.
+
+Theorem 10 If rew is a sound, complete and prunable operator, and R is a finite unification set of rules,
+then for any BCQ Q, Algorithm 1 outputs a minimal
+(finite) sound and complete rewriting set of Q with R.
+Proof: If R is a fus and rew is a sound and complete
+operator then W(Q,R) has a finite cover. The claim
+then follows from Properties 8 and 9 and Theorem 7.
+
+5. Piece-Based Rewriting
+
+As mentioned in the introduction (and illustrated in
+Example 2), existential variables in rule heads induce a
+structure that has to be taken into account in the rewriting mechanism. Hence the classical notion of a unifier is replaced by that of a piece-unifier [2]. A pieceunifier unifies a subset Q of Q with a subset H of
+head(R), in the sense that the associated substitution
+u is such that u(Q) = u(H). Given a piece-unifier,
+Q is partitioned into pieces, which are minimal subsets of atoms that must be processed together. More
+specifically, the cutpoints are the variables from Q that
+are not unified with existential variables from H (i.e.,
+they are unified with frontier variables or constants);
+then a piece in Q is a minimal non-empty subset of
+atoms glued by variables other than cutpoints, i.e.,
+connected by a path of variables that are not cutpoints.
+We recall below the definition of pieces given in [2]
+(where T corresponds to the set of cutpoints).
+
+Definition 10 (Piece) [2] Let A be a set of atoms and
+T  vars(A). A piece of A according to T is a minimal
+non-empty subset P of A such that, for all a and a
+in A, if a  P and (vars(a)  vars(a))  T , then
+a  P .
+
+In this paper, we give a definition of a piece-unifier
+based on partitions rather than substitutions, which
+simplifies subsequent proofs. For any substitution u
+from a set of variables E1 to a set of terms E2 associated with a piece-unifier, it holds that E1  E2 =
+. Thus, u can be associated with a partition Pu of
+E1  E2 such that two terms are in the same class of
+Pu if and only if they are merged by u; more specifi-
+cally, we consider the equivalence classes of the sym-
+metric, reflexive and transitive closure of the following
+relation : t  t if u(t) = t. Conversely, given a
+partition on a set of terms E, such that no class contains two constants, we can consider a substitution u
+obtained by selecting an element of each class with
+priority given to constants: if {e1 . . . ek} is a class in
+the partition and ei is a selected element, then for all
+ej with 1  j = i  k, we set u(ej) = ei. If we
+consider a total order on terms, such that constants are
+smaller than variables, then a unique substitution is obtained by taking the smallest element in each class. We
+call admissible partition a partition such that no class
+contains two constants.
+
+The set of all partitions over a given set is structured in a lattice by the finer than" relation (given
+two partitions P1 and P2, P1 is finer than P2, denoted
+by P1  P2, if every class of P1 is included in a
+class of P2).7 The join of several partitions is the partition obtained by making the union of their non-disjoint
+classes. The join of two admissible partitions may be a
+non-admissible partition. We say that several admissible partitions are compatible if their join is an admissible partition. Note that if the concerned partitions are
+relative to the same set E, then their join is their greatest lower bound in the partition lattice of E.
+
+The following property makes a link between com-
+
+parable partitions and comparable substitutions.
+
+Property 11 Let P1 and P2 be two admissible partitions over the same set such that P1  P2, with associated substitutions u1 and u2 respectively. Then there is
+a substitution s such that u2 = s u1 (i.e., u1 is more
+general than u2).
+
+Proof: The substitution s is built as follows: for any
+class Ci  P1, let Cj  P2 be the class such that
+Ci  Cj. Let ei (resp. ej) be the selected element in
+Ci (resp. Cj); if ei = ej (in this case, ei is necessarily
+
+7Usually, the notation  is used to denote the relation finer than.
+We adopt the converse convention, which is more in line with substitutions and the  preorder on CQs.
+
+3 = {p(u, v), p(w, v), p(w, t)}
+
+u is the join of P 1
+
+3, H, P 3
+
+u ) with Q
+
+1 and Q
+1  Q
+
+3 = Q
+
+u = {{x, u, w},{y, v, t}}
+
+2 are each composed of a single
+2 and P 3
+u and
+
+3 = (Q
+and P 3
+Note that Q
+piece; Q
+u.
+P 2
+In the previous example, R has an atomic head, thus
+a piece-unifier of Q with R actually unifies the atoms
+from Q and the head of R into a single atom. In the
+general case, a piece-unifier unifies Q and a subset H
+of head(R) into a set of atoms, as illustrated by the
+next example.
+Example 6 Let R = q(x)  p(x, y)  p(y, z) 
+p(z, t)  r(y) and Q = p(u, v)  p(v, w) 
+r(u). A piece-unifier of Q with R is 1 =
+(Q
+1 =
+{p(x, y), p(y, z)} and P 1
+u = {{x, u},{v, y},{w, z}}.
+Another piece-unifier is 2 = (Q
+u ) with
+
+2 = Q, H
+u =
+{{u, y},{v, z},{w, t}}.
+3 = {p(u, v)},
+Note that 3 = (Q
+3, H
+3, P 3
+u = {{x, u},{v, y}} is not a
+3 = {p(x, y)} and P 3
+
+piece-unifier because the second condition in the definition of piece-unifier is not fulfilled: v is a separating
+variable and is matched with the existential variable y.
+
+2 = {p(y, z), p(z, t), r(y)} and P 2
+
+1 = {p(u, v), p(v, w)}, H
+
+1, H
+
+u ) with Q
+
+1, P 1
+
+u ) with Q
+
+2, H
+
+2, P 2
+
+Fig. 3. Piece-unifier.
+
+a variable), then s(ei) = ej. It can be immediately
+checked that u2 = s  u1.
+
+In the following definition of a piece-unifier, we assume that Q and R have disjoint sets of variables.
+Given Q  Q, we call separating variables from Q,
+and denote by , Q, the variables occurring in both Q
+and (Q \ Q): , Q = vars(Q)  vars(Q \ Q).
+Definition 11 (Piece-Unifier, Cutpoint) A piece-unifier
+of Q with R is a triple  = (Q, H, Pu), where
+Q = , Q  Q, H  head(R) and Pu is a partition on terms(Q) terms(H) satisfying the following
+three conditions:
+
+1. Pu is admissible;
+2. if a class in Pu contains an existential variable
+(from H) then the other terms in the class are
+non-separating variables from Q;
+3. u(H) = u(Q), where u is a substitution asso-
+
+ciated with Pu.
+
+The cutpoints of , denoted by cutp(), are the
+variables from Q that are not unified with existential variables from H (i.e., they are unified with
+frontier variables or constants): cutp() = {x 
+vars(Q) | u(x)  fr(R)  consts(Q)  consts(H)}.
+Condition 2 in the piece-unifier definition ensures
+that a separating variable in Q is necessarily a cut-
+point. It follows that Q is composed of pieces: indeed,
+an existential variable from H is necessarily unified
+with a non-separating variable from Q, say x, which
+ensures that all atoms from Q in which x occurs are
+also part of Q. Figure 3 illustrates these notions.
+
+We provide below some examples of piece-unifiers.
+Example 5 Let R = q(x)  p(x, y) and Q =
+p(u, v)  p(w, v)  p(w, t)  r(u, w). Let H =
+{p(x, y)}. They are three piece-unifiers of Q with R:
+1 = {p(u, v), p(w, v)} and
+1 = (Q
+u ) with Q
+u = {{x, u, w},{y, v}}
+P 1
+2 = {p(w, t)} and P 2
+2 = (Q
+u ) with Q
+{{x, w},{y, t}}
+
+1, H, P 1
+2, H, P 2
+
+u =
+
+Then, the notions of a one-step rewriting according
+to a piece-unifier, and of a rewriting obtained by a sequence of one-step rewritings, are defined in the natural way.
+
+Definition 12 (One-step Piece-Rewriting) Given
+a piece-unifier  = (Q, H, Pu) of Q with R, the
+one-step piece-rewriting of Q according to , denoted
+by (Q, R, ), is the BCQ u(body(R))  u(Q \ Q),
+where u is a substitution associated with Pu.
+
+We thus define inductively a k-step piece-rewriting
+as a (k  1)-step piece rewriting of a one-step piece-
+rewriting. For any k, a k-step piece-rewriting of Q is a
+piece-rewriting of Q.
+
+The next theorem states that piece-based rewriting
+
+is logically sound and complete.
+Theorem 12 ([31,2]) Let K = (F,R) be a KB and
+Q be a BCQ. Then F,R |= Q iff there is a piecerewriting Q of Q such that Q  F .
+
+It follows from Theorem 12 that a sound and complete rewriting operator can be based on piece-unifiers:
+we call piece-based rewriting operator, the rewriting
+operator that, given Q and R, outputs all the one-step
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+Lemma 15 If Q1  Q2 then for any piece-unifier
+2 of Q2 with R: either (i) Q1  (Q2, R, 2) or
+(ii) there is a piece-unifier 1 of Q1 with R such that
+(Q1, R, 1)  (Q2, R, 2).
+Proof: Let h be a homomorphism from Q1 to Q2. Let
+2 = (Q
+u ) be a piece-unifier of Q2 with R,
+and let u2 be a substitution associated with P 2
+u. We
+consider two cases:
+
+2, H
+
+2, P 2
+
+(i) If h(Q1)  (Q2\Q
+
+(ii) Otherwise, let Q
+
+piece-rewritings of Q according to a piece-unifier of Q
+with R  R. We denote it by (Q,R).
+
+Actually, as detailed hereafter, only most general
+piece-unifiers are to be considered, since the other
+piece-unifiers produce more specific queries.
+
+Definition 13 (Most General Piece-Unifier) Given
+two piece-unifiers defined on the same subsets of
+a query and a rule head, 1 = (Q, H, P 1
+u ) and
+2 = (Q, H, P 2
+u ), we say that 1 is more general
+than 2 (notation 1  2) if P 1
+u (i.e.,
+u  P 2
+u). A piece-unifier  = (Q, H, Pu) is called
+P 1
+a most general piece-unifier if it is more general than
+all the piece-unifiers on Q and H.
+
+u is finer than P 2
+
+u (x)  P 2
+
+Property 13 Let 1 and 2 be two piece-unifiers with
+1  2. Then 1 and 2 have the same pieces.
+Proof: 1 and 2 have the same pieces iff they have
+the same cutpoints. It holds that cutp(1)  cutp(2)
+u is included in a class from
+since every class from P 1
+u: hence a variable from Q that is in the same class
+P 2
+u also is in P 2
+as a frontier variable or a constant in P 1
+u.
+It remains to prove that cutp(2)  cutp(1). Let x
+u.
+u (x) be the class of x in P 2
+be a cutpoint of 2 and P 2
+Since x is a cutpoint of 2, there is a term t in P 2
+u (x)
+
+that is a constant or a frontier variable. Since P 1
+u (x). Let t be a term
+u, we know that P 1
+P 2
+u (x) (there is at least one term of H
+of H from P 1
+and one term of Q in each class since the partition
+is part of a unifier of H and Q). We are sure that t
+is not an existential variable because t  P 2
+u (x) and
+an existential variable cannot be in the same class as t
+(Condition 2 in the definition of a piece-unifier), so t
+is a frontier variable or a constant, hence x is a cutpoint
+
+of 1.
+Property 14 Let 1 = (Q, H, P 1
+(Q, H, P 2
+Then (Q, R, 1)  (Q, R, 2).
+Proof: Let u1 (resp. u2) be a substitution associated
+with P 1
+u, there is a substitution s such that u2 = s  u1 . Then (Q, R, 2) =
+u2(body(R))  u2(Q \ Q) = (s  u1)(body(R)) 
+(s  u1)(Q \ Q) = (s  u1)(body(R)  (Q \ Q)) =
+s(u1(body(R)(Q\Q))) = s((Q, R, 1)). s is thus
+a homomorphism from (Q, R, 1) to (Q, R, 2),
+hence (Q, R, 1)  (Q, R, 2).
+
+u ) and 2 =
+u ) be two piece-unifiers such that 1  2.
+
+u). Since P 1
+
+u (resp. P 2
+
+u  P 2
+
+The following lemma expresses that piece-based
+
+rewriting operator is prunable.
+
+u (resp. P 2
+
+1)  Q
+
+1)  terms(Q
+
+2), then u2h is a homomor-
+2)  (Q2, R, 2).
+
+phism from Q1 to u2(Q2 \ Q
+Thus Q1  (Q2, R, 2).
+1 be the non-empty subset of
+2, i.e., h(Q
+Q1 mapped by h to Q
+2, and
+
+1 be the subset of H
+2 matched by u2 with
+1) = u2(h(Q1)). Let P 1
+u2(h(Q
+1)), i.e., u2(H
+
+be the partition on terms(H
+1) such
+u if
+that two terms are in the same class of P 1
+these terms or their images by h are in the same
+u (i.e., for a term t, we consider t if
+class of P 2
+t is in Q
+1, and h(t) otherwise). By construction,
+(Q
+1, H
+u ) is a piece-unifier of Q1 with R. In-
+1, P 1
+u fulfills all the conditions of the piece-
+deed, P 1
+unifier definition since P 2
+u fulfills these condi-
+tions.
+u. For
+Let u1 be a substitution associated with P 1
+u), we call selected
+each class P of P 1
+element the unique element t of P such that
+u1(t) = t (resp. u2(t) = t). We build a substitution s, from the selected elements of the classes in
+u which are variables, to the selected elements
+P 1
+u, as follows: for any class P
+of the classes in P 2
+u, let t be the selected element of P : if t is
+of P 1
+a variable of H
+1 then s(t) = u2(t), otherwise
+s(t) = u2(h(t)) (t occurs in Q
+1). Note that, for
+u, we have s(u1(t)) = u2(h(t)).
+any term t in P 1
+We
+now a
+from
+vars((Q1, R, 1)) to terms((Q2, R, 2)), by
+considering three cases according to the part of
+(Q1, R, 1) in which the variable occurs, i.e., in
+Q1 but not in Q
+1, or in
+the remaining part corresponding to the images
+of sep(Q
+1. if x  vars(Q1) \ vars(Q
+2. if x  vars(body(R)) \ vars(H
+u2(x);
+3. if x  u1(, Q
+u1(fr(R)  vars(H
+
+1), h(x) =
+1)(or alternatively x 
+1))), h(x) = s(x) ;
+
+1, in body(R) but not in H
+
+1), h(x) = h(x);
+
+substitution h
+
+build
+
+1) by u1:
+
+We conclude by showing that h
+is a homomorphism from (Q1, R, 1) = u1(body(R)) 
+
+1) to (Q2, R, 2) = u2(body(R)) 
+2) with two points:
+
+u1(Q1 \ Q
+u2(Q2 \ Q
+1. h(u1(body(R))) = u2(body(R)). Indeed, for
+
+any variable x of body(R):
+ either x  vars(body(R))\vars(H
+1), hence
+h(u1(x)) = h(x) = u2(x) (u1 is a substi-
+1  H
+tution from variables of Q
+1),
+fr(R)  vars(H
+1), hence
+h(u1(x)) = s(u1(x)) = u2(h(x)) =
+u2(x) (h is a substitution from variables of
+Q1).
+
+ or x
+
+
+1))  u2(Q2\Q
+1)) = u2(h(Q1\Q
+
+2). We show that
+1))), and since
+2, we have h(u1(Q1 \
+2). To show that h(u1(Q1\
+1))), we point out that,
+
+2. h(u1(Q1\Q
+h(u1(Q1\Q
+h(Q1 \ Q
+1)  Q2 \ Q
+1))  u2(Q2\Q
+
+1)) = u2(h(Q1 \ Q
+
+for any variable x from Q1 \ Q
+1:
+ either x  vars(Q
+s(u1(x)) = u2(h(x))
+ or x  vars(Q1) \ vars(Q
+1),
+then
+h(u1(x)) = h(x) = h(x) = u2(h(x)) (u1
+1  H
+is a substitution from variables of Q
+
+and u2 is a substitution from variables of
+2  H
+2  H
+
+1), then h(u1(x)) =
+
+2 and h(x)  vars(Q
+
+2)).
+
+Given a query Q and a set of rules R, the piecebased rewriting operator computes the set of one-step
+piece-rewritings of Q according to all piece-unifiers of
+Q with a rule R  R. We are now able to show that
+this operator fulfills the desired properties introduced
+in Section 4.
+
+Theorem 16 Piece-based rewriting operator is sound,
+complete and prunable; this property is still true if only
+most general piece-unifiers are considered.
+
+Proof: Soundness and completeness follow from Theorem 12. Prunability follows from Lemma 15. Thanks
+to Property 14, the proof remains true if most general
+
+piece-unifiers are considered.
+
+6. Exploiting Single-Piece Unifiers
+
+We are now interested in the efficient computation
+of piece-based rewritings. We identify several sources
+of combinatorial explosion in the computation of the
+piece-unifiers between a query and a rule:
+
+1. The problem of deciding whether there is a
+piece-unifier of a given query Q with a given
+rule R is NP-complete in the general case. NPhardness is easily obtained by considering the
+case of a rule with an empty frontier: then, there
+is a piece-unifier between Q and R if and only
+if there is a homomorphism from Q to H =
+head(R), which is an NP-complete problem, Q
+and H being any sets of atoms.
+2. The number of most general piece-unifiers can
+be exponential in |Q|, even if the rule head H is
+restricted to a single atom. For instance, assume
+that each atom of Q unifies with H and forms its
+own piece; then there may be 2|Q| piece-unifiers
+obtained by considering all subsets of Q.
+
+3. The same atom in Q may belong to distinct
+pieces according to distinct unifiers, as illustrated
+by the next example.
+
+to
+
+r(u, v)  q(v)
+
+belongs
+
+Example 7 Let Q
+and
+R = p(x)  r(x, y)  r(y, x)  q(y). Atom
+unifiers:
+r(u, v)
+({r(u, v), q(v)},{r(x, y), q(y)},
+{{u, x},{v, y}})
+and ({r(u, v)},{r(y, x)},{{u, y},{v, x}}). For an
+additional example, see Example 6, where p(u, v) and
+p(v, w) both belong to 1 and 2.
+
+single-piece
+
+two
+
+To cope with this complexity, an idea is to rely on
+single-piece unifiers, i.e., piece-unifiers of the form
+(Q,,) where Q is a single piece of Q. This section is devoted to the properties of rewriting operators exploiting this notion. We show that the rewriting operator based on single-piece (most general) unifiers is sound and complete. However, perhaps surpris-
+ingly, it is not prunable, which prevents to use it in
+the generic algorithm. To recover prunability, we will
+define the aggregation of single-piece unifiers, which
+provides us with a new rewriting operator, which has
+all the desired properties and generates rewriting sets
+with fewer components than the standard piece-unifier.
+Note, however, that this will not completely remove
+the second complexity source (i.e., the exponential
+number of unifiers to consider) since the number of
+aggregations of single-piece unifiers can still be exponential in the size of Q, even with atomic-head rules.
+
+6.1. Single-Piece Based Operator
+
+As expressed by the following theorem, (most gen-
+eral) single-piece unifiers provide a sound and complete operator.
+
+Theorem 17 Given a BCQ Q and a set of rules R, the
+set of rewritings of Q obtained by considering exclusively most general single-piece unifiers is sound and
+complete.
+
+Proof: See Appendix.
+
+The proof of this theorem is given in Appendix since
+it is not reused hereafter. Indeed, the restriction to
+single-piece unifiers is not compatible with selecting
+most general rewritings at each step, as performed in
+Algorithm 1. We present below some examples that illustrate this incompatibility.
+Example 8 (Basic example) Let Q = p(y, z) 
+p(z, y) and R = r(x, x)  p(x, x). There
+two single-piece unifiers of Q with R,
+are
+and
+
+({p(z, y)},{p(x, x)},{{x, y, z}}),
+
+which yield the same rewriting, e.g. Q1 =
+r(x, x)  p(x, x). There is also a two-piece unifier
+ = (Q,{p(x, x)},{{x, y, z}}), which yields e.g.
+Q = r(x, x). A query equivalent to Q can be
+obtained from Q1 by a further single-piece unification.
+Now, assume that we restrict unifiers to single-piece
+unifiers and keep most general rewritings at each step.
+Since Q  Q1, Q1 is not kept, hence Q will never be
+generated, whereas it is incomparable with Q.
+
+({p(y, z)},{p(x, x)},{{x, y, z}})
+
+Concerning the preceding example, given u1 and
+u2 the substitutions respectively associated with 1
+and 2, one may argue that u1(Q) is redundant and
+the same holds for u2(Q); hence, the problem would
+be solved by computing u1(Q) \ u1(Q) instead of
+u1(Q \ Q) and making u1(Q) non-redundant (i.e.,
+equal to p(x, x)) before computing u1(Q) \ u1(Q),
+which would then be empty. However, the problem
+goes deeper, as illustrated by the next two examples.
+
+Example 9 (Ternary predicates) Let
+
+r(u, v, w)  r(w, t, u) and R = p(x, y)  r(x, y, x).
+Again, there are two single-piece unifiers of Q with R:
+1 = ({r(u, v, w)}, {r(x, y, x)},{{u, w, x},{v, y}})
+and 2 = ({r(w, t, u)},{r(x, y, x)},{{u, w, x},
+{t, y}}). One obtains two rewritings more specific than Q, e.g., Q1 = p(x, y)  r(x, v, x),
+and Q2 = p(x, y)  r(x, t, x), which are iso-
+unifier
+morphic. There
+(Q,{r(x, y, x)},{{u, w, x},{v, t, y}}), which yields
+p(x, y). If we remove Q1 and Q2, no query equivalent
+to p(x, y) can be generated.
+
+two-piece
+
+is
+
+also
+
+Fig. 4. The queries in Example 10.
+
+(1)
+
+two interesting characteristics:
+
+Example 10 (Very simple rule) This
+example
+has
+it uses
+unary/binary predicates only (2)
+it uses a very
+simple rule expressible with any lightweight description logic, i.e., a linear existential rule where
+no variable appears twice in the head or the body.
+Let Q = r(u, v)  r(v, w)  p(u, z)  p(v, z) 
+p(v, t)  p(w, t)  p1(u)  p2(w) (see Figure 4) and
+R = b(x)  p(x, y). Note that Q is not redundant.
+There are two single-piece unifiers of Q with R, say
+1 = {p(u, z), p(v, z)} and
+1 and 2, with pieces Q
+2 = {p(v, t), p(w, t)} respectively. The obtained
+
+queries are pictured in Figure 4. These queries
+are both more specific than Q. The removal would
+prevent
+to
+r(x, x)  p1(x)  p2(x)  b(x), which could be
+generated from Q with a two-piece unifier.
+
+the generation of a query equivalent
+
+Property 18 The single-piece-based operator is not
+prunable.
+
+Proof: Follows from the above examples.
+
+By Theorem 5 and Property 24, one can show that
+the conclusion of Lemma 3 (Section 4.2) is valid for
+single-piece unifiers, even though they are not prun-
+able. This justifies that Lemma 3 is not enough to prove
+the correctness of Algorithm 1.
+
+Nevertheless, single-piece unifiers can still be used
+as an algorithmic brick to compute more complex
+piece-unifiers, as shown in the next subsection.
+
+6.2. Aggregated-Piece Based Operator
+
+We first explain the ideas that underline aggregated
+single-piece unifiers. Let us consider the set of singlepiece unifiers naturally associated with a piece-unifier
+. If we successively apply each of these underlying
+single-piece unifiers, we may obtain a CQ strictly more
+general than (Q, R, ), as illustrated by the next ex-
+ample.
+Example 11 Let R = p(x, y)  q(x, y) and Q =
+q(u, v)  r(v, w)  q(t, w). Let  = (Q, H, Pu) be a
+piece-unifier of Q with R with Q = {q(u, v), q(t, w)},
+H = {q(x, y)} and Pu = {{u, t, x},{v, w, y}}.
+(Q, R, ) = p(x, y)r(y, y). Q has two pieces w.r.t.
+: P1 = {q(u, v)} and P2 = {q(t, w)}. If we successively compute the rewritings with the underlying
+single-piece unifiers P1 and P2, we obtain Qs =
+((Q, R, P1), R, P2) = (p(x, y)  r(y, w) 
+q(t, w), R, P2) = p(x, y) r(y, y) p(x, y), which
+is strictly more general than (Q, R, ).
+
+Given a set U of compatible single-piece unifiers
+of a query Q with a rule (the notion of compatible
+will be formally defined below), we can thus distinguish between the usual piece-unifier performed on the
+union of the pieces from the unifiers in U and an aggregated unifier that would correspond to a sequence
+of applications of the unifiers in U. This latter unifier
+is more interesting than the piece-unifier because, as
+illustrated by Example 11, it avoids generating some
+rewritings which are too specific. We will thus rely
+on the aggregation of single-piece unifiers to recover
+prunability.
+
+Note that, in this paper, we combine single-piece
+unifiers of the same rule whereas in [20] we consider
+the possibility of combining unifiers of distinct rules
+(and thus compute rewritings from distinct rules in a
+single step). We keep below the definitions introduced
+in [20], while pointing out that, in the context of this
+paper, the rules R1 . . . Rk in the definitions are necessarily copies of the same rule R. Intuitively, an aggregated unifier of R is a piece-unifier of a new rule built
+by aggregating copies of R (as formally expressed by
+next Property 19).
+
+Definition 14 (Aggregation of a set of rules)
+Let R = {R1 . . . Rk} be a set of rules, with
+pairwise
+ag-
+gregation of R, denoted by R1  . . .  Rk,
+the rule body(R1)  . . .  body(Rk) 
+is
+head(R1)  . . .  head(Rk).
+
+variables. The
+
+disjoint
+
+sets
+
+of
+
+1, H
+
+1, P1) . . . k = (Q
+
+Definition 15 (Compatible set of piece-unifiers)
+Let U = {1 = (Q
+k, Pk)}
+k, H
+be a set of piece-unifiers of Q with rules R1 . . . Rk re-
+spectively, where the rules have pairwise disjoint sets
+of variables (in particular, for all 1  i, j  k, i = j,
+j) = ). Set U is said
+it holds that vars(H
+to be compatible if (1) all Q
+j are pairwise dis-
+joint; (2) the join of P1 . . . Pk is admissible.
+
+i)  vars(H
+
+i and Q
+
+1, H
+
+k, H
+
+1, H
+
+k, H
+
+1  . . .  H
+
+k; (2) H = H
+
+1, P1) . . . k = (Q
+
+1, P1) . . . k = (Q
+
+Definition 16 (Aggregated unifier)
+k, Pk)}
+Let U = {1 = (Q
+be a compatible set of piece-unifiers of Q with rules
+R1 . . . Rk. An aggregated unifier of Q with R1 . . . Rk
+w.r.t. U is  = (Q, H, P ) where: (1) Q = Q
+
+. . .  Q
+k; (3) P is the join of
+P1 . . . Pk. It is said to be single-piece if all the pieceunifiers in U are single-piece. It is said to be most general if all the piece-unifiers in U are most general.
+Property 19 Let Q be a BCQ and U = {1 =
+k, Pk)} be a compatible
+(Q
+set of piece-unifiers of Q with R1 . . . Rk. Then, the aggregated unifier of U is a piece-unifier of Q with the
+aggregation of {R1 . . . Rk}.
+Proof: We show that the aggregated unifier  =
+(Q, H, Pu) of U satisfies the conditions of the definition of a piece-unifier (Definition 11). Condition 1
+is fulfilled since, by definition of compatibility, the
+join of P1 . . . Pk is admissible. Condition 2 is satisfied as well, because, since P1 . . . Pk satisfy it, so does
+their join. Indeed, if a class contains an existential vari-
+able, it cannot be merged with another by aggregation because its other terms are non-separating vari-
+ables, hence do not appear in other classes. Concerning the last condition, for all 1  i  k, we have
+ui(H
+i), where ui is a substitution associated
+i we
+know that, for any substitution u associated with Pu,
+
+we have u(H) = u(Q).
+
+with Pi. Since Q =k
+
+i and H =k
+
+i) = ui(Q
+
+i=1 Q
+
+i=1 H
+
+According to this property, the rewriting associated with an aggregated unifier  can be defined as
+(Q, R1  . . .  Rk, ). It corresponds to the rewriting obtained by applying the piece-unifiers associated
+with the Ri one after the other, as illustrated by the
+next example.
+Example 12 Consider again Example 11. Let R =
+p(x, y)  q(x, y) be a copy of R. The aggregation R  R
+is the rule p(x, y)  p(x, y) 
+q(x, y)  q(x, y). Let U = {P1, P2} where
+
+1. i is a most general piece-unifier.
+2. i is a single-piece unifier.
+3. for all j  U, with i
+
+= j, j and i are
+
+P1 = ({q(u, v)},{q(x, y)},{{u, x},{v, y}}) and
+P2 = ({q(t, w)},{q(x, y)},{{t, x},{w, y}}).
+The aggregated unifier of Q with R, R w.r.t.
+U is ({q(u, v), q(t, w)},{q(x, y), q(x, y)},{{u, x},
+{v, y},{t, x},{w, y}}). The associated rewriting of
+Q is p(x, y) r(y, y) p(x, y), which is equal to the
+rewriting Qs in Example 11.
+
+of terms(Q) k
+
+The difference between a piece-unifier and an aggregated unifier of Q with R can also be explained as
+follows: to build a piece-unifier of Q with R, we consider partitions of terms(Q)  terms(head(R)), while
+in the aggregation operation we consider partitions
+i=1 terms(head(Ri)), where k is the
+number of considered single-piece unifiers, and each
+Ri is safely renamed from R. In other words, if, in the
+definition of an aggregated unifier, we assumed that
+the R1 . . . Rk had been exactly R, instead of safely renamed copies of R, then the aggregation of R1 . . . Rk
+would have been exactly R after removal of duplicate
+atoms, and the aggregated unifier would have been the
+usual piece-unifier.
+
+The next property shows that, from any piece-unifier
+, one can build a most general single-piece aggregated unifier, which produces a rewriting more general
+than the one produced by .
+
+Property 20 For any piece-unifier  of Q with R,
+there is a most general single-piece aggregated unifier  of Q with R1 . . . Rk copies of R such that
+(Q, R1  . . .  Rk, )  (Q, R, ).
+Proof: Let Q
+k be the pieces of Q according to
+ = (Q, H, Pu) and let u be a substitution associated
+with Pu. Let R1 . . . Rk be safely renamed copies of R.
+Let hi denote the variable renaming used to produce
+Ri from R. Let U = {1 = (Q
+u ), . . . , k =
+u )} be a set of piece-unifiers of Q with
+(Q
+R1, . . . , Rk built as follows for all i:
+
+1, . . . , Q
+
+k, H
+
+1, H
+
+k, P k
+
+1, P 1
+
+i is the image by hi of the subset of H unified
+by u with Q
+ let hi(Pu) be the partition built from Pu by replacing each x  vars(H) by hi(x); then, P i
+
+is obtained from hi(Pu) by (1) restricting it to
+the terms of Q
+i, and (2) refining it as
+much as possible while keeping the property that
+ui(H
+i) = ui(Q
+i), where ui is a substitution associated with the partition.
+
+i and H
+
+For any i = (Q
+that:
+
+i, H
+
+i, P i
+
+u) we immediately check
+
+compatible.
+Let  = (Q
+
+, H
+
+, P 
+
+u ) be the aggregated unifier of
+Q with R1, . . . , Rk w.r.t. U. Note that Q
+ = Q. The
+above properties fulfilled by any i from U ensure that
+ is a most general single-piece aggregated unifier.
+We note R = R1  . . .  Rk. It remains to prove
+that (Q, R, )  (Q, R, ). Let u be a substitution associated with P 
+u . For each class P of Pu (resp.
+
+u ), we call selected element the unique element t of
+P such that u(t) = t (resp. u(t) = t).
+We build a substitution s, from the selected elements
+in P 
+u which are variables, to the selected elements in
+Pu, as follows: for any class P of P 
+u , let t be the
+selected element of P : if t is a variable of Q, then
+s(t) = u(t); else t is a variable of a H
+i: then s(t) =
+u(h1
+u , there is a
+variable renaming hi such that s(u(t)) = u(h1
+(t))
+(if t is a constant or a variable from vars(Q) then any
+hi can be chosen).
+
+(t)). Note that for any term t in P 
+
+We
+
+build
+
+now a
+
+substitution
+
+from
+vars((Q, R, )) to terms((Q, R, )), by considering three cases according to the part of (Q, R, )
+in which the variable occurs, i.e., in Q but not in Q,
+in body(Ri) but not in H
+i, or in the remaining part
+corresponding to the images of sep(Q) by u:
+
+1. if x  vars(Q) \ vars(Q), h(x) = x;
+2. if x  vars(body(Ri)) \ vars(H
+i), h(x) =
+3. if x  u(, Q)(or alternatively x  u(fr(R) 
+
+h1
+(x);
+vars(H
+
+))), h(x) = s(x) ;
+
+We conclude by showing that h is a homomorphism from (Q, R, ) = u(body(R1)   
+body(Rk))u(Q\Q) to (Q, R, ) = u(body(R))
+u(Q \ Q), with two points:
+
+1. for all i, h(u(body(Ri))) = u(body(R)). In-
+
+deed, for any variable x  vars(body(Ri)):
+ either x  vars(body(Ri)) \ vars(H
+
+i), hence
+h(u(x)) = h(x) = h1
+(x))
+(u does not substitute the variables from
+vars(body(R)) \ vars(H)),
+s(u(x)) = u(h1
+
+ or x  fr(Ri)  vars(H
+(x));
+
+i), hence h(u(x)) =
+
+(x) = u(h1
+
+2. h(u(Q \ Q)) = u(Q \ Q). Indeed, for any
+
+variable x  vars(Q \ Q):
+
+(x)) = u(x) (h1
+
+ either x  vars(Q),
+
+s(u(x)) = u(h1
+substitute the variables from Q),
+
+then h(u(x)) =
+does not
+ or x  vars(Q) \ vars(Q), then h(u(x)) =
+h(x) = x = u(x) (u and u do not substitute
+the variables from vars(Q) \ vars(Q)).
+
+We call single-piece aggregator the rewriting operator that computes the set of one-step rewritings of a
+query Q by considering all the most general singlepiece aggregated unifiers of Q.
+Theorem 21 The single-piece aggregator is sound,
+complete and prunable.
+Proof: Soundness comes from Property 19 and from
+the fact that, for any set of rules R, let R be the aggregation of R, one has R |= R. Completeness and
+prunability rely on the fact that the piece-based rewriting operator fulfills these properties, and the fact that
+for any queries Q and Q and any rule R, if Q =
+(Q, R, ), where  is a piece-unifier, then the query
+Q obtained with the single-piece aggregator corresponding to  is more general than Q, as expressed by
+
+Property 20.
+
+7. Detailed Algorithms and Experiments
+
+In this section, we first detail on the computation of
+all the most general single-piece unifiers of a query Q
+with a rule R, and explain how we use them to compute
+all the single-piece aggregators. Then, we focus on the
+specific case of unification with atomic-head rules, for
+which the computation is simpler. Last, we report first
+experiments.
+
+7.1. Computing Single-Piece Unifiers and their
+
+Aggregation
+
+We first introduce the notion of a pre-unifier, which
+is weaker than a piece-unifier. To become a piece-
+unifier, a pre-unifier has to satisfy an additional constraint on the separating variables of the unified subset
+of Q.
+Definition 17 (Valid Partition) Let Q be a BCQ, R
+be a rule, Q  Q, H  head(R), and Pu be a partition on terms(Q)terms(H). Pu is valid if no class of
+Pu contains two constants, or two existential variables
+of R, or a constant and an existential variable of R, or
+an existential variable of R and a frontier variable of
+R.
+
+Definition 18 (Pre-unifier) Let Q be a BCQ, R be a
+rule, Q  Q, H  head(R), and Pu be a partition
+on terms(Q)  terms(H). Then  = (Q, H, Pu) is
+a pre-unifier of Q with R if (1) Pu is valid, and (2)
+given a substitution u associated with Pu, it holds that
+u(H) = u(Q).
+
+The next definition introduces the notion of sticky
+variables, which are the variables of Q that prevent Q
+to be a piece.
+
+Definition 19 (Sticky Variables) Let Q be a BCQ, R
+be a rule, Q  Q, H  head(R) and Pu be a partition on terms(Q) terms(H). The sticky variables of
+Q in Pu w.r.t. Q and R, denoted by sticky(Q, Pu),
+are the separating variables of Q that occur in a class
+of Pu containing an existential variable of R.
+
+The next property ensures that a pre-unifier without
+sticky variables is a piece-unifier, and reciprocally. Its
+proof follows from the definitions.
+Property 22 Let Q be a BCQ, R be a rule, Q  Q,
+H  head(R), and Pu be a partition on terms(Q) 
+terms(H). Then  = (Q, H, Pu) is a piece-unifier of
+Q with R iff  is a pre-unifier and sticky(Q, Pu) = .
+The fact that we can first build pre-unifiers, then
+check the absence of sticky variables, suggests an incremental method to compute all the most general single piece-unifiers of Q with R.
+The first step consists in computing all the most
+general pre-unifiers of an atom a  Q with an atom
+b  head(R) with the same predicate. The partition
+on the terms of these atoms associated with their unification has to be valid. The next definition defines formally this notion of partition.
+
+Definition 20 (Partition by Position) Let A be a set
+of atoms with the same predicate p. The partition by
+position associated with A, denoted by Pp(A), is the
+partition on terms(A) such that two terms of A occurring in the same position i (1  i  arity(p)) are in
+the same class of Pp(A).
+
+Hence, the partition by position associated with
+{a, b} has to be valid. We denote by AP U the set of
+all the most general atomic pre-unifiers, i.e., AP U =
+{ = ({a},{b}, P ) | a  Q, b  head(R), and 
+is a pre-unifier of Q with R }. Algorithm 2 details the
+computation of AP U.
+
+We then use AP U to compute the set of all the
+most general single-piece unifiers of Q with R, de-
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+Algorithm 2: COMPUTATION OF AP U , THE SET
+OF MOST GENERAL ATOMIC PRE-UNIFIERS
+Data: A BCQ Q and a rule R
+Result: The set of most general pre-unifiers of an
+
+atom of Q with an atom of head(R)
+
+Algorithm 3: COMPUTATION OF SP U , THE SET
+OF MOST GENERAL SINGLE-PIECE UNIFIERS
+Data: A BCQ Q and a rule R
+Result: The set of most general single-piece
+
+unifiers of Q with R
+
+begin
+
+AP U  ;
+foreach a  Q do
+
+foreach b  head(R) do
+
+if predicate(a) = predicate(b) and
+Pp({a, b}) is valid then
+
+AP U  AP U 
+
+{({a},{b}, Pp({a, b})}
+
+begin
+
+SP U  ;
+AP U  computeAPU(Q,R) ;
+// see Algorithm 2
+while AP U =  do
+
+remove an ({a},{b}, P ) from AP U ;
+SP U  SP U  SPUext({a},{b},P ) ;
+// see Algorithm 4
+
+return AP U
+
+return SP U ;
+
+noted by SP U. Each atomic pre-unifier of AP U is incrementally extended in all possible ways with other
+atomic pre-unifiers of AP U, which contain missing
+atoms of Q with respect to sticky variables. Extending
+pre-unifier (Q1, H1, P1) with pre-unifier (Q2, H2, P2)
+consists in merging both pre-unifiers to obtain a new
+pre-unifier (Q1 Q2, H1 H2, join(P1, P2)); this extension can be performed if and only if the join of P1
+and P2 is a valid partition; if the obtained pre-unifier
+has no sticky variable, it is a single piece-unifier.
+
+Next algorithms 3, 4 and 5 detail the computation of
+SP U. Algorithm 3 is the main algorithm. It first uses
+Algorithm 2 to compute AP U, then, for each atomic
+pre-unifier   AP U, it calls Algorithm 4, which
+computes the single-piece unifiers extending . Algorithm 4 first checks if  contains sticky variables: if it
+it is the case, this single-piece unifier is returned, otherwise the algorithm is recursively called, after a call
+to Algorithm 5 to obtain a set of candidate extensions
+of .
+
+Finally, the set of all the single-piece aggregators of
+Q with R is obtained by aggregating the unifiers from
+all non-empty compatible subsets of SP U. For optimisation reasons, this set is incrementally computed as
+follows:
+
+1. Let U1 = SP U = {1, . . . , k}; the i are
+
+called 1-unifiers.
+
+2. For i = 2 to the greatest possible rank (i.e., as
+long as Ui is not empty): let Ui be the set of all i-
+unifiers obtained by aggregating an (i1)-unifier
+from Ui1 and a single-piece unifier from U1.
+
+3. Return the union of all the Ui obtained.
+
+Algorithm 4: COMPUTATION OF THE MOST GENERAL SINGLE-PIECE UNIFIERS EXTENDING A
+GIVEN PRE-UNIFIER
+Access: Q, R and AP U declared in Algorithm 3
+Data: (Q, H, P ) a pre-unifier of Q with R
+Result: The set of most general single-piece
+
+unifiers extending (Q, H, P )
+
+begin
+
+if sticky(Q, P ) =  then
+
+return {(Q, H, P )} ; // it is a
+
+single-piece unifier
+
+else
+
+QP  {a  Q \ Q |
+vars(a)  sticky(Q, P ) = } ;
+Ext Extend((Q, H, P ),QP ,AP U);
+EP U  ;
+foreach (Qext, Hext, Pext)  Ext do
+
+// see Algorithm 5
+
+EP U  EP U 
+
+SPUext(Qext, Hext, Pext) ;
+// recursive call
+
+return EPU ;
+
+7.2. The Specific Case of Atomic-Head Rules
+
+Rules with an atomic head are often considered in
+the literature, specifically in logic programming or in
+deductive databases. One may ask if piece-unification
+become simpler in this specific case. In fact, considering atomic-head rules does not simplify the definition of a piece-unifier in itself, but its computation. In-
+
+Algorithm 5: COMPUTATION OF THE PREUNIFIERS EXTENDING A GIVEN PRE-UNIFIER
+W.R.T. TO A GIVEN SET OF ATOMS
+Data: (Q, H, P ) a pre-unifier of Q with R, QP
+a subset of Q (disjoint from Q), AP U a set
+of atomic pre-unifiers
+Result: The set of pre-unifiers extending
+(Q, H, P ) w.r.t. QP and AP U
+
+begin
+
+if QP =  then
+
+return {(Q, H, P )}
+
+else
+
+Ext   ;
+choose an atom a  QP ;
+foreach (a, b, Pa)  AP U do
+
+if join(P , Pa) is valid then
+
+Ext  Ext  Extend((Q
+
+{a}, H  {b}, join(P, Pa)),
+QP \ {a}, AP U) ;
+
+// recursive call
+
+return Ext;
+
+deed, there is now a unique way of associating any
+atom from Q with the head of a rule. It follows that deciding whether there is a piece-unifier of Q with a rule
+can be done in linear time with respect to the size of
+Q (whereas it is NP-complete in the general case) and
+each atom belongs to a single piece, thus the set of all
+single-piece unifiers of Q with a rule can be computed
+in polynomial time.
+
+More precisely, if a rule R has an atomic head, then
+every atom in Q participates in at most one most general single-piece unifier of Q with R (up to bijective
+variable renaming). This is is a corollary of the next
+property.
+
+Property 23 Let R be an atomic-head rule and Q be
+a BCQ. For any atom a  Q, there is at most one
+Q  Q such that a  Q and Q is a piece for a
+piece-unifier of Q with R.
+
+2  Q such that Q
+
+Proof: We prove by contradiction that two single-piece
+unifiers cannot share an atom of Q. Assume there
+1 = Q
+are Q
+= , and 1 = (Q
+
+and Q
+u ) and
+2 = (Q
+u ) two single-piece-unifiers of Q with
+R, with H = head(R). Since Q
+2, one has
+1 \ Q
+2 = .
+1 \ Q
+
+1 \ A. There is at least
+Let A = Q
+
+1  Q and Q
+1  Q
+2, H, P 2
+2 =  or Q
+1  Q
+
+1 = Q
+1 = . Assume Q
+
+2 \ Q
+2 and B = Q
+
+1, H, P 1
+
+2 and B is not.
+
+one variable x  vars(A)  vars(B) such that there is
+an existential variable e of head(R) in the class of P 1
+
+containing x (otherwise 1 has more than one piece).
+Since H is atomic, there is a unique way of associating any atom with H, thus the class of P 2
+u containing
+x contains e as well. It follows that Q
+2 is not a piece
+since an atom of A and an atom of B share the variable
+x unified with an existential variable in 2, while A is
+
+included in Q
+The fact that an atom from Q participates in at most
+one most general single-piece unifier allows some algorithmic improvements. Indeed, when a piece-unifier
+of Q with head(R) is successfully built, all the atoms
+of Q can be removed from the set of atoms to be considered in the computation of the next piece-unifiers.
+Furthermore, there is a unique way of associating any
+atom from Q with head(R), hence there is only one
+pre-unifier of Q with head(R). Algorithm 6 exploits
+these specific aspects to compute all the single-piece
+unifiers of a query with an atomic-head rule.
+Example 13 Let R = q(x)  p(x, y) and Q =
+p(u, v)  p(v, t). Let us start from p(u, v): this atom
+is unifiable with head(R) and p(v, t) necessarily belongs to the same piece-unifier (if any) because v 
+sticky({p(u, v)},{{u, x},{v, y}}); indeed, v is in the
+same class as the existential variable y; however,
+{p(u, v), p(v, t)} is not unifiable with head(R) be-
+cause, since v occurs at the first and at the second position of a p atom, x and y should be uni-
+fied, which is not possible, since y is an existential variable; thus, p(u, v) does not belong to any
+piece-unifier with R. However, p(v, t) still has to
+be considered. Let us start from it: p(v, t) is unifiable with head(R) and forms its own piece because
+sticky({p(v, t)}{{v, x},{t, y}}) is empty; indeed, t is
+in the same class as the existential variable y, but does
+not occur in any other atom. Hence, there is a single (most general) piece-unifier of Q with R, namely
+({p(v, t)},{p(x, y)},{{v, x},{t, y}}).
+
+It should be noted that any existential rule can be
+decomposed into an equivalent set of rules with atomic
+head by introducing a new predicate, which gathers
+the variables of the original head (e.g. [4,1]). Hence,
+the restriction to atomic-head rules can be made without loss of expressivity. Now, the question is whether
+it is more efficient to directly process rules with complex heads, or to decompose them into atomic-head
+rules and benefit from a simpler computation of piece-
+unifiers. The experiments reported below clearly show
+that the former choice is better.
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+Algorithm 6: COMPUTATION OF ALL THE MOST
+GENERAL SINGLE-PIECE UNIFIERS IN THE CASE
+OF ATOMIC-HEAD RULES
+Data: A BCQ Q and an atomic-head rule R
+Result: The set of most general single-piece
+
+unifiers of Q with R
+
+begin
+
+predicate(head(R))} ;
+
+U   ; // resulting set
+A  {a  Q | predicate(a) =
+while A =  do
+choose an atom a  A ;
+Q  {a} ;
+while Q  A and there is a pre-unifier
+(Q, head(R), P ) and sticky(Q, P ) = 
+do
+Q  Q  {a  Q | a contains a
+
+variable from sticky(Q, P )} ;
+
+if Q  A and there is a pre-unifier
+(Q, head(R), P ) then
+U  U  {(Q, head(R), P )} ;
+A  A \ Q ;
+A  A \ {a} ;
+
+else
+
+return U
+
+7.3. Experiments and Perspectives
+
+The query rewriting algorithm, instantiated with the
+rewriting operator described in the preceding section,
+has been implemented in Java. Since benchmarks dedicated to existential rules are not available yet, first experiments were carried out with sets of existential rules
+obtained by translation from ontologies expressed in
+the description logic DL-LiteR, namely ADOLENA
+(A), STOCKEXCHANGE (S), UNIVERSITY (U) and
+VICODI (V). This benchmark was introduced in [28]
+and then used in several papers, e.g., [14,12,18,19].
+Ontologies A and U contain some rules with multiple
+heads; the ontologies obtained by decomposing rules
+into atomic-head rules are respectively known as AX
+and UX. Additionally, we considered the translation of
+a larger ontology, the DL-Lite version of OpenGalen28
+(G), which contains more than 50k rules. Each ontology is provided with five handcrafted queries.
+
+8http://www.opengalen.org/
+
+Table 1
+
+Impact of rule decomposition
+
+Time (ms)
+
+1h36
+
+Output (#)
+
+Generated (#)
+
+215523
+
+Q1
+Q2
+Q3
+Q4
+Q5
+
+Q1
+Q2
+Q3
+Q4
+Q5
+
+In [19], we compared with other systems concerning the size of the output and pointed out that none of
+the existing systems output a complete set of rewrit-
+ings. However, beside the fact that these systems have
+evolved since then, one can argue that the size of the
+rewriting set should not be a decisive criterion (in-
+deed, assuming that the systems are sound and com-
+plete, a minimal rewriting set can be obtained by selecting most general elements, see Theorem 1). There-
+fore, other criteria have to be taken into account, such
+as the runtime or the total number of CQs generated
+during the rewriting process.
+
+All tests reported here were performed on a DELL
+machine with a processor at 3.60 GHz and 16 GB of
+RAM, with 4 GB allocated to the Java Virtual Ma-
+chine.
+
+Table 1 reports the behavior of the rewriting algorithm on A vs AX and U vs UX with respect to three
+parameters: the runtime, the size of the output (num-
+ber of CQs) and the number of generated CQs. The
+size of the output for AX and UX is before elimination
+of queries containing auxiliary predicates. The generated CQs are all the rewritings built during the rewriting process (excluding the initial query and possibly
+including some multi-occurrences of the same rewrit-
+ings). We can see that avoiding rule decomposition
+makes a substantial difference. The gain is particularly
+striking with Q5 on A / AX with respect to all three
+parameters (the runtime is 21 seconds for A and 1 hour
+and 36 minutes for AX, the size of the output is more
+than 52 times larger for AX before elimination of useless queries, and the number of generated queries is 89
+times larger for AX). Moreover, we point out that only
+29 / 102 rules in A and 5 / 77 rules in U have multiple
+
+Table 3
+
+Types of rules in the ontologies
+
+Ontology
+
+Rules (#)
+
+Hierarchical rules (#)
+
+heads, with only 2 atoms; we can reasonably expect
+that the gain increases with the proportion of multiplehead rules and the size of rule heads.
+
+Table 2 presents the size of the output, the number
+of generated CQs and the number of explored CQs for
+each ontology (as well as the runtime for information,
+see also Table 4). Note that, since subsumed rewritings
+are removed at each step of the breadth-first algorithm,
+only some of the rewritings generated at a given step
+are explored at the next step. We can see that the number of generated queries can be large with respect to
+the cardinality of the output, which is less marked for
+explored queries.
+
+Our query rewriting tool is able to process any kind
+of existential rules. There is of course a price to pay
+for this expressivity, in terms of complexity of the involved mechanisms and time efficiency. We consider
+the algorithms presented in this paper as basic ver-
+sions, which can be further improved in various ways,
+for instance by processing some specific kinds of rules
+in a specific way. Let us illustrate this with the example
+of rules expressing taxonomies. Indeed, a large part of
+currently available ontologies is actually composed of
+concept and role hierarchies. See Table 3: 71%, 31%,
+47%, 91% and 53 % of the rules in ontologies A, S, U,
+V and G, respectively, express atomic concept or role
+inclusions.
+
+We can compile these sets of rules as preorders on
+predicates. The detailed presentation of how to compute and process these preorders is out of the scope
+of this paper. Briefly said, the preorders are integrated
+into the rewriting process, which allows to generate
+a smaller rewriting set, this set being unfolded at the
+end to produce the expected UCQ. Our purpose here
+is just to illustrate the fact that some improvements
+of the basic version can dramatically decrease the
+runtime, while still relying on the same fundamental
+mechanisms. Table 4 allows to compare these two ver-
+sions: PURE9 denotes the basic version of our tool
+
+9Piece Unification based REwriting
+
+and PUREH is the version with compiled hierarchical
+rules (note that compilation is performed offline, hence
+the algorithm takes as input the preorder and the nonhierarchical rules).
+
+We also compared to two other query rewriting
+tools, Nyaya and Rapid. Nyaya is a tool dedicated to
+UCQ rewriting with linear and sticky existential rules,
+which implements the techniques presented in [14], in
+particular an optimization for linear rules (which include DL-Lite ontologies). Table 4 shows that our tool
+is generally faster on the considered benchmark, even
+in its basic version, specially on Ontology A. This difference could be due to the fact that Nyaya does not
+directly process multiple-head rules, hence has to decompose them into atomic-head rules. For the large
+ontology G, Nyaya seemed to be still in a preprocessing step after several hours. Note that the very latest
+version of Nyaya includes parallel rewriting, which we
+did not consider here, since our tool does include this
+kind of optimization.
+
+As far as we know, Nyaya is the only other tool able
+to process existential rules beyond lightweight DLs.
+We think that comparing to DL rewriting tools is not
+very relevant, since these systems make use of specific features, like predicate arity bounded by two, or
+the tree-model property. Tools tailored for DL-Lite exploit even further the very specific form of DL-Lite
+axioms. However, we compared to one of these tools,
+namely Rapid, to obtain an order of magnitude. Rapid
+is one of the fastest tools dedicated to DL-Lite ontologies [12]. In Table 4, we can see that Rapid is indeed
+generally faster than our tool, the difference being less
+pronounced on the version with rule compilation.
+
+Current work includes processing specific kinds of
+rules in a specific way, while keeping a system able
+to process any set of existential rules. Other optimizations could be implemented, such as exploiting dependencies between rules to select the rules to be considered at each step. Moreover, the form of the considered output itself, i.e., a union of conjunctive queries,
+leads to combinatorial explosion. Considering semiconjunctive queries instead of conjunctive queries as
+in [32] can save much with respect to both the running time and the size of the output, without compromising the efficiency of query evaluation; in [32]
+the piece-based rewriting operator is combined with
+query factorization techniques. We did not consider
+generating Datalog queries yet. Finally, further experiments should be performed on more complex ontolo-
+gies. However, even if slightly more complex ontologies could be obtained by translation from description
+
+M. Konig et al. / Sound, Complete and Minimal UCQ-Rewriting for Existential Rules
+
+Table 2
+
+Generated queries with the single-piece aggregator
+
+Rules
+
+Query
+
+Output (#)
+
+Generated (#)
+
+Explored (#)
+
+Time (ms)
+
+Q1
+Q2
+Q3
+Q4
+Q5
+Q1
+Q2
+Q3
+Q4
+Q5
+Q1
+Q2
+Q3
+Q4
+Q5
+Q1
+Q2
+Q3
+Q4
+Q5
+Q1
+Q2
+Q3
+Q4
+Q5
+
+logics, real-world ontologies that would take advantage of the expressiveness of existential rules, as well
+as associated queries, are currently lacking.
+
+Acknowledgments. We thank Giorgio Orsi for providing us with rule versions of ontologies A, S, U and
+V, as well as the version of Nyaya used for the experiments (October 2013 version). This work was partially
+funded by the ANR project PAGODA (ANR-12-JS02-
+007-01).

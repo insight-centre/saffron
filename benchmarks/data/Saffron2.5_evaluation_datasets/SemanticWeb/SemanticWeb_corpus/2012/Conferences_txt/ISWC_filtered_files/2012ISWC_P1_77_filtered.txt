@@ -1,0 +1,819 @@
+Instance-Based Matching of Large Ontologies
+
+Using Locality-Sensitive Hashing
+
+Songyun Duan, Achille Fokoue, Oktie Hassanzadeh,
+
+Anastasios Kementsietsidis, Kavitha Srinivas, and Michael J. Ward
+
+{sduan,achille,hassanzadeh,akement,ksrinivs,MichaelJWard}@us.ibm.com
+
+19 Skyline Drive, Hawthorne, NY 10532
+
+IBM T.J. Watson Research,
+
+Abstract. In this paper, we describe a mechanism for ontology alignment using instance based matching of types (or classes). Instance-based
+matching is known to be a useful technique for matching ontologies that
+have different names and different structures. A key problem in instance
+matching of types, however, is scaling the matching algorithm to (a)
+handle types with a large number of instances, and (b) efficiently match
+a large number of type pairs. We propose the use of state-of-the art
+locality-sensitive hashing (LSH) techniques to vastly improve the scalability of instance matching across multiple types. We show the feasibility
+of our approach with DBpedia and Freebase, two different type systems
+with hundreds and thousands of types, respectively. We describe how
+these techniques can be used to estimate containment or equivalence relations between two type systems, and we compare two different LSH
+techniques for computing instance similarity.
+
+Keywords: Ontology Alignment, Schema Matching, Linked Data, Semantic Web.
+
+Introduction
+
+Ontology (or schema) matching is a well-studied problem in the literature that
+has received considerable attention over the last decade, as is clearly evident
+from the large number of papers published over the years [30,15,27,5,17,21,19,
+and many others]. In these works, the predominant approach to matching exploits purely schema-related information, i.e., labels or structural information
+about the type hierarchy. This schema-based approach to schema matching is
+a practical starting point that proves adequate in a number of applications.
+However, schema-based matchers have their limitations, especially in situations
+where schema elements have obscured names [27]. This observation gave rise to
+a class of instance-based matchers [29,16,4,18,6] in which the instance data are
+consulted as well in order to determine the schema mappings.
+
+For both classes of matchers, the focus of most of these past works has been
+on achieving high precision and/or recall. While these are important evaluation
+metrics to illustrate the correctness of the developed techniques, a metric that
+
+P. Cudr e-Mauroux et al. (Eds.): ISWC 2012, Part I, LNCS 7649, pp. 4964, 2012.
+c Springer-Verlag Berlin Heidelberg 2012
+
+S. Duan et al.
+
+is often ignored in the evaluation is scalability. With the rapid rise in the size
+and number of data sources on the web, effective schema matching techniques
+must be developed that work at web scale. One only has to look at the Linked
+Open Data cloud [7] to be instantly exposed to approximately 300 sources with
+thousands of (RDF) types (or classes), with new sources of types added con-
+stantly. Data that reside in different sources in the web is clearly associated,
+but discovering these relationships can only be achieved if we are able to deduce
+which types in the various sources are related. As a simple example, consider
+an entity like the city of Boston. It is not hard to see that information for this
+entity can be found in the following datasets: (a) the DBpedia entity for Boston
+has the type http://dbpedia.org/ontology/City; (b) the Freebase entity
+for Boston has the type http://rdf.freebase.com/rdf/location/citytown
+or http://rdf.freebase.com/location/location;
+in RDFa, using
+type http://schema.org/Place or
+the
+http://schema.org/City; and (d)
+the type
+http://www.geonames.org/ontology#P.
+
+the GeoNames entity has
+
+(c)
+
+schema.org vocabulary,
+
+it has
+
+Clearly, we would like to be able to create matchings between all these types
+with the different (often obscure) names in the different sources. Given that
+instance-based approaches are more appropriate to deal with the differences in
+schema vocabularies, it seems appropriate to consider such techniques in this
+context. However, scalability is a key problem in applying these techniques to
+web scale. To see why, consider a simple setting in which we have n types in one
+data source, m types in another, and we assume that we have l instances for
+each of these types. Then existing approaches would require n  m type com-
+parisons, where each type comparison requires at least O(l) instance comparison
+operations. Clearly, this is not scalable for most realistic usage scenarios.
+
+In this paper, we focus on the problem of scaling instance-based ontology
+alignment using locality-sensitive hashing (LSH) [32] techniques drawn from
+data mining. Specifically, we show how one can use LSH techniques such as
+MinHash [10] and random projection (a.k.a. random hyperplane or RHP ) to
+estimate instance similarity [13] and hence infer type similarity. To compute
+instance similarity between two types, we first need to define the granularity
+with which an instance is defined for the purposes of similarity analysis. Whole
+instances frequently do not match between different type systems because of
+slight differences in representing instances as strings, e.g., Bank of America
+versus Bank of America, Ltd. As a result, we compute instance similarity using
+tokenized strings to reduce the probability of misses due to string differences.
+
+Instead of computing pairwise Jaccard similarity for all pairs of instance sets
+in the two type systems, we use the MinHash technique to efficiently estimate
+Jaccard similarity with a very low error rate while (a) compressing the instance
+data to a fixed size for comparison, such that l instances can be succinctly
+represented by a set of k hashes, where k is a small fixed number such as 500;
+and (b) eliminating most of the irrelevant nm type comparisons efficiently while
+providing mathematical guarantees about false negatives (the algorithm cannot
+?
+
+?
+
+?
+introduce false positives since it only prunes potentially irrelevant comparisons,
+i.e., those with similarity measures below a given threshold).
+
+While set similarity is one metric for measuring instance similarity, it can
+be unduly influenced by terms that occur very frequently across all types. We
+therefore also estimate cosine similarity of term frequency vectors for instances
+of each type, where the term frequencies are weighted by the tf  idf measure.
+In the context of instance similarity computations, tf  idf is a weight that
+reflects the degree to which a term appears in a particular type, compared to
+its occurrence in all types. This measure then corrects for possible biases in the
+similarity computation due to frequently occurring words.
+
+As in the case of Jaccard similarity, we estimate cosine similarity on all types
+using LSH techniques, because an all-to-all cosine similarity computation is not
+feasible in practice. Specifically, we use the random projection method for estimating cosine similarity between term frequency vectors for all candidate type
+pairs (i.e., pairs with an expected similarity above a given threshold). The core
+idea behind the random projection method relies on choosing a set of k random
+hyperplanes to hash the input vectors [13], thus once again allowing comparisons
+of k hashes.
+
+Both cosine and Jaccard measures of instance similarity can be affected negatively when the sets of instances between two types being compared have very
+disparate sizes. For instance, if type A has 10 instances, and type B has 100
+instances, the maximum Jaccard similarity one can get is 10/100 or 0.1. We
+measure containment between types as well as their similarity to determine if
+the relationship between the two types reflects equivalence or containment.
+
+Our contributions in this paper are: (a) we describe the use of LSH techniques
+for the efficient computation of instance-based similarity across disparate ontology types or schema elements, (b) we show how these techniques can be used to
+estimate containment or equivalence relations between two type systems, (c) we
+compare Jaccard similarity and cosine similarity, to correct for possible biases in
+estimation of similarity due to frequently occurring words, and (d) we evaluate
+the utility of this approach with Freebase and DBpedia, which are two large
+linked open datasets with different type systems.
+
+2 Preliminaries: Locality Sensitive Hashing (LSH)
+
+When comparing large numbers of types based on the similarity of their in-
+stances, there are two primary scalability hurdles:
+
+ First, to compare two types with L instances each regardless of similarity
+metric, at least O(L) operations are required. For large values of L, this
+repeated cost becomes the performance bottleneck.
+
+ Second, to compare all pairs of types requires a quadratic computational
+cost; but in practice, only pairs of types with a high enough similarity are
+of interest. How can we save computation by pruning out those type pairs
+with low similarity?
+
+S. Duan et al.
+
+2.1 Reducing Comparison Cost for One Type Pair
+
+Locality Sensitive Hashing (LSH) [32] addresses the first scalability hurdle by
+approximating the similarity in the following way.
+Let U be a set of objects, a similarity measure sim is a function from U 2 to
+the interval of real numbers [0, 1] such that, for u and v in U, sim(u, v) indicates
+the relative similarity between u and v. For example, sim(u, v) = 0 indicates no
+similarity at all between u and v, whereas sim(u, v) = 1 corresponds to perfect
+match between u and v.
+Let sim be a similarity measure defined in U 2. A family F of hash functions
+from U to the set Z of integers is sim-sensitive iff., for any pair (u, v)  U 2,
+the probability Pr(f (u) = f (v)) that a randomly chosen hash function f of F
+hashes u and v to the same value is equal to the similarity sim of u and v, that
+is, Pr(f (u) = f (v)) = sim(u, v).
+
+The key idea in LSH is to estimate the similarity sim(u, v) between two
+elements u and v more efficiently by randomly sampling hash functions from a
+hash family F to estimate the proportion of functions f such that f (u) = f (v).
+From the sampling theory, we know that the number of functions, denoted as n,
+can be relatively small with a relatively small sampling error (e.g., for n = 500,
+the maximum sampling error is about 4.5% with 95% confidence interval).
+Hence, the similarity between u and v can be estimated based on a small number
+of functions from the hash family.
+
+2.2 Avoiding Quadratic Comparisons
+
+To address the second hurdle of avoiding the quadratic complexity associated
+with comparing all pairs of types, we describe another well known technique,
+called banding, that can help efficiently select pairs of types whose similarities
+are likely to be above a given threshold.
+
+Let (f1, . . . , fn) be a list of n independent functions from a sim-sensitive
+hash family F . The signature matrix, denoted (f1, . . . , fn)-sigM (U), is a matrix
+of n rows and |U| columns whose jth column contains the signature, (f1, . . . , fn)-
+sig(uj), of the jth element uj of U. The cell (f1, . . . , fn)-sigM (U)[i, j] at row i
+
+Fig. 1. Example of Signature Matrix and bands
+?
+
+?
+
+?
+and column j (1  i  n and 1  j  |U|) is equal to fi(uj). Figure 1 shows an
+example of such a matrix with n = 12 and |U| = 4.
+The randomly selected functions (f1, . . . , fn) can be grouped into b mutually
+disjoint bands (or groups), each containing r functions (n = b r) as illustrated
+in Figure 1, where b = 4 and r = 3. For two elements uj and uk in U (1  j <
+k  |U|), the pair (uj, uk) is considered a candidate pair iff. there is a band bl (
+1  l  b) such that, for each function f in this band bl, f (uj) = f (uk). In other
+words, (uj, uk) is a candidate pair iff. there is a band bl such that the signatures
+of uj and uk in that band are equal. For example, in Figure 1, (u1, u2) is a
+candidate pair because their signatures have the same value in band 2, whereas
+(u1, u3) is not a candidate pair because their signatures are different in all 4
+bands. Intuitively, pairs with high enough similarities are more likely to have
+their signatures agree in at least one band.
+Formally, the probability that a pair (u, v) with similarity s is selected by
+this banding technique is 1  (1  sr)b. Regardless of the value of r and b, the
+curve (see Figure 2) representing the probability that a pair (u, v) is considered
+a candidate as a function of sim(u, v) has a characteristic S-shape. This means,
+for a given similarity threshold and a given acceptable false negative rate rate
+(which means type pairs with similarity above this threshold are missing), r and
+b can be chosen so as to maximize the likelihood that the actual false negative
+rate remains below the given parameter rate.
+
+In practice, for efficiency (i.e., to avoid pairwise comparisons), in each band
+bl, projections of signatures to bl are hashed by a hash function h, and elements
+whose projected signatures on bl hash to the same value are put in the same
+bucket. Assuming that the chances of collisions for h are negligible, two elements
+u and v will end up in the same bucket of a band bl iff. their signatures agree in
+the band bl. Finally, a pair (u, v) is considered a candidate iff. there is at least a
+band in which u and v are put in the same bucket.
+
+Instance-Based Type Matching with LSH
+
+For matching a finite set T of types based on their instances, we take an Information Retrieval (IR) approach to associate a list of terms termlist(t) to each
+type t  T . Conceptually, for a given type t, we build a document dt by con-
+
+catenating, for a given property (e.g., rdfs:label ), all its values for all instances of
+t. After applying standard IR processing to dt (e.g., tokenization, lowercasing,
+
+stemming, etc.), we obtain a list of terms termlist(t). For two types t and t
+,
+we use the similarity between termlist(t) and termlist(t
+) as a measure of the
+. We consider cosine (cossim) similarity and Jaccard
+similarity between t and t
+(jaccsim) similarity, and their well known LSH equivalents using the random
+projection method and the MinHash method, respectively.
+?
+
+?
+
+?
+3.1 Cosine Similarity (Random Projection Method)
+To measure the cosine similarity of two types, we weight each term r 
+termlist(t) using the formula termvec(t)[r] = tf (r, dt)idf (r), where tf (r, dt),
+
+S. Duan et al.
+
+Fig. 2. Probability of a (u, v) selected as a function of sim(u, v) (r = 7 & b = 25)
+
+the term frequency, is the number of occurrences of r in termlist(t), and idf(r),
+the inverse document frequency, is defined as idf (r) = log(|T |/(1 + d)) where d
+is the number of types that contain this term r. idf (r) measures how common
+the term r is in all types; a very common term (i.e., low idf (r)) is not informative for type matching. We then use the random projection method to estimate
+cosine similarity, which we give a brief introduction below.
+If U is a vector space, a traditional metric used to measure the similarity
+between two vectors u and v in U is cosine similarity, denoted cossim(u, v)
+and defined as the cosine of the angle  between u and v (see Figure 3). A
+closely related similarity to the cosine similarity between two vectors u and v,
+the angular similarity angsim(u, v), is defined as angsim(u, v) = 
+ , where
+ is the angle between u and v (0    ). cossim(u, v) is computed from
+angsim(u, v) as follows: cossim(u, v) = cos(  angsim(u, v)).
+
+For the ease of presentation, we describe how angsim-sensitive family of functions can be constructed. Given two vectors u and v, let P denote the plane they
+form, presented in Figure 3. Consider a hyperplane H, which can be characterized by one of its normal vectors n. H intersects P in a line. The probability
+that a randomly chosen vector n is normal to a hyperplane H whose intersection with P does not pass between u and v (such as d in Figure 3) is precisely
+angsim(u, v) = 
+ . The intersection of H and P does not pass between u and
+v, iff. the dot products n.u and n.v of n with u and v have the same sign. It follows
+that, for a vector space U, the family of functions F = {fw | w  U} defined as
+follows is an angsim-sensitive family: for any u and w in U, fw(u) = sign(w.u).
+
+When we try to apply this classical version of random projection to instancebased type matching, we observe that the computation of the dot product requires a set of random vectors whose size is equal to the total number of distinct
+?
+
+?
+
+?
+Fig. 3. Angular Similarity between two vectors
+
+terms in all termlist(t) for t  T . However, this angsim-sensitive family is
+impractical for the following reasons:
+
+ First, it is inefficient because it requires storing, in main memory, very large
+dimensional randomly generated vectors. For example, for a 3.2% error
+margin at 95% confidence level, about 1000 such vectors need to be kept (or
+regularly brought) in main memory. For large dataset such as Linked Data,
+the number of distinct terms (i.e., the dimension of the normal vectors) can
+be quite large. For reference, the number of words in the English language
+is estimated to be slightly above one million.
+
+ Second, it requires that the total number of distinct terms (i.e., the dimension of the randomly selected vectors) must be known in advance - before
+any signature computation or similarity estimation can be performed. This
+is a significant hurdle for an efficient distributed and streaming implemen-
+tation, where the similarity between two types t and t
+can be computed as
+soon as all the terms in termlist(t) and termlist(t
+
+) have been observed.
+?
+
+?
+
+?
+To address these two limitations, we consider a different angsim-sensitive family
+for our problem of instance-based type matching. Given a universal hash family
+|h  H } to sample
+H [12], a more efficient angsim-sensitive family F
+from in our case is defined as follows (with termset(t) = {r | r  termlist(t)}):
+
+for t  T and h  H,
+
+= { f
+?
+
+?
+
+?
+h
+
+rtermset(t) termvec(t)[r]  h(r)  0
+?
+
+?
+
+?
+h(t) =
+
+f
+
++1 if
+1 otherwise
+
+ F
+The angsim-sensitive family F
+
+Thus, randomly selecting elements of F
+elements of H. Note that f
+w[r] = h(r) (w[r] denotes the weight of the term r in vector w).
+addresses the issues of the standard angsimsensitive family F in two ways. First, instead of storing, in main-memory, very
+lengthy random vectors, we simply need to store n random hash functions h  H.
+
+is equivalent to randomly selecting
+
+is the same as fw  F where, for a term r,
+?
+
+?
+
+?
+h
+
+S. Duan et al.
+
+In practice, we use the set of 1000 Rabin Fingerprints [9] of degree 37 (i.e., irreducible polynomials of degree 37) as H. Each randomly selected element of
+H can thus be stored in less than 64 bits. Second, for two types t and t
+
+, their
+signatures can be computed in a streaming fashion, which means we can update
+the signature for each type as the instance values of that type are read incre-
+mentally. With the angsim-sensitive family of functions, signature construction
+can be done independently for each type and is therefore fully parallelizable. In
+practice, we implemented the random projection method with Hadoop.
+
+3.2 Jaccard Similarity (MinHash)
+
+For a type t, the list of tokenized terms for instances of the type termlist(t)
+may contain repeated terms. Taking into account term repetition enables us
+to distinguish between types with the same set of terms while the terms have
+different frequencies between the two types. For each type t in the finite set T
+of types, we associate a set of occurrence annotated terms termOccSet(t) =
+{r : k | r  termlist(t) & 1  k  occ(r, termlist(t))} where occ(r, l) denotes
+the number of occurrences of a term r in the list l. An occurrence annotated
+term r : k of a type t corresponds to the kth occurrence of the term r in the
+list termlist(t) of terms of t. We then measure the similarity of two types using
+Jaccard similarity on their instance values. Traditionally, the Jaccard similarity
+jaccsim(u, v) of two sets u and v elements of U is defined as the ratio of the size of
+the intersection of the two sets divided by the size of their union: jaccsim(u, v) =
+| u  v |
+| u  v | . To address the scalability issues, we employ MinHash, a standard LSH
+technique to estimate the Jaccard similarity over the set U of all the sets of
+occurrence annotated terms termOccSet(t) with t  T .
+MinHash considers a set F of hash functions where each function hmin maps
+from U to the set Z of integers as follows: for u  U,hmin(u) = minxuh(x),
+where h in a hash function from a universal hash family H1 from U to Z. hmin(u)
+computes the minimal value of h on elements of u. Now, given two elements u
+and v of U, hmin(u) = hmin(v) iff. the minimal value of h in the union u  v is
+also contained in the intersection u  v. It follows that the probability that the
+MinHash values for two sets are equal is equivalent to their Jaccard similarity:
+Pr(hmin(u) = hmin(v)) = jaccsim(u, v). Thus, F = {hmin | h  H} is a
+jaccsim-sensitive family of functions. Then the Jaccard similarity of two sets
+can be estimated with the percentage of n such functions whose MinHash values
+are equal. Note that the transformation and MinHash computation for each
+type is independent of other types, so they can be parallelized in a distributed
+computing framework like Hadoop.
+?
+
+?
+
+?
+In addition to computing the Jaccard similarity between two types t and t
+
+,
+we observe that it is important to measure their containment, particularly when
+the sizes of termOccSet(t) and termOccSet(t
+) are very different. For two
+types t and t
+. It is equal to
+1 Elements of H are assumed to be min-wise independent: for any subset of U, any
+element is equally likely to be the minimum of a randomly selected function h  H.
+
+|tt
+|
+|t| measures the containment of t in t
+?
+
+?
+
+?
+, Ctt =
+?
+
+?
+
+?
+. It can be expressed in terms of the Jaccard similarity
+?
+
+?
+
+?
+Ctt = jaccsim(t,t
+
+)
+jaccsim(t,t)+1
+
+1 iff. t is contained in t
+as follows:
+
+ (1 +
+
+|t
+|
+|t| )
+
+3.3 Banding Technique to Avoid Pairwise Comparison
+
+Recall that to apply the banding technique, conceptually we construct a signature matrix for all types, with each column representing a type and the rows
+computed from n independent hash functions. Through the banding technique,
+we can generate candidate similar pairs; a pair of types becomes candidate for
+further computation when they agree in at least one band. For each candidate
+pair, we could store both the type URIs and the associated signatures, and distribute the actual similarity computation based on signatures across a cluster of
+machines. However, it raises a strong requirement for both disk I/Os and network
+I/Os in a distributed setting; note that the number of candidate pairs could still
+be huge using the LSH technique and each pair of signatures take nonignorable
+space. The way we address the challenge is to split the similarity computation in two phases. In phase one, we generate candidate pairs in the format of
+(type-uri1, type-uri2). A join of candidate type pairs with the signature matrix will produce a new type pairs in the format of (type-uri1+signature1,
+type-uri2). In phase two, another join of the newly generated type pairs with
+the signature matrix will do the actual computation of similarity based on the
+signatures associated with type-uri1 and type-uri2.
+
+4 Evaluation
+
+In this section, we report the results of applying LSH techniques to find related
+pairs of types in Freebase2 (retrieved on May 2012) and DBpedia [1] (version
+3.6). Freebase data contains 22,091,640 entities (or topics), and DBpedia contains 1,668,503 entities (or things). These entities have overall 44,389,571 label
+values in Freebase and 2,113,596 labels in DBpedia. Since our goal is matching
+types based on instances, we prune those types that have less than k number of
+instances. For the results reported in this section, we have k = 500 which reduces
+the number of types in Freebase from 15,364 to 1,069, and from 238 to 155 in
+DBpedia. We further restrict the matching to label properties of the instances
+(rdfs:label in DBpedia and /object/name in Freebase). The resulting sets of
+types have overall 43,919,815 values in Freebase and 2,042,337 values in DBpe-
+dia, which means on average 37,551 values per type. Notice that when compared
+to the values before the pruning, the pruned datasets retain 98% and 96% of
+their values, respectively. The actual number of instance values for each type
+could vary significantly for each type. For example, there are 1,847,416 persons
+on Freebase, and 363,752 persons in DBpedia.
+
+http://www.freebase.com/
+
+S. Duan et al.
+
+For the reported results, we merge the DBpedia and Freebase datasets and
+match all the types in both with themselves. This allows us to evaluate the effectiveness of the LSH techniques in discovering related types within Freebase,
+within DBpedia, and between Freebase and DBpedia. For purposes of the eval-
+uation, we eliminate type pairs that match a type with itself from our analysis.
+We fix the number of hash functions to 500 for MinHash and 1,000 for RHP.
+
+4.1 Discovering Equivalence and Containment Relations
+
+We first measure the effectiveness of our approach in discovering two kinds of relationships between types: equivalence (i.e., two types refer to similar real-world
+concept) and containment (i.e., one type is a subclass of the other). Unfortu-
+nately, there are no manual type matchings between DBpedia and Freebase,
+although there are instance matches that are connected with owl:sameAs links.
+We therefore need to derive ground truth for matching Freebase with DBpedia
+types, using the existing owl:sameAs links at the instance level between the two
+data sources. We include a pair of types in ground truth if and only if their sets of
+instances are linked with at least a given number, g , of owl:sameAs links, to ensure we include valid type pairs in the ground truth. We call g the ground truth
+cardinality threshold. The ground truth for discovery of equivalent and containment types within a single source is derived similarly by finding the number of
+shared instances between types. A pair of types is included in the ground if an
+only if there are at least g number of instances that exist in both types (e.g., if
+g number of instances have both dbpedia:Person and dbpedia:Actor as their
+types, the type pair will be included in the ground truth).
+
+We use the traditional information retrieval accuracy measures, namely pre-
+cision, recall and F-measure. Precision is the ratio of correct results to all results
+retrieved. Recall is the percentage of results in the ground truth that are actually retrieved. The F-measure is defined as the harmonic mean of precision
+
+2  P recision  Recall
+P recision + Recall
+
+and recall, calculated as F =
+
+. For the type matches
+
+based on Jaccard or cosine similarity, we need a similarity threshold to define
+non-matches. However, there is no fixed threshold value that works best across
+all the types, which makes threshold selection ad-hoc. A common approach in
+deciding matches is to sort the matching results in a descending order of the
+similarity score, and pick only the top-k results. Again, the value of k can be
+different for each type. For this evaluation, we set the value of k for each type t
+as the number of types t
+that match with t in the ground truth; in our ground
+truth, this value varies from 1 to 86, with an average of 4. We call the resulting
+measures variable-k top-k precision, recall and F-measure.
+?
+
+?
+
+?
+Table 1 shows the variable-k top-k precision, recall and F-measure obtained
+with g = 1, 000. For all cases, RHP outperforms MinHash in terms of accuracy.
+Note that these results are obtained without any post-processing, but by sorting
+the results based on the estimated Jaccard/cosine similarity values respectively.
+The superiority of the cosine metric over Jaccard suggests that tf*idf
+is an
+effective term weighting strategy for instance-based type matching.
+?
+
+?
+
+?
+However, a key advantage for Jaccard is that it gives us an indication of
+whether there is a containment relationship between two types, which cannot be
+derived from cosine similarity. As we discussed earlier, when the sets of instance
+values for two types are very different in size, the maximal similarity computed
+by either Jaccard will be significantly below 1, even if one of the sets is perfectly
+contained in the other. To discover containment relationship between types, we
+add a post-processing phase to MinHash that sorts the output type pairs by an
+estimation of containment ratio Cuv from one type to the other, as discussed
+in Section 3.2. A key problem in measuring accuracy is again the lack of ground
+truth. We derived the ground truth for both Freebase and DBpedia using the
+following method. We include into the ground truth a pair of types t1 and t2 if
+the ratio of the number of instances that have both t1 and t2 as their types to the
+number of instances of type t2 is above a threshold c. For the results reported
+in this section, we set c = 0.8, which means that we have (t1, t2) in the ground
+truth if 80% of instances of type t1 also have t2 as their types. For DBpedia,
+in addition to the ground truth derived similarly, we use the set of all subclass
+relationships in the type hierarchy in the DBpedia ontology as our ground truth.
+Note that using the DBpedia ontology as a ground truth is a very conservative
+approach. In DBpedia, there is a strict type hierarchy such that Song is a Musical Work which is in turn a Work, and Work is in fact a Thing. None of the
+actual instances of Song are annotated with all their superclasses (e.g. Thing).
+But our approach on instance-based type matching requires that instances be
+annotated with both subclasses and superclasses in order to find containment.
+Therefore using the DBpedia ontology is a very conservative ground truth, but
+we nevertheless include it for evaluation purposes. Table 2 shows the accuracy
+results for the three cases. The results for DBpedia with the derived ground truth
+are far better than those for DBpedia with the ontology as the ground truth.
+The results for Freebase are overall worse than that for DBpedia reflecting a
+trend we saw in Table 1. We discuss possible reasons for this later.
+
+We also measured the effectiveness of the LSH technique in pruning out a
+large number of irrelevant type pairs (i.e., those with low similarity values) from
+analysis. To quantify this pruning effect, we define a measure called Reduction
+Ratio (RR). This measure is calculated as the ratio of the number of type pairs
+for which similarity was computed by the LSH techniques, to the total number
+of possible type pairs. (1  RR) indicates the amount of computation that is
+saved by the use of LSH and captures the degree to which LSH was effective for
+actual type matching performance. Recall that LSH depends on (a) a similarity
+threshold (type pairs with similarity values below it are considered irrelevant)
+and (b) the users tolerance for a false negative rate (i.e., the degree to which
+recall is important to the user). Our experiments were run very conservatively,
+with very low similarity thresholds (1% for MinHash and 10% for RHP), and
+false negative rates of 10% for MinHash and 5% for RHP. Yet, we obtained
+an overall 77% savings in computation (i.e., RR = 23%): only 354,404 type
+comparisons were performed out of the 1,498,176 total possible pairs of types.
+Table 1 shows the reduction ratio, RR at Max, achieved at the maximum possible
+
+S. Duan et al.
+
+Table 1. Accuracy of Discovering Equivalent/Subclass Types in Freebase and DBpedia
+
+Top-1 Precision
+Top-k Precision
+Top-k Recall
+Top-k F-score
+Overall Recall
+RR at Max
+RR at 80%
+
+Freebase-DBpedia Freebase-Freebase DBpedia-DBpedia
+MHash
+73.7%
+48.9%
+69.0%
+57.2%
+84.8%
+0.21
+0.15
+
+84.6% 100.0%
+86.7% 100.0%
+82.4%
+76.5%
+90.3%
+81.3%
+94.1%
+94.1%
+0.34
+0.05
+0.05
+0.05
+
+RHP MHash
+75.0%
+54.7%
+53.8%
+61.7%
+17.3%
+80.4%
+26.2%
+69.8%
+87.7%
+90.5%
+0.18
+0.22
+0.19
+0.04
+
+RHP MHash
+59.9%
+60.7%
+19.9%
+30.0%
+93.5%
+0.13
+0.03
+
+value of recall (i.e., for our very conservative setup with little tolerance for false
+negatives), and, RR obtained if the threshold and the acceptable false negative
+rate were adjusted to produce about 80% recall value. For example, for FreebaseFreebase case, in our conservative setup where we were willing to accept about
+5% false negative rate for RHP, we achieved a 93.5% recall with RHP. At this
+recall, reduction ratio is 0.13, i.e., similarity estimation was actually computed
+for 13% of the total number of type pairs. However, if 80% recall is acceptable
+(i.e., a higher acceptable false negative rate), reduction ratio of 0.03 (i.e., 97%
+in savings) can be achieved.
+
+In addition, we compared the running time of similarity computation using
+MinHash and RHP signatures, with the exact Jaccard and cosine similarity com-
+putation, using a subset of 200 types (100 types from each dataset) containing
+overall 3,690,461 label values (average 18,452 values per type). We picked this
+smaller subset to make it feasible to run the exact computation on a single machine for a fair comparison with an implementation of the LSH techniques that
+does not take advantage of our Hadoop-based implementation. The experiment
+was run on a Linux machine with 4 cores and 24GB of memory. The exact Jaccard similarity computation took 1,666.28 seconds (28 minutes) while the similarity computation using the MinHash signatures took only 0.409 seconds. The
+error in similarity scores was 0.008, and overall 4,958 similarity computations
+(out of the possible 40,000) were performed. The exact computation returned
+1,152 pairs, and MinHash results missed only 30 of these pairs which means a
+recall of 97.4%. The exact cosine similarity took 302.06 seconds to run while the
+RHP-based computation took 2.41 seconds. The average error in cosine similarity scores was 0.025, but given our conservative settings which results in block
+size 2, no calculations were saved as a result of banding, and therefore the recall
+was 100%.
+
+We next turn to investigate the differences in the evaluation results for inferring equivalence/subclass relations. As shown in Table 1, the similarity measures
+we used achieve good accuracy in the Freebase-DBpedia and DBpedia-DBpedia
+cases, but not in the Freebase-Freebase case. As we will explain in the next sec-
+tion, the reason for this low accuracy is not poor performance of the similarity
+measure, but existence of several related types that share similar instance values
+and therefore are returned as false positives (e.g., Actor and Music Director ).
+?
+
+?
+
+?
+Table 2. Accuracy of Discovering Containment Relationship in Freebase and DBpedia
+
+DBpedia-Derived DBpedia-Ontology Freebase-Derived
+
+Top-1 Precision
+Top-k Precision
+Top-k Recall
+Top-k F-score
+Overall Recall
+
+85.7%
+87.0%
+55.1%
+67.4%
+55.1%
+
+81.3%
+85.0%
+24.4%
+37.9%
+24.4%
+
+74.4%
+63.3%
+22.0%
+32.6%
+22.6%
+
+4.2 Discovering Semantically Related Types
+
+To investigate the reason behind lower precision in Freebase-Freebase case, we
+manually inspected a subset of the results. Upon manual inspection, we observed
+that a large portion of wrong matches in top-k results are between types that
+are not equivalent, but are semantically related. For example, the two types
+represent person entities (e.g., type athlete linked to type tv actor), or in
+general, the two types are a subclass of a single type. Based on this observation,
+we extended the ground truth for Freebase-Freebase case to include such type
+pairs. We first derive subclass relations from instance data, and then add the
+pairs of types that are subclasses of the same type to the ground truth. This
+improved the variable-k top-k precision score to 66.4% in MinHash with overall
+recall at 90.0%, and 69.0% in RHP with overall 78.2% recall. In this case, we
+observe that MinHash performs almost as well as RHP in terms of precision,
+with better recall. This shows that Jaccard similarity and therefore MinHash
+are more suitable in discovering semantically related types.
+
+In our manual inspection of the results, we asked four members of our team
+to individually evaluate a set of 144 pairs of types in the Freebase-Freebase re-
+sults, that are the top 5 (or less) matches for 50 random types in Freebase.
+One of the four members performed the evaluation solely by looking at type
+names, while others also inspected a sample of instance values. The evaluator
+based only on type names found only 33 out of the 144 pairs accurate, while
+others found between 77 and 92 type pairs accurate. The difficulty of matching
+by type names only in these scenarios arises both from types with only machine generated identifiers (e.g., http://rdf.freebase.com/rdf/m/06vwzp1)
+and from types with obscure human generated identifiers (e.g., the instances http://rdf.freebase.com/rdf/base/database2/topic are famous
+mountains). For the evaluations based on inspection of instance values, 2 out
+of 3 evaluators agreed on 88 of the type pairs, for a precision of 61.1%.
+
+5 Related Work
+
+The problem of matching database schema and ontologies with the goal of finding elements that are semantically related has been studied extensively in the
+past. In the existing categorization of schema and ontology matching techniques
+[22,31,33], our approach falls into the purely instance-based and element-level
+
+S. Duan et al.
+
+category, as we rely on instance values rather than element labels and schema
+structure and information. Our proposed techniques improve the scalability of
+a technique referred to as similarity-based disjoint extension comparison [22],
+which unlike the common extension comparison technique [26,28] does not require the classes to share the same set of instances. Our technique is unsupervised
+and can be used to extend existing rule-based matching systems. The inability
+to effectively exploit data instances has been recognized as the main drawback
+of rule-based techniques [17, page 86]. In the categorization provided by Kang
+and Naughton [27], our method falls into the interpreted class of matching techniques since we rely on an interpretation of instance values. However, unlike the
+majority of interpreted matchers, we do not rely on attribute names, nor do we
+rely on learning and the availability of training data.
+
+Examples of matching systems that use instance values in matching are
+COMA++ [2,21], SEMINT [29], LSD [16], Autoplex [4], Glue [18], and DUMAS
+[6]. Of these, only COMA++ and DUMAS are unsupervised. COMA++ supports two instance-based matchers in addition to several schema-based methods:
+1) constraint-based matching methods that consider characteristics or patterns
+in instance values such as type, average length, and URL or email patterns; 2) a
+content-based matcher that builds a similarity matrix by performing a pair-wise
+comparison of all instance values and aggregating the result. Our approach can
+be seen as a way of making such a content-based matcher scalable. To the best
+of our knowledge, we are the first to address the scalability of such all-to-all
+instance-based matching. DUMAS relies on identification of duplicate records
+by string similarity matching in advance to improve the accuracy and efficiency
+of the approach. The attribute identification framework proposed by Chua et
+al [25] uses duplicates that are identified by matching key identifier attributes
+(as opposed to string matching) and takes into account several properties of
+attributes derived from instance values.
+
+There are also instance-based approaches that do not rely on overlapping or
+similar instance values, but take into account the correlation between attributes
+or their properties. Notably, Kang and Naughton [27] propose a two-step matching that first builds a dependency graph for the attributes in each data source
+by mining the instance values, and then uses a graph matching algorithm to
+find attribute correspondences. Dai et al [14] propose an information-theoretic
+measure to validate the matching results that can work even if both schema
+information and instance values do not match (e.g., merging of two customer
+databases from companies that do not share any customers). In our work, our
+goal is to match elements (types) only if their instance values are similar. The
+approach presented in this paper can be used as a part of large-scale data integration and analytics systems [23] and link discovery systems [24,8]. Our work
+is motivated by the massive growth in the amount of data available on the web,
+and our experience in matching large enterprise repositories [11,19,20].
+
+For an overview of other schema-based and instance-based techniques, refer
+
+to existing survey articles and books [3,22,27,31,33].
+?
+
+?
+
+?
+6 Conclusion
+
+We present an instance-based type matching approach based on locality-sensitive
+hashing and evaluate it on linking two large Linked Data sources on the web.
+We show how LSH techniques are very effective in pruning large numbers of
+irrelevant type comparisons, and point to how they can be deployed for type
+matching and type containment.

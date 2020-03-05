@@ -13,9 +13,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 /**
  * Extract a taxonomy by using a MST
@@ -93,7 +93,7 @@ public class MSTTaxoExtract implements TaxonomySearch {
             }
         }
         double linkScore = parent == null ? Double.NaN : matrix[term.indexOf(parent)][term.indexOf(node)];
-        return new Taxonomy(node, termMap.get(node).getScore(), linkScore, "", "", children, Status.none);
+        return new Taxonomy(node, termMap.get(node).getScore(), linkScore, children, Status.none);
     }
     
     /*public Taxonomy extractTaxonomy(List<DocumentTopic> docTopics, Map<String, Topic> topicMap) {

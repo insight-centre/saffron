@@ -1,0 +1,1859 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+DeFactoTemporal and multilingual Deep Fact Validation
+Daniel Gerber, Diego Esteves, Jens Lehmann, Lorenz Buhmann, Ricardo Usbeck,
+Axel-Cyrille Ngonga Ngomo, Rene Speck
+University Leipzig, Institute for Computer Science, Agile Knowledge Engineering and Semantic Web (AKSW), D-04009 Leipzig, Germany
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 16 February 2015
+Received in revised form
+17 June 2015
+Accepted 3 August 2015
+Available online 20 August 2015
+
+Keywords:
+Web of Data
+Fact validation
+
+Provenance
+
+One of the main tasks when creating and maintaining knowledge bases is to validate facts and provide
+sources for them in order to ensure correctness and traceability of the provided knowledge. So far, this
+task is often addressed by human curators in a three-step process: issuing appropriate keyword queries
+for the statement to check using standard search engines, retrieving potentially relevant documents
+and screening those documents for relevant content. The drawbacks of this process are manifold. Most
+importantly, it is very time-consuming as the experts have to carry out several search processes and must
+often read several documents. In this article, we present DeFacto (Deep Fact Validation)an algorithm
+able to validate facts by finding trustworthy sources for them on the Web. DeFacto aims to provide an
+effective way of validating facts by supplying the user with relevant excerpts of web pages as well as
+useful additional information including a score for the confidence DeFacto has in the correctness of the
+input fact. To achieve this goal, DeFacto collects and combines evidence from web pages written in several
+languages. In addition, DeFacto provides support for facts with a temporal scope, i.e., it can estimate in
+which time frame a fact was valid. Given that the automatic evaluation of facts has not been paid much
+attention to so far, generic benchmarks for evaluating these frameworks were not previously available.
+We thus also present a generic evaluation framework for fact checking and make it publicly available.
+
+ 2015 Elsevier B.V. All rights reserved.
+
+1. Introduction
+
+The past decades have been marked by a change from an industrial society to an information and knowledge society. This change
+is particularly due to the uptake of the World Wide Web. Creating and managing knowledge successfully has been a key to success in various communities worldwide. Therefore, the quality of
+knowledge is of high importance. One aspect of knowledge quality is provenance [1]. In particular, the sources for facts should
+be well documented since this provides several benefits such as
+a better detection of errors, decisions based on the trustworthiness of sources etc. While provenance is an important aspect of
+data quality [2], to date only few knowledge bases actually provide
+provenance information. For instance, less than 10% of the more
+than 708.26 million RDF documents indexed by Sindice1 contain
+
+ Corresponding authors.
+
+E-mail addresses: dgerber@informatik.uni-leipzig.de (D. Gerber),
+
+esteves@informatik.uni-leipzig.de (D. Esteves),
+lehmann@informatik.uni-leipzig.de (J. Lehmann),
+buehmann@informatik.uni-leipzig.de (L. Buhmann),
+usbeck@informatik.uni-leipzig.de (R. Usbeck), ngonga@informatik.uni-leipzig.de
+(A.-C. Ngonga Ngomo), speck@informatik.uni-leipzig.de (R. Speck).
+1 http://www.sindice.com.
+http://dx.doi.org/10.1016/j.websem.2015.08.001
+1570-8268/ 2015 Elsevier B.V. All rights reserved.
+
+metadata such as creator, creation date, source, modified or
+contributor.2 This lack of provenance information makes the validation of the facts in such knowledge bases utterly tedious. In ad-
+dition, it hinders the adoption of such data in business applications
+as the data is not trusted [2]. The main contribution of this paper
+is the provision of a fact validation approach and tool which can
+make use of one of the largest sources of information: the Web.
+
+More specifically, our system DeFacto (Deep Fact Validation)
+implements algorithms for validating RDF triples by finding confirming sources for them on the Web.3 It takes a statement as input (e.g., the one shown in Listing 1, page 13) and then tries to find
+evidence for the validity of that statement by searching for textual
+information in the Web. To this end, our approach combines two
+strategies by searching for textual occurrences of parts of the statements as well as trying to find web pages which contain the input
+statement expressed in natural language. DeFacto was conceived
+to exploit the multilinguality of the Web, as almost half of the content of the Web is written in a language other than English4 (see
+
+2 Data retrieved on February 13, 2015.
+3 Please note that we use fact as a synonym for a RDF triple.
+4 45% non-English web pages according to http://w3techs.com/technologies/
+overview/content_language/all.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+to compute the confidence for a particular input fact. Subsequently,
+we describe the temporal extension of DeFacto in Section 7 and
+provide an overview of the FactBench benchmark in Section 8. We
+provide a discussion of the evaluation results in Section 9. Finally,
+we conclude in Section 10 and give pointers to future work.
+
+2. Related work
+
+The work presented in this paper is related to five main areas
+of research: Fact checking as known from NLP, the representation
+of provenance information in the Web of Data, temporal analysis,
+relation extraction and named entity disambiguation (also called
+entity linking).
+
+2.1. Fact checking
+
+Fact checking is a relatively new research area which focuses
+on computing which subset of a given set of statements can be
+trusted [4]. Several approaches have been developed to achieve
+this goal. Nakamura et al. [5] developed a prototype for enhancing the search results provided by a search engine based on trustworthiness analysis for those results. To this end, they conducted
+a survey in order to determine the frequency at which the users
+accesses search engines and how much they trust the content and
+ranking of search results. They defined several criteria for trustworthiness calculation of search results returned by the search en-
+gine, such as topic majority. We adapted their approach for DeFacto
+and included it as one of the features for our machine learning
+techniques. Another fact-finding approach is that presented in [6].
+Here, the idea is to create a 3-partite network of web pages, facts
+and objects and apply a propagation algorithm to compute weights
+for facts as well as web pages. These weights can then be used to
+determine the degree to which a fact contained in a set of web
+pages can be trusted. Pasternack and Roth [7,8] present a generalized approach for computing the trustworthiness of web pages.
+To achieve this goal, the authors rely on a graph-based model similar to hubs and authorities [9]. This model allows computing the
+trustworthiness of facts and web pages by generating a k-partite
+network of pages and facts and propagating trustworthiness information across it. The approach returns a score for the trustworthiness of each fact. Moreover, the generalized fact-finding model
+that they present allows expressing other fact-finding algorithms
+such as TruthFinder [6], AccuVote [10] and 3-Estimates [11] within
+the same framework. The use of trustworthiness and uncertainty
+information on RDF data has been the subject of recent research
+(see e.g., [12,13]). Moreover, approaches such as random walks [14]
+have been used to measure the trustworthiness of graph data based
+on the topology of the underlying graph. Our approach differs from
+previous fact finding works as it focuses on validating the trustworthiness of RDF triples (and not that of facts expressed in natural
+language) against the Web (in contrast to approaches that rely on
+the RDF graph only). In addition, it can deal with the broad spectrum of relations found on the Data Web.
+
+2.2. Provenance
+
+The problem of data provenance is an issue of central importance for the uptake of the Web of Data. While data extracted by the
+means of tools such as Hazy6 and KnowItAll7 can be easily mapped
+to primary provenance information, most knowledge sources were
+extracted from non-textual source and are more difficult to link
+
+Fig. 1. Usage of content languages for web pages. (W3Techs.com, 21 November
+2013.)
+
+Fig. 1). To this end, our approach abstracts from a specific language
+and can combine evidence from multiple languagescurrently En-
+glish, German and French.
+
+The output of our approach is a confidence score for the input
+statement as well as a set of excerpts of relevant web pages which
+allows the user to manually judge the presented evidence. Apart
+from the general confidence score, DeFacto also provides support
+for detecting the temporal scope of facts, i.e., estimates in which
+timeframe a fact is or was valid.
+
+DeFacto has three major use cases: (1) Given an existing true
+statement, it can be used to find provenance information for it.
+For instance, the WikiData project5 aims to create a collection of
+facts, in which sources should be provided for each fact. DeFacto
+could help to achieve this task. (2) It can check whether a statement
+is likely to be true and provide the user with a corresponding
+confidence score as well as evidence for the score assigned to the
+statement. (3) Given a fact, DeFacto can determine and present
+evidence for the time interval within which the said fact is to be
+considered valid. Our main contributions are thus as follows:
+ We present an open-source approach that allows checking
+whether a web page confirms a fact, i.e., an RDF triple.
+ We discuss an adaptation of existing approaches for determining indicators for trustworthiness of a web page.
+ We present an automated approach to enhancing knowledge
+bases with RDF provenance data at triple level as well as.
+ We provide a running prototype of DeFacto, the first system
+able to provide useful confidence values for an input RDF triple
+given the Web as background text corpus.
+
+This article is an extension of the initial description of DeFacto
+in [3]. The main additions are as follows:
+ A temporal extension detecting temporal scope of facts based
+on text understanding via pattern and frequency analysis.
+ An extensive study of effect of the novel multilingual support
+in DeFacto, e.g., through the integration of search queries and
+temporal patterns in several languages.
+ A freely available and full-fledged benchmark for fact validation
+which includes temporal scopes.
+The rest of this paper is structured as follows: We give an
+overview of the state of the art of relevant scientific areas in
+Section 2. This part is followed by a description of the overall
+approach in a nutshell in Section 3. We show how we extended
+the BOA framework to enable it to detect facts contained in textual
+descriptions on web pages in Section 4. In Section 5, we describe
+how we calculate and include the trustworthiness of web pages
+into the DeFacto analysis. Section 6 combines the results from the
+previous chapters and describes the mathematical features we use
+
+5 http://www.wikidata.org.
+
+6 http://hazy.cs.wisc.edu/hazy/.
+7 http://www.cs.washington.edu/research/knowitall/.
+
+with provenance information. Hartig and Zhao [15] describes a
+framework for provenance tracking. This framework provides the
+vocabulary required for representing and accessing provenance information on the Web. It keeps track of metadata including who
+created a Web entity (e.g., a web page) and how the entity was
+modified. Recently, a W3C working group has been formed and released a set of specifications on sharing and representing provenance information.8 Dividino et al. [16] introduced an approach for
+managing several provenance dimensions, e.g., source, and times-
+tamp. In their approach, they describe an extension to the RDF
+called RDF+ which can work efficiently with provenance data. They
+also provide a method for enabling SPARQL query processors in a
+manner such that a specific SPARQL query can request meta knowledge without being modified. Theoharis et al. [17] argue that the
+implicit provenance data contained in a SPARQL query result can
+be used to acquire annotations for several dimensions of data qual-
+ity. They present the concept of abstract provenance models as
+known from databases and how it can be extended to suit the Data
+Web as well. DeFacto uses the W3C provenance group standard for
+representing provenance information. Yet, unlike previous work, it
+directly tries to find provenance information by searching for confirming facts in trustworthy web pages.
+
+2.3. Temporal analysis
+
+Storing and managing the temporal validity of facts is a tedious task that has not yet been studied widely in literature. First
+works in from the Semantic Web community in this direction include Temporal RDF [18], which allows representing time intervals within which a relation is valid. Extracting such information
+from structured data is a tedious endeavor for which only a small
+number of solutions exist. For example, [19] present an approach
+for scoping temporal facts which relies on formal constraints between predicates. In particular, they make use of the alignment,
+containment, succession and mutual exclusion of predicates. Acquiring the constraints that hold between given predicates is studied in [20]. Another approach that aims at extracting temporal
+information is Timely YAGO [21], which focuses on extracting temporally scope facts from Wikipedia infoboxes. PRAVDA [22] relies
+on constrained label propagation to extract temporal information.
+Here, an objective function which models inclusion constraints and
+factual information is optimized to determine an assignment of
+fact to time slots. To the best of our knowledge, none of the previous approaches has dealt with coupling the validity of a fact with
+its time scope.
+
+2.4. Relation extraction (RE)
+
+The verbalization of formal relations is an essential component
+of DeFacto as it allows searching for RDF triples in unstructured
+data sources. This verbalization task is strongly related to the
+area of relation extraction, which aims to detect formal relation
+relations between entity mentions in unstructured data sources.
+Some early work on relation extraction based on pattern extraction
+relied on supervised machine learning (see e.g., [23]). Yet, such
+approaches demand large amounts of training data, making them
+difficult to adapt to new relations. The subsequent generation of
+approaches to RE aimed at bootstrapping patterns based on a small
+number of input patterns and instances. For example, Brin [24]
+presents the Dual Iterative Pattern Relation Expansion (DIPRE) and
+applies it to the detection of relations between authors and titles
+
+8 http://www.w3.org/2011/prov/wiki/.
+
+of books. This approach relies on a small set of seed patterns to
+maximize the precision of the patterns for a given relation while
+minimizing their error rate of the same patterns. Snowball [25]
+extends DIPRE by a new approach to the generation of seed tuples.
+Other approaches aim to either collect redundancy information
+(see e.g., [26]) in an unsupervised manner or to use linguistic
+analysis [27] to harvest generic patterns for relations. The latest
+approaches to relation extraction make use of ontologies as seed
+knowledge. While several approaches, including NELL [28] and
+PROSPERA [29], use their own ontologies, frameworks such as
+BOA [30], LODifier [31] and DARE [32] reuse information available
+on the Linked Data Web as training data to discover naturallanguage patterns that express formal relations and reuse those to
+extract RDF from unstructured data sources.
+
+2.5. Named entity disambiguation (NED)
+
+NED is most often an a-priori task to RE. In the last years,
+approaches began relying on RDF data as underlying knowledge
+bases. DBpedia Spotlight [33] is a Named Entity Recognition and
+Disambiguation combining approach based on DBpedia [34,35].
+This approach is able to work on all classes of Named Entities
+present in the knowledge base also enabling the user to specify
+coverage and error tolerance while the annotation task. Based on
+measures like prominence, topical relevance, contextual ambiguity
+and disambiguation conference DBpedia Spotlight achieves a disambiguation accuracy of 81% on their Wikipedia corpus. AIDA [36]
+is based on the YAGO9 knowledge base. This approach uses dense
+sub-graphs to identify coherent mentions. Moreover, AIDA makes
+use of contextual similarity, prominence information and context
+windows. AGDISTIS [37] is a novel knowledge-base agnostic NED
+approach which combines an authority-based graph algorithm and
+different label expansion strategies and string similarity measures.
+Based on this combination, the approach can efficiently detect the
+correct URIs for a given set of named entities within an input text.
+The results indicate that AGDISTIS is able to outperform the state-
+of-the-art approaches by up to 16% F-measure.
+
+3. Approach
+
+Input and output
+
+The DeFacto system consists of the components depicted in
+Fig. 2. It supports two types of inputs: RDF triples and textual
+data. If provided with a fact represented as an RDF triple as input,
+DeFacto returns a confidence value for this fact as well as possible
+evidence for it. In the case of textual data, e.g., from an input form,
+DeFacto disambiguates the entities and gathers surface forms (see
+Section 4) for each resource.10 The evidence consists of a set of web
+pages, textual excerpts from those pages and meta-information on
+the pages. The text excerpts and the associated meta information
+enable the user to quickly obtain an overview of possible credible
+sources for the input statement. Instead of having to use search
+engines, browsing several web pages and looking for relevant
+pieces of information, the user can thus more efficiently review the
+presented information. The system uses techniques which were
+adapted specifically for fact validation rather than relying only on
+generic information retrieval techniques of search engines.
+
+9 http://www.mpi-inf.mpg.de/yago-naga/yago/.
+10 Note the disambiguation of the property URI of the fact is out of scope of this
+paper.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Fig. 2. Overview of the DeFacto architecture.
+
+Retrieving web pages
+
+The first step of the DeFacto fact validation process is to retrieve web pages which are relevant for the given task. The retrieval is carried out by issuing several queries to a regular search
+engine. These queries are computed by verbalizing the fact using multi-lingual natural-language patterns extracted by the BOA
+framework11 [38,30]. Section 4.2 describes how the search engine
+queries are constructed. In a subsequent step, the highest ranked
+web pages for each query are retrieved. Those web pages are candidates for being evidence sources for the input fact. Both the search
+engine queries as well as the retrieval of web pages are executed
+in parallel to keep the response time for users within a reasonable
+limit. Note, that usually this does not put a high load on particular web servers as web pages are usually derived from several do-
+mains.
+
+Evaluating web pages
+
+Once all web pages have been retrieved, they undergo several
+further processing steps. First, plain text is extracted from each
+web page by removing most HTML markup. We can then apply our
+fact confirmation approach on this text, which is described in detail
+in Section 4.3. In essence, the algorithm decides whether the web
+page contains a natural language formulation of the input fact. This
+step distinguishes DeFacto from information retrieval methods. If
+no web page confirms a fact according to DeFacto, then the system
+falls back on lightweight NLP techniques and computes whether
+the web page does at least provide useful evidence. In addition
+to fact confirmation, the system computes different indicators for
+the trustworthiness of a web page (see Section 5). These indicators
+are of central importance because a single trustworthy web page
+confirming a fact may be a more useful source than several web
+pages with low trustworthiness. The fact confirmation and the
+trustworthiness indicators of the most relevant web pages are
+presented to the user.
+
+Confidence measurement
+
+In addition to finding and displaying useful sources, DeFacto
+also outputs a general confidence value for the input fact. This
+confidence value ranges between 0% and 100% and serves as an
+indicator for the user: Higher values indicate that the found sources
+appear to confirm the fact and can be trusted. Low values mean that
+not much evidence for the fact could be found on the Web and that
+the web pages that do confirm the fact (if such exist) only display
+
+low trustworthiness. The confidence measurement is based on
+machine learning techniques and explained in detail in Sections 6
+and 9. Naturally, DeFacto is a (semi-)automatic approach: We do
+assume that users will not blindly trust the system, but additionally
+analyze the provided evidence.
+
+RDF provenance output
+
+Besides a visual representation of the fact and its most relevant
+web pages,
+it is also possible to export this information as
+RDF, which enables a Linked Data style access and/or storing
+in a SPARQL endpoint. We reuse several existing vocabularies
+for modeling the provenance of the DeFacto output (see Fig. 3),
+especially the PROV Ontology [39], which provides a set of
+classes, properties, and restrictions that can be used to represent
+and interchange provenance information generated in different
+systems and under different contexts, and the Natural Language
+Processing Interchange Format (NIF) [40], which is an RDF/OWL-
+based format that aims to achieve interoperability between
+Natural Language Processing (NLP) tools, language resources and
+annotations. A RDF dump of the generated evidences for the correct
+facts of FactBench (see Section 8) can be downloaded from the
+project home page.12
+
+DeFacto web demo
+
+A prototype implementing the above steps is available at
+http://defacto.aksw.org. A screenshot of the user interface is
+depicted in Fig. 4. It shows relevant web pages, text excerpts and
+five different rankings per page. As described above, the generated
+provenance output can also be saved directly as RDF using the
+W3C provenance group13 vocabularies. The source code of both the
+DeFacto algorithms and user interface are openly available.14
+
+It should be noted that we decided not to check for negative
+evidence of facts in DeFacto, since (a) we considered this to be too
+error-prone and (b) negative statements are much less frequent on
+the Web.
+
+4. BOABootstrapping linked data
+
+The idea behind BOA is two-fold: First, it aims to be a framework
+that allows extracting structured data from the Human-readable
+Web by using Linked Data as background knowledge. In addition,
+it provides a library of natural-language patterns for formal
+
+11 http://boa.aksw.org.
+
+12 http://aksw.org/Projects/DeFacto.
+13 http://www.w3.org/2011/prov/.
+14 https://github.com/AKSW/DeFacto.
+
+Fig. 3. Overview of the provenance schema which is used to export the validation result of DeFacto as RDF, given the input fact Albert Einstein, award, Nobel
+Price in Physics.
+
+relations that allows bridging the gap between structured and
+unstructured data. The input for the BOA framework consists of a
+set of knowledge bases, a text corpus (mostly extracted from the
+Web) and (optionally) a Wikipedia dump.15 When provided with
+a Wikipedia dump, the framework begins by generating surface
+forms for all entities in the source knowledge base. The surface
+forms used by BOA are generated by using an extension of the
+method proposed in [33]. For each predicate p found in the input
+knowledge sources, BOA carries out a sentence-level statistical
+analysis of the co-occurrence of pairs of labels of resources
+that are linked via p. BOA then uses a supervised machinelearning approach to compute a score and rank patterns for each
+combination of corpus and knowledge bases. These patterns allow
+generating a natural-language representation (NLR) of the RDF
+triple that is to be checked (see Table 2).
+
+4.1. Training BOA for DeFacto
+
+In order to provide a high quality fact confirmation component,
+we trained BOA specifically for this task. We began by selecting
+the relations used in FactBench (see Section 8) and queried the
+instance knowledge from DBpedia 3.9 (see [34,35]). Since first
+experiments showed that relying on the localized version of
+DBpedia would result in poor recall, we translated the English
+background knowledge to German and French respectively. This
+is carried out by replacing English rdfs:labels with localized ones
+if such exists. If no target language label exists, we rely on the
+English label as backup. We then ran BOA on the July 2013 dumps
+of the corresponding Wikipedias. Since search engine queries are
+expensive we ordered the generated patterns by their support
+set size, the subject and object pairs the patterns was found
+from, and used the top-n patterns for each relation to formulate
+search engine queries. We chose not to train BOAs machine
+learning module, since this would have resulted in high-precision
+but low-recall patterns. Additionally, we implemented a pattern
+generalization approach to better cope with similar but low-recall
+patterns.
+
+Overall, all components of DeFacto can be trained so as to
+be used a domain different than the domains of DBpedia. If no
+
+15 http://dumps.wikimedia.org/.
+
+evidence for a fact is available on the Web, then DeFacto will be
+unable to determine the validity of the corresponding fact. One
+approach towards still being able to determine the validity of a
+fact would then be to provide DeFacto with a specialized corpus
+that contains information pertaining to the resources involved in
+the fact.
+
+Fig. 5 shows the component diagram for DeFacto, which
+implements a component-modularized architecture in order to
+aid library extensions as easy as possible. To achieve a higher
+level of decoupling, the implementation of interfaces is planned as
+future work. Further, in spite of its modularization for the purpose
+of use it in any relation domain, DeFacto should be adapted to
+work in knowledge base presenting new relations. This can be
+attained by extracting the new set of existing patterns (FactBench
+component) from given data source having new relations that were
+not covered so far. The Fact Confirmation classifier, derived from
+patterns generated from the DBPedia by BOA (along which the
+Fact Bench), could be obtained from different knowledge bases
+by re-training the algorithm (FactBench component). However, an
+adoption of existing thresholds and measures in order to optimize
+the model and avoid overfitted models is needed.
+
+A further analysis of the variation and quality aspect of patterns
+
+extracted in different datasources is desired as future work.
+
+Lexical pattern generalization for DeFacto
+
+A drawback of the previous version of the BOA framework was
+that it could not detect similar patterns. For example consider
+the following two English patterns: ?R s Indian subsidiary ?D
+and ?R s UK subsidiary, ?D. Both patterns are NLRs for the
+dbo:subsidiary relation but might fail to score high confidence
+scores because of their individual low number of occurrences.
+Generalizing these patterns into ?R s NE subsidiary ?D can
+therefore help boost pattern scores for low recall patterns. We
+generalize patterns individually for each language based on
+manually crafted regular expressions and Part-Of-Speech(POS)
+tags provided by a language-specific tagger. In the current version
+of DeFacto, we generalize personal pronouns, named entities,
+date/year occurrences and forms of be as well as numerical
+values.
+
+4.2. Automatic generation of search queries
+
+The found BOA patterns are used for issuing queries to the
+search engine (see Fig. 2). Each search query contains the quoted
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Fig. 4. Screenshot of the DeFacto Web interface.
+
+label (forces an exact match from the search engine) of the subject
+of the input triple, a quoted and cleaned BOA pattern (i.e., without
+punctuation) and the quoted label of the object of the input triple.
+Note that we can fully localize the search query in most cases since
+there are multi-lingual labels for many resources available on the
+LOD cloud. We use the top-k best-scored BOA patterns and retrieve
+the first n web pages from a Web search engine.16 For our example
+from Listing 1, an exemplary query sent to the search engine is as
+follows:
+
+Albert Einstein AND was awarded the AND
+
+Nobel Prize in Physics.
+
+We then crawl each web page, remove HTML markup and try
+to extract possible proofs for the input triple, i.e., excerpts of these
+web pages which may confirm it. For the sake of brevity, we use
+proof and possible proof interchangeably.
+
+16 Bing Web Search and Google Web Search.
+
+4.3. BOA and NLP techniques for fact confirmation
+
+To find proofs for a given input triple t = (s, p, o) we make
+use of the surface forms introduced in [33]. We select all surface
+forms for the subject and object of the input triple and search for
+all occurrences of each combination of those labels in a web page
+w. If we find an occurrence with a token distance dist(l(s), l(o))
+(where l(x) is the label of x in any of the configured languages)
+smaller then a given threshold we call this occurrence a proof for
+the input triple. To remove noise from the found proofs we apply
+a set of normalizations by using regular expression filters which
+for example remove characters between brackets and non alphanumeric characters. Note that this normalization improves the
+grouping of proofs by their occurrence. After extracting all proofs
+pri  P rw of a web page w, we score each proof using a logistic
+regression classifier [41]. We trained a classifier with the following
+input features for scoring a proof:
+String similarity: For the top-n BOA patterns of the given relation
+we determine the maximum string similarity between
+
+Fig. 5. The architecture of the main services represented on the component diagram.
+
+the normalized pattern and the proof phrase. As string
+similarity we use Levenshtein, QGram Similarity as well
+as SmithWaterman.17
+
+Token distance: This is the distance dist(l(s), l(o)) between the
+two entity labels which found the proof. We limit this
+distance to a maximum of 10 tokens.
+
+Wordnet expansion: We expand both the tokens of the normalized proof phrase as well as all of the tokens of the BOA
+pattern with synsets from Wordnet. Subsequently we apply the Jaccard-Similarity on the generated expansions.
+This is basically a fuzzy match between the BOA pattern
+and the proof phrase. Due to the language specificity of
+Wordnet to English, we will use BabelNet (see [42]) in future iterations.
+
+Syntax: We also calculate a number of numeric features for the
+proof phrases: the number of uppercase and non-alpha-
+numeric characters, the number of commas, digits and
+characters and the average token length.
+
+Total occurrence: This feature contains the total number of
+occurrences of each normalized proof phrase over the set
+of all normalized proof phrases.
+
+Page title: We calculate the maximum of the Levenshtein similarity between the page title and the subject and object la-
+bels. This feature is useful, because the title indicates the
+topic of the entire web page. When a title matches, then
+higher token distances may still indicate a high probability that a fact is confirmed.
+
+End of sentence: The number of occurrences of ., ! or a ?
+in the proof context. When subject and object are in
+different sentences, their relation is more likely to be
+weaker.
+
+Proof phrase: The words in the proof phrase between subject and
+object, which are encoded as binary values, i.e., a feature
+is created for each word and its value is set to 1 if the word
+occurs and 0 otherwise.
+
+Property: The property as a word vector.
+Language: The language of the web page.
+
+Table 1
+Proofs with language distribution used to train fact classifier.
+
+en20%
+12 414
+11 705
+24 119
+
+en100%
+79 921
+17 436
+97 357
+
+de20%
+
+de100%
+29 292
+8 263
+37 555
+
+fr20%
+5 724
+5 231
+10 955
+
+fr100%
+36 383
+7 721
+44 104
+
+True
+False
+Total
+
+4.4. DeFacto Training
+
+To train our classifier, we ran DeFacto on the mix train set (see
+Section 8) and extracted all proof phrases. We randomly sampled
+20% of the 178 337 proofs, trained the classifier on 66.6% and
+evaluated the learned model on the 33.3% unseen proofs. Both
+the train and the test set contained an equal amount of instances
+of both classes. A detailed overview of the proofs used to learn
+the fact classifier can be seen in Table 1. As expected, there is
+a skew towards proofs extracted in English (2.4 for English to
+German, 2.2 for English to French). This is not surprising, since
+English is the dominant language on the Web (see Fig. 1). We
+chose an SVM as classifier since it is known to be able to handle
+large sets of features18 and is able to work with numeric data
+and create confidence values. The ability to generate confidence
+values for proofs is useful as feedback for users and it also
+serves as input for the core classifiers described in Section 6. We
+achieved an F1 score of 74.1%. We also performed preliminary work
+on fine-tuning the parameters of the above algorithms, which,
+however, did not lead to significantly different results. Therefore,
+the reported measurements were carried out with default values of
+the mentioned algorithms in the Weka machine learning toolkit19
+version 3.6.6.
+
+5. Trustworthiness analysis of web pages
+
+To determine the trustworthiness of a web page, we first
+determine its similarity to the input tripleusually pages on topic
+related to the input triple are more valuable. This is determined by
+how many topics belonging to the query are contained in a search
+result retrieved by the web search. We extended the approach
+
+17 http://sourceforge.net/projects/simmetrics/.
+
+18 Note that the majority of the features are word vectors.
+19 http://www.cs.waikato.ac.nz/ml/weka/.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Table 2
+Example list of patterns for relations publication and marriage.
+
+Publication
+
+Marriage
+
+English
+?R s novel ?D
+?R s book ?D
+?R, author of ?D
+?R married ?D
+?R, his wife ?D
+?D s marriage to ?R
+
+German
+?R in seinem Roman ?D
+?R in seinem Buch ?D
+?R in seinem Werk ?D
+?D seiner Frau ?R
+?D seiner Ehefrau ?R
+?R und seiner Gattin ?D
+
+French
+?D  est un roman ?R
+?R dans son roman ?D
+?R intitule ?D
+?R epouse ?D
+?R, veuve ?D
+?D, la femme de ?R
+
+introduced in [5] by querying Wikipedia with the subject and
+object label of the triple in question separately to find the topic
+terms for the triple. Please note that through the availability of
+multi-lingual labels for many resources in the LOD cloud, we are
+able to extract topic terms in multiple languages. A frequency
+analysis is applied on all returned documents and all terms above
+a certain threshold that are not contained in a self-compiled stop
+word list are considered to be topic terms for a triple. Let s and
+o be the URIs for the subject and object of the triple in question,
+ be a potential topic term extracted from a Wikipedia page and
+let t = (s, p, o) be the input triple. We compare the values of the
+following two formulas:
+prob(|t) = |topic( , docs(t))|
+prob(t|intitle(docs(t), s  o))
+= |topic( , intitle(docs(t), s)  intitle(docs(t), o))|
+
+|intitle(docs(t), s)  intitle(docs(t), o)|
+
+|docs(t)|
+
+(2)
+
+(1)
+
+where docs(t) is the set all web documents retrieved for t (see
+Section 4.2), intitle(docs(t), x) the set of web documents which
+have the label of the URI x in their page title. topic( , docs(t)) is
+a function returning the set of documents which contain  in the
+page body. We consider  to be a topic term for the input triple
+if prob(| (docs(t), s)   (docs(t), o)) > prob(|t). Let Tt =
+{1, 2, . . . , n} be the set of all topic terms extracted for an input
+triple. DeFacto then calculates the trustworthiness of a web page
+as follows:
+
+Topic majority in the web
+
+This represents the number of web pages that have similar
+topics to the web page in question. Let Tw be the set of topic terms
+appearing on the current web page w. The Topic Majority in the
+Web for a web page w is then calculated as:
+
+i=1
+
+tmweb(w) =
+
+topic(i, d(X ))
+
+where 1 is the most frequently occurring topic term in the web
+page w. Note that we subtract 1 to prevent counting w.
+
+Topic majority in search results
+
+This is used to calculate the similarity of a given web page to
+all web pages found for a given triple. Let wk be the web page to
+be evaluated, v(wk) be the feature vector of web page wk where
+v(wk)i is 1 if i is a topic term of web page wk and 0 otherwise,
+v be the norm of v and  a similarity threshold. We calculate the
+Topic Majority in Search Results as follows:
+v(wk)  v(wi)
+tmsr (w) =
+v(wk)v(wi) > 
+
+wi|wi  d(X ),
+
+(4)
+
+(3)
+
+Ff sum(t) = 
+
+Topic coverage
+
+topic terms occurring in w:
+
+tc(w) = |Tt  Tw|
+|Tt|
+
+This measures the ratio between all topic terms for t and all
+
+(5)
+
+6. Features for Deep Fact Validation
+
+In order to obtain an estimate of the confidence that there is
+sufficient evidence to consider the input triple to be true, we chose
+to train a supervised machine learning algorithm. Similar to the
+above presented classifier for fact confirmation, this classifier also
+requires computing a set of relevant features for the given task.
+In the following, we describe those features and why we selected
+them.
+
+First, we extend the score of single proofs to a score of web
+pages as follows: When interpreting the score of a proof as the
+probability that a proof actually confirms the input fact, then we
+can compute the probability that at least one of the proofs confirms
+the fact. This leads to the following stochastic formula,20 which
+allows us to obtain an overall score for proofs scw on a web page
+w:
+
+scw(w) = 1  
+
+(1  fc(pr)) .
+
+(6)
+
+prprw(w)
+
+In this formula, fc (fact confirmation) is the classifier trained in
+Section 4.3, which takes a proof pr as input and returns a value
+between 0 and 1. prw is a function taking a web page as input and
+returning all possible proofs contained in it.
+
+Combination of trustworthiness and textual evidence
+
+In general, we assume that the trustworthiness of a web page
+and the textual evidence found in it are orthogonal features.
+Naturally, web pages with high trustworthiness and a high score
+for its proofs should increase our confidence in the input fact. We
+thus combine trustworthiness and textual evidence as features for
+the underlying machine learning algorithm. This is achieved by
+multiplying both criteria and then using their sum and maximum
+as two different features:
+
+(f (w)  scw(w))
+(f (w)  scw(w)) .
+
+ws(t)
+Ff max(t) = max
+ws(t)
+In this formula, f can be instantiated by all three trustworthiness
+measures: topic majority on the Web (tmweb), topic majority in
+search results (tmsr) and topic coverage (tc). s is a function taking
+a triple t as argument, executing the search queries explained in
+Section 4.2 and returning a set of web pages. Using the formula, we
+obtain 6 different features for our classifier, which combine textual
+evidence and different trustworthiness measures.
+
+(8)
+
+(7)
+
+20 To be exact, it is the complementary even to the case that none of the proofs do
+actually confirm a fact.
+
+Other features
+
+In addition to the above described combinations of trustworthi-
+
+ness and fact confirmation, we also defined other features:
+1. The total number of proofs found.
+2. The total number of proofs found above a relevance
+threshold of 0.5. In some cases, a high number of proofs
+with low scores is generated, so the number of high scoring
+proofs may be a relevant feature for learning algorithms. The
+thresholds mimics a simple classifier.
+
+3. The total evidence score, i.e., the probability that at least one of
+the proofs is correct, which is defined analogously to scw above:
+
+(1  fc(pr))
+
+(9)
+
+prprt(t)
+
+where prt(t) is a function returning all proofs found for t from
+all web pages.
+
+4. The total evidence score above a relevance threshold of 0.5.
+This is an adaption of the above formula, which considers only
+proofs with a confidence higher than 0.5.
+
+5. The total hit count, i.e., search engines estimate of the number
+of search results for an input query. The total hit count is the
+sum of the estimated number of search results for each query
+send by DeFacto for a given input triple.
+
+6. A domain and range verification: If the subject of the input
+triple is not an instance of the domain of the property of the
+input triple, this violates the underlying schema, which should
+result in a lower confidence in the correctness of the triple. This
+feature is 0 if both domain and range are violated, 0.5 if exactly
+one of them is violated and 1 if there is no domain or range
+violation. At the moment, we are only checking whether the
+instance is asserted to be an instance of a class (or one of its
+subclasses) and do not use reasoning for performance reasons.
+7. Statistical triple evidence: Usually certain classes have a
+higher probability to cooccur as type of subject and object
+in a given triple, e.g., there might be a higher probability
+that instances of dbo:Person and dbo:Film are related via
+triples than for instance dbo:Insect and dbo:Film. This
+observation also holds for the cooccurence of classes and
+properties, both for the types in subject and object position. This
+kind of semantic relatedness allows for computing a score for
+the statistical evidence STE of a triple t = (s, p, o) by
+STE(t) = max
+(PMI(cs, co) + PMI(cs, p) + PMI(p, co))
+cscls(s)
+oscls(o)
+
+(10)
+
+where cls denotes the types of the resource and PMI denotes
+the Pointwise Mutual Information, which is a measure of
+association and defined by
+PMI(a, b) = log
+
+occ(a, b)
+
+(11)
+
+occ(a)  occ(b)
+
+using occ(e) as number of occurrences of a given entity e in a
+specific position of a triple and N as the total number of triples
+in the knowledge base.
+
+7. Temporal extension of DeFacto
+
+A major drawback of the previous version of DeFacto was the
+missing support of temporal validation. There was no way to check
+if a triple, e.g., <Tom_Cruise><spouse <Katie_Holmes>, is
+still true or if it only has been valid in the past. To overcome this
+drawback we introduce a temporal extension of DeFacto which
+is able to handle facts that happened on a particular date (time
+points) and facts which span a longer duration (time periods). The
+granularity of both time points and time periods is years. In this
+
+Table 3
+Example list of temporal patterns extracted from English, German and French
+Wikipedia.
+
+section we describe the two sources for determining the correct
+time point/period: (a) statistics, e.g., the (normalized) frequencies
+of years in proof phrases; and (b) the combination of statistics
+and text understanding, by finding lexical patterns expressing
+temporal information in free text.
+
+7.1. Temporal pattern extraction
+
+Our temporal pattern extraction method takes a set of corpora
+as input. Each corpus is split and indexed on sentence level. After
+that, we perform index lookups for all sentences which contain at
+least one of all possible combinations of two years between 1900
+and 2013. We apply a context window around the year match in
+the sentence which ensures that all text excerpts contain at least
+three (if possible) tokens before, between and after the two year
+occurrences. Furthermore, we replaced the year occurrences with
+placeholders and created a frequency distribution for all matching patterns. We then manually relaxed the patterns by generating
+regular expression versions and added additional ones by examining the occurrences of the years in the DeFacto training set.
+
+Specifically in our experiment, we used the Wikipedia dumps
+(generated in July 2013) as text corpora for the pattern search.
+After splitting the articles in sentences the English index contained
+64.7M sentences where as the German with 27.6M and the French
+with 17.0M sentences are significantly smaller. An excerpt of the
+used patterns can be seen in Table 3 and the complete list of all
+patterns can be downloaded at the project home page.
+
+7.2. Year frequency
+
+We apply two different year extraction mechanisms for facts
+with associated time points and time periods. In the first case,
+we create a frequency distribution for tokens which match the
+regular expression [1-2][0-9]{3}. To this end, we take all complex
+proof phrases extracted from DeFacto for a given triple and create
+a context window (of variable length) to the left and right of the
+surface form of the facts subject and object. All tokens from all
+context windows for all complex proofs are combined to compute
+the year frequency for an input fact. In the case of an associated
+time period we first try to find year pairs. To find those year
+pairs we extract a list of multilingual temporal regular expression
+patterns (see Section 7.1). We apply these patterns to the context
+of all complex proofs and create a frequency distribution for the
+start and end year of a given time period. We then choose the most
+frequent years from both distributions as start- or end-point of the
+given fact. In case the temporal patterns do not return any year
+pairs, we apply a frequency analysis as explained for time points
+and select the first two years as start or end.
+
+7.3. Normalizing frequencies of years
+
+The extraction of time information is strongly influenced by the
+growing amount of digital content over time. This leads to more
+recent dates being more likely to be found on the Web, as shown in
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Fig. 6. Distribution of year numbers in World Wide Web. Shows approximate
+number of Google search results. Outliers from left to right, 1931, 1972 and 2000.
+As comparison EU has about 2.280.000.000 and Obama 478.000.000 hits.
+
+Fig. 6, than less recent ones. Within DeFacto, we thus implemented
+two different approaches for normalizing the frequency of years by
+their popularity on the Web. Each approach defined a popularity
+function pop, which takes a year as input and returns a number
+representing its popularity. Values below 1 indicate that the year
+has less than average popularity, where values above 1 indicate an
+above average popularity. When collecting evidence in DeFacto, we
+can then divide the frequency of all years found by their popularity
+value to obtain a distribution, which takes popularity into account.
+When two years are equally often associated to a particular event,
+this means DeFacto will assign a higher probability to the year with
+lower pop-value.
+
+Global normalization
+
+Using the data from Fig. 6, we have an estimate of the frequency
+of years, or more specifically a set Y of 4-digit-numbers, on the
+Web. Assuming that wf (Web frequency) is a function taking a year
+as input and returning its frequency on the Web, we can define the
+popularity function as follows:
+popglobal(x) =
+
+ wf (x)
+1|Y|
+
+wf (y)
+
+(12)
+
+yY
+
+This function divides the frequency of a year on the Web by the
+average frequency of all years in Y on the Web. The square root is
+used to soften the effect of the normalization.
+
+Domain-specific normalization
+
+A second option to compute the popularity value of a year is to
+use the training set and actual evidence obtained by DeFacto. In
+Section 4, we described how search queries are generated and text
+excerpts (proofs) are extracted from the resulting web pages. Let pf
+(proof frequency) be a function taking a year as input and returning
+its frequencies in all proofs generated when running DeFacto over
+a training set. Furthermore, let tf (training set frequency) be the
+frequency of correct years in the training set. Intuitively, we can
+expect years frequently in the training set to also frequently occur
+in the generated proofs. Therefore, we first divide pf by tf and
+then apply an analogous approach to the global normalization
+introduced above:
+
+ pf (x)
+1|Y|
+
+tf (x)
+
+yY
+
+pf (y)
+tf (y)
+
+popdomain(x) =
+
+(13)
+
+The fictional example below shows the results of our approach
+
+when using only three years as input:
+
+pf
+tf
+popdomain
+
+Fig. 7. FactBench provides data for 10 relations.
+
+Source: The data was automatically extracted from Wikipedia (DBpedia
+
+respectively) and Freebase.
+
+In this example, 2000 is more popular than 1990, since it
+has the same frequency in proofs, but a lower frequency in the
+training set. 2010 is more popular than 2000, since it has a higher
+frequency in proofs, but the same frequency in the training set.
+
+8. FactBenchA fact validation benchmark
+
+FactBench is a multilingual benchmark for the evaluation of
+fact validation algorithms. All facts in FactBench are scoped with
+a timespan in which they were true, enabling the validation of
+temporal relation extraction algorithms. FactBench currently supports English, German and French. The current release V1 is freely
+available (MIT License) at http://github.com/AKSW/FactBench.
+FactBench consists of a set of RDF models. Each one of the 1500
+models contains a singular fact and the time period in which it
+holds true. Each fact was checked manually by three independent human quality raters. In addition, the FactBench suite contains the SPARQL and MQL queries used to query Freebase21 and
+DBpedia, a list of surface forms for English, French and German as
+well as the number of incoming and outgoing links for the English
+wikipedia pages. FactBench provides data for 10 well-known re-
+lations. The data was automatically extracted from DBpedia and
+Freebase. A detailed description on what facts the benchmark contains is shown in Fig. 7. The granularity of FactBenchs time information is year. This means that a timespan is an interval of two
+years, e.g., 20082012. A time point is considered as a timespan
+with the same start and end year, e.g., 20082008.
+
+FactBench is divided in a training and a testing set (of facts).
+This strict separation avoids the overfitting of machine learning
+algorithms to the training set, by providing unseen test instances.
+
+8.1. Expression of temporal information in RDF knowledge bases
+
+There are several methods to model temporal information in
+the Web of Data. According to Rula et al. [43], we can distinguish
+the following main categories:
+ Document-centric, e.g., time points are connected to documents
+via the last modified HTTP header.
+
+21 Since there are no incremental releases from Freebase we include the crawled
+training data.
+
+8.2.1. Positive examples
+
+In general, we use facts contained in DBpedia and Freebase as
+positive examples. Since for most relations there is far more data
+available then necessary we had to select a subset. For each of the
+properties we consider, we generated positive examples by issuing
+a SPARQL or MQL query and selecting the top 150 results. Note that
+the results in Freebase (MQL) are ordered by an internal relevance
+score.26 The results for the DBpedia SPARQL queries were ordered
+by the number of inbound-links of a given resources wikipedia
+page. We collected a total of 1500 correct statements (750 in
+test and train set). Each relation has 150 correct facts distributed
+equally in the test and train set (see Table 4).
+
+8.2.2. Negative examples
+
+The generation of negative examples is more involved than the
+generation of positive examples. In order to effectively train any
+fact validation algorithm, we considered it essential that many of
+the negative examples are similar to true statements. In particular,
+most statements should be meaningful triples. For this reason, we
+derive negative examples from positive examples by modifying
+them while still following domain and range restrictions. Assume
+the input triple t = (s, p, o) and the corresponding time period
+tp = (from, to) in a knowledge base K is given and let S be the
+set of all subjects, O the set of all objects of the given property
+p and P the set of all properties. We used the following methods
+to generate the negative example sets dubbed subject, object,
+subjectobject, property, random, mix and date (in that order). If
+not stated otherwise tp is not modified.
+Domain A triple (s, p, o) is generated where s
+is a random
+element of S, the triple (s, p, o) is not contained in K.
+A triple (s, p, o) is generated analogously by selecting a
+Range
+random element of O.
+Domainrange A triple (s, p, o) is generated analogously by
+selecting a random s from S and a random o from O.
+Property A triple (s, p, o) is generated in which p is randomly
+selected from the list of all properties and (s, p, o) is not
+contained in K and p = p is not allowed.
+Random A triple (s, p, o) is generated where s and o are
+randomly selected resources, p is a randomly selected
+property from the list of all properties and (s, p, o) is
+not contained in K.
+A triple (s, p, o)(from, to) is generated. For time points
+from is a random year drawn from a gaussian distribution
+( = from and  2 = 5), from = to, from
+= from and
+0 < from  2013. For timespans from is a random year
+drawn from a gaussian distribution ( = from and  2 =
+2), the duration d is generated by drawing a random
+number from a gaussian distribution ( = to from and
+ 2 = 5), to = from + d, 0 < d  2013, from = from,
+to = to, from  2013 and to  2013.
+1/6 of each of the above created negative training sets
+were randomly selected to create a heterogenous test set.
+Note that this set contains 780 negative examples.
+
+Date
+
+Mix
+
+Fig. 8. Overview of time points and time periods in the FactBench train set.
+ Fact-centric, e.g., temporal information refers to facts. This
+can be divided into sentence-centric and relationship centric
+perspectives. In the sentence-centric perspective, the temporal
+validity of one or more statements is defined by annotating the
+facets. In the relationship centric perspective, n-ary relations
+are used to encapsulate temporal information.
+Popular knowledge bases show a variety of different modeling choices for temporal information: DBpedia uses a class
+dbo:TimePeriod and attaches various properties to it, e.g.,
+dbo:activeYearsEndDate is used to associate an xsd:date
+to mark the end of some activity. Freebase is fact-centric, more
+specifically relationship centric, and uses n-ary relations. YAGO is
+sentence-centric and uses reification to attach temporal restrictions to statements. Furthermore, there exist a variety of ontologies and standards related to representing temporal information,
+e.g., the OWL time ontology,22 XML Schema Date Datatypes,23 ISO
+standard 8601,24 Dublin Core time interval encoding25 and Linked
+Timelines [44]. For FactBench, we adopt a temporal representation
+similar to the one used in DBpedia, although other options appear
+to be equally appropriate. Listing 1 shows an example fact.
+
+8.2. Data generation
+
+The data generation of the FactBench benchmark has three
+objectives. (1) We try to cover as many different domains as
+possible. The benchmark includes, amongst others, relations from
+the persons (marriage), places (birth, death) and organizations
+domain (subsidiary). In addition, it also contains relations which
+would usually fall into the miscellaneous domain, e.g., award
+or publication. Also the data is derived from multiple sources,
+e.g., DBpedia and Freebase. (2) We aimed to not only cover relations
+for a fixed point in time (e.g., a persons birth date) but to
+also include relations which appear over a longer period of time
+(e.g., the marriage between persons). (3) We also tried to cover
+relations which appeared before the information age (before 1980).
+An overview of the most frequently occurring time points and time
+periods of the FactBench train set can be seen in Fig. 8.
+
+22 http://www.w3.org/TR/owl-time/.
+23 www.w3.org/TR/xmlschema-2/.
+24 http://en.wikipedia.org/wiki/ISO_8601#Time_intervals.
+25 http://dublincore.org/documents/dcmi-period/.
+
+9. Evaluation
+
+The aim of our evaluation was three-fold. We wanted to
+quantify how well/much (a) can distinguish between correct and
+wrong facts; (b) is able to find correct time points or time periods
+for a given fact and if the year frequency distribution (1900 vs.
+2013) does influence the accuracy; and (c) the use of multi-lingual
+patterns boost the results of DeFacto with respect to fact validation
+and date detection. In the following, we describe how we set up
+our evaluation system, present the experiments we devised and
+discuss our findings.
+
+26 http://wiki.freebase.com/wiki/Search_Cookbook.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+<http :// www.w3.org /2000/01/ rdf -schema#> .
+<http :// dbpedia.org/ontology/> .
+<http :// dbpedia.org/resource/> .
+
+1 @prefix fbase: <http :// rdf.freebase.com/ns/> .
+2 @prefix rdfs:
+3 @prefix dbo:
+4 @prefix dbr:
+5 @prefix fr -dbr: <http :// fr.dbpedia.org/resource/> .
+6 @prefix de -dbr: <http :// de.dbpedia.org/resource/> .
+7 @prefix owl:
+8 @prefix xsd:
+9 @prefix skos:
+
+<http :// www.w3.org /2002/07/ owl#> .
+<http :// www.w3.org /2001/ XMLSchema#> .
+<http :// www.w3.org /2004/02/ skos/core#> .
+
+fbase:m.0 dt39
+
+rdfs:label
+
+Nobelpreis fur Physik"@de ;
+
+"Nobel Prize in Physics"@en , "Prix Nobel de physique"@fr , "
+
+owl:sameAs
+
+fr -dbr: Prix_Nobel_de_physique , de -dbr:Nobelpreis_f ur_Physik , dbr:
+
+skos:altLabel "Nobel Physics Prize"@en , "Nobel laureates in physics"@fr , "
+
+Nobel_Prize_in_Physics ;
+
+Physik -Nobelpreis"@de ...
+
+fbase:m.0 jcx__24
+
+dbo:award
+dbo:startYear
+dbo:endYear
+
+fbase:m.0 dt39 ;
+
+"1921"^^ xsd:gYear ;
+"1921"^^ xsd:gYear .
+
+fbase:m.0jcx
+rdfs:label
+"@de ;
+
+"Albert Einstein"@fr , "Albert Einstein"@en , "Albert Einstein
+
+dbo: recievedAward
+owl:sameAs
+
+fbase:m.0 jcx__24 ;
+dbr: Albert_Einstein , dbr -fr: Albert_Einstein , dbr -de:
+
+Albert_Einstein ;
+
+skos:altLabel
+
+"A. Einstein"@fr , "Einstein , Albert"@de , "Albert Einstin"@en
+
+Listing 1: Example of a fact in FactBench.
+
+Table 4
+Overview of all correct facts of the training and testing set (train/test).
+
+...
+
+|Sub|
+75/75
+75/75
+50/52
+75/75
+75/75
+75/75
+74/74
+22/21
+75/75
+54/50
+
+|Obj|
+67/65
+54/48
+24/27
+5/5
+59/62
+75/73
+74/74
+74/74
+36/43
+75/75
+
+Relation
+Birth
+Death
+Team
+Award
+Foundation
+Publication
+Spouse
+Starring
+Leader
+Subsidiary
+
+Type
+Point
+Point
+Point
+Point
+Point
+Point
+Point
+Period
+Period
+Period
+
+Yearmin
+1166/1650
+1270/1677
+2001/2001
+1901/1901
+1865/1935
+1818/1918
+2003/2003
+1954/1964
+1840/1815
+1993/1969
+
+Yearmax
+1989/1987
+2013/2012
+2012/2012
+2007/2007
+2006/2008
+2006/2006
+2013/2013
+2009/2009
+2013/2012
+2007/2007
+
+Yearavg
+1925/1935
+1944/1952
+2007/2007
+1946/1952
+1988/1990
+1969/1980
+2007/2007
+1992/1993
+1973/1972
+2003/2002
+
+Source
+DBpedia
+DBpedia
+DBpedia
+Freebase
+Freebase
+Freebase
+Freebase
+DBpedia
+DBpedia
+Freebase
+
+Comment
+Birth place (city) and date of persons
+Death place (city) and date of persons
+NBA players for a NBA team (after 2000)
+Winners of nobel prizes
+Foundation place and time of software companies
+Authors of science fiction books (one book/author)
+Marriages between actors (after 2013/01/01)
+Actors starring in a movie
+Prime ministers of countries
+Company acquisitions
+
+9.1. Experimental setup
+
+In a first step, we computed all feature vectors, described in
+Section 6 for the training and test sets. DeFacto relies heavily on
+web requests, which are not deterministic (i.e., the same search
+engine query does not always return the same result). To achieve
+deterministic behavior and to increase the performance as well
+as reduce load on the servers, all web requests were cached. The
+DeFacto runtime for an input triple was on average slightly below
+four seconds per input triple27 when using caches.
+
+We stored the features in the ARFF file format and employed
+the WEKA machine learning toolkit28 for training different clas-
+sifiers. In particular, we were interested in classifiers which can
+handle numeric values and output confidence values. Naturally,
+confidence values for facts such as, e.g., 95%, are more useful for
+end users than just a binary response on whether DeFacto considers the input triple to be true, since they allow a more fine-grained
+
+27 The performance is roughly equal on server machines and notebooks, since the
+web requests dominate.
+28 http://www.cs.waikato.ac.nz/ml/weka/.
+
+assessment. We selected popular machine-learning algorithms
+satisfying those requirements.
+
+As mentioned in Section 4.1, we focused our experiments on the
+10 relations from FactBench. The system can be extended easily
+to cover more properties by extending the training set of BOA to
+those properties. Note that DeFacto itself is also not limited to
+DBpedia or Freebase, i.e., while all of its components are trained
+on these datasets, the algorithms can be applied to arbitrary URIs
+and knowledge bases.
+
+9.2. Fact scoring
+
+For this evaluation task, we used each FactBench training set
+to build an independent classifier. We then used the classifier on
+the corresponding test set to evaluate the built model on unseen
+data. The results on this task can be seen in Table 5. The J48
+algorithm, an implementation of the C4.5 decision treeshows the
+most promising results. Given the challenging tasks, F-measures
+up to 84.9% for the mix test set appear to be very positive indicators
+that DeFacto can be used to effectively distinguish between true
+and false statements, which was our primary evaluation objective.
+In general, DeFacto also appears to be stable against the various
+negative test sets given the F1 values ranging from 89.7% to 91% for
+
+Table 5
+Classification results for FactBench test sets (C = correctness, P = precision, R = recall, F1 = F1Score, AUC = area under the curve, RMSE = root mean squared error).
+
+Domain
+
+89.7%
+89.0%
+81.2%
+85.4%
+Domainrange
+
+91.0%
+88.9%
+
+84.5%
+83.6%
+
+Random
+
+90.9%
+87.8%
+84.1%
+84.3%
+
+J48
+SimpleLogistic
+NaiveBayes
+
+J48
+SimpleLogistic
+NaiveBayes
+
+J48
+SimpleLogistic
+NaiveBayes
+
+F1
+
+F1
+
+F1
+
+Range
+
+90.9%
+88.0%
+83.3%
+83.3%
+Property
+
+70.8%
+64.9%
+61.3%
+64.6%
+Mix
+
+84.9%
+80.2%
+78.7%
+76.9%
+
+F1
+
+F1
+
+F1
+
+9.3. Date scoring
+
+To estimate time scopes, we first needed to determine appropriate parameters for this challenging task. To this end, we varied
+the context size from 25, 50, 100 and 150 characters to the left and
+right of the proofs subject and object occurrence. Additionally, we
+also varied the used languages which is discussed in more detail in
+Section 9.4. The final parameter in this evaluation was the normalization approach. As introduced in Section 7, we used the occurrence (number of occurrences of years in the context for all proofs
+of a fact), the domain and range approach. We performed a grid
+search for the given parameters on the correct train set. As performance measures we choose precision30 P (shown in Eq. (14)), recall
+R (shown in Eq. (15)) and F-measure, defined as F1 = 2  PR
+P+R .
+P = |relevant years  retrieved years|
+R = |relevant years  retrieved years|
+
+|retrieved years|
+|relevant years|
+
+(15)
+
+(14)
+
+If for example, for a single fact the correct time period is 2008 (a
+time point), the F1 score is either 0 or 1. However, if the correct
+time period is 20112013 and the retrieved results are 20102013,
+we would achieve a precision P = 3
+4 (three of the four retrieved
+years are correct) and a recall R = 1 (all of the relevant years were
+found), resulting in an F1 score of 6
+7 .
+
+The final results for the train set are shown in Table 6. Please
+note that it is out of scope of this paper to decide whether a given
+property requires a time period or a time point. As expected, facts
+with time point show a higher F1 measure as facts with time period.
+Calculating the average F1 score for the individual relations leads
+to F1 = 70.2% for time points and F1 = 65.8%F1 for relations
+associated with time periods. The relations performing well on fact
+scoring also appear to be better suited for year scoping, e.g., the
+award relation. In general, the training results show that the
+domain normalization performs best and the optimal context size
+varies for each relation. We now applied the learned parameters
+for each relation on the FactBench correct test subset. The results
+are shown in Table 7. The average F1 score decreases by 2.5% to
+67.7% for time points and 4.6% to 61.2% for time period relations
+compared to the train set. Since it is not possible to determine a
+
+Fig. 9. Accuracy results for learned J48 mix classifier on correct subset of the
+test set. The abbreviation ml indicates that multi-lingual (English, French, German)
+search results and surface forms were used, en is limited to English only.
+
+the domain, range, domainrange and random test set. In particular,
+the algorithms with overall positive results also seem less affected
+by the different variations. On the property test set, in our opinion
+the hardest task, we achieved an F1 score of 68.7%. Due to the
+results achieved, we use J48 as the main classifier in DeFacto and,
+more specifically, its results on the mix sets as this covers a wide
+range of scenarios. We observe that the learned classifier has an
+error rate of 3% for correct facts, but fails to classify 55.3% of the
+false test instances as incorrect.
+
+We also performed an evaluation to measure the performance
+of the classifier for each of the relations in FactBench. The results
+of the evaluation are shown in Fig. 9. We used the precision of the
+main classifier (J48 on the mix models) on the correct subset for
+this figure.29 The average precision for all relations is 89.2%. The
+worst precision for an individual relation, i.e., 69%, is achieved on
+the foundation relation, which is by far the least frequent relation
+on the Web with respect to search engine results.
+
+29 We are using the correct subset, since some negative examples are generated
+by replacing properties as described in Section 8.2.2. For those, it would not be clear,
+which property they refer to.
+
+30 Finding no year candidate for a given fact only influences the recall.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Table 6
+Overview of the time-period detection task for the FactBench training set with respect to the different normalization methods. ml (multi-lingual) indicates the use of all
+three languages (en, de, fr).
+
+Set
+
+awarden
+awardml
+
+birthen
+birthml
+
+deathen
+deathml
+
+foundationen
+foundationml
+
+publicationen
+publicationml
+
+starringen
+starringml
+
+subsidiaryen
+subsidiaryml
+
+spouseen
+spouseml
+
+nbateamen
+nbateamml
+
+leaderen
+leaderml
+
+timepointen
+timepointml
+
+timeperioden
+timeperiodml
+
+allen
+allml
+
+Occurrence
+
+P75
+
+Global
+
+P75
+
+Domain
+
+P75
+
+correct time point or time period for all facts (the context does not
+always include the correct year(s)) we also calculated DeFactos
+accuracy. We define the accuracy acc for a time period tp as
+follows:
+
+acc(tp) =1
+
+if tpfrom is correct  tpto is correct
+otherwise.
+
+(16)
+
+The average accuracy for time point (from and to are equal)
+relations is 76%. Since for time periods we have to match both
+start and end year, which aggravates this task significantly, we
+achieved an accuracy of 44% on this dataset. Finally, we wanted to
+see if DeFactos performance is influenced by how recent a fact is.
+We grouped the time intervals in buckets of 10 years and plotted
+the proportion of correctly classified facts within this interval. We
+did this for the multilingual as well as the English-only setting of
+DeFacto. The results are shown in Fig. 10. In general, all values
+are between 80% and 100% for the English version and between
+93% and 100% for the multi-lingual version. While there is some
+variation, no obvious correlation can be observed, i.e., DeFacto
+appears to be able to handle recent and older facts. In this figure,
+it is interesting to note that the multilingual setting appears
+
+Fig. 10. A plot showing the proportion of correctly classified facts (y-axis) for the
+FactBench mix-correct-test-set using the J48 classifier. The time intervals (x-axis)
+are buckets of ten years, e.g., 1910 stands for all years from 1910 to 1919. Results
+for the multilingual and English-only setting of DeFacto are shown.
+
+Acc
+
+Table 7
+Overview of the domain-normalization on the FactBench test set. ml (multi-lingual) indicates the use of all three languages (en, de, fr). C(S|E) shows the number of correct
+start and end years, P75 is the number of time-periods possible to detect correctly and A is the accuracy on P75.
+
+Setcontext
+language
+award100
+en
+award25
+ml
+birth50
+en
+birth25
+ml
+death25
+en
+death25
+ml
+foundation150
+en
+foundation150
+ml
+publication150
+en
+publication150
+ml
+starring50
+en
+starring100
+ml
+subsidiary150
+en
+subsidiary25
+ml
+spouse25
+en
+spouse25
+ml
+team150
+en
+team25
+ml
+leader100
+en
+leader100
+ml
+timepoint25
+en
+timepoint25
+ml
+timeperiod100
+en
+timeperiod100
+ml
+all100
+en
+all100
+ml
+
+P75
+
+Table 8
+Classification results for FactBench mix test set on English language only.
+
+J48
+SimpleLogistic
+NaiveBayes
+
+83.4%
+80.6%
+78.1%
+78.6%
+
+F1
+
+The difference is similar on the test set, where the difference is
+
+6.5% for time points and 6.9% for time period relations.
+
+Finally, as shown in Fig. 10, the English version performs equally
+well on recent data, but performs worse for less recent dates, which
+is another indicator that the use of a multilingual approach is
+preferable to an English-only setting.
+
+to be more stable and perform better. We performed a paired
+t-test using all 750 facts and obtained that the improvement of the
+multilingual setting is statistically very significant.
+
+9.4. Effect of multi-lingual patterns
+
+The last question we wanted to answer in this evaluation is how
+much the use of the multi-lingual patterns boosts the evidence
+scoring as well as the date scoping. For the fact scoring we trained
+different classifiers on the mix training set. We only used English
+patterns and surface forms to extract the feature vectors. As the
+results in Table 8 on the test set show, J48 is again the highest
+scoring classifier, but is outperformed by the multi-lingual version
+shown in Table 5 by 1.5% F1 score.
+
+The detailed analysis for the different relations in Fig. 9 indicates
+
+a superiority of the multi-lingual approach.
+
+We also performed the grid search as presented in Section 9.3
+for English patterns and surface forms only. As shown in Table 6 the
+multi-lingual date scoping approach outperforms the English one
+significantly on the training set. The multi-lingual version achieved
+an average 4.3% on the time point and a 6.5% better F1 measure on
+time period relations.
+
+10. Conclusion and future work
+
+In this paper, we presented DeFacto, a multilingual and temporal approach for checking the validity of RDF triples using the
+Web as corpus. In more detail, we explicated how multi-lingual
+natural-language patterns for formal relations can be used for fact
+validation. In addition, we presented an extension for detecting
+the temporal scope of RDF triples with the help of pattern and
+frequency analysis. We support the endeavor of creating better
+fact validation algorithms (and to that end also better relation extraction and named entity disambiguation systems) by providing
+the full-fledged benchmark FactBench. This benchmarks consists
+of one training and several test sets for fact validation as well as
+temporal scope detection. We showed that our approach achieves
+an F1 measure of 84.9% on the most realistic fact validation test set
+(FactBench mix) on DBpedia as well as Freebase data. The temporal extension shows a promising average F1 measure of 70.2% for
+time point and 65.8% for time period relations. The use of multilingual patterns increased the fact validation F1 by 1.5%. Moreover,
+it raised the F1 for the date scoping task of up to 6.9%. Of importance is also that our approach is now fit to be used on non-English
+knowledge bases.
+
+D. Gerber et al. / Web Semantics: Science, Services and Agents on the World Wide Web 35 (2015) 85101
+
+Our approach can be extended in manifold ways. First, we
+could run the experiments on a Web crawl such as ClueWeb0931/
+ClueWeb0932 or CommonCrawl.33
+
+This would drastically increase recall, since we could execute
+all combinations of subject/object surface forms and patterns as
+well as precision, since we could also query for exact matches like
+Albert Einstein was awarded the Nobel Prize in
+Physics as opposed to querying for fragments (see Section 4.2).
+Second, we could work on efficient disambiguation of (parts of)
+the web pages text before extracting proof phrases. This would
+be useful for, e.g., differentiating between Winston Churchill, the
+American novelist and Winston Churchill the British prime minis-
+ter. Third, we plan to analyze the influence of individual features,
+as well as our threshold optimization and further relations among
+the model components. Besides, check individually the coverage of
+NLP tools. Moreover, we plan to extend the approach to combine
+more languages which were not considered at this work, such as
+Spanish and Portuguese, for instance. This would increase the coverage of possible facts in many cases and consequently improving
+the results. Furthermore, we could extend our approach to support
+data type properties or try to search for negative evidence for facts,
+therewith allowing users to have a richer view of the data on the
+Web through DeFacto. Finally, we could extend the user interface
+(see Fig. 4) to improve classifier performance by incorporating a
+feedback loop allowing users to vote on overall results, as well as
+proofs found on web pages. This feedback can then be fed into our
+overall machine learning pipeline and improve DeFacto on subsequent runs.
+
+Acknowledgments
+
+This work was supported by grants from the European
+Unions 7th Framework Programme provided for the projects
+GeoKnow (GA no. 318159), the Eurostars project DIESEL as
+well as the German Research Foundation Project GOLD and the
+German Ministry of Economy and Energy project SAKE (GA No.
+01MD15006E).

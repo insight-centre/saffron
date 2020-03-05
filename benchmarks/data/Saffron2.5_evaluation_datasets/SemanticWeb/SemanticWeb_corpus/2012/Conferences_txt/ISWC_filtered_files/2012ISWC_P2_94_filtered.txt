@@ -1,0 +1,1025 @@
+Embedded EL+ Reasoning
+
+on Programmable Logic Controllers
+
+Stephan Grimm, Michael Watzke, Thomas Hubauer, and Falco Cescolini
+
+Siemens AG, Corporate Technology, Munich, Germany
+
+Abstract. Many industrial use cases, such as machine diagnostics, can
+benefit from embedded reasoning, the task of running knowledge-based
+reasoning techniques on embedded controllers as widely used in industrial automation. However, due to the memory and CPU restrictions of
+embedded devices like programmable logic controllers (PLCs), state-of-
+the-art reasoning tools and methods cannot be easily migrated to industrial automation environments. In this paper, we describe an approach
+to porting lightweight OWL 2 EL reasoning to a PLC platform to run in
+an industrial automation environment. We report on initial runtime experiments carried out on a prototypical implementation of a PLC-based
+EL+-reasoner in the context of a use case about turbine diagnostics.
+
+1 Motivation
+
+Embedded controllers are extensively used in industrial environments for operating and monitoring technical machinery. They can be placed near the underlying
+machines sensors and actuators to perform local computation tasks on-site with
+quick reaction times. Much of the computation required for process control or
+condition monitoring on industrial facilities is thus performed on computational
+devices that are embedded in the surrounding field in a decentralized manner,
+which is in contrast to the central computation performed on PCs in areas such
+as business applications. When embedded controllers run knowledge-based systems that apply the computational techniques of automated reasoning, we speak
+of embedded reasoning.
+
+One particular use case for embedded reasoning is on-site diagnostics of industrial facilities based on diagnostic knowledge models for technical devices.
+There, embedded controllers can perform reasoning on sensor data in the context of diagnostic background knowledge to detect a machines faulty behavior
+or to trace the causes thereof. Single diagnostic results reasoned over local device models can be combined to yield an overall diagnosis for the whole facility
+under investigation. An example scenario is reactive diagnostics for steam and
+gas turbines in electrical power plants, where early detection of anomalies in
+running a plant helps avoid costly downtimes and repair of turbine machinery.
+In contrast to business applications that run on PCs, knowledge-based modeling and reasoning techniques, such as those used in the Semantic Web, are
+
+ This research was funded in part by the German Federal Ministry of Education and
+
+Research under grant number 01IA11001.
+
+P. Cudr e-Mauroux et al. (Eds.): ISWC 2012, Part II, LNCS 7650, pp. 6681, 2012.
+c Springer-Verlag Berlin Heidelberg 2012
+?
+
+?
+
+?
+not readily available in an automation environment. Embedded controllers are
+subject to tight limitations on computational power or memory size and often
+run proprietary operating systems for which no standard reasoning tools are
+available, as reported in [11]. There, it was also observed that standard implementations of state-of-the-art reasoning algorithms designed for a PC environment cannot easily be migrated to embedded controllers due to their hardware
+restrictions. Hence, there is the need for porting reasoning techniques to embedded environments.
+
+In the area of industrial automation, programmable logic controllers (PLCs)
+are the most widespread type of embedded controller used for many real-time automation tasks. Unlike general purpose computers, PLCs are designed for control
+of industrial machinery and employ a processing scheme based on fixed length execution time cycles to meet realtime requirements. On the other hand, the Web
+Ontology Language (OWL) and its underlying reasoning services are well suited
+for representing structural diagnostic models of technical devices and their depen-
+dencies. Especially the OWL 2 profiles, which provide restricted language variants
+with faster computation, are well suited for use in resource-constrained embedded
+systems. Hence, it would be beneficial to port (light-weight) OWL 2 reasoning to
+PLCs in order to provide for on-site processing of knowledge models in the context
+of machine diagnostics and many other industrial use cases.
+
+The implementation of state-of-the-art OWL reasoning on a PLC platform,
+however, has various difficulties. On the one hand, the typical methods used for
+OWL reasoning, such as tableaux or consequence-driven procedures, are designed
+to use dynamic data structures like tree models or concept mappings that are
+continuously expanded, whereas on PLCs only static memory management is
+available, and restricted to very limited size. Moreover, the dynamic runtime
+behavior of standard reasoning algorithms operating on a set of tableau- or
+consequence-like rules over an indeterminate number of iterations does not fit
+the strictly cyclic processing pattern that PLCs follow.
+
+In this paper, we present an approach to porting consequence-driven ontology classification in the OWL 2 EL language profile, as e.g. described in [1,9],
+to PLC platforms in the context of an industrial diagnostics use case. We propose an architecture for using PLCs in combination with standard OWL tools
+hosted on a PC environment, and we show how to overcome the architectural
+discrepancies between standard implementation platforms for such procedures
+and the PLC world. In particular, we present the use of a compact and efficient
+axiom representation based on fixed length data structures, and we introduce
+an interruption-safe saturation mechanism that fits a PLCs cyclic processing
+paradigm. We also report on initial runtime experiments carried out on our
+prototypical implementation of a PLC-based embedded OWL 2 EL reasoner
+covering the description logic EL+ to show the feasibility of our approach. This
+also includes a formulation of a turbine diagnostic problem in terms of an EL+
+ontology and the use of classification for deriving diagnoses. By this, we contribute to making Semantic Web reasoning technology available on industrial
+automation platforms dominated by the PLC paradigm.
+
+S. Grimm et al.
+
+2 Preliminaries
+
+2.1 Programmable Logic Controllers
+
+In the automation domain, programmable logic controllers (PLCs) are a flexible
+means for solving a control problem. In contrast to control wiring contactors
+and relays, a PLC uses a specific program to realize a control task. PLCs are the
+central part of todays automation solutions for control of machines or plants.
+They are networked to central and/or distributed I/O modules connected to
+sensors and actuators, display devices for monitoring and operation, as well as
+a programming device or SW development environment for programming and
+configuration [5].
+
+In order to behave like hardwired logics consisting of contactors and relays,
+where logical operations are effectively executed in parallel, a PLC executes
+its sequential user program cyclically. Within each execution cycle, a PLC first
+stores a snapshot of its current input signals in a process image input table in the
+CPU memory. The CPU executes the user program step-by-step, one command
+at a time. During command execution, signal states are taken from the process
+image input table, processed and stored in the process image output table. At
+the end of an execution cycle, when the user program has finished, a PLC sets
+output signals according to their values in the process image output table. The
+shorter the cycle time of the PLC user program, the more frequently input signals
+are read and output signals are set. PLC commands can be clustered into binary
+logic operations (e.g. AND, OR), memory functions (e.g. bit assignment), move
+functions (e.g. register load/store from/to memory), counters and timers [4].
+
+The work presented in this paper is based on Siemens SIMATIC automation
+system. The SIMATIC automation system is a family of different products [5]
+built around the SIMATIC S7 controller. There are several PLC types avail-
+able, addressing a range of performance and availability requirements. Usually,
+a power supply unit, CPU module and I/O modules are installed in a mounting
+rack and form a station. The SIMATIC DP distributed I/O system allows for
+input/output modules to be installed nearby a machine, connected to a PLC
+by means of a PROFIBUS network. SIMATIC HMI (Human Machine Inter-
+face) provides a number of different products for visualization, ranging from
+simple text displays to interactive touch screen panels. SIMATIC NET provides
+networking of all SIMATIC stations for data exchange, programming and con-
+figuration. OPC1 is an interface standard for communication between several
+stations or to PCs. STEP 7 is the standard tool for configuration and programming of the user program in any of the available languages (Ladder Logic
+(LAD, a representation similar to relay logic diagrams), Function Block Diagram
+(FBD), Statement List (STL, an Assembler-like language) or Structured Control
+Language (SCL, a high-level language similar to Pascal)).
+
+In addition to hardware-based PLCs, SIMATIC WinAC provides software
+that emulates a PLC on a standard Industrial PC (IPC) running Microsoft
+Windows.
+
+http://www.opcfoundation.org/
+?
+
+?
+
+?
+2.2 Ontologies and the EL+ Description Logic
+
+In the area of knowledge-based systems and the Semantic Web, ontologies are
+the key artifact for representing and reasoning about knowledge of a specific
+domain, such as turbine machinery. Compared to subsymbolic approaches for
+capturing domain knowledge, ontologies allow for an explicit representation of
+domain concepts and their interrelations as well as for automated reasoning
+based on the clear semantics of logic. In this work, we build on the prominent
+OWL Web Ontology Language which is semantically founded on the description
+logic (DL) formalism [2]. In its second version, OWL comes with a number of socalled profiles that offer language variants with reduced expressivity and better
+computational properties. In particular, we use (a part of) OWL 2 EL [13], which
+is based on the tractable description logic EL+ [1]. Research has shown that the
+OWL 2 EL profile is especially well suited for representing diagnostic models,
+including the well-known SNOMED-CT2 and GALEN3 medical ontologies.
+The basic building blocks for representing knowledge in EL+ are (atomic)
+concepts, such as GasTurbine, and roles, such as hasComponent. An EL+ ontology O is a set of concept inclusion axioms of the form GasTurbine  Turbine
+(stating that every GasTurbine is a Turbine) and role inclusion axioms of the
+form directlyControls  hasSubComponent  controls (stating that control is propagated over the partonomy of a system). The symbol  can be read as logical
+
+implication. The sets N
+r denote the concept and role names that occur in an ontology O and form its signature. Complex concepts can be composed from simpler concepts and roles using the concept constructors  and
+. An example for a complex EL+ concept inclusion axiom is GasTurbine 
+ hasComponent .Combustor, stating the fact that any gas turbine has a combustor as its component. For further details on EL+, see [2,13].
+The main features that EL+ lacks compared to OWL 2 EL are concept disjointness by means of the bottom concept , and nominals {o}, which allow
+expression of facts about particular instances of a concept. The main reasoning
+task in EL+ (and a central reasoning task for description logics in general) is
+called classification, it builds up a complete inferred subsumption hierarchy of all
+atomic concepts mentioned in an ontology O. This can be understood as deriving deductively all concept subsumptions A  B that are a logical consequence
+of O, expressed formally by O |= A  B, for A, B  N
+
+C and N
+?
+
+?
+
+?
+2.3 Consequence-Driven Reasoning in EL+
+Classification of EL+ ontologies can be realized efficiently (i. e., in polynomial
+runtime) using a so-called consequence-driven reasoning approach, as described
+in [1] or [9]. Since our embedded reasoning method for PLCs also employs a
+consequence-driven approach, we give an introduction to consequence-driven
+reasoning for EL+, following the approach from [1], in this section.
+
+http://www.nlm.nih.gov/research/umls/Snomed/snomed_main.html
+http://www.openclinical.org/prj_galen.html
+
+S. Grimm et al.
+
+(CR1)
+
+C  C1
+C  D
+
+[C1  D  O]
+
+(CR2)
+
+C  C1
+
+C  C2
+
+C  D
+
+[C1  C2  D  O]
+
+(CR3)
+
+(CR5)
+
+C  C1
+C   r .D
+C   r .D
+C   s .D
+
+[C1   r .D  O]
+
+(CR4)
+
+C   r .C1
+
+C  D
+
+C1  C2
+
+[ r .C2  D  O]
+
+[r  s  O]
+
+(CR6)
+
+C   r1 .C1
+
+C1   r2 .D
+
+C   s .D
+
+[r1  r2  s  O]
+
+Fig. 1. Completion rules for EL+
+
+In a preprocessing step, the input ontology O is normalized into a semantically
+equivalent ontology O which contains only axioms of the form (NF1) C1  D,
+(NF2) C1  C2  D, (NF3) C1   r .D, (NF4)  r .C2  D, (NF5) r  s, and
+(NF6) r1  r2  s for atomic concepts C1, C2 and D, and roles r, 2, r1, and r2.
+Next, starting from the trivially true tautologies C   and C  C (for each
+concept name C in O), the consequence-driven classification algorithm derives
+additional valid subsumptions that are also logical consequences of O based
+on the information stated explicitly in O. This is done based on a set of socalled completion rules shown in Figure 1, which can be understood as follows:
+If the premise(s) above the horizontal line are known to be consequences of O
+and the axiom in square brackets is contained in the ontology O, then the
+conclusion below the horizontal line is a valid consequence of O as well. Note
+that there is exactly one completion rule for each type of normalized axiom; the
+application of completion rule (CRi ) is therefore guarded by the presence of
+an appropriate (NFi )-axiom in O. When the completion process terminates
+(i. e. no more rules are applicable), all valid subsumptions have been derived.
+?
+
+?
+
+?
+ P(N
+?
+
+?
+
+?
+ N
+
+ P(N
+?
+
+?
+
+?
+C ) and R : N
+r
+
+The procedure outlined above is typically realized based on two mappings
+
+S : N
+C ) which make explicit the subsumptions derived so far4. For this, observe that the premises and conclusions
+of the completion rules only consist of two types of axioms, namely C  D and
+C   r .D. These axioms are represented in the mappings as follows: C  D
+corresponds to a mapping entry D  S(C), and C   r .D is represented by
+{C, D}  R(r). Following the intuition given above, these mappings are initialized by S(C) = {C,} for each concept name C in O and R(r) =  for each role
+name r in O. Testing the premises in the rules from Figure 1 then corresponds
+to lookups in the mappings S and R. Analogously, the conclusions correspond
+to the addition of elements to the respective mapping. The classification result
+of the original input ontology O can directly be read from S after termination.
+The algorithm presented above has been implemented successfully in the
+CEL5 reasoner. Naturally, such a practical implementation requires additional
+4 P() denotes the powerset operator.
+
+http://lat.inf.tu-dresden.de/systems/cel/
+?
+
+?
+
+?
+considerations for minimizing memory usage and maximizing performance; in
+[3], an overview of the respective decisions made for the CEL system is given.
+Most recent developments for consequence-driven OWL 2 EL classification are
+reported in [9] for the ELK6 reasoner system. One central optimization, the representation of entities using integer numbers, has also been employed for our
+embedded implementation.
+
+2.4 Related Approaches to Embedded Reasoning
+
+Although there are a variety of approaches for reasoning on embedded (or mo-
+bile) devices, we are not aware of any other research on implementing reasoning algorithms for PLCs or similarly constrained devices. The Pocket KRHyper
+system7, for example, realizes DL reasoning via a hyper tableau calculus for
+first-order logic [12]. It is implemented as a Java 2 Mobile Edition8 application
+and thereby overcomes any need to address hardware issues. On the downside,
+KRHyper can only be used on systems for which a Java Virtual Machine is
+available; PLCs and other automation systems do not fall into this category and
+their cycle-based paradigm makes an easy port unlikely. More closely related to
+the approach presented in this paper is [11], whose authors propose a RETEbased OWL 2 RL reasoner for an embedded system with a 400 MHz CPU and
+64 MB of RAM that features a Linux operating system. Although standard DL
+reasoners such as Pellet9 or FaCT++10 cannot be used sensibly in this environment either, the availability of a standard operating system permits the authors
+to use standard programming paradigms. Interestingly, the authors also considered the possibility of using consequence-driven reasoning (namely CEL) on
+their platform; this was impractical due to the lack of an Allegro Common Lisp
+environment. In a very similar fashion, Bossam11 uses the RETE algorithm to
+realize an OWL reasoner with a small memory footprint [8], but it requires a
+Java Virtual Machine just like the Pocket KRHyper system.
+
+Industrial Application of Embedded EL+ Reasoning
+
+In this section, we describe the use of embedded EL+ reasoning for industrial di-
+agnostics, and we sketch a suitable architecture for such reasoning in automation
+environments.
+
+3.1 Diagnostics of Technical Devices with Embedded Reasoning
+
+The main motivation for our research on embedding reasoning on PLCs is industrial diagnostics. In particular, we consider a use case involving reactive diagnostic reasoning for steam and gas turbines. In the scenario considered here, a power
+
+http://code.google.com/p/elk-reasoner/
+http://mobilereasoner.sourceforge.net/
+http://www.oracle.com/technetwork/java/javame/index.html
+http://clarkparsia.com/pellet/
+http://owl.man.ac.uk/factplusplus/
+http://bossam.wordpress.com/
+
+S. Grimm et al.
+
+System
+
+isInfluencedBy
+
+shows
+
+operatesIn
+
+FaultMode
+
+Symptom
+
+role
+
+Domain
+
+Concept
+
+Range
+
+Fig. 2. A basic diagnostic model formalized in EL+ (c.f. [6])
+
+generation command and control center (CCC) is responsible for a large number
+of plants scattered all over the globe. Each plant typically comprises one to three
+turbines which are equipped with several hundred sensors each, mounted to the
+numerous components of the turbine. All sensors typically provide measurements
+at a rate between 0.1 and 1.0 Hertz, sending their data to the CCC. Engineers at
+the CCC have the task of monitoring the turbines, identifying faults, and taking
+reactive measures for preventing subsequent damage.
+To illustrate how diagnostic knowledge in the turbine domain can be represented using EL+ description logic axioms, consider the expert statement fan
+blade vibrations and fluctuations in the combustion chambers temperature indicate a can flame failure. Based on a diagnostic meta model that relates the
+unknown FaultMode that a certain System operatesIn to the observable Symptoms
+it shows (see Figure 2), the above statement can be formalized as follows:
+
+System   isInfluencedBy .(Fan   shows .Vibrations) 
+
+ isInfluencedBy .(CombChamber   shows .TempFluctuations)
+
+  operatesIn .CanFlameFailure
+
+To understand how classification can be employed for diagnostics in this case,
+assume that the compositional model of the turbine also contains the axioms
+Turbine   hasComponent .Fan and Turbine   hasComponent .CombChamber describing the turbine components, and the role inclusion axiom hasComponent 
+isInfluencedBy stating that subcomponents influence their supercomponents. This
+static knowledge about a turbine is complemented by additional axioms based on
+sensor measurements: If the vibration sensor mounted at the fan hub detects vibrations exceeding a threshold, a corresponding axiom Fan   shows .Vibrations
+is added. Analogously, temperature fluctuations at the combustion chamber lead
+to the addition of the axiom CombChamber   shows .TempFluctuations. Once
+this knowledge about currently observed symptoms has been added, the resulting ontology entails the axiom Turbine   operatesIn .CanFlameFailure (among
+others).12 By triggering the classification process either regularly based on a
+timer or after every addition of a symptom, a diagnostic system can therefore
+determine the state of the turbine based on a formal model of the system and its
+12 Since EL+ does not support Aboxes, we must encode facts as terminological axioms.
+A more natural modelling approach using Abox axioms could be realized in EL++.
+?
+
+?
+
+?
+Fig. 3. An architecture for embedded reasoning on PLCs
+
+diagnoses. If a faulty situation is detected, this can be signaled to the operator
+at the CCC, but also be used as input for other diagnostic components in a
+hierarchical setting.
+
+Similar models are used in existing solutions such as [7,10], which typically
+assume that standard computer systems can be used for evaluating the models,
+e.g. by moving all data to a central store. To address the special restrictions
+posed by a PLC environment, we present a dedicated approach to embedded
+diagnostic reasoning, as follows.
+
+3.2 An Architecture for Embedded EL+ Reasoning
+Figure 3 shows an architecture for embedding EL+ reasoning in a PLC. Its core
+part is the CEL Reasoning component, running on a PLC, which implements
+consequence-driven EL+ reasoning based on the CEL approach from [1]. The
+Knowledge Base subcomponent contains both application-specific background
+knowledge as well as axioms reflecting current PLC sensor input.
+
+The CEL Reasoning component is based on a very compact ontology representation suitable for resource-constrained embedded devices, such as a PLC,
+which are limited in computing power and memory. In order to be deployed on
+a PLC, any OWL ontology has to be converted to a compact ontology representation in a preprocessing step during development. For this purpose, a PLC
+Interface component running on a PC provides for ontology preprocessing as
+well as OPC-based communication between the PC and the PLC. The Ontology Preprocessing subcomponent reads a use case specific OWL ontology from
+a file. Next, its Normalization subcomponent normalizes ontology axioms to
+syntactically match the axiom types (NFi) used in the derivation rules of the
+CEL algorithm. In a subsequent ontology pre-processing step, the Internalization subcomponent maps ontology literals (concept names, role names) to corresponding integer numbers, which are used as indices in an array-based, compact
+
+S. Grimm et al.
+
+ontology representation on the PLC. Via OPC communication, the normalized
+and internalized ontology is finally deployed on the PLC.
+
+During runtime, an application running on a PC, or alternatively a use case
+specific user program running on another superordinate PLC, may trigger the
+CEL Reasoning component on the PLC by sending an appropriate signal across
+the OPC communication link. Before the reasoning process, a Sensor Input Processing component of the PLC reads input signals from sensors, maps them
+to respective ontology axioms and adds them to the knowledge base. Accord-
+ingly, axioms that are no longer valid due to changes in sensor signals are being
+removed. When the reasoning process has been finished (indicated by an appropriate flag), the application or user program is reported relevant parts of the
+reasoning result, depending on the use case to be realized.
+
+4 Consequence-Driven EL+ Reasoning on a PLC
+
+In this section, we describe aspects of the implementation of consequence-driven
+EL+ reasoning in PLC environments, where restrictions preclude a direct implementation of the CEL algorithm as described in [1,3].
+
+4.1 Difficulties with Reasoning Algorithms in PLC Environments
+
+PLCs have very limited computing power and working memory capacity compared to contemporary desktop PCs. This, and their architectural design tailored
+to automation tasks, imposes various difficulties on the task of porting algorithms
+for efficient embedded OWL reasoning to a PLC environment.
+
+One difficulty is the lack of dynamic data structures and memory allocation
+mechanisms. DL reasoning methods like tableaux or consequence-driven saturation procedures dynamically expand their data structures during the construction of tree-like models or derivation structures and partly also use backtracking
+to discard previously computed intermediate results. The CEL algorithm, in
+particular, operates on the mappings S and R, which are dynamically expanded
+by derived axioms during ontology classification. PLC platforms, however, only
+support static memory management based on a fixed size memory block scheme.
+Therefore, the consumption of PLC memory needs to follow a strategy of efficient memory layout based on upper bounds for the number of axioms that can
+potentially be derived in S and R, such that the very limited overall memory is
+not quickly exceeded by allocating sparsely populated blocks.
+
+Another difficulty is rooted in the cyclic processing paradigm of PLCs. The
+repeated processing of a memory image of input signals within a fixed time slice
+is contrary to algorithms that expand their results non-deterministically within
+processing times that depend on intermediate results. The CEL algorithm, in
+particular, has two sources of dynamic expansion of results. Firstly, the application of the derivation rules (CRi ) is triggered by both original axioms in
+the ontology and derived consequences in S and R, while the sequence of their
+application has an influence on the overall number of derivation steps required
+?
+
+?
+
+?
+Cycle
+
+tMaxCyc
+
+tMaxCyc
+
+tMaxCyc
+
+tMaxCyc
+
+tR1
+
+tR1
+
+tR1
+
+tR3
+
+tR1
+
+tR1
+
+tR5
+
+tR3
+
+tCEL
+
+Fig. 4. Time cycle problems with PLCs
+
+for classification. Hence, the number of rule applications is highly dynamic and
+cannot be determined in advance. Secondly, the time required for performing the
+various rules is also dependent on the previously computed consequences in S
+and R and differs from rule to rule. A rule can either be performed very quickly
+compared to the maximum cycle time of the PLC, or its runtime can even exceed this limit, in which case its interruption would lead to a PLC error state.
+Figure 4 depicts a cyclic view of the CEL algorithm, comparing the PLCs cyclic
+processing pattern (tMaxCyc) to the overall classification time (tCEL) composed
+of the runtimes for individual rule applications (tRi). The overall runtime tCEL
+needs to fit into the cyclic time pattern given by tMaxCyc, such that no application of a rule (CRi ) with duration tRi exceeds the maximum cycle length.
+However, an intricate rule like (CR5 ) might not fit in a single cycle.
+
+In the following sections, we describe our approaches to overcome these diffi-
+
+culties.
+
+4.2 Compact Axiom Representation
+
+The restricted memory available on PLCs requires a compact representation of
+axioms in the ontology O based on an integer encoding of concept and role
+names, which can then be used for efficient index-based memory array access.
+We achieve this by exploiting the fact that the normalized axioms in O are
+of one of the forms (NFi), all of which require at most three class/role names
+as their parameters. Thus, we can encode any normalized axiom   O as a
+four-tuple
+
+ = (T, p1, p2, p3),
+
+C and N
+
+where T encodes the type of normal form axiom (1-6) and the pi are the integer numbers for concept and role names obtained by simply enumerating the
+
+elements in N
+r , e.g. in a lexicographic ordering with regard to their
+string name representation. Although the different positions of such an axiom
+tuple could be encoded with variable bit lengths depending on the number of
+concept and role names, we have chosen a representation that uses a two byte
+integer value per position for a total of eight bytes for an axiom, since such a
+fixed size encoding scheme provides for more efficient access. Based on this axiom encoding, we represent the ontology O on the PLC side as a fixed length
+array whose size of 8 #O bytes is determined during the preprocessing phase.
+We represent the classification results stored in the mappings S and R as fixed
+length bit arrays S[i][j] and R[i][j][k], while i, j range over concept name and k
+
+S. Grimm et al.
+
+over role name index numbers. We have to assume that, in the worst case, all
+possible axioms of the forms A  B and A   r .B are being derived, which
+provides the following upper bounds for the lengths of the arrays.
+
+lS = (#N
+
+C )2 ,
+
+lR = (#N
+
+C )2  #N
+
+r
+
+Thus, the overall memory required for representing the reasoning results in S
+
+and R is given by (lS + lR)/8 in bytes. Efficient access to these arrays through
+
+the indices i, j, k also provides good performance for the frequent checks on S
+and R in the rules (CRi).
+
+While PC-based reasoners can optionally use such compact memory representations for optimization, they are necessary for porting reasoning algorithms to
+a PLC to handle the above mentioned memory issues.
+
+4.3 Interruption-Safe EL+ Saturation
+
+To address the difficulty about the PLCs cyclic processing paradigm, our objective is to safely fit the whole required computation time tCEL for classification
+into the periodic cycles without running into error states by exceeding tMaxCyc
+in a single rule application. To this end, we have implemented a time-out mechanism that uses a PLCs integrated interruption features for program-triggered
+termination of the current processing cycle. Figure 5 shows a timeline for the
+behavior of this interruption mechanism.
+
+Shortly before the end of the cycle time tMaxCyc is reached while processing
+a derivation rule, our mechanism initiates an artificial interrupt that saves the
+current state of rule processing to be reentered at the beginning of the next
+cycle. The state consists of the index variables i, j, k that serve to iterate over
+the structures S and R for checking a rules applicability, as well as the currently
+processed axiom   O and the type of rule (CRi ) whose processing is to
+be reentered. In this way, we abstract from the cyclic processing constraints of
+a PLC, spreading the required overall calculation time tCEL over an arbitrary
+sequence of cycles. In Section 5, we will show that the overhead for saving and
+reentering rule processing states is negligible for reasonable values of tMaxCyc.
+Notice that this interruption mechanism allows us to dynamically add diagnostic EL+-reasoning to any control program installed on a PLC whenever the
+
+tMaxCyc
+tMaxCyc
+
+tR1
+tR1
+
+tR1
+tR1
+talarm
+talarm
+talarm
+talarm
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+tR1
+tR1
+
+Cycle
+Cycle
+?
+
+?
+
+?
+Alarm clock
+Alarm clock
+Alarm clock
+Alarm clock
+
+Actual 
+Actual 
+Actual 
+Sequence
+Sequence
+Sequence
+
+tR3
+tR3
+
+tR1
+tR1
+
+tR1
+tR1
+
+tR5
+tR5
+
+tR3
+tR3
+
+tR3
+tR3
+
+tR1
+tR1
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+tMaxCyc
+tMaxCyc
+tMaxCyc
+
+Interrupt
+Interrupt
+Interrupt
+
+Start of next cycle
+Start of next cycle
+Start of next cycle
+
+Overhead
+Overhead
+Overhead
+Overhead
+
+Fig. 5. Cycle time interruption mechanism
+?
+
+?
+
+?
+maximum cycle length determined by the control task is not fully exploited.
+The rest of tMaxCyc not used for control tasks can then be utilized for diagnostic
+reasoning for many pre-installed PLCs in the automation field.
+
+5 Evaluation
+
+In this section, we report on first experimental results that we carried out to
+evaluate our embedded reasoning approach. For this purpose, we first describe
+our experimental setting, before we report on performance experiments.
+
+5.1 Evaluation Setting
+
+The hardware setting used for our evaluation consists of a SIMATIC IPC427C
+industrial PC with various sensors and a WinCC HMI interface attached to it
+via PROFINET. It is equipped with an Intel Core2 Duo U9300 1.2GHz processor
+and 956 MB RAM and runs Microsoft Windows XP SP2 as its operating system.
+During the SIMATIC WinAC RTX installation, the Ardence RTX 8.1 real time
+kernel is installed which adds real time capabilities to the OS. On this basis,
+the Software PLC SIMATIC WinLC (Windows Logic Controller) RTX v4.4.1
+SP1 performs the tasks of a S7-300 or S7-400 PLC in our setting. The WinLC
+software provides the full functionality of an S7-300 or S7-400 PLC, although
+the processing time depends on the actual CPU used. It hosts our prototypical
+PLC-based EL+-reasoner implemented in SCL following the architecture and
+implementation features described in the sections 3 and 4 . For OPC communication we use the Siemens OPC Server v7.0 and a Java-based PC-client.
+As test data we have used a set of EL+ ontologies that stem from the turbine
+diagnostics use case described in Section 3. They are listed in Table 1 with their
+number of concepts, roles and axioms. The base ontology Otur is a local diagnostic model that was used to capture the causal relationships between symptoms
+and faults for certain parts of turbine machinery in the EL+ formalism. Since in
+Otur not all the EL+ constructs are used, however, we have produced a modified
+version O+
+tur, which contains some additional axioms to cover the full expressivity of EL+ (the missing construct was conjunction ). As a result, classification
+of O+
+tur triggers all the derivation rules (CRi) at least once and thus comprises
+a suitable test data ontology for our system. To scale to larger test data, we
+extended the ontologies Otur and O+
+tur to multiplied versions that contain multiple renamed copies of the original axioms, indicated by a factor in their name
+(e.g., Otur10 contains 10 copies of the original axiom set in Otur). The largest
+ontologies Otur22 and O+
+tur16 have been chosen such that their classification uses
+up all of the PLCs total memory of 4MB. In this way we get runtime results
+for the case of maximal memory usage as an upper bound for answer times.
+
+5.2 Performance Experiments
+
+Correctness Tests. To ensure correctness of our implementation, we performed
+a back-to-back test of our PLC-based EL+ reasoner compared to a standard
+
+S. Grimm et al.
+
+Table 1. Detailed overview of ontologies, their memory consumption and runtimes
+
+r #O
+
+1 Otur
+2 Otur5
+3 Otur10
+4 Otur22
+5 O+
+6 O+
+7 O+
+8 O+
+
+tur5
+
+tur16
+
+tur
+
+tur3
+
+Ontology
+
+C #N
+#N
+?
+
+?
+
+?
+memory in kByte
+
+O
+
+0.10
+0.38
+2.26
+1.91
+3.83
+8.97
+8.42 43.22
+0.14
+0.60
+1.80
+1.22
+3.00
+3.36
+9.63 34.16
+?
+
+?
+
+?
+0.38
+45.16
+358.60
+
+R total %
+0.02%
+1.18%
+9.02%
+3803.00 94.00%
+0.03%
+0.68%
+2.99%
+3825.95 94.36%
+
+0.99
+25.63
+117.73
+
+runtime in ms
+ttotal
+?
+
+?
+
+?
+29586 29781
+
+tCEL
+?
+
+?
+
+?
+reasoner available on a PC platform. For this purpose, we used the Java-based
+JCEL13 reasoner as a reference system in order to compare the classification
+hierarchy output by our system through the structure S to that produced by
+JCEL. We noticed no differences in the output of the two systems for our turbine
+diagnostics ontologies or for some EL+ ontologies available on the web. Although
+this is not a 100% test, we argue that these tests strongly support the correctness
+of our implementation, especially since the ontology O+
+tur is modified such that
+it covers all features of EL+ and triggers all the derivation rules (CR1) - (CR6),
+which ensures a certain coverage of the underlying formalisms constructs.
+
+Runtime Performance and Scalability Test. Runtime and scalability performance requirements for embedded reasoning very much depend on the particular use case in question. For the diagnostics use case that we consider here,
+neither the ontologies get typically very large as any single PLC does only have
+to reason over the local diagnostic model for its surrounding machinery, nor the
+answer times for retrieving diagnoses need to be in real time due to the offline
+nature of the diagnostic task. Therefore, we varied the ontology size in our experiments in the lower ranges (compared to typical benchmark ontologies) and we
+accepted answer times for retrieving diagnoses within seconds or even minutes.
+Notice that a direct comparison of classification times with those of PC-based
+systems, such as JCEL, does not provide useful insights on performance issues for
+PLC-based reasoning, since todays standard PCs are much more powerful than
+PLCs in terms of CPU and memory. Instead, we are interested in the memory
+consumption and runtime behavior of our PLC-based reasoning approach in the
+light of the requirements of our diagnostics use case. In particular, we are interested in bringing embedded reasoning onto existing PLC hardware pre-installed
+in the automation field alongside the control tasks that these PLCs already run.
+To this end, we report on investigations about memory consumption, optimal
+cycle length and answer times for diagnoses in the following.
+Memory Consumption. The memory required for classifying an ontology O in
+the PLC is given by the size and signature of O, while N
+
+r determine
+
+C and N
+
+http://jcel.sourceforge.net/
+?
+
+?
+
+?
+)
+
+ 
+
+%
+?
+
+?
+
+?
+
+s
+m
+?
+
+?
+
+?
+(
+ 
+]
+
+ 
+
+%
+
+[
+ 
+e
+m
+
+i
+t
+n
+u
+r
+ 
+
+d
+e
+z
+
+i
+l
+
+a
+m
+r
+o
+n
+?
+
+?
+
+?
+TurbineExample_5
+TurbineExample_15
+TurbineExample_25
+TurbineExample2_12
+TurbineExample2_17
+
+1000 3000 5980
+
+cycle time [ms]
+
+Fig. 6. Cycle Time Evaluation
+
+and modified diagnostic models Otur and O+
+
+the size of the data arrays for the mappings S and R. Table 1 shows the sizes
+of these memory components for all the test ontologies used. It also shows the
+percentage of the PLCs total memory used for classification. It can be seen that
+most of the memory used is reserved for the classification results stored in S
+and R, while the representation of the ontologies axioms occupy only a small
+amount, for all but the smallest ontologies. Classification of the single original
+tur requires only modest memory,
+while for their multiplied versions a polynomial increase can be observed due to
+the respective growth of the arrays for S and R. Only for the largest artificially
+increased models of over a thousand axioms does memory consumption reach
+critical values. For the expected sizes of local diagnostic models, it should thus
+be feasible to run diagnostic reasoning on a pre-installed PLC in addition to the
+automation tasks it already runs, without consuming too much of its memory.
+
+Cycle Time Optimization. User programs performed on pre-installed PLCs often
+do not require the possible maximum cycle time allowed by the process to be
+controlled but run much faster. By exploiting such potential process control
+idle times, additional tasks like diagnostic reasoning can be run within a PLCs
+execution cycle at no cost of critical CPU power if the cycle length for reasoning
+is chosen small enough to fit the idle time.
+To this end, we investigated the overhead that comes with small execution
+cycle times for EL+ reasoning in our approach, where any interruption of rule
+execution requires the saving and reentering of the current execution state. The
+diagram in Figure 6 shows the relative classification times in relation to different cycle lengths for all the test ontologies. (The longest classification time
+corresponds to 100%.) It can be seen that the overhead for rule interruption
+is only significant for very small cycle lengths less than about 100ms. Beyond
+
+S. Grimm et al.
+
+this threshold the overhead becomes negligible for all the test ontologies con-
+sidered. This suggests that from a cycle time of 100ms or greater, PLC-based
+EL+-reasoning runs in an optimal mode without wasting a significant amount
+of execution time due to interruption handling. Since this is a rather low num-
+ber, we are hopeful to encounter many cases for adding EL+-based diagnostic
+reasoning to pre-installed PLCs, exploiting potential process control idle times.
+
+Runtime Performance. As for runtime measurement, Table 1 shows the time
+for actual classification on the PLC (tCEL) and total time (ttotal) including
+OPC communication between the PLC and PC (ontology deployment + result
+reporting). Classification times for the original diagnostic model Otur as well
+as for the modified O+
+tur are within milliseconds and are thus rather fast. Also
+the multiplied models of up to five or even ten copies are being classified within
+a few seconds. For the larger samples Otur22 and O+
+tur16, classification requires
+several seconds up to half a minute. Since these two ontologies already fill the
+maximum memory of the PLC, we can say that the answer times in our approach
+lie within feasible bounds for the task of offline diagnostics. The OPC-based
+communication causes a significant relative overhead for small ontologies and
+becomes negligible for larger models.
+
+6 Conclusion
+
+In this paper, we have presented an approach to porting OWL 2 EL reasoning to PLCs, a type of embedded controller prevalent in industrial automation.
+We have described how deficiencies about the differing paradigms of PLCs and
+PC-hosted reasoning algorithms can be overcome by a compact memory representation strategy and an interruption-safe variant of the CEL [1] classification
+procedure suitable for PLCs. Furthermore, we have reported on promising initial
+experimental results carried out on a prototypical implementation of a PLCbased EL+ reasoner in the context of a use case about diagnostics for turbine
+machinery, in which we prove the feasibility of our approach in terms of memory
+consumption and answer times for retrieving diagnoses.
+
+A particular finding we have made here is that attempts of porting reasoning
+procedures to strongly restricted embedded devices could greatly benefit from
+avoiding too much dynamics and flexibility in the data structures used, ideally
+keeping them as static as possible. In this work, we could successfully employ
+low-degree polynomial upper bounds on the maximum size of derivation results
+that reside in memory at a single time. For tableau-style algorithms, whose treelike models appear to be more difficult to handle, the separate calculation of
+single tableau branches at once goes in this direction.
+
+To the best of our knowledge, this is the first endeavor of bringing description
+logic reasoning to the PLC-dominated industrial automation field. Building on
+this enabling step of providing a platform for embedded reasoning, we intend to
+utilize this platform in our use case of turbine diagnostics in forthcoming field
+tests and experiments to have an impact on the maintenance of power plants
+in the energy sector. Next to machine diagnostics, we see many other potential
+?
+
+?
+
+?
+use cases for embedded reasoning in industry, such as component verification
+in industrial engineering or the support of condition monitoring and control
+tasks, that benefit from exploiting an explicit representation of expert knowledge
+models brought close to industrial machinery.

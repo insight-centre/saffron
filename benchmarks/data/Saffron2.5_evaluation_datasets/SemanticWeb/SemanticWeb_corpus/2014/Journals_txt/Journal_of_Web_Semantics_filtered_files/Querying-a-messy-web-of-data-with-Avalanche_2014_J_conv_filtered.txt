@@ -1,0 +1,3297 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+journal homepage: www.elsevier.com/locate/websem
+
+Querying a messy web of data with Avalanche
+Cosmin Basca, Abraham Bernstein
+
+Dynamic and Distributed Information Systems, Department of Informatics, University of Zurich, Switzerland
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 11 February 2011
+Received in revised form
+6 February 2014
+Accepted 8 April 2014
+Available online 24 April 2014
+
+Keywords:
+Federated SPARQL
+RDF distribution messiness
+Query planning
+Adaptive querying
+Changing network conditions
+
+Recent efforts have enabled applications to query the entire Semantic Web. Such approaches are either
+based on a centralised store or link traversal and URI dereferencing as often used in the case of Linked
+Open Data. These approaches make additional assumptions about the structure and/or location of data on
+the Web and are likely to limit the diversity of resulting usages.
+
+In this article we propose a technique called Avalanche, designed for querying the Semantic Web
+without making any prior assumptions about the data location or distribution, schema-alignment, pertinent statistics, data evolution, and accessibility of servers. Specifically, Avalanche finds up-to-date answers to queries over SPARQL endpoints. It first gets on-line statistical information about potential data
+sources and their data distribution. Then, it plans and executes the query in a concurrent and distributed
+manner trying to quickly provide first answers.
+
+We empirically evaluate Avalanche using the realistic FedBench data-set over 26 servers and investigate its behaviour for varying degrees of instance-level distribution messiness using the LUBM synthetic data-set spread over 100 servers. Results show that Avalanche is robust and stable in spite of
+varying network latency finding first results for 80% of the queries in under 1 s. It also exhibits stability for some classes of queries when instance-level distribution messiness increases. We also illustrate,
+how Avalanche addresses the other sources of messiness (pertinent data statistics, data evolution and
+data presence) by design and show its robustness by removing endpoints during query execution.
+
+ 2014 Elsevier B.V. All rights reserved.
+
+1. Introduction
+
+With the advent of the Semantic Web, a Web-of-Data is emerging interlinking ever more machine readable data fragments represented as RDF documents or queryable semantic endpoints. It is
+in this ecosystem that unexplored avenues for application development are emerging. While some application designs include a
+Semantic Web data crawler, others rely on services that facilitate
+access to the Web-of-Data either through the SPARQL protocol or
+various APIs like the ones exposed by Sindice1 or Swoogle.2 As the
+mass of data continues to grow  Linked Open Data [5] accounts for
+27 billion triples as of January 20113  the scalability factor combined with the Webs uncontrollable nature and its heterogeneity
+will give rise to a new set of challenges. A question marginally addressed today is how to support the same messiness in querying
+
+ Corresponding author. Tel.: +41 44 635 4318.
+
+E-mail addresses: basca@ifi.uzh.ch, cosmin.basca@gmail.com (C. Basca),
+
+bernstein@ifi.uzh.ch (A. Bernstein).
+1 http://swoogle.umbc.edu/.
+2 http://sindice.com/.
+3 http://www4.wiwiss.fu-berlin.de/lodcloud/state/#domains.
+http://dx.doi.org/10.1016/j.websem.2014.04.002
+1570-8268/ 2014 Elsevier B.V. All rights reserved.
+
+the Web-of-Data that gave rise to the virtually endless possibilities of using the traditional Web. In other words: How can we support querying the messy web of data whilst adhering to a minimal,
+least-constraining set of principles that mimic the ones of the original
+web and will  hopefully  support the same type of creative flurry?
+Translating the guiding principles of the Web to the Web-
+of-Data proposes that we should use a single communications
+protocol (i.e. HTTP with encoded SPARQL queries) and use a common data representation format (some encoding of RDF), which allows embedding links. In addition, it implicitly proposes that:
+
+(a) we cannot assume any (or control the) distribution of data to
+
+servers,
+
+(b) there is no guarantee of a working network,
+(c) there is no centralised resource discovery system (even though
+crawled indices akin to Google in the traditional web may be
+provided),
+
+(d) the size of RDF data no longer allows us to consider single-
+
+machine systems feasible,
+
+(e) data will change without any prior announcement,
+(f) there is absolutely no guarantee of RDF-resources adhering to
+any kind of predefined schema, being correct, or referring/link-
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+ing to other existing data itemsin other words: the Web-of-
+Data will be a mess and this is a feature not a bug.
+As an example, consider the life sciences domain: here information about drugs, chemical compounds, proteins and other related
+aspects is published continuously. Some research institutions expose part or all of their data freely as RDF dumps relying on others
+to index it as in the cases of the CheBi4 and KEGG5 datasets, while
+others host their own endpoints like in the case of the Uniprot
+dataset.6 Hence, anybody querying the data will have:
+ no control over its distribution, i.e. different copyright and intellectual property policies may prevent access to downloading part or the entire dataset but permit access to it on a perquery basis with potential restrictions like time and/or quota
+limits,
+ no guarantees about the availability and network connectivity of the information sources, i.e. some institutions move
+repositories or change access policies, resulting in server
+unavailability,
+ no guarantees about content stability as data changes continuously due to scientific breakthroughs/discoveries, and a
+plethora of schemas are used, i.e. some sub-disciplines may
+favour dissimilar but overlapping attributes describing their
+results, have differing habits about using same-named at-
+tributes, and use a diversity of taxonomies with varying
+semantics.
+Often-times problem domains and researchers questions span
+across several datasets or disciplines that may or may not overlap.
+Even in the light of this messiness, the data about drugs, chemical
+compounds, proteins, and their interrelations is queried constantly
+resulting in a strong need to provide integrated and up-to-date (or
+current) information.
+
+Several approaches that tackle the problem of querying the
+entire Web-of-Data have emerged lately, and most adhere to the
+explicit principles. They do, however, not address the implicit
+principles. One solution, uberblic.org,7 provides a centralised
+queryable endpoint for the Semantic Web that caches all data. This
+approach allows searching for and joining potentially distributed
+data sources. It does, however, incur the significant problem of
+ensuring an up-to-date cache and might face crucial scalability
+hurdles in the future, as the Semantic Web continues to grow.
+Additionally, it violates a number of the implicit principles lockingin data. Furthermore, as Van Alstyne et al. [40] argue, incentive
+misalignments would lead to data quality problems and, hence,
+inefficiencies when considering the Web-of-Data as one big
+database.
+
+Other approaches base themselves on the guiding principles
+of Linked Open Data publishing and traverse the LOD cloud
+in search of the answer. Obviously, such a method produces
+up-to-date results and can detect data locations only from the
+URIs of bound entities in the query. Relying on URI structure,
+however, may cause significant scalability issues when retrieving
+distributed datasets, since (i) the servers dereferenced in the
+URI may become overloaded and (ii) limits the possibilities
+of rearranging (or moving) the data around by binding the
+id (i.e., URI) to its storage location. Just consider for example
+the slashdot effect8 on the traditional web. Finally, traditional
+database federation techniques have been applied to query
+
+4 http://www.ebi.ac.uk/chebi/.
+5 http://www.genome.jp/kegg/.
+6 http://beta.sparql.uniprot.org/.
+7 http://platform.uberblic.org/.
+8 http://en.wikipedia.org/wiki/Slashdot_effect.
+
+the Web-of-Data. One of the main drawbacks with traditional
+federated approaches stemming from their ex-ante (i.e., before the
+query execution) reliance on fine-grained statistical and schema
+information meant to enable the mediator to build efficient
+query execution plans. Whilst these approaches do not assume
+central control over data, they do assume ex-ante knowledge
+about it facing robustness hurdles against network failure and
+changes in the underlying schema and statistics (invalidating
+implicit principles b and f).
+
+In this paper, we propose Avalanche , a novel approach for
+querying the messy Web-of-Data which (1) makes no assumptions
+about data distribution, schema, availability, or partitioning and is
+skew resistant for some classes of queries, (2) provides up-to-date
+results from distributed indexed endpoints, (3) is adaptive during execution adjusting dynamically to external network changes,
+(4) does not require detailed fine-grained ex-ante statistics with the
+query engine, and (5) is flexible as it makes limited assumptions
+about the structure of participating triple stores. It does, however,
+assume that the query will be distributed over triple-stores and not
+mere web-pages publishing RDF. The system, as presented in the
+following sections, is based on a first prototype described in [3] and
+brings a number of new extensions and improvements to our previous model.
+
+Consequently, Avalanche proposes a novel technique for executing queries over Web-of-Data SPARQL endpoints. The traditional optimise then execute paradigm  highly problematic in the
+Web of Data context in its original conceptualisation  is extended
+into an exhaustive, concurrent, and dynamically-adaptive metaoptimisation process where fine-grained statistics are requested
+in a first phase of the query execution. In a second phase continuous query planning is interleaved with the concurrent execution
+of these plans until sufficient results are found or some other stopping criteria is met. Hence, the main contributions of our approach
+are:
+ a querying approach over the indexed Web-of-Data, without
+fine-grained prior knowledge about its distribution
+ a novel combination of interleaving cost-based planning (with a
+simple cost-model) with concurrent query plan execution that
+delivers first results quickly in a setting where join cardinalities
+are unknown due to lacking ex-ante knowledge
+ a reference implementation of the Avalanche system.
+However, despite Avalanches flexible and robust query
+execution paradigm, the method also comes with a set of
+limitations discussed in detail in Section 3. The main limitations
+are as follows:
+ Avalanche does not benefit from the potential speedup exhibited by intra-plan parallelism since its current computation
+model does not support UNION-views,
+ Avalanche can be resource wasteful for some classes of query
+workloads,
+ embracing the WWWs uncertainties (see principles af),
+Avalanche neither guarantees result-set completeness nor the
+same result-set for repeated same-query executions.
+
+Hence, Avalanche supports messiness stemming from the lack of
+ex-ante knowledge at various levels: data-distribution, schema-
+alignment, prior registration with respect to statistics, constantly
+evolving data, and unreliable accessibility of servers (either
+through network or host failure, HTTP 404s, or changes in policy
+of the publishers).
+
+In the remainder we first review the relevant related work of
+the current state-of-the-art. The computational model is described
+in Section 3 while Section 4 provides a detailed description of
+Avalanche. In Section 5 we evaluate several planning strategies
+
+and estimate the performance of our system. In Section 6 we
+present several future directions and optimisations, and conclude
+in Section 7.
+
+2. Related work
+
+Several solutions for querying the Web-of-Data over distributed
+SPARQL endpoints have been proposed before. They can be
+I. distributed query processing,
+grouped into two streams:
+II. RDF indexing, and III. statistical information gathering over
+RDF sources.
+Distributed query processing: A broad range of RDF storage and
+retrieval solutions exist. They can be grouped along the dimensions
+of partition restrictiveness (i.e., the degree to which the system
+controls the data distribution) and the intended source addressing
+space (i.e., the design goal in terms of physical distribution of hosts
+from single machine through clusters and the cloud to a global
+uncontrolled network of servers) as shown in Fig. 1. Although not
+intended as a measure of scalability and performance the Figure
+positions the various approaches relative to the desired goala
+globally addressable and highly flexible system: both paramount
+features when handling messy semi-structured data at large-
+scale.
+
+Research on distributed query processing has a long history in
+the database field [36,21]. Its traditional concepts are adapted in
+current approaches to provide integrated access to RDF sources
+distributed on the Web-of-Data. For instance, Yars2 [16] is an end-
+to-end semantic search engine that uses a graph model to interactively answer queries over semi-structured interlinked data,
+collected from disparate Web sources. Another example is the
+DARQ engine [31], which divides a SPARQL query into several sub-
+queries, forwards them to multiple, distributed query services,
+finally, integrating the results of the subqueries. Inspired by peer-
+to-peer systems, Rdfpeers [7] is a distributed RDF repository that
+stores three copies of each triple in a peer-to-peer network, by
+applying global hash functions to its subject, predicate and ob-
+ject. Stuckenschmidt et al. [37] consider a scenario in which multiple distributed sources contain data in the form of publications.
+They describe how the Sesame RDF repository [6] needs to be ex-
+tended, by using a special index structure that determines which
+are the relevant sources to be considered for a query. Virtuoso [8]
+ a data integration software developed by OpenLink Software
+ is also focused on distributed query processing. The drawback
+of these solutions is, however, that they assume total control
+over the data distributionsan unrealistic assumption in the open
+Web.
+
+Similarly, SemWIQ [23] uses a mediator distributing the execution of SPARQL queries transparently. Its main focus is to provide an integration and sharing system for scientific data. Whilst
+it does not assume fine-grained control over the instance distribution they assume perfect knowledge about their rdf:type
+distribution. Addressing this drawback some [43,34] propose to
+extend SPARQL with explicit instructions controlling where to
+execute certain sub-queries. Unfortunately, this assumes an exante knowledge of the data distribution on part of the query
+writer. Finally, Hartig et al. [17] describe an approach for executing
+SPARQL queries over Linked Open Data [5] based on graph search.
+Whilst they make no assumptions about the openness of the data
+space, the Linked Open Data rules requires them to place the data
+on the URI-referenced serversa limiting assumption for example when caching/copying data. A notable approach to browse the
+WoD and run structured queries on it is depicted by Sig.ma [38],
+a system designed to automatically integrate heterogeneous web
+data sources. Suited to handle schema messiness Sig.ma differs
+from Avalanche mainly in its scope, which is that of aggregating various data sources in the attempt to offer a solution, while
+
+Avalanche (tackling data distribution messiness) does not integrate RDF indexes, but guides the query execution process to find
+exact matches.
+
+Other flexible techniques have been proposed, such as the evolutionary query answering system eRDF by Gueret et al. [11,29,12],
+where genetic algorithms are used to learn how to best execute
+the SPARQL query. The system learns each time a triple pattern
+gets executed. As the authors demonstrate, eRDF behaves better
+the more complex the query, while simple queries (one or two
+triple pattern queries) render low performance. Finally Muhleisen
+et al. [27] advance the idea of a self organised RDF storage and
+processing system called S4. The approach relies on the principles
+of swarm-logic and exposes certain similarities with peer-to-peer
+systems.
+RDF indexing: A number of methods and techniques to store and
+index RDF have been proposed to date, some like Hexastore [41]
+and RDF3X [28] construct on-disk indexes based on B + Trees
+while exploiting all possible permutations of Subjects, Predicates
+and Objects in an RDF triple. Other notable approaches include [2],
+where RDF is index using a matrix for each triple term pairan
+approach suitable for low selectivity queries, suffering in performance however when highly selective queries are asked.
+Furthermore GRIN [39] proposes a special graph index which
+stores centre vertexes and their neighbourhoods leading to
+lower memory consumptions and faster times to answer graph
+based queries than traditional approaches such as Jena9 and
+Sesame.10
+Query optimisation: Research on query optimisation for SPARQL
+includes query rewriting [18], join re-ordering based on selectivity
+estimations [25,4,28], and other statistical information gathering
+over RDF sources [22,15]. RDFStats [22] is an extensible RDF statistics generator that records how often RDF properties are used and
+feeds automatically generated histograms to SemWIQ. Histograms
+on the combined values of SPO (Subject Predicate Object) triples
+have proved to be especially useful to provide selectivity estimations for filters [4]. For joins, however, histograms can grow very
+large and are rarely used in practice. Another approach is to precompute frequent paths (i.e., frequently occurring sequences of S,
+P or O) in the RDF data graph and keep statistics about the most
+beneficial ones [25]. It is unclear how this would work in a highly
+distributed scenario. Finally, Neumann et al. [28] note that for very
+large datasets (towards billions of triples) as even simple index
+scans become too expensive, single triple pattern selectivity is not
+enough to ensure accurate join selectivity estimation. As pattern
+combinations are more selective, they successfully integrate holistic sideways information passing with the recording of detailed join
+cardinalities of constants joined with the entire graph as means of
+improving join selectivity. An alternative approach is represented
+by summarising indexes as described by Harth et al. [15] in data
+summaries.
+
+3. Computational model
+
+Avalanches computational model diverges from the traditional federated query processing paradigm in several key ways
+due to the uncertainties of the Web-of-Data (WoD) outlined above.
+In the following we will detail these characteristics, the assumptions from which they stem and the advantages and disadvantages
+they introduce while identifying some of the pertinent scenarios
+that Avalanche is suited for.
+
+9 http://jena.sourceforge.net/.
+10 http://www.openrdf.org/.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Fig. 1. Distributed SPARQL processing systems and algorithms, in relation to the
+desired goal (high flexibility & global addressing). This figure is not intended to
+provide an accurate positioning of the systems in the design space.
+
+Fig. 2. An idealised view of the Avalanche execution model illustrating the three
+major phases: source discovery, statistics gathering, and query planning/distributed
+execution.
+
+Guaranteeing global completeness  i.e., a complete result set
+(or answer set)  on the WoD is impossible due to its uncertain-
+ties. Servers may go down (or unreachable) at any given point in
+time not delivering triples necessary or new servers may appear
+on the but be unknown to the query engine. However, considering the restricted scope of the endpoints (or sources) selected to
+participate in a given query we advance the notion of result-set
+query-contextual completeness. By this we refer to the set of all tu-
+ples, which constitute the complete query answer if none of the
+participating endpoints fail.
+
+For these reasons,
+
+in Avalanche we focus on optimising
+for answering SPARQL queries under uncertain conditions and
+constrains like the FAST FIRST limit modifier used in ORACLE
+RDB [1]. Consequently, Avalanche is designed to deliver partial results as they become available favouring those that are
+faster to compose. If the query execution process is not stopped,
+Avalanche is eventually complete in the query-contextual scope.
+Hence, Avalanche puts more emphasis on the low latency part
+of the result-set than on completeness by allowing the query
+requester to specify various uncertain termination conditions
+(i.e., relative rolling saturation or first answers). In this sense,
+Avalanche behaves akin to a Web search engine where the first
+or most relevant results are fetched with the lowest attainable latency while initially ignoring the rest. Thus, Avalanche is suited for
+exploratory scenarios where the domain is unknown or changes
+often, situations where bulk data access is limited in some manner
+(i.e., legal or jurisdictional considerations), or scenarios where at
+least some results are required fast (i.e., to quickly render the first
+page with search results from a query).
+
+A distributed query processing system, Avalanche splits the
+query execution process into three phases as seen in the diagram
+from Fig. 2. The process closely resembles the traditional federated
+SPARQL processing pipeline: it first identifies the relevant sources
+to consider, it then retrieves fine-grained statistical information
+pertinent to the query being executed and finally resolves an
+optimised version of the original query.
+
+Since finding the optimal plan for a distributed query is NP-hard
+solutions often rely on heuristics to find plans yielding higher levels of performance [30]. In addition, further complications emerge
+due to the WoDs underlying uncertainties enumerated before.
+Hence, Avalanche introduces a number of changes to the querying process which depart from the traditional distributed query
+processing paradigm. In the remainder we discuss its characteristic
+heuristic and executions strategy.
+Heuristics. A heuristic that Avalanche employs when exploring the
+plan composition space is to consider only plans where any triple
+pattern of the query can only be answered by one host. This presents
+
+the following main advantages:
+(1) generated plans are simpler and therefore easier to optimise,
+
+i.e. using strategies like join-reordering,
+
+(2) generated plans are easier to execute, i.e., using traditional blocking join/merge physical operatorssupported by a wider range
+of Semantic DBMSs, and
+
+(3) the plan search space is reduced since all possible plans where a
+triple pattern is bound to multiple hosts (combinatorial com-
+plexity) are not considered when estimating cost.
+
+However, employing this planning heuristic, also introduces the
+following limitations:
+(i) a high number of plans producing empty answer-sets is generated for queries where the number of participating sites is
+much larger than the sites where partial results are located
+(i.e., highly localised queries that make use of widely used ter-
+minology),
+
+(ii) does not generate plans that contain unions.
+
+Avoiding unions of partial results can be a severe limitation for
+some classes of queries while benefitting others. Consider for example the situation were a triple pattern can be answered by more
+than one host. The selectivity distribution of this triple pattern over
+selected sites can fall in one of the following situations: the triple
+pattern can be either homogeneously selective i.e., of comparable selectivity on all participating hosts or heterogeneously selective i.e., of
+varying (low and high) selectivity on participating hosts. The homogeneously selective case is simpler since we can consider the
+union of all pertinent hosts for the given triple pattern. First, by
+doing so the number of generated plans is reduced by replacing all
+plans where the triple pattern was bound to one host with one plan
+that binds the triple pattern to all hosts. Second, the newly generated plan executes faster because it leverages the parallelism of the
+union operation. Finally the answer-set is larger because all hosts
+are considered as opposed to only one.
+
+This is not the case when the triple pattern is heterogeneously
+selective. In this situation a union over all sites will severely hinder
+the performance of executing the plan due to the high latency and
+high resource utilisation of the high selectivity components of the
+union. Higher performance can be obtained for a subset of the
+results by considering only some of the hosts as participating in the
+union, at the expense of a combinatorial increase in the number of
+plans to search through.
+Execution strategy. Avalanche makes use of a concurrent execution strategy of all plans. Doing so confers the following
+advantages:
+(1) it has the potential to speed up query execution by leveraging inter-plan parallelism and by warming up local endpoint
+
+Fig. 3. The Avalanche execution pipeline.
+
+cache hierarchies, i.e. the same subquery is likely to be requested several times by different concurrent planswith adequate concurrency control only the first request is executed
+while all subsequent ones are served from materialised memory views. This of course depends on available memory. For
+the same reason the execution of multiple overlapping queries
+could be sped up,
+
+(2) it attempts to mitigate the negative effect of empty answersets since the execution of plans that produce empty resultsets (unproductive plans) is intertwined with that of plans
+that produce non-empty answers (productive plans). Further-
+more, unproductive plans are in general executed quicker
+since they can be halted early, when the first empty join is
+encountered.
+
+Still, this execution strategy can be resource wasteful especially
+when multiple non-overlapping queries are executed. To address
+this, Avalanche makes use of various plan cost model heuristics
+when estimating plan cost in order to reduce resources wasteful-
+ness, essentially aiming to execute those plans deemed productive
+as early as possible. The plan generation process and cost estimation model are detailed in Section 4.
+
+4. The design and implementation of an indexed Web-of-
+Data query processing system
+
+Avalanche is part of the larger family of Federated Database
+Management Systems or FDBMSs [19]. Focusing primarily on
+answering SPARQL queries over WoD endpoints, Avalanche relies
+on a commonly used data representation format: RDF and
+SPARQL as the main access operation. In contrast to relational
+FDBMS, where schema changes are costly and, therefore, happen
+seldom, the WoD is subjected to constant change, both schema
+and content-wise. In consequence, the major design contribution
+of Avalanche is that it assumes the distribution of triples to machines
+participating in the query evaluation to be unknown prior to query
+execution.
+
+To achieve loose coupling Avalanche adheres to strict principles
+of transparency as well as heterogeneity, extensibility and open-
+ness. When submitting queries to an Avalanche endpoint the user
+does not need to know where data is actually located, ensuring location transparency. Avalanche endpoints are SPARQL endpoints
+that can additionally orchestrate the execution of queries according to the model we detail in the following sections. To achieve
+replication and fragmentation transparency, Avalanche is also datadistribution agnostic. In addition, participating endpoints are not
+
+constrained in any way with regard to the schemas, vocabular-
+ies, or ontologies used. Furthermore, over time the federation can
+evolve unrestrained as new data sources can be added without impacting existing ones.
+
+Akin to peer to peer systems (p2p), Avalanche does not assume
+any centralised control. Any computer on the internet can assume
+the role of an Avalanche-broker. However, Avalanche is not a
+p2p system, since participating sites do not make fractions of their
+resources  CPU, RAM, or disk  directly available to other members,
+nor are they bookkeeping information concerning neighbouring
+hosts.
+
+Another important distinction to existing federated SPARQL
+processing systems, lies within the early stages of the query ex-
+ecution. Traditionally, statistical information is indexed ex-ante,
+i.e., ahead of query execution time in the federations metadatabase from where it is later retrieved to aid the source selection
+and query optimisation processes. Avalanche relies on each participating site to manage their respective statistics individuallya
+trait shared to a varying degree by virtually any optimised RDF-
+store. Consequently, query-relevant statistical information is retrieved at the beginning of each query execution phase as illustrated
+in Fig. 2.
+
+In the following, we will first outline our approach, detailing
+its basic operators and the actual system using a motivating ex-
+ample. This will lead the way towards thoroughly describing the
+Avalanche components and its novelty.
+
+4.1. System architecture
+
+The Avalanche system consists of the following major components working together in a concurrent asynchronous pipeline:
+(1) the Avalanche Source Selector relying on the endpoints Web Directory or Search Engine, (2) the Statistics Requester, (3) the Plan Gen-
+erator, (4) the Plan Executor Pool, (5) the Results Queue and (6) the
+Query Execution Monitor/Stopper as illustrated in Fig. 3.
+
+These components are coordinated into three query execution phases. First, participating endpoints are identified during
+the Source Discovery phase. Second, query specific statistics are
+retrieved during the Statistics gathering phase while finally followed by the Query Planning and Execution phase. We will now discuss how all the components are coordinated into these execution
+phases. The detailed technical description of the elements will be
+covered in the following subsections.
+
+During Source Discovery, participating hosts are identified by
+the Source Selector, which interfaces with a Search Engine such as
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+(a) FQ 5.
+
+(b) FQ 14.
+
+(c) FQ 33.
+
+Fig. 4. Plan matrixes represented as heat-maps for selected Fedbench benchmark queriesfor further details about the specific queries and benchmark please refer to
+Section 5.
+
+ card0,0
+
+...
+
+card|H|,0
+
+PMQ =
+
+voID store,11 Sindices12 SPARQL endpoint, or a Web Directory. A
+lightweight endpoint-schema inverted index can also be used. Ontological prefix (the shorthand notation of the schema, i.e. foaf) and
+schema invariants (i.e. predicates, concepts, labels, etc.) are appropriate candidate entries to index. More complex source selection
+algorithms and indexes have been proposed [24] that could successfully be used by Avalanche given adequate protocol adapta-
+tions.
+
+The next step  Statistics gathering  queries all selected
+Avalanche endpoints (from the set of known hosts H) for the individual cardinalities cardi,j (number of instances) for each triple
+pattern tpi from the set of all triple patterns in the query TQ as detailed in Definition 4.1. The voID13 vocabulary can be used to describe triple pattern cardinalities when predicates are bound or
+when schema concepts are used, along with more general purpose dataset statistical information, making use of terms like:
+void:triples, void:properties, void:Linkset, etc. Additionally, the
+same can be accomplished by using aggregating SPARQL COUNTqueries for each triple pattern or by simple specialised index
+lookups in some triple-optimised index structures [41].
+
+Definition 4.1. Given a query Q , TQ is the set of all triple patterns
+ Q and H the set of all reachable hosts. tpi  TQ and hj  H,
+we define cardi,j = card(tpi, hj) as the triple pattern cardinality
+of triple pattern tpi on host hj.
+During the Query Planning and Execution phase, the Plan Generator
+proceeds with constructing the plan matrix (see Definition 4.2): a
+two dimensional matrix listing the cardinalities of all triple patterns gathered by the Statistics Requester (see Fig. 3) of a query by
+possible hosts. Consider, for example, the plan matrixes for a selection of FedBench queries visualised in Fig. 4 as a heat map, where
+white indicates the absence of triples matching a triple pattern tpi
+on some host hj (i.e., cardi,j = 0). Focusing on Fig. 4 a) we, for ex-
+ample, see that only host-09 has triples matching tp1.
+Definition 4.2. The matrix PMQ of size |H||TQ| defined below is
+called the plan matrix, where the elements cardi,j are triple pattern
+cardinalities as ascertained in Definition 4.1.
+
+11 http://void.rkbexplorer.com/.
+12 http://sindice.com/.
+13 http://www.w3.org/2001/sw/interest/void/.
+
+. . .
+
+
+card0,|TQ |
+
+...
+
+card|H|,|TQ |
+
+The plan matrix is instrumental for the generation of query
+plans. Every query plan p contains one triple-pattern/host pair
+(tpi, hj) for each triple pattern tpi in the query TQ , where all tpi
+match at least one triple (i.e., card(tpi, hj) = 0; see Definition 4.3).
+Thus, planning is equal to exploring the set of possible triple-
+pattern/host pairs resulting in valid plans. Visually, this corresponds to finding sets of non-zero cardinality squares, where each
+column is represented exactly oncethe assumption that a triple
+pattern is bound to one host only.
+exactly one triple-pattern/host-pair (tpi, hj) per tpi  TQ , where
+card(tpi, hj) = 0 and hj  H.
+
+Definition 4.3. A query plan is the set p =(tpi, hj) that contains
+
+While some queries can produce no plans, the universe of all
+plans (see Definition 4.4) has a theoretical upper-bound equal to
+|H||TQ |, however the exact number of plans constructed according to our computational model can be derived using Eq. (1). Albeit an exponential number of possible plans can theoretically
+exist, our empirical evaluation suggests that real-world datasets
+often produce sparse plan matrixes  possibly a consequence of
+the LoDs heterogeneity  resulting in a significantly lower number of valid plans (i.e., akin to the plan matrixes in Fig. 4). Hence,
+the task of the Plan Generator is to explore the space of all possible valid SPARQL 1.1 rewritings of the original query Q by pairing
+triple patterns from TQ with available endpoints from H, under the
+assumption that a triple pattern is bound only to one host.
+Definition 4.4. The set of all plans for query Q , PQ = {pi | pi is a
+query plan as in Definition 4.3 } is called the query plan space or
+universe of all plans.
+
+|{hi | iff cardi,j = 0}|  |H||TQ |.
+
+(1)
+
+0  |PQ| = 
+
+tpjTQ
+
+It is important to note that factors such as the sheer size of the
+Web-of-Data, its unknown distribution, and multi-tenancy aspect
+may prevent Avalanche from guaranteeing result completeness.
+Whilst the proposed planning system and algorithm are complete,
+the execution of all plans to ensure completeness could be prohibitively expensive. Hence, Avalanche will normally not be allowed to exhaust the entire search spaceunless the query is
+simple or the search space is narrow enough. Consequently,
+Avalanche will try to optimise the query execution to quickly find
+
+the first K results by first picking plans that are more promising
+in terms of getting results quickly.
+
+As soon as a plan is found, it gets dispatched to be handled by
+one of the Plan Executor and Materialiser workers in the Executors
+Pool. All workers execute concurrently. When a plan finishes, the
+executor worker places its results, if any, in the Results Queuethe
+queue is continuously monitored by the parallel running Query
+Monitor to determine whether to stop the query execution. Worker
+slots in the Executors Pool are assigned to new workers/plan pairs
+as soon as plans are generated and slots are available. If the pool is
+saturated, plans are queued until a worker slot becomes available
+again. To further reduce the size of the search space, a windowed
+version of the search algorithm can be employed. Here only the first
+P partial plans are considered with each exploratory step, thus sacrificing completeness.
+
+In order to optimise execution, Avalanche employs both a common ID space and a set of endpoint capabilities, which we succinctly discuss in the following.
+Common IDs. A requirement for executing joins between any two
+hosts is that they share a common id space. The natural identity on
+the web is given by the URI itself. However some statistical analyses of URIs on the web14 show that the average length of a URI is
+76 characters, while analyses of the Billion Triple Challenge 2010
+dataset15 demonstrate that the maximum length of RDF literals is
+65,244 unicode characters long with most of the string literals being 10 characters in length. Therefore, using the actual RDF literal
+constants (URIs or literals) can lead to a high cost when performing distributed joins. To reduce the overhead of using long strings
+we used a number encoding of the URIs. To avoid central points
+of failure based on dictionary encoding or similar techniques, we
+propose the use of a hash function responsible for mapping any
+RDF string to a common number-based id format. For our experi-
+ments, we applied the widely used SHA family of hash functions on
+the indexed URIs and literals. An added benefit of a common hash
+function is that the hosts involved in answering a query, can agree
+on a common mapping function prior to executing the query. Note
+that this proposition is not a necessary condition for the functioning of Avalanche but represents an optimisation that will lead to
+performance improvements.
+Endpoint operations. To optimise SPARQL execution performance
+Avalanche takes advantage of a number of operations that extend
+the traditional SPARQL endpoint functionality. Whilst we acknowledge that the implementation of these procedures puts a burden on
+these endpoints their implementation should be trivial for most
+triple-stores. Some of the operations are either SPARQL 1.1 compliant or can be expressed as plain SPARQL queries, like getting
+triple pattern cardinalities, total number of triples or executing
+subqueries which are fully detailed in Appendix A, while others
+will be internally available in any indexed triple store and only
+need to be exposed (i.e. set filtering or set merge). From a functional
+point of view the procedures are classified into two execution operators and state management operators.
+
+The next subsections will describe the basic Avalanche operators and the functionality of its most important elements: the
+Plan Generator and Plan Executor/Materialiser as well as will explain
+how the overall execution pipeline stops.
+
+mark datasets. Specifically the query requests data that are distributed across three life-sciences domain datasets: DrugBank,17
+KEGG,18 and ChEBI.19 It is Avalanches goal to find all drugs from
+DrugBank, together with their URL from KEGG and links to their
+respective graphical depiction from ChEBI.
+
+resource / drugbank / >
+
+1 PREFIX rdf : <http : / /www.w3. org/1999/02/22rdfsyntaxns#>
+2 PREFIX drugbank : <http : / /www4. wiwiss . fuberlin . de / drugbank /
+3 PREFIX chebi : <http : / / bio2rdf . org / ns / bio2rdf#>
+4 PREFIX dc : <http : / / purl . org / dc / elements / 1 . 1 / >
+
+6 SELECT ?drug ?keggUrl ?chebiImage
+7 WHERE
+8 {
+
+15 }
+
+rdf : type
+drugbank : keggCompoundId
+drugbank : genericName
+
+?drug
+?drug
+?drug
+?keggDrug
+?chebiDrug
+?chebiDrug
+
+chebi : url
+dc : t i t l e
+chebi : image
+
+?drugBankName .
+?chebiImage .
+
+drugbank : drugs .
+
+?drugBankName .
+
+?keggDrug .
+
+?keggUrl
+
+Listing 1: Contextualising exampleLife Sciences query from the
+Fedbench benchmark.
+
+Traditionally, query optimisers perform an exhaustive search of
+the plan universe in order to find the best plan given a set of
+optimisation criteria. The long established dynamic programming
+method is used for this purpose. To further reduce the cost of finding the best plan, the search space is pruned heuristically. A popular heuristic when doing so is to discard all plans with the exception
+of left-deep ones. Even in the light of these optimisations, exhaustive strategies for traversing the entire plan universe in order to
+find the best (or lowest cost) plan can become prohibitively expensive for queries where the number of joins is high, i.e. as reported
+in [32] a number of 15 joins was considered prohibitive circa 2003.
+Moreover, when dealing with uncertain constraints such as FAST
+FIRST results, RDBMSs like Oracle RDB [1] heuristically execute several plans competitively in parallel for a short interval of time to increase the likelihood of hitting the most relevant cases under the
+assumption of a Zipf distribution.
+
+resource / drugbank / >
+
+SERVICE <http : / / drugbankendpoint / sparql > {
+
+1 PREFIX rdf : <http : / /www.w3. org/1999/02/22rdfsyntaxns#>
+2 PREFIX drugbank : <http : / /www4. wiwiss . fuberlin . de / drugbank /
+3 PREFIX chebi : <http : / / bio2rdf . org / ns / bio2rdf#>
+4 PREFIX dc : <http : / / purl . org / dc / elements / 1 . 1 / >
+
+6 SELECT ?drug ?keggUrl ?chebiImage WHERE {
+
+19 }
+
+SERVICE <http : / / chebiendpoint / sparql > {
+
+SERVICE <http : / / keggendpoint / sparql > {
+
+drugbank : genericName
+drugbank : keggCompoundId
+rdf : type
+
+?chebiImage .
+?drugBankName
+
+chebi : image
+dc : t i t l e
+
+?chebiDrug
+?chebiDrug
+
+?drugBankName .
+?keggDrug .
+drugbank : drugs
+
+?drug
+?drug
+?drug
+
+?keggDrug
+
+chebi : url
+
+?keggUrl
+
+4.2. Query optimisation
+
+To contextualise Avalanche further, consider the example
+query Qexample in Listing 1, executing over the Fedbench16 bench-
+
+Listing 2: Motivating example query rewritten as a SPARQL 1.1
+federated query.
+
+14 http://www.supermind.org/blog/740/average-length-of-a-url-part-2.
+15 http://gromgull.net/blog/category/semantic-web/billion-triple-challenge/.
+
+16 https://code.google.com/p/fbench/.
+17 http://www.drugbank.ca/.
+18 http://www.genome.jp/kegg/.
+19 http://www.ebi.ac.uk/chebi/.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Fig. 5. Graphical example of a snapshot of the plan-generator traversal algorithm for a simplified version of Qexample. For brevity only three triple patterns are considered
+from Qexample while the plan-generator algorithm is detailed over the first step.
+
+Given that WoD SPARQL endpoints are not under any form
+of centralised control and network/system failures can occur any
+time, guarantees about the completeness of a SPARQL query answer cannot be claimed. Consequently, in Avalanche we focus on
+optimising for uncertain constrains akin to the FAST FIRST limit
+used in Oracle RDB. To this end, Avalanche performs an exhaustive search of the plan universe similar to traditional optimisers,
+with one critical difference: as soon as a plan is generated it is
+dispatched for execution while the optimiser continues to generate plans. As a first cost-reducing heuristic, we consider only plans
+where each triple pattern is assigned to one endpoint only. There-
+fore, each plan is equivalent to a SPARQL 1.1 decomposition of the
+original query without considering UNION graph patterns. For example one such plan (or decomposition) can be seen in Listing 2,
+where the SERVICE clause is used to bind triple patterns to end-
+points.
+
+Plans (or decompositions) can be classified into two categories:
+productive plans  those for which results are found  and unproductive plans  those for which no results are found. Considering
+this, just like in Oracle RDB we adopt the assumption that the concurrent execution of plans will have a higher probability of yielding results if productive plans are found and dispatched early by the planner.
+Hence, Avalanche also executes plans in parallel with the notable
+difference to Oracle RDB that it sets out to execute all plans until
+results are found or the stopping criteria are met. As a result the
+order in which plans are generated is critical, since this is the order
+in which they are also executed. As our empirical results from Section 5.1.2 show first results are found early during plan generation
+and execution. For many of the benchmark queries first results also
+coincide with total query results. A disadvantage of this approach
+is the apparent wasting of resources. We alleviate this problem
+by extending the SPARQL endpoint functionality with stateful distributed join processing by caching partial results in memory for
+the duration of the entire query. In this manner, when the same
+subquery is part of multiple plans on the same endpoint, the effort
+of retrieving results from disk is spent only the first time. Further-
+more, we assume that expensive and unproductive plans, which
+would consume resources needlessly, are discarded early by local endpoint optimisersa feature supported by most industrialstrength RDF stores.
+
+One of the main advantages conferred by this approach is that
+it relaxes the need for near-exact plan cost estimation. While for
+traditional query optimisers it is critical to estimate the cost as
+best as possible because only one plan (the best) is executed, in
+Avalanche since all plans are executed concurrently the best plans
+need only be ranked towards the beginning of the execution chain.
+Hence, the focus falls on the relative ranking of plans to each other.
+To generate plans efficiently the plan generator has to meet the following criteria:
+
+ it must generate plans in an order that matches as much as possible the order given by their estimated cost, with the lowest cost
+estimate first, and
+ construct plans in an iterative fashion, since waiting for an exhaustive composition of all plans is expensivesee Definition 4.4 for the upper bound.
+Considering these requirements, we created a new graph
+traversal algorithm which we call: Priority Queued Greedy DFSs.
+The algorithm toggles between two modes of operation. First, it
+starts by seeding the global fringe implemented by a priority queue
+with all combination of triple patternendpoint pairs. Second, a
+localised Greedy DFS is performed starting with the best (or lowest cost) state from the global fringe i.e., node (tp2, Drugbank) in
+Fig. 5. From this point on, expansion is performed using a local
+fringe, implemented by a stack. Nodes are pushed to the stack in
+order of their depth and for each depth level in order of their cost
+estimate. After a solution node is found i.e., ((tp2, Drugbank), (tp1,
+Drugbank), (tp3, KeGG)), the local fringe is inserted into the global
+fringe. The local Greedy DFS ensures the second criteria, while the
+global fringe ensures that multiple DFS searches can be performed
+efficiently because of the inclusion of partially explored solutions
+i.e., the grey node ((tp2, Drugbank), (tp3, KeGG)) in Fig. 5. We detail the plan generator algorithm in Section 4.4.
+
+4.3. The cost model
+
+Commonly, cost models can be classified into cost models that
+either aim to reduce the total time to execute the query or strive
+to reduce the response time or first result(s) latency. The first class
+of cost models are in general pertinent to single query execution
+scenarios. Since a complete result set is not in Avalanches scope
+the second class of cost functions is desirable. Unlike the comprehensive cost model highlighted by Ozsu and Valduriez in [30]
+Avalanche features a more relaxed cost model since it does not
+aim at producing one single cost-optimal plan but instead aims to
+execute all plans concurrently. Note that in practice concurrency is
+limited to a number of concurrent operations, a parameter chosen
+by the administrator (DBA) in line with the desired/possible load of
+the underlying broker/endpoint hardware. In consequence, since
+Avalanche needs to rank all generated plans as close as possible
+to the order of their cost estimates, two simplifying assumptions
+can be considered:
+ Network: We assume that network latency and bandwidth are
+relatively uniformly distributed between participating sites. Although a gross approximation, the assumption holds true in
+most cases for geographically near sites. Furthermore, many
+participants on the WWW follow this assumption.
+
+ Distributed joins: A widely encountered phenomenon on the
+WoD, multi-tenancy gives rise to a number of difficulties and
+problems ranging from management of RDF data to query and
+index optimisation both locally and at a global scale. Since
+Avalanches scope is the indexed WoD, it is unrealistic to assume that full index statistical information is always available
+or can always be shared between participating sites. Therefore,
+in the absence of more exact and elaborate metrics join selectivity is estimated. The main advantages of this model are:
+(1) there is no need for joint distribution statistics to be available and (2) it bears virtually no computation and network cost.
+However, there are many fallacies introduced as it offers no
+guarantees regarding the size of the join between any two BGPs.
+In the following we discuss the impact these assumptions have on
+the cost model.
+Selectivity estimation. In the absence of exact statistics (i.e., join car-
+dinalities) regarding triple patterns and basic graph patterns, selectivity is usually estimated. However, as Avalanche starts with the
+premise that triple pattern cardinalities are know as reported by
+getTPCardinality (Appendix A), triple pattern selectivities are
+computed and not estimated. For a given triple pattern tp bound to
+a given host h its selectivity represents the probability of selecting
+a triple that matches from the total number of triples involved and
+is thus directly computed as follows:
+tp = Pmatch(tp, h) = card(tp, h)
+where TMAX = |H|
+selh
+
+i=0 tripleshi, with tripleshi representing the total
+
+(2)
+
+number of triples on host hi.
+
+Most RDF database management systems (with very few
+exceptions [28]) estimate the selectivity of BGPs. In doing so
+Avalanche discriminates between star shaped graph patterns and
+the rest. Graph theoretic constructs, star graph patterns, materialise in the realm of SPARQL queries as groups of triple patterns
+that join on the same subject or object. For simplicity we will later
+refer to them as star graph patterns or stars. Any given basic graph
+pattern bgp can be decomposed into the set of all contained stars
+referred to as Sbgp and a remainder graph pattern which contains
+all triple patterns that do not form stars called NSbgp. In consideration of the above, the selectivity of bgp is estimated according to
+the following formula:
+
+bgp = 
+
+SELh
+
+tpNSbgp
+
+tp  
+
+selh
+
+starSbgp
+
+( min
+tpstar
+
+selh
+
+tp ).
+
+(3)
+
+The equation captures the intuition that non-star pattern triplepatterns are estimated via independent combination of their se-
+lectivities. Obviously, independence is not correct but oftentimes
+found as an acceptable approximation. The selectivity of a star pat-
+tern, in contrast, is estimated by the selectivity of its minimal participating triple-pattern.
+Cost model. When ranking plans, Avalanche employs a common
+no-preference multiobjective optimisation method: the method of
+Global Criterion [42]. Avalanche uses this method as an envelope
+to combine the following heuristic objectives:
+(a) plan selectivity estimation: this objective relies primarily on
+selectivity estimation as it appears in Eqs. (2) and (3) and is
+defined according to the following equation:
+
+SELhsq
+bgpsq
+
+(4)
+
+SELplan = 
+
+sqSQplan
+
+where plan represents a partial or complete plan and SQplan is
+the set of subqueries in plan.
+
+(b) number of subqueries: stemming from a data-locality assumption (related assertions are usually on the same host) this
+second heuristic is intended to bias the plan generator towards
+plans (or partial plans) that will result in query decompositions
+with fewer subqueries and is defined as follows:
+SIZEplan = |Tplan|  |SQplan|
+(5)
+where plan represents a partial or complete plan, Tplan = {tpi |
+tpi  plan} is the set of triple patterns in plan, and SQplan is the
+set of subqueries in plan.
+Since Avalanche needs to compare partial plans with various
+degrees of completion whilst exploring the universe of all plans PQ
+the number of subqueries is normalised by the number of triple
+patterns considered so far. Additionally, since the method of global
+criterion is sensitive to the scaling of the considered objective func-
+tions, as recommended in [26], the objectives are normalised into
+the uniform [0, 1] range. Finally, Avalanche minimises the cost of
+a plan by combining the previous heuristic functions according to
+the following equation:
+COSTplan = SELplan, SIZEplan  zideal
+(6)
+where zideal represents the ideal or target cost value and the .
+norm is the L2 norm or the euclidean norm.
+
+One of the main advantages of the cost model defined in this
+manner, is the flexibility conveyed by the fact that new heuristics can easily be plugged in. Plugging-in an additional element to
+the cost function would entail extending the cost vector SELplan,
+SIZEplan with an additional performance indicator as well as zideal
+with the desired target value for this indicator. We chose to favour
+high selectivity plans first over low selectivity ones, mainly due to
+the assumption that in general they are less costly to execute, thus
+reducing the time/resource usage penalty in case no results are
+found. Low selectivity plans are not discarded altogether, but simply given lower priority during execution. Hence, the target value
+for the first element of the cost function is 0. In addition, the second
+objective favours plans with fewer distributed joins (fewer sub-
+queries) subscribing to a similar rationale: they are often cheaper
+to execute by pushing complexity towards local endpoints while
+avoiding expensive network transfers and connectionsa fact particularly detrimental for queries that produce few results. Consequently the target value of the second element of the cost function
+is also 0 resulting in zideal = 0, 0. Hence, for these two performance indicators zideal could be omitted from the formula. This
+would, however limit the generality of the cost function, as elements with target values other than zero could not be added.
+
+4.4. Plan generation
+
+As seen in Algorithm 1, the planner will try to optimise the
+construction of all plans using an informed repeated greedy depth
+traversal strategy. Due to its repeated nature, plans are not generated in strict ascending order of their estimated cost. Instead
+they are generated in a partially sorted order primarily dictated
+by the partial cost estimates from the exploration fringe F. This is
+achieved by minimising the cost-estimation function of each plan
+COSTplan, described in Eq. (6). As designed, the plan generators
+worst case complexity is O(mn).
+With each exploratory step the size of the global fringe F increases by the number of sites |H| (line 19). This happens for each
+expanded state or partial plan represented by a tp, hi pair, where
+tp  TQ is the current triple pattern and hi  H a participating
+endpoint or host. Not considering pruning, the algorithm is complete and exhaustive as it iterates over all possible plans. While
+traditional optimisers stop and return when the optimal solution
+is found, the planGenerator procedure is not halted and instead
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Algorithm 1 The plan generator algorithm
+Precondition: Q a well-formed SPARQL query, T the set of all triple
+
+patterns  Q
+
+Postcondition: N a set of search nodes, P a query plan
+
+ V: set of visited nodes
+ C: set of closed nodes
+ F: active exploration fringe
+ : current plan counter
+ MAXplans: maximum number of plans
+
+break
+
+if  = MAXplans then
+best  F.pop()
+if solution(best) then
+
+
+F  nodes(V, T, )
+
+while F =  do
+
+1: procedure planGenerator(Q )
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15:
+16:
+17:
+
+partial plan
+
+ best is a leaf search node
+ emit generated plan
+ sort fringe F based on COST
+
+emit Plan(Q , best, )
+   + 1
+F.sort()
+if best / C then
+C  C {best}
+Tnxt  {tp}, tp  T  tp / triplePatterns(best)
+if Tnxt =  then
+
+ Tnxt: next unexplored triple pattern in
+
+continue
+
+F  F  nodes(V, Tnxt, best)
+
+18:
+19:
+20:
+21: function nodes(V , T, parent)
+22:
+
+ expand search space
+ local fringe expansion function
+ N : the nodes, V : visited queue, T: a set of triple
+
+for tp  T do
+
+patterns
+
+for h  H do
+
+n  node(tp, h, parent)
+if n / V  n =  then
+
+V  V  {n}
+N  N {n}
+
+N .sort()
+return N
+
+23:
+24:
+25:
+26:
+27:
+28:
+29:
+30:
+
+ H: the set of all endpoints
+ create new node
+
+ sort (local fringe) N based on COST
+
+each solution or plan is emitted to the caller (line 11). The generator procedure is in essence a repeated application of a Greedy
+Depth First Search algorithm driven by a priority-queue-based
+fringe, which keeps track of all partial plans explored so far. This
+ensures that search states (or partial plans) are not visited multiple times. The Greedy DFS aspect is necessary to produce viable
+plans quickly and is encoded by the partial sort of the local fringe
+NODES in function nodes (line 29). Here the exploration of direct
+descendant partial plans of the current state is enforced. In con-
+trast, the global fringe F re-sorts (for efficiency we use a heap) all
+the partial plans explored so far from all previous Greedy DFS runs
+(line 13). This is critical since the planner must select for expansion
+the next best plan available.
+Pruning. As the exploration space grows quickly, pruning invalid or
+ plans is desired. Early pruning is achieved immediately after the
+statistics gathering phase when the plan matrix PMQ is available,
+by removing all hosts (matrix rows) for which the cardinality of
+all triple patterns is 0. In the absence of triple-patten cardinalities,
+early pruning would not be possible and the maximum number
+of plans would have to be considered: |H||TQ |. Hence, queries that
+produce a 0|H|,|TQ | plan matrix (zero matrix) are stopped during this
+early optimisation step.
+Furthermore, during execution the same join can be often
+shared by multiple competing plans. Consequently, joins that are
+(empty) are recorded and used as dynamic feedback for the plan-
+ner, which then prunes any plan that contains an join. This aspect
+transforms the Avalanche planner into an adaptive planner as seen
+in line 26 of the nodes function.
+
+4.5. Query execution
+
+As we stated in the previous sections, Avalanche conceptually sets out to execute all plans concurrently. In practice however
+this can lead to high system load when queries are large (number
+of triple patterns) and have partial results on many endpoints. In
+the following we will describe how this problem is addressed in
+our system. Since any Avalanche endpoint can play both the role
+of a query broker and a SPARQL endpoint, in order to differentiate between the two roles we will simply refer to the endpoint
+which orchestrates the distributed execution of the query as Query
+Broker while referring to the rest simply as endpoints. Plans are
+dispatched for execution given the partially sorted order of their
+cost estimates. Since Avalanche optimises for FAST FIRST results,
+fast executing plans are favoured. If no stopping criteria is specified (i.e., LIMIT, timeout, etc.) and participating endpoints maintain
+their availability, Avalanche finds all results every time a query is
+executed under these conditions, albeit in different orders if no explicit sort is specified. However, since no guarantees can be claimed
+in a multi-tenant setup like the WoD, due to the unpredictability
+of external factors, Avalanche looses its deterministic query reso-
+lution.
+Addressing the Query Broker system load. Once the triple pattern
+cardinalities are retrieved and the plan matrix PMQ constructed,
+the Query Broker is primarily responsible with three tasks, as seen
+in Fig. 3: plan generation, plan execution orchestration and query
+progress monitoringto determine when to stop. Except for plan
+generation, all other tasks are mainly I/O bound. We optimise the
+plan generation algorithm by making use of memoization to store
+the cost of partially constructed plans while traversing the plan
+space. The plan execution orchestration process is centred around
+the Executors Pool. Considering its I/O bound nature, an evented
+socket-asynchronous paradigm is a natural fit. Using an event loop
+driven pool instead of a thread pool when dealing with I/O bound
+tasks can lead to dramatic improvements in terms of the number of
+concurrent tasks that can be handled at a fraction of the resources
+used otherwise. While we cannot directly compare to a thread
+based pool (i.e., due to implementation impedance mismatches
+which would result in increased development costs), anecdotal evidence suggests that evented task processors can potentially process several orders of magnitude more tasks than thread based
+ones, if tasks are non-blocking (e.g., I/O requests). Therefore, we
+based the implementation of the Executors Pool on the popular
+libevent20 event loop.
+Addressing Endpoint system load. While the Query Broker can drive
+many plans concurrently due to its asynchronous architecture, the
+system load of participating query endpoints can still be high. We
+employ two strategies to reduce this burden on query answering
+endpoints. First, not all plans are dispatched for concurrent execution at the same time but instead a concurrency limit is set on the
+Executors Poolsimilar to the number of worker threads in standard thread-pools, but featuring more workers. Currently, this parameter has to be set manually by the system administrator in
+concordance to available Query Broker system resources or desired
+load. Second, each endpoint caches the partial results of each received subquery in memory. Since each plan is executed in order
+of the selectivity estimation of its composing subqueries, the size of
+partial results (number of tuples) is kept as low as possible. Clearly,
+this reduces the cost of executing remote subqueries particularly
+when the same subquery is requested by multiple plans. This is
+typically the case when some RDF statements are located on only
+one site and can be joined with more RDF fragments from other
+
+20 http://libevent.org/.
+
+Fig. 6. Graphical illustration of the execution process for example query Qex..
+
+endpoints. In addition, each Avalanche endpoint is enhanced with
+distributed join processing capabilities, also implemented using
+the same asynchronous evented task processing paradigm.
+The plan executor algorithm. As soon as a plan is assigned to a
+worker, the process described in Algorithm 2 unfolds. Fig. 6 illustrates this process for the query Qexample.
+
+A first step consists of sorting the subqueries (if more than 1)
+in order of their selectivity estimation SELh
+sq on the designated host
+h. The distributed join is then executed in left-deep fashion, starting with the most selective subquery, as seen in line 5 and steps
+1 and 2 in Fig. 6. Necessary for the next phase, the order in which
+joins occurred is recorded in the JQ queue. The next phase is op-
+tional, since it is an optimisation. When enabled, the partial results
+that have been produced in the earlier join can be reconciled (fil-
+ter out the pairs that do not match on the remote site) in reverse
+order of their counter-part joins (line 6, steps 3, 4 in figure). Reconciliation can be naive (send the entire set compressed or not) or
+optimised. The former is used when the cost of creating the optimised structures is higher than just sending the set. In the latter hashes can be send when the item size is larger than its hash
+or following [33] bloom-filters can be employed. Bloom-filters are
+space-efficient lossy bit-vector representations of sets by virtue of
+using multiple hash functions for recording each element.
+
+Algorithm 2 The plan executor
+Precondition: P a valid query plan, RQ the Avalanche Results Queue
+
+1: procedure executePlan(P, RQ )
+2:
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10:
+11:
+
+if isFederated(P) then
+SortSubqueries(P)
+JQ  distJoin(P)
+distReconciliation(JQ )
+S  distMaterialize(P)
+r  distMerge(S)
+r  sparql(P)
+
+else
+RQ  RQ  r
+
+sq
+
+ r: the results
+ P has more than 1 subqueries
+ Sort subqueries in P by SELh
+ distributed join of subqueries
+ reconcile partial results
+ distributed materialization ()
+ merge partial results
+ execute SPARQL query
+ append results
+
+Finally results are materialised in parallel (line 7, steps 5, 6, 7
+in figure) and then merged on the host corresponding to the first
+subquerythe one with the lowest estimated selectivity, (line 8,
+steps 8, 9 in figure). To increase execution performance, since many
+plans contain the same or overlapping subqueries, a memoization
+strategy is employed. Hence, partial results are kept for the
+
+duration of the entire query execution and not just for the current
+plan. This acts as a site-level cache memory, bypassing the database
+altogether for popular result sets when resources permit.
+
+When the merge is completed, the Plan Executor worker process will signal the Avalanche Query monitor via the Results Queue.
+Note that the finished plans do not contain the final results, as the
+matches are kept remotely. It is the Query monitors responsibility
+to retrieve the results and update the overall state of the broker ac-
+cordingly. In the remainder of this subsection we will describe in
+detail the inner-workings of the operations described above.
+Distributed join & reconciliation. The join and reconciliation procedures are detailed in Algorithms 3 and 4 respectively. Joining is
+implemented in a left-deep fashion while the reconciliation procedure is straight-forward. One important aspect to note is that the
+execution of a plan can be stopped (line 6 in Algorithm 4) if the
+cardinality of a join is 0. This information is recorded and fed back
+into the planner for dynamic pruning.
+Distributed materialisation & merge. The final execution phases are
+detailed in Algorithms 5 and 6 respectively. The materialisation
+procedure is executed in parallel on all subquery hosts with the
+important note that locally kept selectivity estimations for each
+subquery in SQ are updated to actual join cardinalities, available at
+this stage remotely (line 5 in Algorithm 5). This information is later
+used to find out the host with the highest partial result cardinality.
+This host (best in line 2 in Algorithm 6) is then used as the hub
+where all other partial results are merged (lines 35 in Algorithm
+6).21
+
+4.6. Stopping the query execution
+
+Since we have no control over distribution and availability of
+the RDF data and SPARQL endpoints, providing a complete answer
+to the query is an unreasonable assumption except for the cases
+involving few endpoints and rather simple queries. Instead, the
+Query Monitor/Stopper monitors for the following stopping condi-
+tions:
+ a global timeout set for the whole query execution,
+ returning the first K unique results to the caller,
+
+21 For brevity and graphical simplicity of Fig. 6, the Compounds endpoint (in the
+middle) was also assigned to be the merge host.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Algorithm 3 The distributed join operation
+Precondition: P a valid query plan
+Postcondition: JQ a queue, containing the joins in order
+
+1: function distJoin(P)
+
+2:
+S  subqueries(P)
+3:
+S.sort()
+4:
+if isFederated(P) then
+5:
+while S =  do
+6:
+best  S.pop()
+7:
+for sq  S do
+8:
+best (cid:111)(cid:110) sq
+9:
+JQ  JQ  {[best, sq]}
+10:
+11:
+12:
+13:
+
+sparqlRemote(P)
+
+return JQ
+
+else
+
+ JQ : joins queue
+ S: set of all subqueries in P
+ sort by selectivity estimation SEL
+ P has more than 1 subqueries
+
+ remote join
+ record join
+ SPARQL query but keep results remotely
+
+Algorithm 4 The distributed reconciliation operation
+Precondition: JQ joins queue
+
+JQ .reverse()
+for [left, right]  JQ do
+
+1: procedure distReconciliation(JQ )
+2:
+3:
+4:
+5:
+6:
+
+  reconcile(left, right)
+if  = 0 then
+
+halt
+
+ remote reconciliation step
+ stop plan execution when cardinality = 0
+
+Algorithm 5 The distributed materialisation operation
+Precondition: P a plan
+Postcondition: Sa queue containing the plan subqueries sorted by
+
+cardinality 
+
+for sq  P do
+
+1: function distMaterialize(P)
+2:
+3:
+4:
+
+ S: subqueries queue
+  materialize(sq)  : the cardinality of partial results on
+S  S {[, sq]}
+if  = 0 then
+
+sq
+
+ stop plan execution when cardinality = 0
+ sort by 
+
+5:
+6:
+7:
+8:
+9:
+
+halt
+
+S.sort()
+return S
+
+Algorithm 6 The distributed merge operation
+Precondition: S subqueries queue
+Postcondition: r a valid SPARQL results set
+
+1: function distMerge(S)
+, best  S.popLeft()
+2:
+while S =  do
+
+best
+
+sq  S.popLeft()
+merge(best, sq)
+r  getResults(best)
+return r
+
+3:
+4:
+5:
+6:
+7:
+
+ : the cardinality of partial results on
+
+ merge results from sq on best
+ retrieve the final results from best
+
+ to avoid waiting for the timeout when the number of results
+is  K, we measure relative result-saturation. Specifically, we
+employ a sliding window to keep track of the last n received
+result sets. If the standard deviation ( ) of these sets falls below a given threshold, we stop execution. Specifically, we use
+Chebyshevs inequality: 1  1
+
+ 2 [20].
+
+All of the above mentioned stopping conditions can be enabled/dis-
+abled independently and in any combination required by a given
+use-case or desired by the user.
+
+5. Evaluating Avalanches robustness against messiness
+
+In the introduction we claimed that the Avalanche system provides the capability to query the messy Web-of-Data. Specifically,
+we claimed that the proposed system: (1) makes no assumptions
+about data distribution, schema, availability, or partitioning and is
+skew resistant for some classes of queries, (2) provides up-to-date
+results from distributed indexed endpoints, (3) is adaptive during execution adjusting dynamically to external network changes,
+(4) does not require detailed fine-grained ex-ante statistics with the
+query engine, and (5) is flexible as it makes limited assumptions
+about the structure of participating triple stores.
+
+Avalanche is able to provide up to date results without any exante statistics (2 and 4) by accessing participating triple-stores at
+run-time and is open due to the limited assumptions it makes on
+triple-stores (5). Whilst skew resistance (1) and adaptiveness (3)
+seem possible due to its multi-plan competitive planning/execu-
+tion strategies (see Sections 4.2 and 4.5) it has not been shown that
+these strategies are actually successful.
+
+In the following we describe the experimental evaluation of
+the Avalanche system. Specifically, we will provide empirical
+evidence ascertaining Avalanches planner quality and the systems overall robustness to varying data distributions and network
+conditions such as different latencies and endpoint unreliabil-
+ity. Specifically, we evaluate Avalanches planner quality as
+well as robustness against network latency and endpoint stability (in Section 5.1) using a real world dataset. In addition, we
+show Avalanches robustness against various data distributions
+(Section 5.2) using a synthetic dataset.
+Experimental setup. For all experiments a cluster of 6 physical machines with 64 GB of RAM, 24 AMD Opteron 6174 Cores @2.2 GHz,
+and running Debian GNU/Linux 6.0.6 64bit was used, connected
+by a 1 gigabit ethernet switch. In addition the Avalanche broker
+was executed on a separate machine with 72 GB of RAM, 8 Intel(R)
+Xeon(R) CPU X5570 Cores @2.93 GHz, and running Fedora release
+12 (Constantine) 64bit. For all evaluations the following stopping
+conditions were considered unless specified otherwise:
+ a global timeout of 300 s (5 min),
+ first K unique results set to 1000 and
+ relative-saturation of 90%.
+Additionally, the concurrency limit was set to 128 concurrently
+executing plans.
+
+5.1. Evaluation setting I: analysing Avalanche with real-world data
+
+To evaluate the generalisability of our results to a real-world
+setting we chose a real-world dataset specifically tailored for the
+evaluation of federated RDF stores. This subsection first outlines
+the dataset, its distribution to hosts, the queries used and then
+discusses Avalanches execution results on this dataset.
+The data and its distribution. We chose the recently published Fedbench22 [35] dataset as it comes pre-partitioned using a real-world
+partitioning schema and, additionally, offers 36 SPARQL queries.
+For summarised statistics about each participating dataset refer to
+Table 1.
+
+Following the natural partitioning of the benchmark we
+adopted the assumption that each dataset is published on its own
+distinct server. For bigger datasets such as Geonames and DBPedia we assumed in addition that the publishers decided to further split the data into multiple RDF stores. We captured this by
+splitting some of the larger datasets as detailed in Table 2. Hence,
+
+22 http://code.google.com/p/fbench.
+
+Table 1
+Fedbench datasets statistics.
+
+Collection
+
+Cross domain
+
+Life sciences
+
+SP2Bench
+
+Dataset
+DBpedia subset
+NY Times
+LinkedMDB
+DBpedia subset
+
+SP2Bench 10M
+
+Version
+
+20100113
+20100119
+
+20101125
+v1.01
+
+# triples
+43.6M
+335k
+6.15M
+43.6M
+1.09M
+10M
+
+Dataset
+Jamendo
+GeoNames
+SW Dog Food
+Drugbank
+ChEBI
+
+Version
+20101125
+20101006
+20101125
+20101125
+20101125
+
+# triples
+1.05M
+108M
+104k
+767k
+7.33M
+
+#triples
+6.14M
+84k
+4.77M
+10M
+9.95M
+9.99M
+9.99M
+9.99M
+7.98M
+
+10.80M
+10.91M
+2.24M
+
+Data available from http://code.google.com/p/fbench/wiki/Datasets.
+
+Table 2
+The distribution of the Fedbench dataset to Avalanche hosts.
+
+Dataset
+NY Times
+Jamendo
+
+Drugbank
+
+Geonames
+
+DBPedia subset
+
+AVA host
+News
+Music
+Chemicals
+Drugs
+Geography_1
+Geography_2
+Geography_3
+Geography_4
+Geography_5
+Geography_6
+Infobox_Types
+Titles
+Images
+Other
+
+#triples
+314k
+1.04M
+10.9M
+517k
+9.98M
+9.99M
+9.93M
+9.94M
+9.98M
+9.98M
+5.49M
+7.33M
+3.88M
+2.45M
+
+additional distribution messiness was introduced by splitting the
+Geonames triples randomly over 11 hosts while for DBpedia larger
+dumps were distributed to single hosts and the smaller ones were
+integrated into the Other Avalanche endpoint.
+The queries. The triple store23 we used for implementing Avalanche
+endpoints does not currently support SPARQL features beyond
+traditional BGP pattern matching. Hence, we ignored all Fedbench queries that contain the OPTIONAL and FILTER graph pattern
+modifiers. This is a limitation of the current system and evalu-
+ation, which we discuss in detail in Section 6. Additionally, as
+UNION graph patterns are not supported either, queries containing
+the operator were split and executed as separate queries, which is
+aligned with the common practice of executing unions as individual subqueries in parallel. We supplemented the resulting 33 Fedbench queries with another 5 more complex queries from the life
+sciences domain, as listed in Appendix D. The translation table to
+the original names (where applicable) is available in Appendix C.
+
+5.1.1. Experiment #1: Avalanche vs. a baseline system
+
+In this first experiment we intend to better understand through
+empirical evidence, the performance gains (or potential shortcom-
+ings) that the computational model embraced by Avalanche intro-
+duces. Hence, we implemented a baseline prototype where the core
+idea of concurrently executing multiple simpler decompositions of
+the original query is dropped. In contrast to Avalanche the query
+answer-set is constructed by:
+ keeping relevant state (i.e., partial results) in a local repository
+and
+ executing a single optimal query plan generated akin to traditional query optimisation techniques.
+
+23 An in-house and update-able extension of Hexastore was used as the RDF store
+technology behind all Avalanche endpoints in our evaluations.
+
+Dataset
+LinkedMDB
+SW Dog Food
+ChEBI
+SP2B-10M
+
+Avalanche Host
+Movies
+
+Compounds
+Bibliographic
+Geography_7
+Geography_8
+Geography_9
+Geography_10
+Geography_11
+
+Infobox_Properties
+Articles_Categories
+SKOS_Categories
+
+Although there are multiple possible execution models that
+could be considered baselines, one approach is to first multicast
+query Q to all participating sites. Second, each site would remove
+triple patterns for which it has no match from Q and return the
+matching triples. Third, Q would be run against a local repository
+of the triples returned from all participating hosts. The decision to
+discard triple patterns  in effect mapping Q  Qknown, where
+Qknown is the part of the query known to the server  is carried out
+by each participating endpoint individually and is implemented as
+defined in Eq. (7):
+TQknown,h = {tpi | tpi  TQ ,h  card(tpi, h) > 0,
+
+h is the current endpoint}
+
+(7)
+where TQknown,h represents the known set of triple patterns composing query Qknown on host h. Other triple pattern exclusion rules
+can be imagined, i.e. discard all triple patterns if the predicate belongs to an unknown namespaceprovided namespace information is available. After all or some of the partial results are retrieved
+from the remote SPARQL endpoints, they are stored in a local
+RDF store. Since in the case of SPARQL SELECT queries the answersets Ri are tables where columns correspond to projection variables
+and therefore not graphs Gi as would be the case of SPARQL CONSTRUCT queries, a translation process from tuples to triples needs
+to be implemented. This is a necessary step as to reconstruct locally
+
+the subgraph Gknown = Gi. A solution would be to transform each
+
+of the Qknown SELECT queries to equivalent CONSTRUCT queries. Fi-
+nally, the engine is left with the task of re-executing the original
+query Q on the local graph Gknown.
+Limitations of the baseline system. While conceptually simpler, a
+number of hurdles render the implementation non-trivial. First, it
+is possible that some of the reduced queries Qknown may not contain
+any selective triple patterns from Q because the respective hosts
+do not understand those patterns. In the worst case the reduced
+Qknown  s, p, o which would trigger the requester to retrieve
+the entire remote knowledge-base. Second, since the final results
+for Q can only be computed after obtaining Gknown two execution
+strategies emerge:
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Fig. 7. Triples distribution for two hypothetical sites with the complete result-set for query Q 
+ex.
+
+Fig. 8. Average query execution times for each of the Fedbench queries. Avalanche vs. the baseline system.
+
+(i) Wait until all Gi partial graphs are retrieved and then execute
+Q on Gknown. This is suitable for cases where the partial graphs
+are inexpensively obtained and/or the query is complex.
+
+(ii) Build the final result-set incrementally by executing Q every
+time a partial graph Gi is merged with the local Gknown reposi-
+tory. This strategy obviously pays off when (some) partial triple
+sets are expensive to obtain additionally offering the possibility of an early stop when Q is satisfied without having to wait
+for all partial graphs. However, it incurs the cost of executing
+Q with each retrieved partial triple set.
+Finally, the method is not complete since it is possible that
+
+ Gi  Gneeded, where Gneeded is the minimal set of triples needed to
+
+construct the complete result set for Q . For example consider the
+case illustrated in Fig. 7 where query Q 
+ex executes over two sites.
+By this strategy Q 
+ex produces no results even though the complete
+result-set contains two tuples. In contrast Avalanche is (eventu-
+ally) complete since it considers all possible decompositions of Q
+and not just some decompositions like Qknown.
+Results. Based on the assumption that the selectivity distribution
+of the generated Qknown subqueries on participating endpoints is
+Zipf-ian, we chose to implement the pipelined execution model
+due to its obvious performance benefits. Furthermore, the same
+asynchronous execution paradigm as in Avalanche was used in
+the baseline, while Gknown was implemented by a fast in memory
+indexed RDF store.24 A consequence of this choice is that the same
+stopping conditions that Avalanche employs can be used to determine whether the engine should stop the query execution or not,
+hence, eliminating other unknown hidden factors when comparing
+the two systems.
+
+The time taken to complete all the considered Fedbench queries
+by both systems is graphed in Fig. 8. With very few exceptions Avalanche proved to be faster than the baseline system.
+
+24 We used the IOMemory RDF store provided by the rdflib package:
+https://github.com/RDFLib.
+
+Fig. 9. Geometric mean of the execution time over all queries: Avalanche vs. the
+baseline system.
+
+When retrieving first results the baseline system is slower than
+Avalanche in 65% of the queries, becoming slower for 92% of the
+queries by the time final results are retrieved. This is better captured in Fig. 9, where the geometric mean over all queries is com-
+puted. Clearly, for the 38 selected Fedbench queries Avalanche
+exhibits superior average performance for both cases: retrieving
+first results and achieving query completion.
+
+Furthermore, as mentioned previously the baseline system is
+not guaranteed to be complete, a fact exhibited by queries: FQ 11,
+FQ 14, FQ 21, FQ 23, FQ 25, FQ 26, FQ 28 and FQ 33 as seen in Fig. 10,
+which depicts the recall for all queries. In contrast, Avalanche exhibits full recall for most queries with the exception of queries:
+FQ 8, FQ 11, FQ 28, FQ 30, FQ 31, FQ 34 and FQ 37 under a time-out
+of 5 min (the same was set for the baseline). The ground-truth  total number of results  used to compute the recall was obtained by
+running all Avalanche plans exhaustively acquiring thus all possible results for each query. This was achieved by disabling all the
+
+Fig. 10. Recall for each of the Fedbench queries. Avalanche vs. the baseline system.
+
+stopping conditions: timeout, first-k results and relative satura-
+tion.
+
+The baseline system although slower for most benchmark
+queries and incomplete for some, exhibits some positive proper-
+ties. First, it is of a much more simple design than Avalanche and
+finally for some classes of queries it can be faster than Avalanche.
+For example for query FQ 7 the baseline system completes with
+4.6 s faster than Avalanche while for query FQ 30 first results
+are retrieved marginally (0.37 s) faster than Avalanche. As stated
+above one of the main design limitations of the baseline is represented by the fact that completeness cannot be guaranteed. Even
+though we implemented the baseline using the same concurrent
+asynchronous query execution paradigm as in Avalanche a number of potential bottlenecks still exist. A first limiting factor is the
+way in which the query is being executed: by fetching all pertinent (according to Eq. (7)) triples locally. Intuitively, at least for
+more demanding classes of queries (i.e., with more joins, or complex shapes), this can easily lead to a large portion of triples to be
+identified as pertinent for the given query and therefore transferred locally. Looking at Table 3 we can clearly observe that for
+50% of the benchmark queries, the baseline retrieves anywhere between 100,000 to 1700,000 triples, while for very few queries the
+number of triples retrieved counts in the hundreds. Clearly, this
+represents a bottleneck since not all triples are received at the same
+time, and in some cases those triples that contribute to the final
+result are found later in the execution of the given query. Another
+potential bottleneck is represented by the local RDF store we em-
+ployed. We opted for an in-memory indexed store to diminish the
+performance penalties introduced by the loading of new triples as
+they arrive and at the same time offer high performance for most
+queries. As can be observed in Table 3 most queries are answered
+on average below 1 s, however for some queries (e.g., FQ 15, FQ 29,
+FQ 31 and FQ 34) the time to rerun the original query on local data
+is on average quite high ranging from ca. 3 s to ca. 30 s. This could
+be explained by the set-based join algorithm used (more expensive
+than sorted mergejoin) since the RDF store does not keep sorted
+indexes (but dictionary based) to aid the loading/indexing process
+at the expense of slower execution times for more complex queries.
+In light of these results, we can safely say that Avalanche exhibits significant performance and conceptual benefits over the
+naive baseline system.
+
+5.1.2. Experiment #2: planner quality assessment
+
+In this second experiment we intend to analyse the quality
+of the planning algorithm and cost model that Avalanche uses.
+Consequently, we:
+ compare the performance exhibited by Avalanche with that of
+a similar system driven by an oracle planner and,
+ observe the relative ranking of productive plans within the
+query plan universe PQ as generated by the Avalanche plan
+generator.
+
+Table 3
+Statistical information and query runtime breakdown for the baseline system on all
+queries.
+Query
+
+Total triples
+recv.d
+
+
+Avg. load
+time (s)b
+
+Avg. query
+time (s)c
+
+Num. query
+runsa
+
+FQ0
+
+FQ1
+
+FQ2
+
+FQ3
+
+FQ4
+
+FQ5
+
+FQ6
+
+FQ7
+
+FQ8
+
+FQ9
+
+FQ10
+
+FQ11
+
+FQ12
+
+FQ13
+
+FQ14
+
+FQ15
+
+FQ16
+
+FQ17
+
+FQ18
+
+FQ19
+
+FQ20
+
+FQ21
+
+FQ22
+
+FQ23
+
+FQ24
+
+FQ25
+
+FQ26
+
+FQ27
+
+FQ28
+
+FQ29
+
+FQ30
+
+FQ31
+
+FQ32
+
+FQ33
+
+FQ34
+
+FQ35
+
+FQ36
+
+FQ37
+
+a The input query is run repeatedly every time new triples are received.
+b Average time  in seconds  to load the newly received triples into the local
+
+RDF store.
+
+c Average time  in seconds  taken for each input query run.
+d Total number of triples transferred over the network from all endpoints.
+
+Comparison to an oracle planner. In order to observe to what extent the asynchronous concurrent execution of plans improves the
+overall performance of query answering in Avalanche we constructed an oracle planner (see Definition 5.1).
+
+Definition 5.1. An oracle planner is a plan generator connected
+to an oracle, akin to an oracle machine, i.e. a Turing machine connected to an oracle.
+
+A drop-in replacement for the Avalanche Plan Generator,
+the oracle planner has perfect knowledge about which of the
+Avalanche generated plans are productive (i.e., have results) and
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Fig. 11. Average query execution times for each of the Fedbench queries. Avalanche planner vs. Oracle planner.
+
+which are not (i.e., do not find any results). To obtain the productive
+plans for each query, we serialised the plans for which results were
+found while running Avalanche without stopping conditions, to
+disk. We then order these plans according to the same order as
+Avalanche. Consequently, the oracle planner only generates the
+plans for which results are found without the time penalty incurred
+by the exhaustive plan space traversal of the cost-based Plan Gen-
+erator.
+
+It is important to note that for most queries with the exception
+of FQ 0, FQ 7 and FQ 31 (see Table 4) there is only a single plan
+which is productive and therefore the oracle planner is in this cases
+equivalent with an omniscient planner where the optimal query
+decomposition is found.
+
+For the experiment we ran all benchmark queries with the oracle planner and compared the performance of query execution to
+the Avalanche cost model based planner. The number of productive plans for all of the benchmark queries is reported in Table 4.
+As can be seen, all queries feature 1 productive plan (or 0 if query
+has no results) with the exception of queries FQ 0, FQ 7 and FQ 31
+which produce 6, 2 respectively 3 productive plans.
+
+The results of running all 38 Fedbench queries comparing the
+standard Avalanche planner with the oracle planner are depicted
+in Fig. 11, while the geometric mean over all queries when comparing the execution times yielded by the two planners is shown in
+Fig. 12. While for 25 of the queries the absolute elapsed time (wall-
+clock time) difference is negligible as seen in Fig. 11, for queries
+FQ 1, FQ 4, FQ 6  7, FQ 18, FQ 21, FQ 23, FQ 28  31, FQ 33 and FQ 37
+Avalanche was between2 and33 times slower than the oracle
+approach. However, looking at Fig. 12, Avalanche was 2.5 times
+slower in the geometric mean than the oracle driven system over
+all benchmark queries.
+
+In general this difference is to be expected. The effort of discarding (and executing) unproductive plans in conjunction with the
+plan space exploration takes time. Hence, the Avalanche planner
+is naturally slower than a no-effort planner (like the oracle plan-
+ner). However, as exhibited by Fig. 11 the delays are clearly limited
+and acceptable to many applications. Hence, Avalanche exhibits a
+good performance in the conditions of this evaluation when acting
+solely on join-estimate heuristics.
+Plan ranking. As can be seen in absolute values in Table 4 and normalised relative to total number of plans in Fig. 13 Avalanche succeeds in assigning a low rank (1 best rank) to the first productive
+plan. When the number of possible plans is large, the simple
+selectivity-estimation-based cost model will assign higher ranks,
+as is the case of query FQ 21 where the first productive plan is the
+71st plan generated out of 594 possibilities. However, due to the
+asynchronous-concurrent manner in which plans are executed, the
+negative effect of assigning higher ranks to plans (the rank is equivalent to the plans generation order) is mitigated to a relatively high
+degree as shown in the previous analysis against the oracle plan-
+ner, i.e. non-productive plans are quickly discarded after the first
+empty join.
+
+Fig. 12. Geometric mean of the execution time over all queries: Oracle vs.
+Avalanche Planner.
+
+5.1.3. Experiment #3: varying network latency
+
+Changing network conditions can impede the execution of any
+distributed SPARQL processing. Two critical network factors stand
+out: bandwidth and latency. Since the slowdown effect of a lowbandwidth connection can in general be overcome with a certain
+degree of success by either compressing the message or making
+use of binary communication protocols and since Avalanche employs bloom filter optimised joins to reduce communication I/O,
+we decided to focus our attention in this experiment on connection latency. The majority of requests in the Avalanche system are
+between the Avalanche broker and the participating endpoints.
+Hence, for this experiment the connection between the broker and
+each endpoint was routed through a TCP delayer proxy, which
+would introduce delays according to a predefined configuration.
+We chose to simulate three types of latency distributions:
+ No Delay  a local cluster network with negligible (close to 0 s)
+connection latency,
+ Gamma 1  a fast network with an average connection latency
+of 0.3 s. Simulated by a gamma distribution with  = 1 &  =
+0.3 (Fig. 14),
+ Gamma 2 a slow network with an average connection latency
+of 3 s. Simulated by a gamma distribution with  = 3 &  = 1.0
+(Fig. 14).
+
+Additionally, the TCP socket buffer size was set to the standard
+value of 16 KB.
+
+Avalanche successfully finds results for all the considered
+benchmark queries under all simulated latency variations. Looking at Fig. 15 we can clearly observe that the speed with which
+Avalanche answers queries across the different connection types
+increases dramatically as we move towards slower connections
+
+Table 4
+Total possible plans and first productive plan rank as generated by Avalanche.
+
+FQ0
+
+FQ11
+
+FQ22
+
+FQ33
+
+Query
+max plansb
+# plansc
+# productive plansd
+1stplan
+query
+max plansb
+# plansc
+#productive plansd
+1stplan
+query
+max plansb
+# plansc
+#productive plansd
+1stplan
+query
+max plansb
+# plansc
+# productive plansd
+1stplan
+a Query has no results.
+b Maximum number of plans if no triple-pattern cardinalities are available  upper bound.
+c Maximum number of possible plans deduced when triple pattern cardinalities are considered.
+d Total number of plans (from all possible plans) for which results are found.
+
+FQ1
+
+FQ12
+
+FQ23
+
+FQ34
+
+FQ3
+
+FQ14
+
+FQ25
+
+FQ36
+
+FQ5
+
+FQ16
+
+FQ27
+
+FQ6
+
+FQ17
+
+FQ28
+
+FQ7
+
+FQ18
+
+FQ29
+
+FQ8
+
+FQ19
+
+FQ30
+
+FQ9
+
+FQ20
+
+FQ31
+
+FQ10
+
+FQ21
+
+FQ32
+
+FQ2
+
+FQ13
+
+FQ24
+
+FQ35
+
+FQ4
+
+FQ15
+
+FQ26
+
+FQ37
+
+Fig. 13. Normalised relative plan ranking: the first plan compared to the possible number of plans/queries for each Fedbench query. The higher the bar the better,
+i.e. productive plans get executed sooner.
+
+Fig. 14. Probability density function (pdf) for the simulated Gamma 1 and Gamma 2 latency distributions.
+
+like Gamma 2. First, Avalanche retrieves query specific statistics (e.g., triple pattern cardinalities and total triples) from participating endpoints. For the 0 latency setup No Delay this phase
+completes on average in 0.05 s and is therefore negligible compared to the overall query execution time. For the slower networks
+Gamma 1 and Gamma 2 the statistics gathering phase takes on average 1.22 s and 7.54 s respectively.
+
+Although these execution times are significantly higher they are
+mainly dominated by the network connection latency when optimised remote endpoints are employed. This fact can be observed
+from the low response time for the same statistical information
+when network latency is 0. Next, results are produced after an average of 0.36 s when connection latency is negligible, while for the
+Gamma 1 and Gamma 2 cases first results are found after an average of 2.93 s and 20.64 s respectively. The situation is similar for
+
+achieving the stop condition or final results: 0.49 s on average for
+the No Delay setup, 3.52 and 23.15 s on average for the Gamma 1
+respectively Gamma 2 setups. Although this performance decrease
+is dramatic, Avalanche exhibits a sub-linear slowdown as graphed
+in Fig. 16 compared to the broker-endpoints average latency slow-
+down.
+
+This behaviour is attributed to Avalanche mainly because of its
+adaptive asynchronous design. In essence plans that return quickly
+are favoured by the asynchronous scheduling Results Queue. As a
+consequence, Avalanche is largely dependent on the critical plan
+for first results. The critical plan should ideally be the first productive plan. However, given that network conditions are uncon-
+trollable, a slower plan might produce results faster because it
+shares a faster network connection. This is also observed in Fig. 17,
+where the individual average times for answering all Fedbench
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+from them, even-though all query plans containing subqueries allocated to them will fail to execute. The two other cases  the host
+being unavailable during either the source selection or statistics
+gathering phase  are less interesting as they are handled by design
+(i.e., the hosts are not even considered in the planning). We compared Avalanche when replicated hosts would fail seamlessly during query execution with the case when the replicas would not fail.
+Note that the obtained results should not be directly compared to
+results obtained elsewhere in this section, as the Avalanche endpoints were simulated on some of the physical nodes, which experience additional load in this replicated setting.
+Fig. 18 graphs the arrival time of the first and total results for the
+cross domain and life sciences queries (FQi, i  [0, 15]  [33, 37])
+and Fig. 19 graphs the average number of results obtained over the
+same queries. Note that queries FQ 9, FQ 35, and FQ 36 were not
+considered since they produce no results be default, while query
+FQ 34 could not be run in the fully replicated scenario since the
+physical machine did not have enough resources to accommodate
+the extra replicated servers in this case.
+
+Avalanches Plan Generator adapts dynamically to external
+changing conditions, such as endpoints going offline, due to various reasons. Such events are usually detected when a plan that
+contains at least one subquery assigned to an offline host is exe-
+cuted. Upon detection, the planners internal state is dynamically
+readjusted first by removing the corresponding row for the host
+from the Plan Matrix PM and secondly by pruning all partial plans
+containing the offline host generated up to the detection moment.
+In most cases Avalanche is not impacted by the fact that a host
+has failed when at least another alternate plan to produce results
+exists. Of course, if all query relevant hosts fail, then the query
+will timeout without any results found. As the results indicate
+Avalanche is able to return a result set of similar size as the one
+without disappearing hosts within a similar time-frame as in the
+stable host setting.
+
+5.2. Evaluation setting II: analysing Avalanche with synthetic
+data
+
+One of the key characteristics of the WoD is represented by its
+semantic heterogeneity stemming from a plethora of intertwining applications domains. Currently this aspect alone represents
+an important part of a federated querys selectivity. However, it
+is not inconceivable that in the future schema-homogeneous partitions of the WoD will increase in size reducing the usefulness
+of schema/vocabulary information during planning. These kind of
+instance-level messy distributed RDF datasets, hence, significantly
+complicates distributed query processing as it is unclear if triples
+matching one triple pattern from one host are likely to join with
+matches to a second triple pattern from the same host or an-
+other. This kind of messiness attenuates the effect of locality.25
+While Avalanche was not designed with the intend of addressing
+instance-level messiness we investigate the behaviour of our proposed execution paradigm when individual instances (triples) are
+spread across a large number of semantically-homogeneous hosts
+with increasing degrees of messiness.
+
+To this end we used the synthetic LUBM benchmark dataset [13].
+Specifically, we generated the LUBM2000 benchmark configura-
+tion, resulting in 2000 universities, and accounting to a total of 276
+million triples. In contrast to the previous setup, where 26 schemaheterogeneous endpoints were used, a total of 100 schemahomogeneous endpoints are created. Such a setup allows us to
+
+25 Note that supporting this messiness is one underlying principles of the
+Semantic Web, as everyone can annotate any resource with some triple.
+
+Fig. 15. Geometric mean of the execution time over all queries for the three
+connection setups.
+
+Fig. 16. Slowdown introduced by the three connection setups.
+
+queries FQi, i  [0, 37] queries under all three network conditions are graphed. As the broker-endpoints connections experience
+more lag, Avalanche exhibits a stable behaviour overall depending
+mainly on the critical plan(s), albeit slower with the slowdown depicted in Fig. 16.
+
+5.1.4. Experiment #4: varying endpoint availability
+
+Another source of messiness stems from the uncontrollable nature of the underlying communication protocol stacks on the Web
+as well hardware and physical crashes of servers and routers. There
+is no guarantee that a host replying to requests at any given moment T will be available at time T+t. To observe the behaviour of
+Avalanche in such a case we have designed an experiment where
+some hosts disappear during query execution.
+
+First, in order to have multiple plans per query we replicated
+some of the Fedbench endpoints used throughout this experimental setup. Specifically, we replicated the following Avalanche endpoints with a factor of 2: the News, Movies and Music in the Cross
+Domain collection and Drugs in the Life Sciences collection (see
+Table 2). This resulted in the increase of total number of triples over
+all hosts by about 8 million additional assertions. Furthermore, the
+already burdened physical machines had to support the 4 additional replicated endpoints.
+
+Then, to emulate a crash the replicated endpoints were started
+in a fail mode, meaning that they would abruptly terminate
+themselves immediately after reporting the triple pattern cardi-
+nalities. This case is most interesting as the hosts will be considered by the Query Planner component as it received cardinalities
+
+Fig. 17. Average response time for each Fedbench query under different latency distributions. The graph differentiates between the time necessary to get the statistics,
+execute the first plan, and execute all plans.
+
+Fig. 18. Average response time for Cross Domain and Life Sciences Fedbench queries when endpoints fail.
+
+Fig. 19. Average # of results time for Cross Domain and Life Sciences Fedbench queries when endpoints fail.
+
+flexibly mimic instance-level distribution messiness by reassigning triples to hosts. Note, that this setup situates Avalanche in a
+worst case scenario, where the Source Discovery Phase reports a
+large number of semantically-identical sources  all sharing the
+same schema  but with an unknown distribution of triples.
+The data and its distribution. As illustrated in Fig. 20, the LUBM
+triples were allocated to hosts according to the three LUBM2000
+D1, LUBM2000 D3, and LUBM2000 D5 distributions (in short D1, D3
+respectively D5). The degree of distribution messiness increases
+with each case as detailed in the remainder of this section.
+
+A coarse-grained level of messiness is achieved in the LUBM2000
+D1 data-distribution. Here all data belonging to a university is
+placed on the same host. To simulate various levels of server load
+we assign universities to hosts using the following procedure. Half
+the universities are randomly assigned to a host ensuring a basic
+load for each host. The second half of the universities are assigned
+to a host by drawing the host id from a normal distribution with
+
+mean  = 50 and standard deviation  = 14. This leads to a higher
+load for some hosts (towards the middle of Fig. 20).
+
+To achieve a higher degree of
+
+instance-level messiness
+LUBM2000 D3 & LUBM2000 D5 additionally distribute triples of one
+university across 3 or even 5 hosts. The initial host for a university is still determined using the same procedure as with D1. Once
+that host is determined, however, 2 (or 4) additional hosts are randomly selected. For D3 each universitys triples are distributed over
+3 hosts using a normal distribution with  = 1.5 and  = 0.3.
+similarly, for data distribution D5, each universitys triples are distributed over 5 hosts using a normal distribution with  = 2.5
+and  = 0.5. Hence, the bulk of the universitys data is still on one
+host with part data distributed elsewhere. This mimics a Brownian
+motion of the data away from its originating sourceone host contains most of the data while the rest is diffused to other hosts with
+the chosen probability density function. Consequently, as Fig. 20
+shows, the hosts will have data about more universities.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+Fig. 20. The data distributions chosen over 100 Hosts. The y-axis denotes the number of universities about which a host contains information.
+
+Fig. 21. Query execution times for all data distributions. Timeout cases are represented with orange. (For interpretation of the references to colour in this figure legend, the
+reader is referred to the web version of this article.)
+
+The Queries. Although we employed the LUBM benchmark data
+generator for each of the distributions, we chose not to use the original LUBM benchmark queries since they are (a) geared towards
+reasoning systems and (b) present a coarse grain of complexity
+in terms of composing triple patterns and number of unbound
+variables rendering them unsuitable for an in-depth evaluation
+of Avalanche. Instead we devised the 11 SPARQL queries of varying complexity listed in Appendix B (listings 5 through 15) based
+on the observation that the number of joins involved, their size
+(number of participating triple patterns), and type are important
+descriptors of a queries potential complexity and therefore induced effort. For example star joins can be executed in parallel as
+n-way joins reducing the complexity of such an operation. How-
+ever, when joins are chained in a read-after-write manner one is
+forced to process them serially.
+Consequently, queries LQi, i  [0, 10] are constructed in order
+of increased complexity by combining increasingly longer read-
+after-write join chains with increasingly larger sized star patterns.
+
+5.2.1. Experiment #5: varying data distribution
+
+The results of running all eleven queries on the three data distributions (D1, D3, and D5) are graphed in Figs. 21 and 22. All runs are
+warm runs and each query was run 5 times. In addition to the default values set for all experiments the following Avalanche stopping configuration was used: (1) a stop sliding window of size 3
+
+plans, (2) a number of 512 maximum concurrent asynchronous
+connections at any given moment, and (3) a 0.01 bloom-filter false
+positive error rate.
+
+As can be observed in Fig. 21 Avalanche exposes a relatively
+stable performance characteristic without timing-out for queries
+LQ 0 through LQ 7. Instance level spread is actually a benefiting
+factor for these queries that target replicated knowledge by providing more chunks of partial results, which in turn increases
+Avalanches chances of generating a productive plan. Looking
+at Fig. 22, we can clearly observe that regardless of the degree
+of messiness (a universitys triples spread to 1, 3 or 5 endpoints),
+Avalanche succeeds in retrieving about the same number of
+results exhibiting a highly stable behaviour. An exception is exhibited by LQ 6 (Listing 11) where performance degrades only for
+distribution D3. This kind of system behaviour is expected in some
+cases, due mainly to the estimative nature of the cost model. In this
+particular case the first productive plan is discovered relatively
+late compared to the other 2 distribution cases.
+
+LQ 8, LQ 9 and LQ 10 form a second group of queries. These
+queries target very specific knowledge pertinent to a single university leaving Avalanche with the task of identifying those endpoints (1, 3 or 5), which produce the desired result when combined.
+As can be observed, performance degrades dramatically with the
+number of hosts on which data is spread and with the number of
+
+Fig. 22. Number of retrieved results (average) for all data distributions.
+
+The systems overall behaviour for the two query groups is observed more clearly in Figs. 23 and 24, where the geometric mean
+over answering all queries against each distribution is shown. The
+Figures highlight the elapsed times for the three important execution phases in Avalanche. The statistics gathering phase accounts
+for a negligible part of the entire execution process and accounts
+to a mere 0.2 s on average for both query groups. We attribute
+this to the Hexastore-inspired read optimised indexing model of
+the RDF store used. We observe that Avalanche exposes a stable
+behaviour for the first group of queries finding first answers after
+an average of 1.5 s and completing the query after an average of
+1.7 s. For the second group of queries, Avalanche exposes a slowdown effect in terms of finding first answers, retrieving them after
+an average of 48 s and completing the query after an average of
+56 s. Finally, while Avalanche becomes slower it however, maintains its robustness as it will eventually find results.
+
+5.3. Summary
+
+Both evaluation settings in Sections 5.1 and 5.2 are witness to
+Avalanches stability against messiness. For the real world datadistribution setup based on Fedbench Avalanche was able to find
+first results in under one second for about 80% of the considered
+queries, while total results were retrieved under one second for
+about 70% of the queries, with the slowest running query taking
+about 5.5 s to complete. A notable exception is represented by
+query FQ 12, which generates a large intermediate result set, potentially blocking or slowing down access to underlying shared
+resources like network connections and database indexes. This is
+alleviated to some extent by: first, relying on asynchronous socket
+APIs and second, isolating the execution of expensive queries/joins
+inside threads or processes. Other possibilities of reducing the
+overhead of expensive semi-joins is by compressing intermediate
+result sets. Even more, a good replacement strategy for semi-joins
+are bloom-joins, where the actual data sent is the bit-vector forming the bloom filter of the intermediate results set. The bloom-join
+is advantageous for large result sets as sizeof (ResultSetsubquery) 
+sizeof (BitVectorbloomfilter ).
+Furthermore, as shown in the third experiment when the
+broker-endpoints network latency changes then Avalanches
+slowdown compared to the connections slowdown exhibits a sublinear characteristic as graphed in Fig. 16. Avalanche is also able to
+dynamically adapt when some participating endpoints go offline
+when they are not the sole query results providers. Considering the
+synthetic LUBM dataset where a brownian spread of triples from
+their source host is simulated, Avalanche exhibits a high level of
+stability when answering queries that are selective with respect
+to knowledge that is likely to be replicated (i.e. classes) as seen in
+Fig. 23. Avalanche does become progressively slower for queries
+
+Fig. 23. Geometric mean of the execution time over all queries for D1, D3 and D5,
+queries LQ 0 through LQ 7.
+
+Fig. 24. Geometric mean of the execution time over all queries for D1, D3 and D5,
+queries LQ 8 through LQ 10.
+
+joins generated by the query, i.e. query FQ 10 times out (depicted in
+orange) for distribution D5 (triples spread over 5 endpoints). This
+result suggests that naive selectivity estimation based cost models
+are not enough when dealing with fine-grained triple-level messiness at this scale, warranting novel and (more) accurate estimation
+statistics. Another effect of increased triples-spread is observed in
+the decline in recall for this second group of queries (Fig. 22). A
+possible explanation for this observation is that as triples are distributed over more hosts, finding candidate joins becomes harder
+while the ones that are favoured first are usually the more selective
+and, hence, the ones with fewer results.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+that target specific resources (Fig. 24). This happens since the objective functions considered do not leverage in any way the data
+distribution aspect.
+
+6. Limitations, optimisations, and future work
+
+The work presented here exhibits two kinds of limitations. On
+one side the system could be extended and/or optimised; on the
+other side the external validity of the evaluation is limited. We will
+discuss both of these topics in turn.
+System limitations and optimisations. The Avalanche system has
+shown how a completely heterogeneous distributed query engine
+that makes no assumptions about data distribution could be imple-
+mented. The current approach does have a number of limitations
+as highlighted in Section 3, most notably the fact that it:
+(i) does not support UNION graph patterns,
+(ii) can be resource wasteful for some classes of query workloads,
+
+(iii) does not offer result-set completeness guarantees.
+UNIONS could be included by execution model as discussed in
+Section 3. One approach to address resource wastefulness would
+be to improve the quality of cost estimation, e.g., via learning. We
+intend to explore these avenues in future work. Result-set completeness is external to Avalanche and a characteristic of the Web-
+of-Data.
+
+and
+
+Furthermore, we need to better understand the cost-estimation
+functions used by the planner, investigate if the requirements put
+on participating triple-stores are reasonable, and empirically evaluate if the approach scales to an even larger number of active
+hosts.
+
+To improve Avalanches performance a number of research
+avenues and potential solutions stand out. For instance, the simplistic source selection algorithm can be improved with higherquality statistics for a more accurate source selection process.
+Another high-impact avenue is to enhance join estimation accu-
+racy, i.e. by using Bloom Filters, histograms or schema-bound join
+predictive models which learn join distributions from previous ob-
+servations. Moreover, we intend to investigate if a stateless approach is feasible since Avalanche currently assumes that remote
+endpoints keep partial results throughout plan execution to reduce
+local database operational cost. Note that the simple approach 
+the use of REST-ful services [10]  may not be applicable as the
+size of the state may be too large and overburden available band-
+width. Additionally, we will need to investigate how complex it
+would be in practice to generalise the notion of a common keyspace beyond the textual representation of RDF terms in order to
+increase the performance of bandwidth-intensive join and merge
+operations.
+
+Finally, we would like to point out that Avalanche completely
+ignores schema. Whilst this allows us to provide a schema-agnostic
+solution it does delegate the problem to the querying user. As a
+large number of publications on schema-integration [9] and the
+owl:sameAs problem (i.e., [14]) show a lot of work might still be
+needed to address this kind of messiness transparently. Hence, this
+is beyond the scope of Avalanche.
+Evaluation limitations Our experiments rely on a limited number
+of physical resources available for accommodating the endpoints,
+the number of physical machines used is 4 to 16 times smaller
+than required in reality, where an endpoint would most often reside on an individual server. When one machine accommodates
+multiple endpoints, then these endpoints compete for shared resources (such as RAM, disk I/O, network I/O, and CPU-time). We
+think that the impact on our finding is mitigated by the choice
+of machines with more cores then endpoints. Furthermore, realworld endpoints would have to answers multiple query requests,
+
+each of which also competes for machine resources. Still, we believe that our setup is as realistic as possible in an experimental
+laboratory-setup and allows generalising the results.
+
+In Avalanche we have so far focused on graph pattern matching
+and have thus ignored other SPARQL features like OPTIONAL and
+FILTER graph patterns. As part of our future work on Avalanche we
+intend to extend support to cover these features. Properly supporting FILTER graph patterns is likely to speed up query processing in
+Avalanche due to the intrinsic parallelism of union operations and
+due to the selective effect of filtering partial resultsdepending on
+how soon a FILTER can be evaluated.
+
+7. Conclusion
+
+In this paper we presented Avalanche, a novel approach for
+querying the Web-of-Data that (1) makes no assumptions about
+data distribution, availability, or partitioning exhibiting skew resistance for classes of queries that are selective with regards to
+replicated knowledge (i.e. Class information), (2) is dynamically
+adaptive to changing external network conditions, (3) provides
+up-to-date results, and (4) is flexible since it makes few limiting
+assumptions about the structure of participating triple stores.
+Specifically, we showed that Avalanche is able to execute nontrivial queries over distributed data-sources with an ex-ante unknown data-distribution. We showed that an extensible cost
+model based on a common MultiObjective Optimisation method 
+the method of Global Criterion, where different heuristics can be
+plugged in without imposing changes to existing ones  can yield
+good performance in spite of different data distributions or changing latency while allowing for a messy Web-of-Data.
+
+We designed Avalanche with the need to handle messy semistructured data at large scales. The core idea follows the principle
+of decentralisation. It also supports asynchrony using asynchronous
+HTTP requests to avoid blocking, autonomy by delegating the
+coordination and execution of the distributed join/update/merge
+operations to the hosts, concurrency through the pipeline shown in
+Fig. 3, symmetry by allowing each endpoint to act as the initiating
+Avalanche node for a query caller, as well as fault tolerance via
+proper exception and time-out handling and stopping conditions.
+By design Avalanche handles messiness generated by (i) schema
+alignment and data evolution, as Avalanche is schema agnostic
+its current view of the world is as a set of triples, (ii) data
+distribution through its extensible cost model, and (iii) source un-
+availability, as Avalanche dynamically dismisses plans issued to
+hosts that are not present anymore during the execution phase,
+still allowing other hosts (sources) to produce new and more
+results.
+
+Avalanches main limitation with respect to messiness is its assumption that participating data-sources are indexed (i.e., stored
+in some kind of triple store rather than just provided as files).
+In the light of its robustness against other kinds of messiness,
+however, we believe that Avalanches capabilities outweigh this
+disadvantagein particular since it would be simple to wrap any
+(known)file-based source with a combination of a triple-store and
+crawler.
+
+To our knowledge, Avalanche is the first Semantic Web query
+system that makes no assumptions about the data distribution
+whatsoever. Whilst it is only a first implementation with a number of drawbacks it represents an important step towards querying a messy Web-of-Data by embracing its messiness as necessity
+(rather than an impediment) in order to foster its unpredictable
+growth.
+
+Acknowledgement
+
+This work was partially supported by the Swiss National
+Science Foundation under contract number 200021-118000. We
+are also grateful to the anonymous reviewers for their constructive
+comments, which helped to substantially improve the paper.
+
+Appendix A. Avalanche endpoint operators
+
+Execution operators. For brevity, example query listings will not include the prefixes already defined in the motivating example query Qex.
+
+getTPCardinality(tp)
+As the name suggests, this operator is responsible with returning the number of instances matching the triple pattern tp on the callee endpoint. This operator is
+SPARQL (1.1) compliant and can be implemented in several fashions depending on whether the predicate is bound and VoID is used. To illustrate how, the following
+triple pattern from Qex is considered:
+< ?chebiDrug, chebi:image, ?chebiImage >.
+Example: getTPCardinality operator to SPARQL(1.1) mapping
+PREFIX void : <http : / / rdfs . org / ns / void#>
+
+## I f predicate i s bound and VoID i s used
+SELECT ? c a rd i n a l it y WHERE {
+
+?dataset
+? partition
+? partition
+
+void : propertyPartition
+void : property
+void : t r i p l e s
+
+? partition .
+chebi : image .
+? c a r d in a l i t y
+
+## I f VoID i s not used but SPARQL 1.1 compliant
+SELECT (COUNT( DISTINCT ?chebiDrug ) as ? c a rd i n a l it y ) WHERE {
+
+?chebiDrug
+
+chebi : image
+
+?chebiImage
+
+getTotalTriples()
+SPARQL compliant as well, this is arguably the simplest operator. Its task being to report the total number of triples indexed by the endpoint. The overwhelming majority
+of modern day triple stores are aware of this fact and exposing this as a VoID statistic would be trivial.
+Example: getTotalTriples operator to SPARQLmapping
+## i f VoID i s used
+SELECT ?dataset ? t o t a l WHERE {
+void : t r i p l e s
+
+?dataset
+
+? t o t a l
+
+executeQuery(bgp, vars, values)
+This operator is virtually implemented by all RDF triple stores. The optional vars and values arguments are mapped directly to the VALUES term in SPARQL 1.1. For
+example consider the second fragment from Qex in Listing 2 with example dummy values for the ?drugBankName variable:
+Example: executeQuery operator to SPARQL1.1 mapping
+SELECT ?chebiDrug ?chebiImage WHERE {
+
+?chebiDrug
+?chebiDrug
+
+chebi : image
+dc : t i t l e
+
+} VALUES (?drugBankName) {
+
+?chebiImage .
+?drugBankName
+
+( "Drug A" )
+( "Drug B" )
+( "Drug C" )
+
+executeDistributedJoin(bgplocal, bgpremote, host)
+A critical part of the core functionality of any distributed database querying system is given by the ability to execute distributed joins. This operator is essentially a proxy
+operator as it relies on the ability to execute SPARQL queries both locally and remotely and functions as following: first the subquery bgplocal is executed locally as any
+regular SPARQL query. Next, the join variables (vars) between the two subqueries (bgplocal and bgpremote) are determined and the partial results corresponding to them
+are selected (values). As the final step the executeQuery(bgpremote, vars, values) operator is called on the remote host.
+
+The following operator pair is optional and exists mainly for optimisation reasons. Their role is to simply reduce the end I/O cost of
+
+executing a distributed query:
+
+executeDistributedReconciliation(bgplocal, bgpremote, host)
+Regarded as a cleanup operation the set-reconciliation procedure follows the execution of a distributed n-way join in order to remove partial results in excess resulting
+from preceding joins. Also a proxy operator baring a simplistic nature, its task is that of determining the values of the join vars between the two subqueries (bgplocal and
+bgpremote) and calling executeReconciliation(bgpremote, vars, values) on the remote host. Various optimisations are possible at this stage. Hence, instead of sending
+the actual set of values (compressed or not), a set of their hashes or a bloom filter can be employed, resulting in a hash- or a bloom filter-optimised distributed join.
+
+executeReconciliation(bgp, vars, values)
+Always called as the result of executing the executeDistributedReconciliation operator, its scope is to select and filter the excess results corresponding to the
+previously locally executed bgp query. As mentioned earlier this operator is designed to reduce the network traffic for the final merge phase of the distributed query
+execution. Depending on the optimisation mechanism used (hashing, bloom filters, or the actual set) the process can be exact or exhibit false positives (for bloom filters).
+
+The following operators are required in the final stages of the query execution process:
+
+executeDistributedMerge(bgplocal, bgpremote, host)
+Just like the previous executeDistributedJoin operator, this is also a proxy operator paired with executeMerge. The partial results contained in results_table
+corresponding to the previously executed query bgplocal are selected and sent remotely by calling executeMerge(bgpremote, results_table) on host. This operator is
+outside the scope of SPARQL compliancy, however, it can be implemented as a simple HTTP GET call as described by the REST model [10].
+
+executeMerge(bgp, results_table)
+Called as a result of a distributed merge operation, this final operator in the execution pipeline implements the standard database INNER JOIN ((cid:111)(cid:110)) operation on the
+incoming remote results_table and the local partial results table corresponding to the bgp query, which was previously executed during the distributed join phase.
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+materialize(bgp)
+This operator is necessary when distributed joins are executed in a common ID space used by the remote endpoints to index RDF data-sets. As the name suggests its
+basic functionality is that of providing the mapping from ID to RDF literals, a necessary condition when formulating the final results.
+
+State management operators. The following state management operators26 are exposed by Avalanche as a means to allow query brokers
+to halt the distributed operations involved in answering a query when the desired results are found:
+
+stopPlan(pid)
+Although not strictly necessary for Avalanche to function, the operator ensures the cleanup and freeing of allocated resources while trying to satisfy a given plan
+denoted by the pid identifier (i.e. the MD5 hash of the SPARQL 1.1 query decomposition).
+
+stopAllPlans(Q )
+Similarly, the operator will stop the execution and free all resources allocated for the resolving of all plans pertaining to the considered query. To reduce network
+overhead the query string can be replaced with a simple hash of the actual query (i.e., the MD5 hash of the original SPARQL query).
+
+Appendix B. LUBM benchmark queries
+
+PREFIX lubm: <http : / /www. lehigh . edu/~zhp2/2004/0401/univbench . owl#>
+PREFIX uni0 : <http : / /www. Department1 . University0 . edu/ >
+
+Listing 4: PREFIXES
+
+SELECT ? professor WHERE {
+
+? professor lubm:name " FullProfessor1 " } LIMIT 100
+
+Listing 5: LQ0
+
+SELECT ?department ?researchGroups WHERE {
+
+?researchGroups lubm: subOrganizationOf ?department .
+?department lubm:name "Department1" } LIMIT 100
+Listing 6: LQ1
+
+SELECT ?studentName WHERE {
+
+?student lubm:name ?studentName .
+?student lubm:memberOf <http : / /www. Department1 . University0 . edu>} LIMIT 100
+
+Listing 7: LQ2
+
+SELECT ?property ?value WHERE {
+
+? professor lubm:name " FullProfessor1 " .
+? professor ?property ?value } LIMIT 100
+
+Listing 8: LQ3
+
+SELECT ?mail ?phone WHERE {
+
+? professor lubm: emailAddress ?mail .
+? professor lubm: telephone ?phone .
+? professor lubm:name " FullProfessor1 " } LIMIT 100
+
+Listing 9: LQ4
+
+SELECT ?mail ?phone ?doctor WHERE {
+
+? professor lubm: emailAddress ?mail .
+? professor lubm: telephone ?phone .
+? professor lubm: doctoralDegreeFrom ?doctor .
+? professor lubm:name " FullProfessor1 " } LIMIT 100
+Listing 10: LQ5
+
+SELECT ?studentName ?courseName WHERE {
+
+?student lubm: takesCourse ?course .
+?course lubm:name ?courseName .
+?student lubm:name ?studentName .
+?student lubm:memberOf <http : / /www. Department1 . University0 . edu>} LIMIT 100
+
+Listing 11: LQ6
+
+26 Both operators can be implemented as REST calls.
+
+SELECT ? publication ?author ?department ? university WHERE {
+
+? publication lubm:name " Publication0 " .
+? publication lubm: publicationAuthor ?author .
+?author lubm: worksFor ?department .
+?department lubm: subOrganizationOf ? university } LIMIT 100
+
+Listing 12: LQ7
+
+SELECT ?name ?advisor ?department WHERE {
+
+?advisor lubm: worksFor ?department .
+?student lubm: advisor ?advisor .
+?student lubm:name ?name .
+?student lubm: takesCourse uni0 : GraduateCourse33 } LIMIT 100
+
+Listing 13: LQ8
+
+SELECT ?name ? t e l ?advisor ?department WHERE {
+
+?advisor lubm: worksFor ?department .
+?student lubm: advisor ?advisor .
+?student lubm:name ?name .
+?student lubm: telephone ? t e l .
+?student lubm: takesCourse uni0 : GraduateCourse33 } LIMIT 100
+
+Listing 14: LQ9
+
+SELECT ? university ?student ?name ? t e l WHERE {
+
+?student lubm: advisor ?advisor .
+?advisor lubm: worksFor ?department .
+?department lubm: subOrganizationOf ? university .
+?student lubm:name ?name .
+?student lubm: telephone ? t e l .
+?student lubm: takesCourse uni0 : GraduateCourse33 } LIMIT 100
+
+Listing 15: LQ10
+
+Appendix C. Fedbench Query name mapping
+
+See Table C.5.
+
+Appendix D. Fedbench benchmark queries
+
+PREFIX foaf : <http : / / xmlns . com/ foaf /0.1/ >
+PREFIX owl : <http : / /www.w3. org /2002/07/owl#>
+PREFIX kegg : <http : / / bio2rdf . org / ns / kegg#>
+PREFIX nytimes : <http : / / data . nytimes . com/ elements / >
+PREFIX geonames : <http : / /www. geonames . org / ontology#>
+PREFIX rdfs : <http : / /www.w3. org /2000/01/ rdfschema#>
+PREFIX skos : <http : / /www.w3. org /2004/02/ skos / core#>
+PREFIX swc: <http : / / data . semanticweb . org / ns /swc/ ontology#>
+PREFIX dbpediaowl : <http : / / dbpedia . org / ontology / >
+PREFIX dc : <http : / / purl . org / dc / elements /1.1/ >
+PREFIX bench : <http : / / localhost / vocabulary / bench/ >
+PREFIX drugbank : <http : / /www4. wiwiss . fuberlin . de / drugbank / resource / drugbank/ >
+PREFIX person : <http : / / localhost / persons / >
+PREFIX rdf : <http : / /www.w3. org/1999/02/22rdfsyntaxns#>
+PREFIX dbpedia : <http : / / dbpedia . org / resource / >
+PREFIX swrc : <http : / / swrc . ontoware . org / ontology#>
+PREFIX drugbankcategory : <http : / /www4. wiwiss . fuberlin . de / drugbank / resource /
+PREFIX drugbankdrugs : <http : / /www4. wiwiss . fuberlin . de / drugbank / resource /
+PREFIX linkedmdb : <http : / / data . linkedmdb . org / resource / movie/ >
+
+drugcategory / >
+
+drugs / >
+
+Table C.5
+Fedbench query name mapping.
+
+Collection
+
+Cross domain
+
+Life sciences
+
+Life sciences +b
+
+Fedbench name
+CD 1ac
+CD 3
+CD 6
+LS 1ac
+LS 2bc
+LS 5
+
+Fedbench name
+CD 1bc
+CD 4
+CD 7
+LS 1bc
+LS 3
+LS 6
+
+Name
+FQ0
+FQ3
+FQ6
+FQ8
+FQ11
+FQ14
+FQ33
+FQ36
+FQ16
+FQ19
+FQ22
+FQ25
+FQ27
+FQ30
+
+Name
+FQ1
+FQ4
+FQ7
+FQ9
+FQ12
+FQ15
+FQ34
+FQ37
+FQ17
+FQ20
+FQ23
+FQ26
+FQ28
+FQ31
+
+Fedbench name
+CD 2
+CD 5
+
+LS 2ac
+LS 4
+
+LD 3
+LD 6
+LD 9
+
+SP2Bench Q5
+SP2Bench Q10
+
+Name
+FQ2
+FQ5
+
+FQ10
+FQ13
+
+FQ35
+
+FQ18
+FQ21
+FQ24
+
+FQ29
+FQ32
+
+Linked data
+
+LD 2
+LD 5
+LD 8
+LD 11
+SP2Bench Q2d
+SP2Bench Q9bc
+a Original query names from the Fedbench project: http://code.google.com/p/fbench/wiki/Queries.
+
+LD 1
+LD 4
+LD 7
+LD 10
+SP2Bench Q1
+SP2Bench Q9ac
+
+SP2Bench
+
+query.
+
+b These queries are not part of the original Fedbench benchmark and therefore do not have a corresponding denomination. They are added for their increased complexity.
+c Queries whose names are suffixed with a or b represent Fedbench queries that contain UNION graph patterns. The two subqueries are executed independently.
+d Since the version of Avalanche used for this evaluation does not support the OPTIONAL graph pattern modifier, any OPTIONAL graph patterns were discarded from the
+
+PREFIX chebi : <http : / / bio2rdf . org / ns / bio2rdf#>
+PREFIX purl : <http : / / purl . org / dc / terms/ >
+
+Listing 16: PREFIXES
+
+SELECT ? predicate ? object WHERE {
+
+dbpedia : Barack_Obama ? predicate ? object }
+
+Listing 17: FQ0
+
+SELECT ? predicate ? object WHERE {
+
+? subject owl :sameAs dbpedia : Barack_Obama .
+? subject ? predicate ? object }
+
+Listing 18: FQ1
+
+SELECT ?party ?page WHERE {
+
+dbpedia : Barack_Obama dbpediaowl : party ?party .
+?x nytimes : topicPage ?page .
+?x owl :sameAs dbpedia : Barack_Obama}
+
+Listing 19: FQ2
+
+SELECT ?president ?party ?x WHERE {
+
+?president rdf : type dbpediaowl : President .
+?president dbpediaowl : nationality dbpedia : United_States .
+?president dbpediaowl : party ?party .
+?x nytimes : topicPage ?page .
+?x owl :sameAs ?president }
+
+Listing 20: FQ3
+
+SELECT ? actor ?news WHERE {
+? film purl : t i t l e " Tarzan " .
+? film linkedmdb : actor ? actor .
+? actor owl :sameAs ?x .
+?y owl :sameAs ?x .
+?y nytimes : topicPage ?news}
+
+Listing 21: FQ4
+
+SELECT ? film ? director ?genre WHERE {
+? film dbpediaowl : director ? director .
+? director dbpediaowl : nationality dbpedia : I t a l y .
+?x owl :sameAs ? film .
+?x linkedmdb : genre ?genre }
+
+Listing 22: FQ5
+
+SELECT ?name ? location WHERE {
+
+foaf :name ?name .
+foaf : based_near ? location .
+
+? a r t i s t
+? a r t i s t
+? location geonames : parentFeature ?germany .
+?germany geonames :name " Federal Republic of Germany" }
+
+Listing 23: FQ6
+
+SELECT ? location ?news WHERE {
+
+? location geonames : parentFeature ?parent .
+?parent geonames :name " C a l i f o r n i a " .
+?y owl :sameAs ? location .
+?y nytimes : topicPage ?news}
+
+Listing 24: FQ7
+
+SELECT ?drug ?melt WHERE {
+
+?drug drugbank : meltingPoint ?melt }
+
+Listing 25: FQ8
+
+SELECT ?drug ?melt WHERE {
+
+?drug dbpediaowl : drug / meltingPoint ?melt }
+
+Listing 26: FQ9
+
+SELECT ? predicate ? object WHERE {
+
+drugbankdrugs :DB00201 ? predicate ? object }
+
+Listing 27: FQ10
+
+SELECT ? predicate ? object WHERE {
+
+drugbankdrugs :DB00201 owl :sameAs ? c a f f .
+? c a f f ? predicate ? object }
+
+Listing 28: FQ11
+
+SELECT ?Drug ?IntDrug ? I n t E f f e c t WHERE {
+
+?Drug rdf : type dbpediaowl : Drug .
+?y owl :sameAs ?Drug .
+? Int drugbank : interactionDrug1 ?y .
+? Int drugbank : interactionDrug2 ?IntDrug .
+? Int drugbank : text ? I n t E f f e c t }
+
+Listing 29: FQ12
+
+SELECT ?drugDesc ?cpd ?equation WHERE {
+
+?drug drugbank : drugCategory drugbankcategory : cathartics .
+?drug drugbank : keggCompoundId ?cpd .
+?drug drugbank : description ?drugDesc .
+?enzyme kegg : xSubstrate ?cpd .
+?enzyme rdf : type kegg :Enzyme .
+? reaction kegg :xEnzyme ?enzyme .
+? reaction kegg : equation ?equation }
+
+Listing 30: FQ13
+
+SELECT ?drug ?keggUrl ?chebiImage WHERE {
+
+?drug rdf : type drugbank : drugs .
+?drug drugbank : keggCompoundId ?keggDrug .
+?keggDrug chebi : url ?keggUrl .
+?drug drugbank : genericName ?drugBankName .
+?chebiDrug dc : t i t l e ?drugBankName .
+?chebiDrug chebi : image ?chebiImage }
+
+Listing 31: FQ14
+
+C. Basca, A. Bernstein / Web Semantics: Science, Services and Agents on the World Wide Web 26 (2014) 128
+
+SELECT ?drug ? t i t l e WHERE {
+
+?drug drugbank : drugCategory drugbankcategory : micronutrient .
+?drug drugbank : casRegistryNumber ?id .
+?keggDrug rdf : type kegg : Drug .
+?keggDrug chebi : xRef ?id .
+?keggDrug dc : t i t l e ? t i t l e }
+
+Listing 32: FQ15
+
+SELECT ?x ?y ?d ?p ? l WHERE {
+
+?x dbpediaowl :team dbpedia : Eintracht_Frankfurt .
+?x rdfs : label ?y .
+?x dbpediaowl : birthDate ?d .
+?x dbpediaowl : birthPlace ?p .
+?p rdfs : label ? l }
+
+Listing 43: FQ26
+
+?paper swc: isPartOf <http : / / data . semanticweb . org / conference / iswc /2008/
+
+SELECT ?paper ?p ?n WHERE {
+
+poster_demo_proceedings > .
+
+?paper swrc : author ?p .
+?p rdfs : label ?n}
+
+SELECT ?yr WHERE {
+
+rdf : type bench : Journal .
+
+? journal
+? journal dc : t i t l e " Journal 1 (1940) " .
+? journal purl : issued ?yr }
+
+Listing 33: FQ16
+
+Listing 44: FQ27
+
+SELECT ?proceedings ?paper ?p WHERE {
+
+?proceedings swc: relatedToEvent <http : / / data . semanticweb . org / conference / eswc
+
+/2010 >.
+
+?paper swc: isPartOf ?proceedings .
+?paper swrc : author ?p}
+
+Listing 34: FQ17
+
+?paper swc: isPartOf <http : / / data . semanticweb . org / conference / iswc /2008/
+
+SELECT ?paper ?p ?x ?n WHERE {
+
+poster_demo_proceedings > .
+
+?paper swrc : author ?p .
+?p owl :sameAs ?x .
+?p rdfs : label ?n}
+
+Listing 35: FQ18
+
+SELECT ? role ?p ?paper ?proceedings WHERE {
+
+? role swc: isRoleAt <http : / / data . semanticweb . org / conference / eswc/2010 >.
+? role swc: heldBy ?p .
+?paper swrc : author ?p .
+?paper swc: isPartOf ?proceedings .
+?proceedings swc: relatedToEvent <http : / / data . semanticweb . org / conference / eswc
+
+/2010>}
+
+Listing 36: FQ19
+
+SELECT ?a ?n WHERE {
+
+?a dbpediaowl : a r t i s t dbpedia : Michael_Jackson .
+?a rdf : type dbpediaowl :Album .
+?a foaf :name ?n}
+
+Listing 37: FQ20
+
+SELECT ? director ? film ?x ?y ?n WHERE {
+? director dbpediaowl : nationality dbpedia : I t a l y .
+? film dbpediaowl : director ? director .
+?x owl :sameAs ? film .
+?x foaf : based_near ?y .
+?y geonames : officialName ?n}
+
+Listing 38: FQ21
+
+SELECT ?x ?n WHERE {
+
+?x geonames : parentFeature <http : / / sws . geonames . org /2921044/ >.
+?x geonames :name ?n}
+
+Listing 39: FQ22
+
+SELECT ?drug ?id ?s ?o ?sub WHERE {
+
+?drug drugbank : drugCategory drugbankcategory : micronutrient .
+?drug drugbank : casRegistryNumber ?id .
+?drug owl :sameAs ?s .
+?s foaf :name ?o .
+?s skos : subject ?sub }
+
+Listing 40: FQ23
+
+SELECT ?x ?p WHERE {
+
+?x skos : subject dbpedia : Category : FIFA_World_Cupwinning_countries .
+?p dbpediaowl : managerClub ?x .
+?p foaf :name " Luiz Felipe S co la r i " }
+
+Listing 41: FQ24
+
+SELECT ?n ?p2 ?u WHERE {
+
+?n skos : subject dbpedia : Category : Chancellors_of_Germany .
+?n owl :sameAs ?p2 .
+?p2 nytimes : latest_use ?u}
+
+Listing 42: FQ25
+
+SELECT ?inproc ?author ? booktitle ? t i t l e ?proc ?ee ?page ? url ?yr WHERE {
+
+?inproc rdf : type bench : Inproceedings .
+?inproc dc : creator ?author .
+?inproc bench : booktitle ? booktitle .
+?inproc dc : t i t l e ? t i t l e .
+?inproc purl : partOf ?proc .
+?inproc rdfs : seeAlso ?ee .
+?inproc swrc : pages ?page .
+?inproc foaf :homepage ? url .
+?inproc purl : issued ?yr }
+
+Listing 45: FQ28
+
+SELECT ?person ?name WHERE {
+
+? a r t i c l e rdf : type bench : A r t i c l e .
+? a r t i c l e dc : creator ?person .
+?inproc rdf : type bench : Inproceedings .
+?inproc dc : creator ?person .
+?person foaf :name ?name}
+
+Listing 46: FQ29
+
+SELECT ? predicate WHERE {
+
+?person rdf : type foaf : Person .
+? subject ? predicate ?person }
+
+Listing 47: FQ30
+
+SELECT ? predicate WHERE {
+
+?person rdf : type foaf : Person .
+?person ? predicate ? object }
+
+Listing 48: FQ31
+
+SELECT ? subject ? predicate WHERE {
+
+? subject ? predicate person : Paul_Erdoes }
+
+Listing 49: FQ32
+
+SELECT ?drug ?enzyme ? reaction WHERE {
+
+?drug1 drugbank : drugCategory drugbankcategory : a n t i b i o t i c s .
+?drug2 drugbank : drugCategory drugbankcategory : antiviralAgents .
+?drug3 drugbank : drugCategory drugbankcategory : antihypertensiveAgents .
+?I1 drugbank : interactionDrug2 ?drug1 .
+?I1 drugbank : interactionDrug1 ?drug .
+?I2 drugbank : interactionDrug2 ?drug2 .
+?I2 drugbank : interactionDrug1 ?drug .
+?I3 drugbank : interactionDrug2 ?drug3 .
+?I3 drugbank : interactionDrug1 ?drug .
+?drug owl :sameAs ?drug5 .
+?drug5 rdf : type dbpediaowl : Drug .
+?drug drugbank : keggCompoundId ?cpd .
+?enzyme kegg : xSubstrate ?cpd .
+?enzyme rdf : type kegg :Enzyme .
+? reaction kegg :xEnzyme ?enzyme .
+? reaction kegg : equation ?equation }
+
+Listing 50: FQ33
+
+SELECT ?drug ?drug1 ?drug2 ?drug3 ?drug4 WHERE {
+
+?drug1 drugbank : drugCategory drugbankcategory : a n t i b i o t i c s .
+?drug2 drugbank : drugCategory drugbankcategory : antiviralAgents .
+?drug3 drugbank : drugCategory drugbankcategory : antihypertensiveAgents .
+?drug4 drugbank : drugCategory drugbankcategory : antibacterialAgents .
+?I1 drugbank : interactionDrug2 ?drug1 .
+?I1 drugbank : interactionDrug1 ?drug .
+?I2 drugbank : interactionDrug2 ?drug2 .
+?I2 drugbank : interactionDrug1 ?drug .
+?I3 drugbank : interactionDrug2 ?drug3 .
+?I3 drugbank : interactionDrug1 ?drug .
+?I4 drugbank : interactionDrug2 ?drug4 .
+?I4 drugbank : interactionDrug1 ?drug }
+
+Listing 51: FQ34
+
+SELECT ?drug WHERE {
+
+diseasome / resource / diseases /59 >.
+
+diseasome / resource / diseases /53 >.
+
+diseasome / resource / diseases /105 >.
+
+diseasome / resource / diseases /302 >.
+
+?drug1 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?drug2 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?drug3 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?drug4 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?I1 drugbank : interactionDrug2 ?drug1 .
+?I1 drugbank : interactionDrug1 ?drug .
+?I2 drugbank : interactionDrug2 ?drug2 .
+?I2 drugbank : interactionDrug1 ?drug .
+?I3 drugbank : interactionDrug2 ?drug3 .
+?I3 drugbank : interactionDrug1 ?drug .
+?I4 drugbank : interactionDrug2 ?drug4 .
+?I4 drugbank : interactionDrug1 ?drug .
+?drug drugbank : casRegistryNumber ?id .
+?keggDrug rdf : type kegg : Drug .
+?keggDrug chebi : xRef ?id .
+?keggDrug dc : t i t l e ? t i t l e }
+
+Listing 52: FQ35
+
+SELECT ?d ?drug5 ?cpd ?enzyme ?equation WHERE {
+
+diseasome / resource / diseases /261 >.
+
+?drug1 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?I1 drugbank : interactionDrug2 ?drug1 .
+?I1 drugbank : interactionDrug1 ?drug .
+?drug drugbank : possibleDiseaseTarget ?d .
+?drug owl :sameAs ?drug5 .
+?drug5 rdf : type dbpediaowl : Drug .
+?drug drugbank : keggCompoundId ?cpd .
+?enzyme kegg : xSubstrate ?cpd .
+?enzyme rdf : type kegg :Enzyme .
+? reaction kegg :xEnzyme ?enzyme .
+? reaction kegg : equation ?equation }
+
+Listing 53: FQ36
+
+SELECT ?drug5 ?drug6 WHERE {
+
+diseasome / resource / diseases /319 >.
+
+?drug1 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?drug1 drugbank : possibleDiseaseTarget <http : / /www4. wiwiss . fuberlin . de /
+?I1 drugbank : interactionDrug1 ?drug1 .
+?I1 drugbank : interactionDrug2 ?drug .
+?drug1 owl :sameAs ?drug5 .
+?drug owl :sameAs ?drug6 }
+
+diseasome / resource / diseases /270 >.
+
+Listing 54: FQ37

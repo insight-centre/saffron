@@ -63,6 +63,15 @@ public interface SaffronDataSource extends Closeable {
     boolean addTaxonomy(String id, Date date, Taxonomy graph);
 
     /**
+     * Add a Partonomy
+     * @param id The ID of the run
+     * @param date The timestamp
+     * @param graph The taxonomy to update
+     * @return True if successful
+     */
+    boolean addPartonomy(String id, Date date, Partonomy graph);
+
+    /**
      * Add the result of a term extraction
      * @param id The ID of the run
      * @param date The timestamp
@@ -78,21 +87,21 @@ public interface SaffronDataSource extends Closeable {
     /*
      * Concept manipulation
      */
-    
+
     public List<Concept> getAllConcepts(String runId);
-    
+
     public Concept getConcept(String runId, String conceptId);
-    
+
     public List<Concept> getConceptsByPreferredTermString(String runId, String preferredTermString);
-    
+
     public void addConcepts(String runId, List<Concept> concepts);
-    
+
     public void addConcept(String runId, Concept conceptToBeAdded) throws TermNotFoundException;
-    
+
     public void updateConcept(String runId, Concept conceptToBeUpdated) throws ConceptNotFoundException, TermNotFoundException;
-    
+
     public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException;
-    
+
     /*
      * (non-Javadoc)
      *
@@ -109,6 +118,10 @@ public interface SaffronDataSource extends Closeable {
     void updateRun(String runId, String originalRun, JSONObject json, String status);
 
     Taxonomy getTaxonomy(String runId);
+
+    Partonomy getPartonomy(String runId);
+
+    KnowledgeGraph getKnowledgeGraph(String runId);
 
     List<DocumentTerm> getDocTerms(String runId);
 
@@ -169,6 +182,8 @@ public interface SaffronDataSource extends Closeable {
     public void setAuthorSim(String runId, List<AuthorAuthor> authorSim);
 
     public void setTaxonomy(String runId, Taxonomy taxonomy);
+
+    public void setKnowledgeGraph(String runId, KnowledgeGraph knowledgeGraph);
 
     public void remove(String runId);
 

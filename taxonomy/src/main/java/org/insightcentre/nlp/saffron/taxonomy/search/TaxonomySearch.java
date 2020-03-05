@@ -3,12 +3,15 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.taxonomy.metrics.TaxonomyScore;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
+import org.insightcentre.nlp.saffron.taxonomy.metrics.ScoreFactory;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MSTTaxoExtract;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 
@@ -33,7 +36,7 @@ public interface TaxonomySearch {
     
     public static TaxonomySearch create(TaxonomySearchConfiguration config, 
             SupervisedTaxo classifier, Set<String> terms, SaffronListener log) {
-        final TaxonomyScore score = TaxonomyScore.create(config, config.score, classifier, terms);
+        final Score score = ScoreFactory.getInstance(config, config.score, classifier, terms);
         switch(config.algorithm) {
             case greedy:
                 return new Greedy(score);
