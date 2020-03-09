@@ -374,7 +374,7 @@ angular.module('app').component('editparents', {
             ctrl.activeTerm = null;
             
             var requestData = {
-             termics": [
+             "terms": [
                 {
                   "term_child": term.term_id,
                   "term_parent": term.parent.term_id,
