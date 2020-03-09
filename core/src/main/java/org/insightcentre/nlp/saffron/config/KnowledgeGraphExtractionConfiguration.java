@@ -16,5 +16,5 @@ public class KnowledgeGraphExtractionConfiguration {
 	
 	public double meronomyThreshold = 0.25;
 
-	public boolean enableSynonmyNormalisation = false;
+	public boolean enableSynonymyNormalisation = false;
 }

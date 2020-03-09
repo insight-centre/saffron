@@ -1,6 +1,5 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
@@ -14,7 +13,7 @@ import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 public class SumKGScore implements Score<TypedLink>{
 	
 	private final MulticlassRelationClassifier<String> classifier;
-	private final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
+	public final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
 	private final KnowledgeGraphExtractionConfiguration config;
 	
 	public SumKGScore(MulticlassRelationClassifier<String> classifier, KnowledgeGraphExtractionConfiguration config) {
@@ -29,39 +28,38 @@ public class SumKGScore implements Score<TypedLink>{
 	    	for(TypedLink.Type relationType : prediction.keySet()) {
 				TypedLink deepCopy = new TypedLink(tl);
 
-				if (config.enableSynonmyNormalisation) {
-					Double synonmyScore = normaliseSynonmyScores(tl, prediction, relationType);
+				if (config.enableSynonymyNormalisation &&
+						relationType.equals(TypedLink.Type.synonymy)) {
 					deepCopy.setType(relationType);
-					scores.put(deepCopy,synonmyScore);
+					double synonymyScore = normaliseSynonymyScores(deepCopy, prediction, relationType);
+					scores.put(deepCopy, synonymyScore);
 				} else {
 
 					deepCopy.setType(relationType);
 					scores.put(deepCopy,prediction.get(relationType));
 				}
-
 	    	}
 	    }
 	    return scores.getDouble(tl);
 	}
 
-	private Double normaliseSynonmyScores(TypedLink tl, Map<TypedLink.Type, Double> prediction, TypedLink.Type relationType) {
-		Double synonmyScore = 0.0;
-		if (relationType.equals(TypedLink.Type.synonymy)) {
-            TypedLink deepCopyReverse = new TypedLink(tl.getTarget(), tl.getSource(), tl.getType());
-            Double synonmyScoreA = prediction.get(relationType);
-            Double synonmyScoreB = 0.0;
+	private double normaliseSynonymyScores(TypedLink tl, Map<TypedLink.Type, Double> prediction, TypedLink.Type relationType) {
+		double synonymyScore;
+		TypedLink deepCopyReverse = new TypedLink(tl.getTarget(), tl.getSource(), tl.getType());
+		double synonymyScoreA = prediction.get(relationType);
+		double synonymyScoreB;
+		if (scores.containsKey(deepCopyReverse)) {
+			synonymyScoreB = scores.getDouble(deepCopyReverse);
+			synonymyScore = (synonymyScoreA + synonymyScoreB)*0.5;
+			scores.replace(deepCopyReverse, synonymyScore);
+		}
+		else {
+			synonymyScore = synonymyScoreA;
+		}
 
-            if (scores.containsKey(deepCopyReverse)) {
-                synonmyScoreB = scores.getDouble(deepCopyReverse);
-                synonmyScore = (synonmyScoreA + synonmyScoreB)*0.5;
-                scores.replace(deepCopyReverse, synonmyScore);
-            }
-            else {
-                synonmyScore = synonmyScoreA;
-            }
 
-        }
-		return synonmyScore;
+
+		return synonymyScore;
 	}
 
 	@Override
