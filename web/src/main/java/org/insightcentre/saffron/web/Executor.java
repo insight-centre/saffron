@@ -208,6 +208,7 @@ public class Executor extends AbstractHandler {
         JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
         JSONObject termSimConfig = (JSONObject) config.get("termSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        JSONObject conceptConsolidation = (JSONObject) config.get("conceptConsolidation");
         final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms
                 = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
@@ -220,7 +221,7 @@ public class Executor extends AbstractHandler {
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
         ConceptConsolidationConfiguration conceptConsolidationConfiguration
-                = new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
+                = conceptConsolidation != null ? new ObjectMapper().readValue(conceptConsolidation.toString(), ConceptConsolidationConfiguration.class) : new ConceptConsolidationConfiguration();
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
