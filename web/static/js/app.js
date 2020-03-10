@@ -109,7 +109,7 @@ angular.module('app').component('topterms', {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function () {
+        this.loadTerms = function () {
             $http.get(apiUrlWithSaffron + "terms").then(
                 function (response) {
                     response = response.data;
@@ -134,7 +134,7 @@ angular.module('app').component('topterms', {
         };
         this.termForward = function () {
             ctrl.n2 += 30;
-            this.loadterms();
+            this.loadTerms();
         };
         this.termBack = function () {
             ctrl.n2 -= 30;
