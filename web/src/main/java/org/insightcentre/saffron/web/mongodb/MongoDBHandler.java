@@ -85,7 +85,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     final MongoCollection conceptsCollection;
     final String RUN_IDENTIFIER = "run";
-    final String CONCEPT_IDENTIFIER = "concept_id";
+    final String CONCEPT_IDENTIFIER = "id";
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
 
