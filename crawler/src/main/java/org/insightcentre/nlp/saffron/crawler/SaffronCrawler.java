@@ -161,7 +161,7 @@ public class SaffronCrawler extends WebCrawler {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
                 LocalDateTime lastModified = null;
-                if(htmlParseData.getMetaTags().containsKey("Last-Modified")) {
+                if (htmlParseData.getMetaTags().containsKey("Last-Modified")) {
                     DateTimeFormatter format = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz");
                     lastModified = LocalDateTime.parse(htmlParseData.getMetaTags().get("Last-Modified"), format);
                 }
@@ -181,7 +181,7 @@ public class SaffronCrawler extends WebCrawler {
                     System.err.println("Could not write binary for " + url + " due to " + x);
                 }
                 corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null)
-                    .withLoader(new CrawlLoader()));
+                        .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }

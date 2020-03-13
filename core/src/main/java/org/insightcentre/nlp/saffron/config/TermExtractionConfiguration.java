@@ -8,6 +8,8 @@ import java.util.Set;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.time.Duration;
 
 /**
  * Term extraction configuration
@@ -65,6 +67,11 @@ public class TermExtractionConfiguration {
      * A file containing a list of black terms
      */
     public SaffronPath blacklistFile;
+    /**
+     * The length of time (in days) to use as intervals in temporal prediction
+     * or negative to disable temporal prediction
+     */
+    public int intervalDays = 365;
 
     /**
      * If set always output at least one term for each input document (overrides maxTerms
@@ -80,7 +87,10 @@ public class TermExtractionConfiguration {
     
     /** The features for term extraction */
     public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ novelTopicModel, /*linkProbability, keyConceptRelatedness*/
+        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, 
+        postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ 
+        novelTopicModel, /*linkProbability, keyConceptRelatedness*/
+        futureBasic, futureComboBasic
     };
     
     /** The default English list of stopwords */
