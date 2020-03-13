@@ -134,7 +134,7 @@ public class GreedyKGTest {
         addTerm(terms, "wheel", 0.0);
         addTerm(terms, "car wheel", 0.0);
 
-		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), new KnowledgeGraphExtractionConfiguration());
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
         KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
         System.out.println(result.getTaxonomy());
@@ -168,7 +168,7 @@ public class GreedyKGTest {
         whiteList.add(new TypedLink("wheel", "automobile",TypedLink.Type.meronymy));
         blackList.add(new TaxoLink("automobile", "coach"));
         blackList.add(new TypedLink("car wheel", "car",TypedLink.Type.meronymy));
-		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), new KnowledgeGraphExtractionConfiguration());
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score,
         		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
         KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);

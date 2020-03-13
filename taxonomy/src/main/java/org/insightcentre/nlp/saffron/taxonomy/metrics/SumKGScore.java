@@ -43,7 +43,7 @@ public class SumKGScore implements Score<TypedLink>{
 	    return scores.getDouble(tl);
 	}
 
-	private double normaliseSynonymyScores(TypedLink tl, double currentSynonymyScore) {
+	protected double normaliseSynonymyScores(TypedLink tl, double currentSynonymyScore) {
 		
 		double normalisedScore;
 		TypedLink deepCopyReverse = new TypedLink(tl.getTarget(), tl.getSource(), tl.getType());
