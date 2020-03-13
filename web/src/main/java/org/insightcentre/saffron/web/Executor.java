@@ -48,13 +48,7 @@ import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Concept;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
@@ -62,6 +56,8 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
+import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
@@ -601,18 +597,18 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
 
-        /*_status.stage++;
+//        _status.stage++;
+//
+//        _status.setStageStart("Building knowledge graph", saffronDatasetName);
+//        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+//        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
+//        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+//                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+//        if (storeCopy.equals("true"))
+//            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+//        data.setKnowledgeGraph(saffronDatasetName, kGraph);
+//        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
 
-        _status.setStageStart("Building knowledge graph", saffronDatasetName);
-        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
-        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
-        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
-                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
-        if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
-        data.setKnowledgeGraph(saffronDatasetName, kGraph);
-        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
-         */
         _status.completed = true;
     }
 
