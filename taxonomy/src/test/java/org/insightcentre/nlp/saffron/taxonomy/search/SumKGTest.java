@@ -1,17 +1,21 @@
 package org.insightcentre.nlp.saffron.taxonomy.search;
 
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.SumKGScore;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.*;
-
-import static org.junit.Assert.assertEquals;
 
 public class SumKGTest {
 	
@@ -37,7 +41,7 @@ public class SumKGTest {
         			if (target.equals("automobile")) {
         				predictions.put(TypedLink.Type.hyponymy, 1.0);
         				predictions.put(TypedLink.Type.other, 0.0);
-        			} else if (target.equals("coach") || target.equals("bus")) {
+        			} else if (target.equals("bus")) {
         				predictions.put(TypedLink.Type.synonymy, 0.7);
         				predictions.put(TypedLink.Type.other, 0.0);
         			}
@@ -46,7 +50,7 @@ public class SumKGTest {
 					if (target.equals("automobile")) {
 						predictions.put(TypedLink.Type.hyponymy, 1.0);
 						predictions.put(TypedLink.Type.other, 0.0);
-					} else if (target.equals("coach") || target.equals("bus")) {
+					} else if (target.equals("coach")) {
 						predictions.put(TypedLink.Type.synonymy, 0.8);
 						predictions.put(TypedLink.Type.other, 0.0);
 					}
@@ -64,7 +68,10 @@ public class SumKGTest {
     }
     
     /**
+     * Integration test
      * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
+     * 
+     * @author Andy Donald
      */
     @Test
     public void testExtractSynonymyNonNormalised() throws Exception {
@@ -79,7 +86,7 @@ public class SumKGTest {
         addTerm(terms, "wheel", 0.0);
         addTerm(terms, "car wheel", 0.0);
 
-		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), new KnowledgeGraphExtractionConfiguration());
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
         KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
 //        for ( Object2DoubleMap.Entry<TypedLink> obj : score.scores.object2DoubleEntrySet()) {
@@ -119,7 +126,10 @@ public class SumKGTest {
     }
 
 	/**
+	 * Integration test
 	 * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
+	 * 
+	 * @author Andy Donald
 	 */
 	@Test
 	public void testExtractSynonymyNormalised() throws Exception {
@@ -134,10 +144,7 @@ public class SumKGTest {
 		addTerm(terms, "wheel", 0.0);
 		addTerm(terms, "car wheel", 0.0);
 
-		KnowledgeGraphExtractionConfiguration knowledgeGraphExtractionConfiguration =
-				new KnowledgeGraphExtractionConfiguration();
-		knowledgeGraphExtractionConfiguration.enableSynonymyNormalisation = true;
-		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), knowledgeGraphExtractionConfiguration);
+		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), true);
 		GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
 		KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
         for ( Map.Entry<TypedLink, Double> obj : score.scores.entrySet()) {

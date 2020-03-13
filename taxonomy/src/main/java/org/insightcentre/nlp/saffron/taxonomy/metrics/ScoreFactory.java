@@ -51,7 +51,7 @@ public abstract class ScoreFactory {
         if (null != score) {
             switch (score) {
                 case simple:
-                    return new SumKGScore(classifier, kgConfig);
+                    return new SumKGScore(classifier, kgConfig.enableSynonymyNormalisation);
                 /*case transitive:
                     return new TransitiveScore(classifier);
                 case bhattacharryaPoisson:
