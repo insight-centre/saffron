@@ -15,7 +15,7 @@ public class Features {
             TermExtractionConfiguration.Feature feat,
             String term, FrequencyStats stats, Lazy<FrequencyStats> ref,
             Lazy<InclusionStats> incl, Lazy<NovelTopicModel> topicModel,
-            Lazy<DomainStats> domain) {
+            Lazy<DomainStats> domain, TemporalFrequencyStats tempStats) {
         switch (feat) {
             case weirdness:
                 return weirdness(term, stats, ref.get());
@@ -37,6 +37,12 @@ public class Features {
                 return topicModel.get().novelTopicModel(term, stats);
             case postRankDC:
                 return domain.get().score(term);
+            case futureBasic:
+                if(tempStats == null) throw new IllegalArgumentException("Cannot calculate future statistics without an interval");
+                return futureBasic(term, 0.75, tempStats, incl.get(), 0.2);
+            case futureComboBasic:
+                if(tempStats == null) throw new IllegalArgumentException("Cannot calculate future statistics without an interval");
+                return futureBasicCombo(term, 0.75, 0.1, tempStats, incl.get(), 0.2);
             default:
                 throw new UnsupportedOperationException("Feature not supported: " + feat);
         }
@@ -100,6 +106,13 @@ public class Features {
         double et = incl.superTerms.containsKey(term) ? incl.superTerms.get(term).size() : 0.0;
         return t * log2(tf) + alpha * et;
     }
+    
+    public static double futureBasic(String term, double alpha, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount) {
+        double tf = freq.predict(term, (int)(freq.freqs.size() * futureAmount), 2);
+        double t = term.split(" ").length;
+        double et = incl.superTerms.containsKey(term) ? incl.superTerms.get(term).size() : 0.0;
+        return t * log2(tf) + alpha * et;
+    }
 
     public static double basicCombo(String term, double alpha, double beta, FrequencyStats freq, InclusionStats incl) {
         double tf = freq.termFrequency.getInt(term) + EPS;
@@ -109,6 +122,16 @@ public class Features {
         return t * log2(tf) + alpha * et + beta * et2;
     }
 
+    
+    public static double futureBasicCombo(String term, double alpha, double beta, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount) {
+        double tf = freq.predict(term, (int)(freq.freqs.size() * futureAmount), 2);
+        double t = term.split(" ").length;
+        double et = incl.superTerms.containsKey(term) ? incl.superTerms.get(term).size() : 0.0;
+        double et2 = incl.subTerms.getInt(term);
+        return t * log2(tf) + alpha * et + beta * et2;
+    }
+
+    
     public static double relevance(String term, FrequencyStats freq, FrequencyStats ref) {
         double ntf1 = ((double) freq.termFrequency.getInt(term) + EPS) / (freq.tokens + EPS);
         double df = (double) freq.docFrequency.getInt(term) / freq.documents;

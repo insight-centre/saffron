@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,6 +71,7 @@ public class TermExtraction {
     private final Feature keyFeature;
     private final Set<String> configBlacklist;
     private final boolean oneTermPerDoc;
+    private final Duration interval;
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
         this.nThreads = nThreads;
@@ -93,6 +95,7 @@ public class TermExtraction {
         this.keyFeature = Feature.comboBasic;
         this.configBlacklist = Collections.EMPTY_SET;
         this.oneTermPerDoc = false;
+        this.interval = null;
     }
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger,
@@ -102,7 +105,7 @@ public class TermExtraction {
             int ngramMin, int ngramMax, boolean headTokenFinal,
             TermExtractionConfiguration.WeightingMethod method, List<Feature> features,
             File refFile, int maxTerms, Feature keyFeature, Set<String> blacklist,
-            boolean oneTermPerDoc) {
+            boolean oneTermPerDoc, int intervalDays) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
@@ -123,6 +126,7 @@ public class TermExtraction {
         this.keyFeature = keyFeature;
         this.configBlacklist = blacklist;
         this.oneTermPerDoc = oneTermPerDoc;
+        this.interval = intervalDays > 0 ? Duration.ofDays(intervalDays) : null;
     }
 
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
@@ -187,6 +191,7 @@ public class TermExtraction {
             loadBlacklistFromFile (this.configBlacklist, config.blacklistFile);
         }
         this.oneTermPerDoc = config.oneTermPerDoc;
+        this.interval = config.intervalDays > 0 ? Duration.ofDays(config.intervalDays) : null;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
@@ -199,7 +204,18 @@ public class TermExtraction {
         return set;
     }
 
-    public FrequencyStats extractStats(Corpus searcher,
+    public static class ExtractStatsResult {
+        public final FrequencyStats frequencyStats;
+        public final TemporalFrequencyStats temporalFrequencyStats;
+
+        public ExtractStatsResult(FrequencyStats frequencyStats, TemporalFrequencyStats temporalFrequencyStats) {
+            this.frequencyStats = frequencyStats;
+            this.temporalFrequencyStats = temporalFrequencyStats;
+        }
+        
+    }
+    
+    public ExtractStatsResult extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing, Set<String> blackList)
             throws SearchException, InterruptedException, ExecutionException {
@@ -207,13 +223,19 @@ public class TermExtraction {
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());
         final FrequencyStats summary = new FrequencyStats();
+        final TemporalFrequencyStats temporalFrequencyStats;
+        if(interval != null) {
+            temporalFrequencyStats = new TemporalFrequencyStats(interval);
+        } else {
+            temporalFrequencyStats = null;
+        }
 
         int docCount = 0;
         for (Document doc : searcher.getDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTerms, casing, lowercaseAll(blackList)));
+                    summary, docTerms, casing, lowercaseAll(blackList), temporalFrequencyStats));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -222,20 +244,21 @@ public class TermExtraction {
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
         summary.filter(minTermFreq);
-        return summary;
+        return new ExtractStatsResult(summary, temporalFrequencyStats);
     }
 
     private Object2DoubleMap<String> scoreByFeat(List<String> terms, final TermExtractionConfiguration.Feature feature,
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
-            final Lazy<DomainStats> domain, final Set<String> whiteList) {
+            final Lazy<DomainStats> domain, final Set<String> whiteList,
+            final TemporalFrequencyStats tempStats) {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String term : terms) {
             if (whiteList.contains(term)) {
                 scores.put(term, Double.POSITIVE_INFINITY);
             } else {
                 scores.put(term,
-                        Features.calcFeature(feature, term, stats, ref, incl, ntm, domain));
+                        Features.calcFeature(feature, term, stats, ref, incl, ntm, domain, tempStats));
             }
         }
         return scores;
@@ -288,7 +311,9 @@ public class TermExtraction {
         try {
             final ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
             final CasingStats casing = new CasingStats();
-            final FrequencyStats freqs = extractStats(searcher, dts, casing, blackList);
+            final ExtractStatsResult esr = extractStats(searcher, dts, casing, blackList);
+            final FrequencyStats freqs = esr.frequencyStats;
+            final TemporalFrequencyStats tfs = esr.temporalFrequencyStats;
             Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
                 @Override
                 protected FrequencyStats init() {
@@ -301,9 +326,9 @@ public class TermExtraction {
                         } else if (refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
                         } else if (refFile.getName().endsWith(".zip")) {
-                            return extractStats(CorpusTools.fromZIP(refFile), null, null, blackList);
+                            return extractStats(CorpusTools.fromZIP(refFile), null, null, blackList).frequencyStats;
                         } else if (refFile.getName().endsWith(".tar.gz")) {
-                            return extractStats(CorpusTools.fromTarball(refFile), null, null, blackList);
+                            return extractStats(CorpusTools.fromTarball(refFile), null, null, blackList).frequencyStats;
                         } else {
                             throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
@@ -352,7 +377,7 @@ public class TermExtraction {
             switch (method) {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(terms, keyFeature,
-                            freqs, ref, incl, ntm, domain, whiteList);
+                            freqs, ref, incl, ntm, domain, whiteList, tfs);
                     rankTermsByFeat(terms, scores, whiteList, blackList);
                     if (terms.size() > maxTerms) {
                         if (oneTermPerDoc) {
@@ -367,7 +392,7 @@ public class TermExtraction {
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(terms, feat,
-                                freqs, ref, incl, ntm, domain, whiteList);
+                                freqs, ref, incl, ntm, domain, whiteList, tfs);
                         rankTermsByFeat(terms, scores2, whiteList, blackList);
                         int i = 1;
                         for (String term : terms) {
@@ -667,7 +692,7 @@ public class TermExtraction {
             final Result r = te.extractTerms(searcher);
             r.normalize();
 
-            mapper.writeValue((File) os.valueOf("t"), r.terms);
+            mapper.writerWithDefaultPrettyPrinter().writeValue((File) os.valueOf("t"), r.terms);
             mapper.writeValue((File) os.valueOf("o"), r.docTerms);
 
         } catch (Exception x) {
