@@ -52,8 +52,8 @@ public class Document {
     public List<Author> authors;
     private Loader contents;
     public Map<String, String> metadata;
-    @JsonSerialize(using = DateSerializer.class)
-    @JsonDeserialize(using = DateDeserializer.class)
+    @JsonSerialize(using=DateSerializer.class)
+    @JsonDeserialize(using=DateDeserializer.class)
     public LocalDateTime date;
 
     @JsonCreator
