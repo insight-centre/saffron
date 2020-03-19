@@ -2,7 +2,7 @@ package org.insightcentre.saffron.web.rdf;
 
 import java.io.*;
 import java.net.URLEncoder;
-import java.util.Set;
+import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import joptsimple.OptionParser;
@@ -16,11 +16,16 @@ import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
+import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
+import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
+import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
@@ -30,7 +35,8 @@ import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
  * @author John McCrae
  */
 public class RDFConversion {
-    
+
+
     private static String encode(String s) {
         try {
             return URLEncoder.encode(s, "UTF-8");
@@ -38,6 +44,8 @@ public class RDFConversion {
             throw new RuntimeException(x);
         }
     }
+
+
     
     public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
@@ -166,50 +174,78 @@ public class RDFConversion {
             authorToRdf(auth, data, datasetName, model, base);
         }
         for(Term term : data.getAllTerms(datasetName)) {
-            termToRDF(term, data, datasetName, model, base);
+            knowledgeGraphToRDF(term, data, datasetName, model, base);
         }
         return model;
     }
 
 
-    public static Model knowledgeGraphToRDF(KnowledgeGraph kg, String datasetName) {
-        Model model = ModelFactory.createDefaultModel();
-        return knowledgeGraphToRDF(kg, datasetName, model);
-    }
+    public static Model knowledgeGraphToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
 
-    public static Model knowledgeGraphToRDF(KnowledgeGraph kg, String datasetName, Model model) {
-        Resource res = model.createResource("http://localhost:8080/rdf/knowledgegraph/" + encode(datasetName))
-                .addProperty(RDF.type, FOAF.KnowledgeGraph).addProperty(SAFFRON.taxonomy, model.createResource()
-                    .addProperty(RDF.value, kg.getTaxonomy().toString()));
+        Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
+                .addProperty(RDFS.label, t.getString());
 
-        for (Taxonomy taxonomy : kg.getPartonomy().getComponents()) {
-            res.addProperty(SAFFRON.partonomy,  model.createResource()
-                    .addProperty(RDF.value, taxonomy.toString()));
+        for(TermTerm tt : data.getTermByTerm1(datasetName, t.getString(), null)) {
+            Collection<Set<String>> synonymy = data.getKnowledgeGraph(datasetName).getSynonymyClusters();
+            boolean isSynonmy = false;
+            boolean isPartOf = false;
+            boolean isWholeOf = false;
+            for(Set<String> synonm : synonymy) {
+                if (synonm.contains(t.getString()) && synonm.contains(tt.getTerm2())) {
+                    isSynonmy = true;
+                }
+            }
+            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+                if(taxonomy.root.equals(t.getString())) {
+                    isWholeOf = true;
+                }
+
+            }
+            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+                if(taxonomy.hasDescendent(t.getString())) {
+                    isPartOf = true;
+                }
+
+            }
+            if (isSynonmy) {
+                    res.addProperty(SAFFRON.synonym,
+                            model.createResource(
+                                    base == null ? encode(tt.getTerm2())
+                                            : base + "/rdf/term/" + encode(tt.getTerm2())));
+            } else if (isWholeOf){
+                res.addProperty(SAFFRON.wholeOf,
+                        model.createResource(
+                                base == null ? encode(tt.getTerm2())
+                                        : base + "/rdf/term/" + encode(tt.getTerm2())));
+            } else if (isPartOf){
+                res.addProperty(SAFFRON.partOf,
+                        model.createResource(
+                                base == null ? encode(tt.getTerm2())
+                                        : base + "/rdf/term/" + encode(tt.getTerm2())));
+            } else {
+                    res.addProperty(SAFFRON.hyponym,
+                            model.createResource(
+                                    base == null ? encode(tt.getTerm2())
+                                            : base + "/rdf/term/" + encode(tt.getTerm2())));
+            }
         }
-
-        for (Set<String> synonmy : kg.getSynonymyClusters()) {
-            res.addProperty(SAFFRON.synonmy,
-                    model.createResource()
-                            .addProperty(RDF.value, synonmy.toString()));
-        }
-
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
         model.setNsPrefix("dct", DCTerms.NS);
 
         return model;
-    }
 
+    }
 
     public static void main(String[] args) {
         try {
-            final ObjectMapper mapper = new ObjectMapper();
             final MongoDBHandler saffron = new MongoDBHandler();
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
                     accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
                     accepts("o", "The output file").withRequiredArg().ofType(String.class);
+                    accepts("b", "The base url").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -221,7 +257,6 @@ public class RDFConversion {
                 return;
             }
 
-
             String kgOutFile = (String) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
@@ -232,9 +267,15 @@ public class RDFConversion {
                 badOptions(p, "The data set does not exist");
             }
 
+            String baseUrl = (String) os.valueOf("b");
+            if (baseUrl == null) {
+                badOptions(p, "Base url not given");
+            }
 
-
-            final Model kg = knowledgeGraphToRDF(saffron.getKnowledgeGraph(datasetName), datasetName);
+            Model kg = ModelFactory.createDefaultModel();
+            for(Term term : saffron.getAllTerms(datasetName)) {
+                kg = knowledgeGraphToRDF(term, saffron, datasetName, kg, baseUrl);
+            }
             try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
@@ -242,7 +283,6 @@ public class RDFConversion {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            //mapper.writerWithDefaultPrettyPrinter().writeValue(kgOutFile, kg);
         } catch (Exception x) {
             x.printStackTrace();
             return;
