@@ -393,7 +393,6 @@ angular.module('app').controller('Breadcrumbs', function($scope, $http, $locatio
     $scope.parents = [];
 
     function getParents(termName) {
-        console.log(termName)
         if (termName !== 'HEAD_TERM') {
             var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
             $http.get(url).then(function(response) {
