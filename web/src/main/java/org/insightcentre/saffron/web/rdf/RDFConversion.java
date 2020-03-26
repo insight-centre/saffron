@@ -27,6 +27,7 @@ import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.saffron.web.SaffronDataSource;
+import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 
 
@@ -239,7 +240,7 @@ public class RDFConversion {
 
     public static void main(String[] args) {
         try {
-            final MongoDBHandler saffron = new MongoDBHandler();
+            final SaffronInMemoryDataSource saffron = new SaffronInMemoryDataSource();
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
