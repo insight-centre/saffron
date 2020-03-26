@@ -55,7 +55,7 @@ public abstract class AllowanceDenialList<T extends TypedLink> {
 	}
 
 	public static AllowanceDenialList from(List<Term> allTerms, Object kg){
-		if (Object.class.equals(Taxonomy.class)) {
+		if (kg.getClass().equals(Taxonomy.class)) {
 			return TaxoLinkAcceptanceDenialList.from(allTerms, (Taxonomy) kg);
 		} else {
 			return TypedLinkAcceptanceDenialList.from(allTerms, (KnowledgeGraph) kg);
