@@ -28,6 +28,11 @@ public class TypedLinkAcceptanceDenialList extends AllowanceDenialList<TypedLink
 	        super();
 	    }
 
+	    /**
+	     * 
+	     * WARNING: Rejected relations not implemented
+	     * 
+	     */
 		protected static TypedLinkAcceptanceDenialList from(List<Term> allTerms, KnowledgeGraph kg) {
 
 	        Set<String> termAllowanceList = new HashSet<>();
@@ -48,6 +53,6 @@ public class TypedLinkAcceptanceDenialList extends AllowanceDenialList<TypedLink
 	        
 	        
 	        return new TypedLinkAcceptanceDenialList(termAllowanceList, termDenialList,
-	        		kg.getRelationsByStatus(Status.accepted), kg.getRelationsByStatus(Status.rejected));
+	        		kg.getRelationsByStatus(Status.accepted), new HashSet<TypedLink>());
 	    }
 }
