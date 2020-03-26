@@ -108,7 +108,7 @@ angular.module('app').component('topterms', {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
             $http.get(apiUrlWithSaffron + "terms").then(
                 function(response) {
                     response = response.data;
@@ -133,7 +133,7 @@ angular.module('app').component('topterms', {
         };
         this.termForward = function() {
             ctrl.n2 += 30;
-            this.loadterms();
+            this.loadTerms();
         };
         this.termBack = function() {
             ctrl.n2 -= 30;
@@ -452,7 +452,7 @@ angular.module('app').component('editparents', {
             );
 
         };
-        this.loadterms();
+        $scope.loadTerms();
     }
 });
 
@@ -580,7 +580,7 @@ angular.module('app').component('relatedterms', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
 
             // if on term page, show related terms
             if (ctrl.term) {
@@ -648,13 +648,13 @@ angular.module('app').component('relatedterms', {
 
         this.termForward = function() {
             ctrl.n2 += 20;
-            this.loadterms();
+            this.loadTerms();
         }
         this.termBack = function() {
             ctrl.n2 -= 20;
-            this.loadterms();
+            this.loadTerms();
         }
-        this.loadterms();
+        this.loadTerms();
 
         // Functionality for the new Saffron
         // editing abilities
@@ -944,7 +944,7 @@ angular.module('app').component('relateddocuments', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
             if (ctrl.term) {
                 $http.get('/' + saffronDatasetName + '/doc-terms?n=20&offset=' + ctrl.n2 + '&term=' + ctrl.term).then(function(response) {
                     for (t = 0; t < response.data.length; t++) {
@@ -971,13 +971,13 @@ angular.module('app').component('relateddocuments', {
         };
         this.docForward = function() {
             ctrl.n2 += 20;
-            this.loadterms();
+            this.loadTerms();
         };
         this.docBackward = function() {
             ctrl.n2 -= 20;
-            this.loadterms();
+            this.loadTerms();
         };
-        this.loadterms();
+        this.loadTerms();
     }
 });
 
