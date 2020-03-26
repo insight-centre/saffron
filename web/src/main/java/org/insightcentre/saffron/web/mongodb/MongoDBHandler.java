@@ -85,7 +85,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     final MongoCollection conceptsCollection;
     final String RUN_IDENTIFIER = "run";
-    final String CONCEPT_IDENTIFIER = "concept_id";
+    final String CONCEPT_IDENTIFIER = "id";
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
 
@@ -1463,12 +1463,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         for (Document doc : docs) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
             try {
-                JSONArray partonomyComponents = (JSONArray)jsonObj.get("partonomy");
+                JSONObject partonomyComponents = (JSONObject)jsonObj.get("partonomy");
+                JSONArray partonomyComponentsChildren = (JSONArray)partonomyComponents.get("components");
                 ArrayList<Taxonomy> listData = new ArrayList<Taxonomy>();
 
                 if (partonomyComponents != null) {
-                    for (int i=0;i<partonomyComponents.length();i++){
-                        JSONObject taxo = (JSONObject)partonomyComponents.get(i);
+                    for (int i=0;i<partonomyComponentsChildren.length();i++){
+                        JSONObject taxo = (JSONObject)partonomyComponentsChildren.get(i);
                         Taxonomy taxonomy = Taxonomy.fromJsonString(taxo.toString());
                         listData.add(taxonomy);
                     }
