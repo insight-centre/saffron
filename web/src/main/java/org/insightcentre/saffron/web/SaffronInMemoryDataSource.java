@@ -521,14 +521,14 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
 
-        File taxonomyFile = new File(directory, "taxonomy.json");
+        File taxonomyFile = new File(directory, "kg.json");
         if (!taxonomyFile.exists()) {
-            throw new FileNotFoundException("Could not find taxonomy.json");
+            throw new FileNotFoundException("Could not find kg.json");
         }
 
         final SaffronDataImpl saffron = new SaffronDataImpl(name);
 
-        saffron.setTaxonomy(mapper.readValue(taxonomyFile, Taxonomy.class));
+        saffron.setKnowledgeGraph(mapper.readValue(taxonomyFile, KnowledgeGraph.class));
 
         File authorSimFile = new File(directory, "author-sim.json");
         if (!authorSimFile.exists()) {
