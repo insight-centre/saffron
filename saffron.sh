@@ -53,9 +53,9 @@ $DIR/extract-terms -c $CONFIG \
 echo "########################################"
 echo "## Step 3: Concept Consolidation       ##"
 echo "########################################"
-$DIR/consolidate-concepts -c $CONFIG \
-	-t $OUTPUT/terms-extracted.json \
-	-o $OUTPUT/concepts.json 
+#$DIR/consolidate-concepts -c $CONFIG \
+#	-t $OUTPUT/terms-extracted.json \
+#	-o $OUTPUT/concepts.json 
 
 echo "########################################"
 echo "## Step 4: Author Consolidation       ##"

@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.term;
 
 import static java.lang.Integer.min;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Set;
@@ -33,6 +34,7 @@ public class TermExtractionTask implements Runnable {
     private final ConcurrentLinkedQueue<DocumentTerm> docTerms;
     private final CasingStats casing;
     private final Set<String> blacklist;
+    private final TemporalFrequencyStats temporalFrequency;
 
     public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger,
             ThreadLocal<Lemmatizer> lemmatizer,
@@ -44,7 +46,8 @@ public class TermExtractionTask implements Runnable {
             FrequencyStats summary,
             ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing,
-            Set<String> blacklist) {
+            Set<String> blacklist,
+            TemporalFrequencyStats temporalFrequency) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
@@ -60,6 +63,7 @@ public class TermExtractionTask implements Runnable {
         this.docTerms = docTerms;
         this.casing = casing;
         this.blacklist = blacklist;
+        this.temporalFrequency = temporalFrequency;
     }
 
     @Override
@@ -121,6 +125,8 @@ public class TermExtractionTask implements Runnable {
 
             synchronized (summary) {
                 summary.add(stats);
+                if(doc.date != null && temporalFrequency != null)
+                    temporalFrequency.add(stats, doc.date);
             }
             if (casing != null) {
                 synchronized (casing) {

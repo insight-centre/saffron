@@ -28,6 +28,11 @@ public class TaxoLinkAcceptanceDenialList extends AllowanceDenialList<TaxoLink>{
 	        super();
 	    }
 
+	    /**
+	     * 
+	     * WARNING: Rejected relations not implemented
+	     * 
+	     */
 		protected static TaxoLinkAcceptanceDenialList from(List<Term> allTerms, Taxonomy taxonomy) {
 
 	        Set<String> termAllowanceList = new HashSet<>();
@@ -46,6 +51,6 @@ public class TaxoLinkAcceptanceDenialList extends AllowanceDenialList<TaxoLink>{
 	        }
 
 	        return new TaxoLinkAcceptanceDenialList(termAllowanceList, termDenialList,
-	        		taxonomy.getRelationsByStatus(Status.accepted), taxonomy.getRelationsByStatus(Status.rejected));
+	        		taxonomy.getRelationsByStatus(Status.accepted), new HashSet<TaxoLink>());
 	    }
 }

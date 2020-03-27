@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
 import java.util.Set;
 
+import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TaxonomySearchConfiguration;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.BinaryRelationClassifier;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
@@ -44,13 +45,13 @@ public abstract class ScoreFactory {
      * @param terms The list of terms
      * @return A taxonomy scoring object initialised for the empty taxonomy
      */
-    public static Score getInstance(TaxonomySearchConfiguration config,
+    public static Score getInstance(TaxonomySearchConfiguration config, KnowledgeGraphExtractionConfiguration kgConfig,
             TaxonomySearchConfiguration.Score score,
             MulticlassRelationClassifier<String> classifier, Set<String> terms) {
         if (null != score) {
             switch (score) {
                 case simple:
-                    return new SumKGScore(classifier);
+                    return new SumKGScore(classifier, kgConfig.enableSynonymyNormalisation);
                 /*case transitive:
                     return new TransitiveScore(classifier);
                 case bhattacharryaPoisson:
