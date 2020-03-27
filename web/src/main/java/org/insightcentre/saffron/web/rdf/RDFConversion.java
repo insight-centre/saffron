@@ -1,6 +1,7 @@
 package org.insightcentre.saffron.web.rdf;
 
 import java.io.*;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.*;
 
@@ -18,16 +19,22 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.saffron.web.SaffronDataSource;
+import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
+
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 
 
 /**
@@ -195,13 +202,13 @@ public class RDFConversion {
                     isSynonmy = true;
                 }
             }
-            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
                 if(taxonomy.root.equals(t.getString())) {
                     isWholeOf = true;
                 }
 
             }
-            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
                 if(taxonomy.hasDescendent(t.getString())) {
                     isPartOf = true;
                 }
@@ -239,13 +246,15 @@ public class RDFConversion {
 
     public static void main(String[] args) {
         try {
-            final MongoDBHandler saffron = new MongoDBHandler();
+            final SaffronInMemoryDataSource saffron = new SaffronInMemoryDataSource();
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
-                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
+                    accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
+                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
+                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
+                    accepts("d", "The home directory").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -262,6 +271,11 @@ public class RDFConversion {
                 badOptions(p, "Output file not given");
             }
 
+            if (os.valueOf("c") == null) {
+                badOptions(p, "Configuration is required");
+                return;
+            }
+
             String datasetName = (String) os.valueOf("t");
             if (datasetName == null ) {
                 badOptions(p, "The data set does not exist");
@@ -272,11 +286,27 @@ public class RDFConversion {
                 badOptions(p, "Base url not given");
             }
 
+            String baseDir = (String) os.valueOf("d");
+            if (baseUrl == null) {
+                badOptions(p, "Base dir not given");
+            }
+            File datasetNameFile = null;
+            File kgOutFileName = null;
+            if(!datasetName.startsWith(baseDir)) {
+                datasetNameFile = new File(baseDir + "/" + datasetName);
+                kgOutFileName = new File(baseDir + "/" + kgOutFile);
+            } else {
+                datasetNameFile = new File(datasetName);
+                kgOutFileName = new File(datasetName + '/' + kgOutFile);
+            }
+            int index=datasetName.lastIndexOf('/');
+            datasetName = datasetName.substring(index+1,datasetName.length());
+            saffron.fromDirectory(datasetNameFile, datasetName);
             Model kg = ModelFactory.createDefaultModel();
             for(Term term : saffron.getAllTerms(datasetName)) {
                 kg = knowledgeGraphToRDF(term, saffron, datasetName, kg, baseUrl);
             }
-            try(OutputStream out = new FileOutputStream(kgOutFile)) {
+            try(OutputStream out = new FileOutputStream(kgOutFileName)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
@@ -288,6 +318,7 @@ public class RDFConversion {
             return;
         }
     }
+
 
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
