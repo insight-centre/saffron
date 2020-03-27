@@ -55,12 +55,14 @@ public abstract class AllowanceDenialList<T extends TypedLink> {
 	}
 
 	public static AllowanceDenialList from(List<Term> allTerms, Object kg){
-		if (kg.getClass().equals(Taxonomy.class)) {
+		if (kg instanceof Taxonomy) {
 			return TaxoLinkAcceptanceDenialList.from(allTerms, (Taxonomy) kg);
-		} else {
+		} else if (kg instanceof KnowledgeGraph) {
 			return TypedLinkAcceptanceDenialList.from(allTerms, (KnowledgeGraph) kg);
-		}
-	}
+		} else {
+                    throw new RuntimeException("kg of unexpected type: " + kg.getClass().getName());
+                }
+	} 
 	
 	public static AllowanceDenialList getInstance(Class c) {
 		if(c.equals(Taxonomy.class)) {
