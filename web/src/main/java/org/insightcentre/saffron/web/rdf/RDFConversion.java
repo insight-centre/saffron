@@ -1,6 +1,7 @@
 package org.insightcentre.saffron.web.rdf;
 
 import java.io.*;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.*;
 
@@ -251,8 +252,9 @@ public class RDFConversion {
                 {
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
                     accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("o", "The output file").withRequiredArg().ofType(File.class);
+                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
                     accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
+                    accepts("d", "The home directory").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -264,7 +266,7 @@ public class RDFConversion {
                 return;
             }
 
-            File kgOutFile = (File) os.valueOf("o");
+            String kgOutFile = (String) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
             }
@@ -283,18 +285,28 @@ public class RDFConversion {
             if (baseUrl == null) {
                 badOptions(p, "Base url not given");
             }
-            final File datasetNameFile = new File(datasetName);
+
+            String baseDir = (String) os.valueOf("d");
+            if (baseUrl == null) {
+                badOptions(p, "Base dir not given");
+            }
+            File datasetNameFile = null;
+            File kgOutFileName = null;
+            if(!datasetName.startsWith(baseDir)) {
+                datasetNameFile = new File(baseDir + "/" + datasetName);
+                kgOutFileName = new File(baseDir + "/" + kgOutFile);
+            } else {
+                datasetNameFile = new File(datasetName);
+                kgOutFileName = new File(datasetName + '/' + kgOutFile);
+            }
             int index=datasetName.lastIndexOf('/');
             datasetName = datasetName.substring(index+1,datasetName.length());
-
             saffron.fromDirectory(datasetNameFile, datasetName);
             Model kg = ModelFactory.createDefaultModel();
-
-
             for(Term term : saffron.getAllTerms(datasetName)) {
                 kg = knowledgeGraphToRDF(term, saffron, datasetName, kg, baseUrl);
             }
-            try(OutputStream out = new FileOutputStream(kgOutFile)) {
+            try(OutputStream out = new FileOutputStream(kgOutFileName)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
