@@ -92,9 +92,13 @@ $DIR/author-sim -d $OUTPUT/author-terms.json -o $OUTPUT/author-sim.json
 echo "########################################"
 echo "## Step 9: Taxonomy Extraction       ##"
 echo "########################################"
-echo $OUTPUT
 #$DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
-$DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/kg.json -t $OUTPUT
+$DIR/kg-extract.sh -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/kg.json -c $CONFIG
+
+echo "########################################"
+echo "## Step 10: RDF Extraction       ##"
+echo "########################################"
+$DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/kg.rdf -t $OUTPUT -c $CONFIG
 
 #echo "Creating taxonomy at" $OUTPUT/taxonomy.html
 #python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-terms.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

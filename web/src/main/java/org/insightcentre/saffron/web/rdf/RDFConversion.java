@@ -18,17 +18,22 @@ import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
 import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
+
+import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 
 
 /**
@@ -196,13 +201,13 @@ public class RDFConversion {
                     isSynonmy = true;
                 }
             }
-            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
                 if(taxonomy.root.equals(t.getString())) {
                     isWholeOf = true;
                 }
 
             }
-            for(Taxonomy taxonomy : data.getPartonomy(datasetName).getComponents()) {
+            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
                 if(taxonomy.hasDescendent(t.getString())) {
                     isPartOf = true;
                 }
@@ -244,9 +249,10 @@ public class RDFConversion {
             // Parse command line arguments
             final OptionParser p = new OptionParser() {
                 {
-                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
-                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
+                    accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
+                    accepts("o", "The output file").withRequiredArg().ofType(File.class);
+                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -258,9 +264,14 @@ public class RDFConversion {
                 return;
             }
 
-            String kgOutFile = (String) os.valueOf("o");
+            File kgOutFile = (File) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
+            }
+
+            if (os.valueOf("c") == null) {
+                badOptions(p, "Configuration is required");
+                return;
             }
 
             String datasetName = (String) os.valueOf("t");
@@ -272,8 +283,14 @@ public class RDFConversion {
             if (baseUrl == null) {
                 badOptions(p, "Base url not given");
             }
+            final File datasetNameFile = new File(datasetName);
+            int index=datasetName.lastIndexOf('/');
+            datasetName = datasetName.substring(index+1,datasetName.length());
 
+            saffron.fromDirectory(datasetNameFile, datasetName);
             Model kg = ModelFactory.createDefaultModel();
+
+
             for(Term term : saffron.getAllTerms(datasetName)) {
                 kg = knowledgeGraphToRDF(term, saffron, datasetName, kg, baseUrl);
             }
@@ -289,6 +306,7 @@ public class RDFConversion {
             return;
         }
     }
+
 
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
