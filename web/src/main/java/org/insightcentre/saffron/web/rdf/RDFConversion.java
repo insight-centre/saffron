@@ -279,16 +279,19 @@ public class RDFConversion {
             String datasetName = (String) os.valueOf("t");
             if (datasetName == null ) {
                 badOptions(p, "The data set does not exist");
+                return;
             }
 
             String baseUrl = (String) os.valueOf("b");
             if (baseUrl == null) {
                 badOptions(p, "Base url not given");
+                return;
             }
 
             String baseDir = (String) os.valueOf("d");
-            if (baseUrl == null) {
+            if (baseDir == null) {
                 badOptions(p, "Base dir not given");
+                return;
             }
             File datasetNameFile = null;
             File kgOutFileName = null;
