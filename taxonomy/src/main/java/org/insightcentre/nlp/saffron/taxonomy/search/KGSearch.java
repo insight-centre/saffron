@@ -36,7 +36,7 @@ public interface KGSearch {
     		KnowledgeGraphExtractionConfiguration configKG,
     		MulticlassRelationClassifier<String> classifier, Set<String> terms, SaffronListener log) {
     	
-    	final Score score = ScoreFactory.getInstance(configTaxo, configTaxo.score, classifier, terms);
+    	final Score score = ScoreFactory.getInstance(configTaxo, configKG, configTaxo.score, classifier, terms);
     	return new GreedyKG(score, configKG, log);
     }
 }

@@ -204,6 +204,7 @@ public class Executor extends AbstractHandler {
         JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
         JSONObject termSimConfig = (JSONObject) config.get("termSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        //JSONObject conceptConsolidation = (JSONObject) config.get("conceptConsolidation");
         final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms
                 = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
@@ -215,14 +216,14 @@ public class Executor extends AbstractHandler {
                 = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
-        ConceptConsolidationConfiguration conceptConsolidationConfiguration
-                = new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
+        //ConceptConsolidationConfiguration conceptConsolidationConfiguration
+        //        = conceptConsolidation != null ? new ObjectMapper().readValue(conceptConsolidation.toString(), ConceptConsolidationConfiguration.class) : new ConceptConsolidationConfiguration();
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.termSim = termSimilarityConfiguration;
-        newConfig.conceptConsolidation = conceptConsolidationConfiguration;
+        //newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -527,12 +528,12 @@ public class Executor extends AbstractHandler {
         _status.setStageComplete("Writing Document-Term Correspondence", saffronDatasetName);
         _status.setStageComplete("Extracting Terms", saffronDatasetName);
 
-        _status.stage++;
-        _status.setStageStart("Consolidating concepts", saffronDatasetName);
-        ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
-        List<Concept> concepts = conceptConsolidation.consolidate(terms);
-        data.addConcepts(saffronDatasetName, concepts);
-        _status.setStageComplete("Consolidating concepts", saffronDatasetName);
+        //_status.stage++;
+        //_status.setStageStart("Consolidating concepts", saffronDatasetName);
+        //ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
+        //List<Concept> concepts = conceptConsolidation.consolidate(terms);
+        //data.addConcepts(saffronDatasetName, concepts);
+        //_status.setStageComplete("Consolidating concepts", saffronDatasetName);
 
         _status.stage++;
 
@@ -597,18 +598,16 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
 
-        _status.stage++;
-
-        _status.setStageStart("Building knowledge graph", saffronDatasetName);
-        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
-        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
-        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
-                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
-        if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
-        data.setKnowledgeGraph(saffronDatasetName, kGraph);
-        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
-
+//      _status.setStageStart("Building knowledge graph", saffronDatasetName);
+//      BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+//      KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
+//      final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+//              allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+//      if (storeCopy.equals("true"))
+//          ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+//      data.setKnowledgeGraph(saffronDatasetName, kGraph);
+//      _status.setStageComplete("Building knowledge graph", saffronDatasetName);
+        
         _status.completed = true;
     }
 

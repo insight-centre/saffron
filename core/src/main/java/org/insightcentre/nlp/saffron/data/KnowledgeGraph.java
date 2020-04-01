@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data;
 
 import java.io.IOException;
+import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -113,5 +114,33 @@ public class KnowledgeGraph {
 		} else if (!taxonomy.equals(other.taxonomy))
 			return false;
 		return true;
-	}	
+	}
+
+	public static class Builder {
+
+		KnowledgeGraph kg;
+
+		public Builder() {
+			kg = new KnowledgeGraph();
+		}
+
+		public KnowledgeGraph.Builder taxonomy(Taxonomy taxonomy) {
+			kg.taxonomy = taxonomy;
+			return this;
+		}
+
+		public KnowledgeGraph.Builder partonomy(Partonomy partonomy) {
+			kg.partonomy = partonomy;
+			return this;
+		}
+
+		public KnowledgeGraph.Builder synonoymyClusters(Collection<Set<String>> synonymyClusters) {
+			kg.synonymyClusters = synonymyClusters;
+			return this;
+		}
+
+		public KnowledgeGraph build() {
+			return kg;
+		}
+	}
 }
