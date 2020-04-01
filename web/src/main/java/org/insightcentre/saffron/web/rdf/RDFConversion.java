@@ -6,10 +6,12 @@ import java.net.URLEncoder;
 import java.util.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.TimeUnit;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
@@ -56,11 +58,11 @@ public class RDFConversion {
     
     public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        
+
         return documentToRDF(d, data, datasetName, model, null);
-        
+
     }
-    
+
     public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName, Model model, String base) {
 
         Resource res = model.createResource(base == null ? "" : base + "/rdf/doc/" + encode(d.id))
@@ -77,7 +79,7 @@ public class RDFConversion {
 
         for (DocumentTerm dt : data.getTermByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
-                    base == null ? "../term/" + encode(dt.getTermString()) 
+                    base == null ? "../term/" + encode(dt.getTermString())
                             : base + "/rdf/term/" + encode(dt.getTermString())));
         }
 
@@ -92,7 +94,7 @@ public class RDFConversion {
         Model model = ModelFactory.createDefaultModel();
         return termToRDF(t, data, datasetName, model, null);
     }
-    
+
     public static Model termToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
         Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
                 .addProperty(RDF.type, SKOS.Concept)
@@ -106,18 +108,18 @@ public class RDFConversion {
         for (Term.MorphologicalVariation mv : t.getMorphologicalVariationList()) {
             res.addProperty(SAFFRON.morphologicalVariant,
                     model.createResource()
-                    .addProperty(RDF.value, mv.string)
-                    .addProperty(SAFFRON.occurrences,
-                            model.createTypedLiteral(mv.occurrences)));
+                            .addProperty(RDF.value, mv.string)
+                            .addProperty(SAFFRON.occurrences,
+                                    model.createTypedLiteral(mv.occurrences)));
         }
-        
+
         for(AuthorTerm at : data.getAuthorByTerm(datasetName, t.getString())) {
-            res.addProperty(SAFFRON.author, 
+            res.addProperty(SAFFRON.author,
                     model.createResource(base == null ?
                             "../author/" + encode(at.getAuthorId())
                             : base + "/rdf/author/" + encode(at.getAuthorId())));
         }
-        
+
         for(TermTerm tt : data.getTermByTerm1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
@@ -128,25 +130,25 @@ public class RDFConversion {
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
         model.setNsPrefix("dct", DCTerms.NS);
-        
+
         return model;
     }
-    
+
     public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         return authorToRdf(author, data, datasetName, model, null);
     }
-    
+
     public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName, Model model, String base) {
 
-        Resource res = model.createResource(base == null ? "" 
+        Resource res = model.createResource(base == null ? ""
                 : base + "/rdf/author/" + encode(author.id))
                 .addProperty(RDF.type, FOAF.Person)
                 .addLiteral(FOAF.name, author.name);
         if (author.nameVariants != null){
         	for(String variant : author.nameVariants) {
-        		res.addLiteral(FOAF.nick, variant);
-        	}
+                res.addLiteral(FOAF.nick, variant);
+            }
         }
         for(AuthorAuthor aa : data.getAuthorSimByAuthor1(datasetName, author.id)) {
             res.addProperty(SAFFRON.relatedAuthor, model.createResource(
@@ -155,7 +157,7 @@ public class RDFConversion {
         }
         for(AuthorTerm at : data.getTermByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTerm, model.createResource(
-                    base == null ? "../term/" + encode(at.getTermId()) 
+                    base == null ? "../term/" + encode(at.getTermId())
                             : base + "/rdf/term/" + encode(at.getTermId())));
         }
         for(Document d : data.getDocsByAuthor(datasetName, author.id)) {
@@ -163,15 +165,15 @@ public class RDFConversion {
                     "../doc/" + encode(d.id)
                     : base + "/rdf/doc/" + encode(d.id));
         }
-        
+
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
         model.setNsPrefix("dct", DCTerms.NS);
-        
+
         return model;
-        
+
     }
-    
+
     public static Model allToRdf(String base, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         for(Document doc : data.getAllDocuments(datasetName)) {
@@ -180,61 +182,19 @@ public class RDFConversion {
         for(Author auth : data.getAllAuthors(datasetName)) {
             authorToRdf(auth, data, datasetName, model, base);
         }
-        for(Term term : data.getAllTerms(datasetName)) {
-            knowledgeGraphToRDF(term, data, datasetName, model, base);
-        }
+        knowledgeGraphToRDF(data, datasetName, model, base);
         return model;
     }
 
 
-    public static Model knowledgeGraphToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
-
-        Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
-                .addProperty(RDFS.label, t.getString());
-
-        for(TermTerm tt : data.getTermByTerm1(datasetName, t.getString(), null)) {
-            Collection<Set<String>> synonymy = data.getKnowledgeGraph(datasetName).getSynonymyClusters();
-            boolean isSynonmy = false;
-            boolean isPartOf = false;
-            boolean isWholeOf = false;
-            for(Set<String> synonm : synonymy) {
-                if (synonm.contains(t.getString()) && synonm.contains(tt.getTerm2())) {
-                    isSynonmy = true;
-                }
-            }
-            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
-                if(taxonomy.root.equals(t.getString())) {
-                    isWholeOf = true;
-                }
-
-            }
-            for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
-                if(taxonomy.hasDescendent(t.getString())) {
-                    isPartOf = true;
-                }
-
-            }
-            if (isSynonmy) {
-                    res.addProperty(SAFFRON.synonym,
-                            model.createResource(
-                                    base == null ? encode(tt.getTerm2())
-                                            : base + "/rdf/term/" + encode(tt.getTerm2())));
-            } else if (isWholeOf){
-                res.addProperty(SAFFRON.wholeOf,
-                        model.createResource(
-                                base == null ? encode(tt.getTerm2())
-                                        : base + "/rdf/term/" + encode(tt.getTerm2())));
-            } else if (isPartOf){
-                res.addProperty(SAFFRON.partOf,
-                        model.createResource(
-                                base == null ? encode(tt.getTerm2())
-                                        : base + "/rdf/term/" + encode(tt.getTerm2())));
-            } else {
-                    res.addProperty(SAFFRON.hyponym,
-                            model.createResource(
-                                    base == null ? encode(tt.getTerm2())
-                                            : base + "/rdf/term/" + encode(tt.getTerm2())));
-            }
+    public static Model knowledgeGraphToRDF(SaffronDataSource data, String datasetName, Model model, String base) {
+        for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getTaxonomy().children) {
+            getPartonomies(data, datasetName, model, base, taxonomy);
+        }
+        Taxonomy taxo = data.getKnowledgeGraph(datasetName).getTaxonomy();
+        for(Term term : data.getAllTerms(datasetName)) {
+            getSynonyms(data, datasetName, model, base, term);
+            getHyponyms(data, datasetName, model, base, taxo, term);
         }
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
@@ -242,6 +202,100 @@ public class RDFConversion {
 
         return model;
 
+    }
+
+    private static void getPartonomies(SaffronDataSource data, String datasetName, Model model, String base, Taxonomy taxonomy) {
+        Resource res;
+        for(Taxonomy partonomy : data.getKnowledgeGraph(datasetName).getPartonomy().getComponents()) {
+            for (Taxonomy child : partonomy.children) {
+                if (taxonomy.hasDescendent(child.root)) {
+                    res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(child.root))
+                            .addProperty(RDFS.label, child.root);
+                    res.addProperty(SAFFRON.partOf,
+                            model.createResource(
+                                    base == null ? encode(partonomy.root)
+                                            : base + "/rdf/term/" + encode(partonomy.root)));
+                    if (taxonomy.hasDescendent(child.root)) {
+                        Taxonomy parent = taxonomy.getParent(child.root);
+                        if (parent != null)
+                            res.addProperty(SAFFRON.isA,
+                                    model.createResource(
+                                            base == null ? encode(parent.root)
+                                                    : base + "/rdf/term/" + encode(parent.root)));
+                    }
+
+                    Collection<Set<String>> synonymy = data.getKnowledgeGraph(datasetName).getSynonymyClusters();
+                    for (Set<String> synonm : synonymy) {
+                        if (synonm.contains(child.root) ) {
+                            List<String> synonymList = new ArrayList<>();
+                            synonm.iterator().forEachRemaining(synonymList::add);
+                            for (String text : synonymList) {
+                                if (!text.equals(child.root))
+                                    res.addProperty(SAFFRON.synonym,
+                                        model.createResource(base == null ? encode(text)
+                                                : base + "/rdf/term/" + encode(text)));
+                            }
+                        }
+                    }
+                }
+                res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(partonomy.root))
+                            .addProperty(RDFS.label, partonomy.root);
+                res.addProperty(SAFFRON.wholeOf, model.createResource(base == null ? encode(child.root)
+                                            : base + "/rdf/term/" + encode(child.root)));
+            }
+        }
+    }
+
+    private static void getHyponyms(SaffronDataSource data, String datasetName, Model model, String base, Taxonomy taxo, Term term) {
+        Resource res;
+        for (TermTerm tt : data.getTermByTerm1(datasetName, term.getString(), null)) {
+            Property prop = model.getProperty(term.toString(), tt.getTerm2());
+            Property synonym = model.getProperty(base + "/rdf/term/" + encode(term.getString()), "");
+            if (taxo.descendent(term.getString()) != null) {
+                for (Taxonomy taxonomy : taxo.descendent(term.getString()).children) {
+                    if (!model.contains(synonym, prop) ) {
+                            res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root));
+                            res.addProperty(SAFFRON.isA,
+                                    model.createResource(
+                                            base == null ? encode(term.getString())
+                                                    : base + "/rdf/term/" + encode(term.getString())));
+                    } else {
+                            res = model.getResource(base + "/rdf/term/" + encode(taxonomy.root));
+                            res.addProperty(SAFFRON.isA,
+                                    model.createResource(
+                                            base == null ? encode(term.getString())
+                                                    : base + "/rdf/term/" + encode(term.getString())));
+                    }
+                }
+            }
+        }
+    }
+
+    private static void getSynonyms(SaffronDataSource data, String datasetName, Model model, String base, Term term) {
+        Resource res;
+        for(TermTerm tt : data.getTermByTerm1(datasetName, term.getString(), null)) {
+            Property prop = model.getProperty(term.toString(), tt.getTerm2());
+            Property synonym = model.getProperty(base + "/rdf/term/" + encode(term.getString()), "");
+            if (!model.contains(synonym, prop)) {
+                Collection<Set<String>> synonymy = data.getKnowledgeGraph(datasetName).getSynonymyClusters();
+                for(Set<String> synonm : synonymy) {
+                    List<String> synonymList = new ArrayList<>();
+                    if (synonm.contains(term.getString())) {
+                        synonm.iterator().forEachRemaining(synonymList::add);
+                        for (String text : synonymList) {
+                            if (!text.equals(term.getString())) {
+                                res = model.createResource(base == null ? "" : base + "/rdf/term/" +
+                                        encode(term.getString()))
+                                        .addProperty(RDFS.label, term.getString());
+                                res.addProperty(SAFFRON.synonym,
+                                        model.createResource(base == null ? encode(text)
+                                                : base + "/rdf/term/" + encode(text)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
@@ -265,36 +319,34 @@ public class RDFConversion {
                 badOptions(p, x.getMessage());
                 return;
             }
-
             String kgOutFile = (String) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
             }
-
             if (os.valueOf("c") == null) {
                 badOptions(p, "Configuration is required");
                 return;
             }
-
             String datasetName = (String) os.valueOf("t");
             if (datasetName == null ) {
                 badOptions(p, "The data set does not exist");
+                return;
             }
-
             String baseUrl = (String) os.valueOf("b");
             if (baseUrl == null) {
                 badOptions(p, "Base url not given");
+                return;
             }
-
             String baseDir = (String) os.valueOf("d");
-            if (baseUrl == null) {
+            if (baseDir == null) {
                 badOptions(p, "Base dir not given");
+                return;
             }
-            File datasetNameFile = null;
-            File kgOutFileName = null;
+            File datasetNameFile;
+            File kgOutFileName;
             if(!datasetName.startsWith(baseDir)) {
                 datasetNameFile = new File(baseDir + "/" + datasetName);
-                kgOutFileName = new File(baseDir + "/" + kgOutFile);
+                kgOutFileName = new File(baseDir + "/" + datasetName + "/" + kgOutFile);
             } else {
                 datasetNameFile = new File(datasetName);
                 kgOutFileName = new File(datasetName + '/' + kgOutFile);
@@ -303,9 +355,7 @@ public class RDFConversion {
             datasetName = datasetName.substring(index+1,datasetName.length());
             saffron.fromDirectory(datasetNameFile, datasetName);
             Model kg = ModelFactory.createDefaultModel();
-            for(Term term : saffron.getAllTerms(datasetName)) {
-                kg = knowledgeGraphToRDF(term, saffron, datasetName, kg, baseUrl);
-            }
+            kg = knowledgeGraphToRDF(saffron, datasetName, kg, baseUrl);
             try(OutputStream out = new FileOutputStream(kgOutFileName)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
