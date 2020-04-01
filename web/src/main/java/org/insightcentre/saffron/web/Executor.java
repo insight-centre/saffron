@@ -48,13 +48,7 @@ import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.crawler.SaffronCrawler;
-import org.insightcentre.nlp.saffron.data.Author;
-import org.insightcentre.nlp.saffron.data.Concept;
-import org.insightcentre.nlp.saffron.data.Corpus;
-import org.insightcentre.nlp.saffron.data.Model;
-import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
@@ -62,6 +56,8 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.documentindex.IndexedCorpus;
+import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
@@ -208,6 +204,7 @@ public class Executor extends AbstractHandler {
         JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
         JSONObject termSimConfig = (JSONObject) config.get("termSim");
         JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+        //JSONObject conceptConsolidation = (JSONObject) config.get("conceptConsolidation");
         final Configuration newConfig = new Configuration();
         TermExtractionConfiguration terms
                 = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
@@ -219,14 +216,14 @@ public class Executor extends AbstractHandler {
                 = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
         TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
                 = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
-        ConceptConsolidationConfiguration conceptConsolidationConfiguration
-                = new ObjectMapper().readValue(taxonomyConfig.toString(), ConceptConsolidationConfiguration.class);
+        //ConceptConsolidationConfiguration conceptConsolidationConfiguration
+        //        = conceptConsolidation != null ? new ObjectMapper().readValue(conceptConsolidation.toString(), ConceptConsolidationConfiguration.class) : new ConceptConsolidationConfiguration();
         newConfig.authorSim = authorSimilarityConfiguration;
         newConfig.authorTerm = authorTerm;
         newConfig.taxonomy = taxonomyExtractionConfiguration;
         newConfig.termExtraction = terms;
         newConfig.termSim = termSimilarityConfiguration;
-        newConfig.conceptConsolidation = conceptConsolidationConfiguration;
+        //newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
         List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
         final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
@@ -531,12 +528,12 @@ public class Executor extends AbstractHandler {
         _status.setStageComplete("Writing Document-Term Correspondence", saffronDatasetName);
         _status.setStageComplete("Extracting Terms", saffronDatasetName);
 
-        _status.stage++;
-        _status.setStageStart("Consolidating concepts", saffronDatasetName);
-        ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
-        List<Concept> concepts = conceptConsolidation.consolidate(terms);
-        data.addConcepts(saffronDatasetName, concepts);
-        _status.setStageComplete("Consolidating concepts", saffronDatasetName);
+        //_status.stage++;
+        //_status.setStageStart("Consolidating concepts", saffronDatasetName);
+        //ConceptConsolidation conceptConsolidation = AlgorithmFactory.create(config.conceptConsolidation);
+        //List<Concept> concepts = conceptConsolidation.consolidate(terms);
+        //data.addConcepts(saffronDatasetName, concepts);
+        //_status.setStageComplete("Consolidating concepts", saffronDatasetName);
 
         _status.stage++;
 
@@ -601,18 +598,18 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
 
-        /*_status.stage++;
+//        _status.stage++;
+//
+//        _status.setStageStart("Building knowledge graph", saffronDatasetName);
+//        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+//        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
+//        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+//                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+//        if (storeCopy.equals("true"))
+//            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+//        data.setKnowledgeGraph(saffronDatasetName, kGraph);
+//        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
 
-        _status.setStageStart("Building knowledge graph", saffronDatasetName);
-        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
-        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, relationClassifier, termMap.keySet());
-        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
-                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
-        if (storeCopy.equals("true"))
-            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
-        data.setKnowledgeGraph(saffronDatasetName, kGraph);
-        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
-         */
         _status.completed = true;
     }
 

@@ -85,7 +85,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     final MongoCollection conceptsCollection;
     final String RUN_IDENTIFIER = "run";
-    final String CONCEPT_IDENTIFIER = "concept_id";
+    final String CONCEPT_IDENTIFIER = "id";
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
 
@@ -1945,12 +1945,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     @Override
     public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName) {
-        return null;
+        MongoDBHandler.SaffronDataImpl saffron = data.get(datasetName);
+        return saffron.getDocuments();
     }
 
     @Override
     public Iterable<Author> getAllAuthors(String datasetName) {
-        return null;
+        MongoDBHandler.SaffronDataImpl saffron = data.get(datasetName);
+        return saffron.getAuthors();
     }
 
     @Override

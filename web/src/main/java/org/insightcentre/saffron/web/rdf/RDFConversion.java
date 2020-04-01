@@ -58,11 +58,11 @@ public class RDFConversion {
     
     public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
-        
+
         return documentToRDF(d, data, datasetName, model, null);
-        
+
     }
-    
+
     public static Model documentToRDF(Document d, SaffronDataSource data, String datasetName, Model model, String base) {
 
         Resource res = model.createResource(base == null ? "" : base + "/rdf/doc/" + encode(d.id))
@@ -79,7 +79,7 @@ public class RDFConversion {
 
         for (DocumentTerm dt : data.getTermByDoc(datasetName, d.id)) {
             res.addProperty(DCTerms.subject, model.createResource(
-                    base == null ? "../term/" + encode(dt.getTermString()) 
+                    base == null ? "../term/" + encode(dt.getTermString())
                             : base + "/rdf/term/" + encode(dt.getTermString())));
         }
 
@@ -94,7 +94,7 @@ public class RDFConversion {
         Model model = ModelFactory.createDefaultModel();
         return termToRDF(t, data, datasetName, model, null);
     }
-    
+
     public static Model termToRDF(Term t, SaffronDataSource data, String datasetName, Model model, String base) {
         Resource res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(t.getString()))
                 .addProperty(RDF.type, SKOS.Concept)
@@ -108,18 +108,18 @@ public class RDFConversion {
         for (Term.MorphologicalVariation mv : t.getMorphologicalVariationList()) {
             res.addProperty(SAFFRON.morphologicalVariant,
                     model.createResource()
-                    .addProperty(RDF.value, mv.string)
-                    .addProperty(SAFFRON.occurrences,
-                            model.createTypedLiteral(mv.occurrences)));
+                            .addProperty(RDF.value, mv.string)
+                            .addProperty(SAFFRON.occurrences,
+                                    model.createTypedLiteral(mv.occurrences)));
         }
-        
+
         for(AuthorTerm at : data.getAuthorByTerm(datasetName, t.getString())) {
-            res.addProperty(SAFFRON.author, 
+            res.addProperty(SAFFRON.author,
                     model.createResource(base == null ?
                             "../author/" + encode(at.getAuthorId())
                             : base + "/rdf/author/" + encode(at.getAuthorId())));
         }
-        
+
         for(TermTerm tt : data.getTermByTerm1(datasetName, t.getString(), null)) {
             res.addProperty(SKOS.related,
                     model.createResource(
@@ -130,25 +130,25 @@ public class RDFConversion {
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
         model.setNsPrefix("dct", DCTerms.NS);
-        
+
         return model;
     }
-    
+
     public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         return authorToRdf(author, data, datasetName, model, null);
     }
-    
+
     public static Model authorToRdf(Author author, SaffronDataSource data, String datasetName, Model model, String base) {
 
-        Resource res = model.createResource(base == null ? "" 
+        Resource res = model.createResource(base == null ? ""
                 : base + "/rdf/author/" + encode(author.id))
                 .addProperty(RDF.type, FOAF.Person)
                 .addLiteral(FOAF.name, author.name);
         if (author.nameVariants != null){
         	for(String variant : author.nameVariants) {
-        		res.addLiteral(FOAF.nick, variant);
-        	}
+                res.addLiteral(FOAF.nick, variant);
+            }
         }
         for(AuthorAuthor aa : data.getAuthorSimByAuthor1(datasetName, author.id)) {
             res.addProperty(SAFFRON.relatedAuthor, model.createResource(
@@ -157,7 +157,7 @@ public class RDFConversion {
         }
         for(AuthorTerm at : data.getTermByAuthor(datasetName, author.id)) {
             res.addProperty(SAFFRON.authorTerm, model.createResource(
-                    base == null ? "../term/" + encode(at.getTermId()) 
+                    base == null ? "../term/" + encode(at.getTermId())
                             : base + "/rdf/term/" + encode(at.getTermId())));
         }
         for(Document d : data.getDocsByAuthor(datasetName, author.id)) {
@@ -165,15 +165,15 @@ public class RDFConversion {
                     "../doc/" + encode(d.id)
                     : base + "/rdf/doc/" + encode(d.id));
         }
-        
+
         model.setNsPrefix("foaf", FOAF.NS);
         model.setNsPrefix("saffron", SAFFRON.NS);
         model.setNsPrefix("dct", DCTerms.NS);
-        
+
         return model;
-        
+
     }
-    
+
     public static Model allToRdf(String base, SaffronDataSource data, String datasetName) {
         Model model = ModelFactory.createDefaultModel();
         for(Document doc : data.getAllDocuments(datasetName)) {
@@ -330,14 +330,17 @@ public class RDFConversion {
             String datasetName = (String) os.valueOf("t");
             if (datasetName == null ) {
                 badOptions(p, "The data set does not exist");
+                return;
             }
             String baseUrl = (String) os.valueOf("b");
             if (baseUrl == null) {
                 badOptions(p, "Base url not given");
+                return;
             }
             String baseDir = (String) os.valueOf("d");
-            if (baseUrl == null) {
+            if (baseDir == null) {
                 badOptions(p, "Base dir not given");
+                return;
             }
             File datasetNameFile;
             File kgOutFileName;
