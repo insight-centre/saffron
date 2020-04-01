@@ -343,7 +343,7 @@ public class RDFConversion {
             File kgOutFileName;
             if(!datasetName.startsWith(baseDir)) {
                 datasetNameFile = new File(baseDir + "/" + datasetName);
-                kgOutFileName = new File(baseDir + "/" + kgOutFile);
+                kgOutFileName = new File(baseDir + "/" + datasetName + "/" + kgOutFile);
             } else {
                 datasetNameFile = new File(datasetName);
                 kgOutFileName = new File(datasetName + '/' + kgOutFile);
