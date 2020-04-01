@@ -35,4 +35,5 @@ public class SAFFRON {
     public static final Property hyponym = m_model.createProperty( NS + "hyponym" );
     public static final Property partOf = m_model.createProperty( NS + "partOf" );
     public static final Property wholeOf = m_model.createProperty( NS + "wholeOf" );
+    public static final Property isA = m_model.createProperty( NS + "isA" );
 }
