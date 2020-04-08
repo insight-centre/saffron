@@ -23,6 +23,7 @@ public class Author {
     public Author(@JsonProperty("id") String id,
             @JsonProperty("name") String name,
             @JsonProperty("name_variants") Set<String> nameVariants) {
+        if(name == null) { throw new IllegalArgumentException("Author with null name"); }
         this.id = id == null ? name : id;
         this.name = name;
         this.nameVariants = nameVariants;
@@ -30,9 +31,14 @@ public class Author {
 
     @JsonCreator
     public Author(String name) {
-        this.id = name;
-        this.name = name;
-        this.nameVariants = new HashSet<String>();
+        if(name == null) { throw new IllegalArgumentException("Author with null name"); }
+        if(name.equals("")) {
+            this.id = this.name = "ANONYMOUS";
+        } else {
+            this.id = name;
+            this.name = name;
+        }
+            this.nameVariants = new HashSet<String>();
     }
 
     @Override
@@ -56,5 +62,12 @@ public class Author {
         }
         return true;
     }
+
+    @Override
+    public String toString() {
+        return "Author{" + "id=" + id + ", name=" + name + ", nameVariants=" + nameVariants + '}';
+    }
+    
+    
 
 }
