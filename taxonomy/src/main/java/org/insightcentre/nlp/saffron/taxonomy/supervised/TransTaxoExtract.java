@@ -27,13 +27,13 @@ public class TransTaxoExtract {
         this.discount = discount;
     }
 
-    public Taxonomy extractTaxonomy(Set<String> topics) {
+    public Taxonomy extractTaxonomy(Set<String> terms) {
         Object2DoubleMap<StringPair> scores = new Object2DoubleOpenHashMap<>();
-        for (String topic1 : topics) {
-            for (String topic2 : topics) {
-                if (!topic1.equals(topic2)) {
-                    double score = classifier.predict(topic1, topic2) - discount;
-                    scores.put(new StringPair(topic1, topic2), score);
+        for (String term1 : terms) {
+            for (String term2 : terms) {
+                if (!term1.equals(term2)) {
+                    double score = classifier.predict(term1, term2) - discount;
+                    scores.put(new StringPair(term1, term2), score);
 
                 }
             }
@@ -191,14 +191,14 @@ public class TransTaxoExtract {
 
         private Taxonomy _buildTaxonomy(String root, String parent, Object2DoubleMap<StringPair> scores) {
             List<Taxonomy> childrenTaxos = new ArrayList<>();
-            Set<String> childTopics = children.get(root);
-            if (childTopics != null) {
-                for (String childTopic : childTopics) {
-                    childrenTaxos.add(_buildTaxonomy(childTopic, parent, scores));
+            Set<String> childTerms = children.get(root);
+            if (childTerms != null) {
+                for (String childTerm : childTerms) {
+                    childrenTaxos.add(_buildTaxonomy(childTerm, parent, scores));
                 }
             }
             double linkScore = parent == null ? Double.NaN : scores.getDouble(new StringPair(parent, root));
-            return new Taxonomy(root, 0.0, linkScore, "", "", childrenTaxos, Status.none);
+            return new Taxonomy(root, 0.0, linkScore, childrenTaxos, Status.none);
         }
     }
 

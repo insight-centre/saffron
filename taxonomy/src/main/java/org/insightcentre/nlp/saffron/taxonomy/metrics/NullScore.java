@@ -1,23 +1,23 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
+import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
 
 /**
- * A score that does not distinguish between any trees. Thsi is principally used 
+ * A score that does not distinguish between any graphs. This is principally used 
  * for testing
  * 
  * @author John McCrae
  */
-public class NullScore implements TaxonomyScore {
+public class NullScore implements Score<TypedLink> {
 
     @Override
-    public double deltaScore(TaxoLink taxoLink) {
+    public double deltaScore(TypedLink link) {
         return 0.0;
     }
 
     @Override
-    public TaxonomyScore next(String top, String bottom, Solution soln) {
+    public Score<TypedLink> next(TypedLink link, Solution soln) {
         return this;
     }
 

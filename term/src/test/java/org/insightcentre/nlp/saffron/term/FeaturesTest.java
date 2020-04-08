@@ -1,7 +1,6 @@
 package org.insightcentre.nlp.saffron.term;
 
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
-import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -80,7 +79,7 @@ public class FeaturesTest {
             }
         };
         double expResult = 1.017049;
-        double result = Features.calcFeature(feat, term, stats, ref, incl, null, null);
+        double result = Features.calcFeature(feat, term, stats, ref, incl, null, null, null);
         assertEquals(expResult, result, 0.00001);
     }
 

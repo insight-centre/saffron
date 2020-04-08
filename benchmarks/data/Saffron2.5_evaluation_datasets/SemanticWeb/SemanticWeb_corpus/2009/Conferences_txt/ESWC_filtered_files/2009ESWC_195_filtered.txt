@@ -1,0 +1,802 @@
+Ontology Integration Using Mappings: Towards
+
+Getting the Right Logical Consequences
+
+Ernesto Jim enez-Ruiz1,, Bernardo Cuenca Grau2, Ian Horrocks2,
+
+and Rafael Berlanga1
+
+1 Universitat Jaume I, Spain
+{ejimenez,berlanga}@uji.es
+2 University of Oxford, UK
+
+{berg,ian.horrocks}@comlab.ox.ac.uk
+
+Abstract. We propose a general method and novel algorithmic techniques to facilitate the integration of independently developed ontologies
+using mappings. Our method and techniques aim at helping users understand and evaluate the semantic consequences of the integration, as
+well as to detect and fix potential errors. We also present ContentMap,
+a system that implements our approach, and a preliminary evaluation
+which suggests that our approach is both useful and feasible in practice.
+
+1 Introduction
+Effective ontology integration techniques are often needed both during ontology
+development (e.g., when an ontology being developed reuses one or more external
+ontologies), and when ontologies are used in conjunction with data (e.g. when
+integrating and querying data sources annotated using different ontologies).
+
+When the ontologies to be integrated have been independently developed,
+their vocabularies will most likely diverge, either because they use different
+namespaces, or because they use different names or naming conventions to refer
+to their entities. As a consequence, these ontologies will most likely be unrelated
+from a logical point of view, even if they intuitively overlap.
+
+For example, suppose that Peter wants to develop an ontology about juvenile
+forms of arthritis.1 He finds on the Web two independently developed ontologies
+O1 and O2 with different vocabularies, which describe different types of arthritis
+and juvenile diseases respectively, and decides that an integration of these two
+ontologies would make a good starting point. Although largely independent,
+the two ontologies do overlap; for example, both describe a particular form of
+juvenile arthritis known as JRA (Juvenile Rheumatoid Arthritis), although they
+use different vocabulary in their descriptions.
+
+As a first step in the integration of such independently developed ontologies it is usually necessary to establish appropriate correspondences (or map-
+pings) between the terms used in the various ontologies. For example, Peter
+may need to establish that Rheumatoid Arthritis in O1 has the same intended
+ Ernesto was supported by his PhD Fellowship of the Generalitat Valenciana.
+1 The development of an ontology describing types of juvenile arthritis is one of the
+
+goals of the Health-e-Child project (http://www.health-e-child.org/).
+
+L. Aroyo et al. (Eds.): ESWC 2009, LNCS 5554, pp. 173187, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+?
+
+?
+
+?
+meaning as Rheum Arthritis in O2. Ontologies are, however, often too large and
+complex for ontology developers to manually establish these correspondences.
+To address this problem, a number of sophisticated tools have been developed
+(see http://www.ontologymatching.org/ for a comprehensive list), the purpose of
+which is to (semi-) automatically establish appropriate correspondences.
+
+When reasoning with the ontologies to be integrated together with the automatically generated mappings, however, errors are likely to occur. There are two
+main causes for these errors. On the one hand, mappings suggested by automated
+tools are likely to include some errors. On the other hand, even if the correct
+mappings have been found, the ontologies may contain conflicting descriptions
+of the overlapping entities. These errors manifest themselves as unintended logical consequences (e.g., unsatisfiable concepts or unintended subsumptions), and
+they can be difficult to detect, understand and repair. However, existing tools
+provide little or no support for the user in trying to obtain the right logical consequences when integrating ontologies using mappingsas discussed in Section 5,
+research in this area is still at an early stage [1, 2].
+
+In this paper, we present a new general method and novel algorithmic techniques designed to provide just such support. We also present ContentMap,2 a
+system that implements our approach, and a preliminary evaluation which suggests that our approach is both useful and feasible in practice.
+
+We will assume some basic knowledge of OWL and Description Logics, and
+refer to [3, 4] for comprehensive overviews. Moreover, due to lack of space, proofs
+and some details concerning the empirical evaluation are included in an online
+technical report [5].
+
+2 Problems with Ontology Integration Using Mappings
+In this section, we discuss some of the problems that arise when integrating
+ontologies using mappings, and analyze the requirements for a suitable tool.
+Let us consider the ontologies O1 and O2 from Section 1 about arthritis and
+juvenile diseases respectively. As already mentioned, O1 and O2 overlap conceptually in the description of different types of juvenile rheumatoid arthritis. The
+overlapping parts of O1 and O2 are shown in Table 1.
+Suppose that Peterthe ontology developeruses an automatic mapping tool
+to find correspondences between entities in O1 and O2. Mappings are often
+represented as a tuple id, e1, e2, n,  [6], where id is a unique identifier for the
+mapping, e1, e2 are entity names in the vocabulary of O1 and O2 respectively,
+n is a numeric confidence measure between 0 and 1, and  is a relation between
+e1 and e2 (typically subsumption (), equivalence (), or disjointness ()).
+
+Table 2 contains the mappings obtained by Peter using the mapping tool
+OLA (see http://ola.gforge.inria.fr/). The prefixes 1: and 2: for the entity
+names refer to the namespaces (omitted in Table 1) of O1 and O2. Note that the
+mappings and confidence values suggested by different tools can vary enormously,
+so experience and/or experimentation may be needed in order to select the most
+suitable tool (or combination of tools) for the problem at hand.
+2 A logiC-based ONtology inTEgratioN Tool using MAPpings.
+?
+
+?
+
+?
+Table 1. Example Ontologies
+
+Ontology O1
+Juvenile Arthritis  Systemic Disease  Rheumatoid Arthritis
+
+1
+2 Multi Joint Disease  Disease   5 affects.Joint
+Rheumatoid Arthritis  Disease  has Factor.
+3
+Poly Juvenile Arthritis  Juvenile Arthritis  Multi Joint Disease
+
+4
+5 Oly Juvenile Arthritis  Juvenile Arthritis  Poly Juvenile Arthritis
+6 Oly Juvenile Arthritis  has Factor.Negative Factor
+7 Negative Factor  Positive Factor  
+
+1
+
+2
+3
+
+Ontology O2
+Juv Rheum Arthritis  Rheum Arthritis  Juv Disease
+Rheum Arthritis  Disease  has Rheum Factor.
+Poly Juv Rheum Arthritis  Juv Rheum Arthritis  = 3 affects.Joint
+Poly Juv Rheum Arthritis  has Rheum Factor.Positive Rheum Factor
+
+4
+5 Negative Rheum Factor  Positive Rheum Factor  
+
+Table 2. Example Mappings
+
+Intended Mappings
+1, 1:Joint, 2:Joint, 1.0, ();
+2, 1:Disease, 2:Disease, 1, ();
+3, 1:Disease, 2:Disease, 1.0, ();
+4, 1:affects, 2:affects, 0.87, ();
+5, 1:Rheumatoid Arthritis, 2:Rheum Arthritis, 1.0, ();
+6, 2:Juv Disease, 1:Disease, 0.63, ();
+7, 1:Poly Juvenive Arthritis, 2:Poly Juv Rheum Arthritis, 0.7, ();
+8, 1:has Factor, 2:has Rheum Factor, 0.7, ();
+9, 1:Positive Factor, 2:Positive Rheum Factor, 0.75, ();
+10, 1:Negative Factor, 2:Negative Rheum Factor, 0.75, ();
+11, 2:Juv Rheum Arthritis, 1:Rheumatoid Arthritis, 0.5, ();
+Erroneous Mappings
+12, 1:Rheumatoid Arthritis, 2:Juv Rheum Arthritis, 0.5, ();
+13, 1:Disease, 2:Juv Disease, 0.63, ();
+14, 1:Positive Factor, 2:Negative Rheum Factor, 0.63, ();
+15, 2:Positive Factor, 1:Negative Rheum Factor, 0.63, ();
+
+As shown in Table 2, some of the mappings are clearly erroneous and, under any reasonable semantics for the mappings, will lead to unintended logical
+consequences. Indeed, the mappings 14 and 15 entail the logical equivalence of
+two concepts that are disjoint in both O1 and O2 (see also intended mappings 9
+and 10); also, the mapping 12 will lead to unintended subsumptions since not
+all forms of rheumatoid arthritis affect only children. Furthermore, even if only
+
+E. Jim enez-Ruiz et al.
+
+intended mappings had been generated, errors would still have occurred due to
+conflicting descriptions of some of the entities that occur in both ontologies. For
+example, the descriptions of Polyarticular Juvenile Rheumatoid Arthritis (ax-
+ioms 4, 2 in O1 and 3 in O2) are contradictory: in O1 it is described as a
+disease that affects at least 5 different joints, whereas in O2 it is said to affect
+exactly 3 joints. The intended mapping 7 will reveal this contradiction.
+
+This example suggests some requirements for a tool supporting ontology integration using mappings. A suitable tool should provide support for: (i) generating sets of mappings, either manually or by selecting one or more mapping
+algorithms and setting their parameters; (ii) editing sets of mappings and filtering them according to different criteria; (iii) reasoning with the ontologies to
+be integrated together with the relevant mappings; (iv) comparing the entailments holding before and after the integration and detecting possible unintended
+entailments; (v) suggesting possible ways to repair the identified errors.
+
+3 Proposed Method, Algorithms and Tool Support
+
+In this paper, we present a novel approach for integrating ontologies using mappings that addresses the requirements from Section 2. To this end, a formal
+representation of ontology mappings should be adopted. This is crucial, for ex-
+ample, to reason unambiguously with the mappings together with the ontologies
+to be integrated, and thus to address requirements (iii)(v) in Section 2.
+
+A number of specialised semantics for ontology mappings have been proposed
+in the literature (e.g. [6, 7]). In this paper, however, we have chosen to represent
+ontology mappings as OWL 2 axioms [4]. Such a representation seems semantically coherent, and allows us to reuse the extensive range of OWL algorithmic
+techniques and infrastructure that is currently available. The general approach
+
+Table 3. Ontology Integration Method
+
+1,O
+
+2: modified ontologies
+
+Input: O1,O2: ontologies with Sig(O1) = 1, Sig(O2) = 2 and 1  2 = {, }
+Output: O
+M: Mappings between 1 and 2
+1: () Select mapping algorithm map(O1,O2)
+2: () Select M  map(O1,O2)
+3: () if O1,O2,M satisfactory, then return O
+4: U := O1  O2  M
+5: () Select approximation functions diff
+1(O1, U)  diff
+
+6: Compute  = diff
+7: () Select +,  
+8: () Select O  U
+9: P := all minimal plans for U given +, , and O
+10: () if no satisfactory plan in P, then come back to either Step 2 or Step 7
+11: () Select P  P
+12: return O
+
+ and mdiff
+
+2(O2,U)  mdiff
+1,2(M,U)
+
+
+
+2 := O2,M := M
+
+1 := O1 \ P,O
+
+2 := O2 \ P,M := M \ P
+
+1 := O1,O
+?
+
+?
+
+?
+Fig. 1. GUI for Visualising Explicit Mappings in ContentMap
+
+we present here, however, could be adapted to alternative formal representations
+of mappings (see Section 5 for further discussion).
+We assume from now on that a set of mappings is represented as an OWL
+2 ontology M, where mappings id, e1, e2, n,  are given as axioms of the form
+SubClassOf(e1 e2), EquivalentClasses(e1 e2), or DisjointClasses(e1 e2), for  of
+the form (), (), or () respectively, with id (the mapping id) and n (the
+confidence value) added as axiom annotations [4]. We denote with conf() the
+confidence value with which an axiom  is annotated. Representing mappings in
+this way gives them a standard crisp semantics, with ids and confidence values
+being represented only as annotations and thus having no effect on entailments.
+Our general approach is given in Table 3. It is an interactive process where
+some steps involve computations that tools should perform automatically, while
+others (marked with ()) may require manual intervention. It consists of four
+main parts: i) Computation of mappings (Steps 13); ii) Computation of new
+entailments (Steps 46); iii) Detection of errors (Step 7); iv) Repair of the identified errors (Steps 812). We next present our method and describe its realisation
+in ContentMapa Prot eg e 4 plugin available for download (see [5]).
+
+3.1 Computation of the Mappings
+
+General Description. Ontology mappings can be computed using one or more
+mapping tools (see Step 1), and can subsequently be refined (Step 2) in various
+ways (e.g., via manual selection or filtering according to a given threshold).
+After obtaining and possibly refining the mappings, a user may decide that
+the integration process is complete (Step 3), in which case it remains a purely
+syntactic process. They may, however, want to analyse the semantic consequences
+of the integration, in which case a reasoner is required.
+
+Tool Support. ContentMap provides for the input ontologies to be loaded,
+and for one or more mapping tools to be selected. Different weights can also be
+assigned to each of the mapping tools. It is also possible to load pre-computed
+mappings in the form of an OWL 2 ontology.
+ContentMap provides a GUI for visualising the mappings (Fig. 1) and showing those that are to be accepted (marked with ) and those that are to be
+rejected (marked with ). Users can automatically filter the mappings by setting a confidence threshold : mappings with a confidence value lower than  are
+
+E. Jim enez-Ruiz et al.
+
+automatically marked for rejection while those with a confidence value greater
+than  are marked for acceptance. These selections can then be refined at will.
+
+3.2 Computation of New Entailments
+General Description. To help users understand the semantic consequences of
+the integration, they should be informed about new entailments that hold in the
+merged ontology U, but not in O1, O2 and M alone. To this end, we use the
+notion of deductive difference [8, 9]. Intuitively, the deductive difference between
+O and O w.r.t a signature  is the set of entailments constructed over  that
+do not hold in O, but do hold in O.
+Definition 1. Let DL be a DL and  be a DL-signature. The -deductive
+difference between DL-ontologies O and O is given as follows:
+
+diff(O,O
+
+) = { |  a DL-axiom, O |= , O |=  and Sig()  }
+
+(1)
+In our integration scenario, we want to inform the user about new entailments
+that hold in O1 or O2 as a result of the integration, i.e., diff1(O1,U) and
+diff2(O2,U). In our example from Tables 1 and 2, where the mappings are given
+as an OWL 2 ontology as described above, the entailments (Positive Factor  )
+and (Rheum Arthritis  Juv Disease) belong to diff1(O1,U) and diff2(O2,U)
+respectively. In addition, we want to inform the user about new entailments that
+contain symbols from both O1 and O2. These entailments can be seen as inferred
+mappings provided that the notion of a mapping is generalised to be an arbitrary
+DL axiom using terms from two signatures:
+Definition 2. Let DL be a DL and let 1, 2 be two DL-signatures s.t. 1 
+2 = {,}. Let  = 1  2. A DL-mapping between 1 and 2 is a DLaxiom  over  such that (Sig()  i) \ {,} =  for each i  {1, 2}. The
+axiom  is annotated with an id and with a confidence value 0 < conf()  1.
+Definition 1 can now be extended to take into account the new mappings, i.e.:
+mdiff1,2(O,O
+) |  DL-mapping between 1, 2} (2)
+In our scenario, inferred mappings are captured by mdiff1,2(M,U). For
+example, the mapping (1:Juvenile Arthritis  2:Rheum Arthritis) would belong to
+this difference, because it is entailed by U but not by M alone.
+The notion of deductive difference, however, has several drawbacks in prac-
+tice. First, there is no algorithm for computing diff(O,O) in expressive DLs
+such as SROIQ (OWL 2) and SHOIQ (OWL DL) [9]. For these languages,
+checking whether diff(O,O) =  is undecidable. Currently, algorithms only exist for (fragments of) the OWL 2 EL and QL profiles [10, 9, 8]. Second, the
+number of entailments in the difference can be huge (even infinite), and so likely
+to overwhelm users. These drawbacks motivate the need for approximations
+subsets of the differencethat the user can select in Step 5 from Table 3.
+1,2(O,O)) is an approxi-
+
+Definition 3. A function diff
+mation for diff(O,O) (mdiff1,2(O,O)) if for any two DL-ontologies O,O,
+diff
+
+1,2(O,O)  mdiff1,2(O,O)).
+
+
+(O,O)  diff(O,O) (mdiff
+
+
+(O,O) (resp. mdiff
+
+
+) = {  diff(O,O
+?
+
+?
+
+?
+Tool Support. A useful approximation should be easy to compute, yet still
+provide meaningful information to the user. One possibility is to define an approximation by considering only entailments of a certain form.
+
+The GUI implemented in ContentMap allows users to customise approximations by selecting among the following simple kinds of entailment, where A, B
+are atomic concepts (including ,) and R, S atomic roles or inverses of atomic
+roles: (i) A  B, (ii) A  B, (iii) A  R.B, (iv) A  R.B, and v) R  S.
+The smallest implemented approximation considers only axioms of the form (i),
+while the largest one considers all types (i)(v).
+
+All these approximations can be algorithmically computed, and ContentMap
+uses a number of optimisations for computing them. Clearly, the larger the class
+of entailments presented to the user, the more errors could be detected. The
+corresponding differences, however, are harder to compute, harder to present to
+the user, and may be harder for the user to understand.
+
+3.3 Detection of Errors
+General Description. Some entailments in the relevant (approximate) differences may be intended, while others may reveal potential errors in the merged
+ontology U. Step 7 therefore involves selecting entailments that: (i) are intended
+and should be entailed in U (written + in Table 3), and (ii) are unintended
+and should not be entailed by U (written ).
+In our example, the entailments (Positive Factor  ) and (Rheum Arthritis 
+Juv Disease) in diff1(O1,U) and diff2(O2,U) respectively are unintented and
+should belong to . In contrast, the entailed mapping (1:Rheum Arthritis 
+2:Disease) is intended and should be included in +.
+
+Tool Support. The development of techniques to help users understand the
+relevant differences and subsequently select the sets of intended and unintended
+entailments is especially challenging.
+First, the tool should explain why the new entailments that hold in U do not
+hold in O1, O2 and M alone. The notion of a justification has proved very useful
+in understanding why an ontology entails a certain axiom [11, 12].
+Definition 4. Let O |= . A justification for  in O is an ontology O  O
+satisfying the following properties: (i) O |= , and (ii) there is no O  O s.t.
+O |= . We denote by Just(,O) the set of all justifications for  in O.
+In order to explain a given entailment, ContentMap presents all its justifications.
+Computing justifications is expensive, so ContentMap uses the optimisations proposed in [13, 14] which have proved effective in practice.
+
+Second, the potentially large number of relevant entailments may overwhelm
+the user. Hence, on the one hand, the tool should try to present these entailments
+in a way that makes them easier to understand and, on the other hand, it should
+provide suggestions about which entailments to include in + and .
+ContentMap exploits the dependencies between entailments to organise the
+way in which they are presented. Intuitively an entailment  depends on  in O
+
+E. Jim enez-Ruiz et al.
+
+1(O1,U)  diff
+
+
+2(O2,U)  mdiff
+
+
+Algorithm 1. Heuristic suggestions for +, 
+1,2(M,U) as in Table 3
+
+Input:  = diff
+1, 2: real values with 0 < 1  2  1
+: dependency relation between axioms in  w.r.t. U
+Output: +,: entailments suggested to be hold or not
+1: +, := 
+2: for each    do
+3:
+4:
+5:
+6:
+7:
+8:
+9:
+10: end for
+11: return +,
+
+end if
+conf() := confidence of  as in Definition 7
+if conf()  1 then  :=   {}
+if conf()  2 and  / 
+
+if  of the form A   for A an atomic concept then
+
+ :=   {}
+for each    such that  
+
+then + := +  {}
+
+ do  :=   {}
+
+if, whenever  is invalidated by removing a set of axioms from O, then  is also
+invalidated. This implies that if   , then  should also be included in 
+(and never in +). This idea can be formalised in our setting as follows:
+Definition 5. Let O |= , . The axiom  depends on  w.r.t. O, written ,
+iff for each J  Just(,O) there is J  Just(,O) s.t. J  J.
+The relation  is consistent with our intuitions, as shown next:
+Proposition 6. Consider Table 3 and Definition 5. Let U |= , , U  U and
+  . Then: 1) U |=  implies U |= , and 2) U |=  implies U |= .
+In order to suggest to the user which entailments to include in + and , ContentMap exploits both the dependencies between entailments in the differences
+and the confidence values for each explicit mapping. We use the confidence values in the mappings to compute confidence values in the entailments from each
+of the obtained differences: we consider our confidence in an entailment to be
+equal to the maximum confidence we have in one of its justifications, and our
+confidence in a justification to be the product of our confidences in each of the
+axioms it contains. We formalise this in the following definition, in which we extend conf() to arbitrary (explicit) axioms and justifications. We assume that we
+have complete confidence in an axiom (i.e., conf() = 1) if it is not a mapping.
+Definition 7 (Confidence in an Entailment). Let O be an ontology,  an
+axiom in O that is not annotated with a confidence value, J a justification, and
+ an entailment s.t. O |= . We define conf() = 1, and conf(J ) and conf()
+as follows:
+
+conf(J ) =
+
+conf()
+
+and
+
+conf() = max(
+
+conf(J ))
+
+(3)
+?
+
+?
+
+?
+J
+?
+
+?
+
+?
+J Just(,O)
+?
+
+?
+
+?
+Fig. 2. GUI for Visualising New Entailments in ContentMap
+
+, then conf()  conf()
+
+The following proposition shows that the confidence values in Definition 7 are
+well-behaved w.r.t. Definition 5: if  depends on  then the confidence in  is
+smaller than the confidence in .
+Proposition 8. If  
+In order to compute initial suggestions for  and +, ContentMap implements
+the heuristics in Algorithm 1, which are based on Definitions 5, 7 and Propositions 6, 8. The algorithm accepts as input the entailments in the relevant
+differences, their dependencies, and two confidence thresholds 1 and 2. For
+each input entailment , Algorithm 1 uses , 1 and 2 to either include it in
++ (i.e.  is intended), in  (i.e.  is unintended) or in neither of them. An
+entailment  is included in  if it reveals a contradiction (Line 3), depends on
+a contradiction (Line 5), or if its confidence according to Definition 7 is lower
+than 1 (Line 8). In contrast,  is included in + if it is not contained in 
+and its confidence is higher than the threshold 2 (Line 9).
+Figures 2 and 3 show the ContentMap GUI for selecting + and . Figure
+2 shows the new entailments in each of the computed differences. The left-hand
+side of Figure 3(a) displays the dependency relation as a hierarchy, which can be
+expanded and contracted in the usual way; on the right-hand side of Figure 3(a),
+the user can select an entailment to be in + or  and show its justifications
+(Figure 3(b)). When displaying justifications, the GUI indicates whether the
+axioms in these justifications come from O1, O2, or the mappings M (marked
+with 1, 2 and M respectively). The entailments in Figures 2 and 3(a) already
+marked as intended/unintended are those suggested by Algorithm 1.
+
+3.4 Repair
+
+General Description. If the user has selected one or more unintended entailments (i.e.,  = ), then U clearly contains errors. These errors can always
+
+E. Jim enez-Ruiz et al.
+
+(a) Dependency Relation
+
+(b) Justifications
+
+Fig. 3. GUI for Visualising the Dependency Relation and the Justifications
+
+be repaired by removing axioms from Uin the limit, removing all the axioms
+from U will eliminate all entailments. However, any removal of axioms should
+also respect +, the users selection of intended entailments, i.e., the entailments
+in + should still hold after any removal of axioms.
+
+As mentioned in Section 1, errors could be due to erroneous mappings, to
+inherently conflicting information in the two ontologies, or to some combination
+of both. Repairing such errors might, therefore, require the removal of axioms
+from M, O1 and O2. The user may, however, have a (principled or pragmatic)
+preference regarding the source of axioms to be removed; e.g., M might be
+considered the most likely source of errors, or it may be impossible to change
+(one or both of) O1 and O2. We therefore define the notion of a repair plan (or
+plan for short) for an ontology O w.r.t. the (un-) intended entailments  and
++, and a subset O of O, where the axioms in O are those that are allowed
+to be removed from O. Such a plan is simply a subset of the axioms in O whose
+removal from O both eliminates the entailments in  and preserves those in
++. In general, there may be zero or more such plans.
+Definition 9. Let O, +, , and O be finite sets of axioms such that O 
+O, O |= , O |= +, and +   = .
+A repair plan for O given O, + and  is a set P  O such that: 1)
+(O \ P) |=  for each   +, and 2) (O \ P) |=  for each   . A plan P
+is minimal if there is no P1 such that P1  P.
+In our method, , + and O are selected by the user in Steps 7 and 8 from
+Table 3. In our example, if Peter imports O1 and O2 from the Web, and if
+he is not willing to copy and modify them (e.g., if he wants to always import
+the latest versions), then plans should only remove axioms from the mappings
+(i.e., O = M). However, the descriptions of Polyarticular Juvenile Rheumatoid
+Arthritis in O1 and O2 are inherently in contradiction and hence, if O = M,
+the corresponding error cannot be fixed without deleting reasonable mappings.
+In this case a more sensible choice would be to repair one or both of O1 and O2.
+?
+
+?
+
+?
+,+, )
+
+do
+
+end for
+for each   
+
+Algorithm 2. Computing All Plans Using Justifications
+Procedure all Plans(O,O
+Input: O, O, +,  as in Definition 9, Just(,O) for each   +  
+Output: P: set of all plans
+1: P := 
+2: for each P  O
+validPlan := true
+3:
+for each   + do
+4:
+foundJust := false
+5:
+for each J  Just(,O) do
+6:
+7:
+8:
+9:
+10:
+11:
+12:
+13:
+14:
+15: end for
+16: return P
+
+and J  Just(,O) do
+if J  O \ P then validPlan := false
+end for
+if validPlan = true then P := P  {P}
+
+end for
+if foundJust = false then validPlan := false
+
+if J  O \ P then foundJust := true
+
+Tool Support. Definition 9 suggests a simple procedure for computing all plans:
+for each possible P  O, use a reasoner to check if P is a valid plan, i.e., satisfies
+Conditions 1 and 2 from Definition 9. ContentMap, however, implements an
+algorithm (see Algorithm 2) that avoids potentially expensive entailment checks
+by reusing the justifications already computed when obtaining the dependency
+relation from Definition 5. The algorithm is based on the following principles:
+(i) in order for   + to hold after the execution of a plan P, the ontology
+O \ P must contain at least one justification for  in O (see Lines (6-8)); (ii) in
+order for    not to hold after the execution of P, it is sufficient to show
+that no justification for  in O is in O \ P (Lines 11-13). The set of all minimal
+plans can be straightforwardly computed once all the plans have been obtained.
+Proposition 10. Algorithm 2 computes all the plans for O given O, +, .
+Note that conflicting choices in + and  may make it impossible to find any
+plans. Some of these conflicts can be detected using the dependency relation ,
+as shown in the following proposition:
+Proposition 11. Let O, +,  and O be as in Definition 9 and let O |= , .
+If  
+There may also be particular selections of O, + and  for which the number
+of minimal plans is very large. In this case, selecting the most suitable minimal
+plan becomes difficult for users.
+
+ w.r.t. O,    and   +, then no plan exists.
+
+In order to assist users in the selection of a minimal plan (Steps 10-11), ContentMap implements a number of heuristics based on the confidence of the mappings in the plans and the total number of axioms in the plan, among others.
+
+E. Jim enez-Ruiz et al.
+
+4 Evaluation
+
+In our experiments, we used a suite of four ontologies adapted from the 2004 EON
+Ontology Alignment Contest3 which describe the domain of bibliographic refer-
+ences. These ontologies have been developed independently by INRIA (OINR),
+MIT (OMIT), UMBC (OUMBC) and AIFB Karlsruhe (OAIFB) respectively. Their
+sizes vary from 58 classes, 46 object properties, 26 data properties and 235 axioms in OAIFB to 18 classes, 12 object properties, 19 data properties and 96
+axioms in OUMBC. Even if small, all these ontologies are fairly expressive (OINR
+and OMIT are expressible in the DL ALCHQ(D), OUMBC in ALCIN (D) and
+OAIFB in ALCI(D) respectively). Their average classification time is less than a
+second when using Pellet 1.5.
+In the 2004 EON contest, OINR was used as reference ontology, and the other
+ontologies were independently aligned with it using each of the competing tools.
+For evaluation, a manually produced gold standard containing the agreed-upon,
+correct mappings was provided for each pair of aligned ontologies. The gold standards for OMIT, OUMBC and OAIFB contain 119, 83 and 98 mappings respectively.
+All the test ontologies and gold standards are available at our web page [5].
+
+The experiments are organised in two parts, which we specify next, and were
+
+performed on a laptop with a 1.82 GHz processor and 3GB of RAM.
+
+Repair of Ontologies Using Gold Standard. First, we have evaluated the
+semantic consequences of integrating each of OMIT, OUMBC and OAIFB with OINR
+using the corresponding gold standard to detect inherent disagreements between
+them. In each case we have applied our method from Table 3, with the mappings
+in Step 2 being the corresponding gold standard. We have used both the smallest and the largest approximations of the deductive differences implemented in
+ContentMap (see Section 3.2), and obtained the following results.
+1. Alignment OMIT, OINR: for the smallest (resp. the largest) approximation,
+there were 3 (resp. 33) new entailments in OMIT, 13 (resp. 85) in OINR and
+35 (resp. 189) new mappings.
+2. Alignment OUMBC, OINR: for the smallest (largest) approximation, there were
+2 (7) new entailments in OUMBC, 10 (300) in OINR and 28 (176) new mappings.
+3. Alignment OAIFB, OINR:for the smallest (largest) approximation, there were
+4 (37) new entailments in OAIFB, 2 (19) in OINR and 46 (140) new mappings.
+Note that the number of new entailments (and hence the amount of information
+that ContentMap shows to users) largely depends on the selected approximation.
+In all cases we found a significant number of obviously unintended inferences
+due to inherent disagreements between the ontologies being integrated. For ex-
+ample, when integrating OAIFB and OINR, our tool detected a total of 34 newly
+unsatisfiable concepts in the two ontologies. The large number of (rather com-
+plex) justifications for some of these entailments would make manual repair
+extremely challenging. When computing the corresponding plans, we found that
+
+http://oaei.ontologymatching.org/2004/Contest/
+?
+
+?
+
+?
+Table 4. Synthetic Experiments
+
+1(O1, U), diff
+
+
+2(O2,U) and mdiff
+
+
+Input: O1,O2: ontologies with Sig(O1) = 1, Sig(O2) = 2 and 1  2 = {, }
+M: automatically-generated mappings between 1 and 2, MG: gold standard
+1: Filter M given a confidence threshold 
+2: Compute recall and precision of M with respect to MG
+1,2(M,U) for U := O1 O2 M
+
+3: Compute diff
+4: Compute all minimal plans for U given O = M, + = , and  := new concept
+5: Compute O
+6: Compute recall and precision of M with respect to MG
+2,U)  mdiff
+1,2(M
+1 
+
+7: Compute  = diff
+2  M; and Compute dependency relation  over 
+O
+8: Compute all minimal plans for U given O = M, + =  and := as obtained
+in Algorithm 1 for a pre-fixed confidence threshold 1.
+9: Compute O
+10: Compute recall and precision of M with respect to MG
+
+2 := O2 \ P,M := M \ P, for P the best plan.
+
+2 \ P,M := M \ P, for P the best plan.
+
+unsatisfiability entailments.
+1 := O1 \ P,O
+
+1 := O
+
+1 \ P,O
+
+2 := O
+
+,U) for U := O
+
+1(O
+
+
+1,U)  diff
+
+2(O
+
+
+the problem originated in the incompatible ranges of two datatype properties;
+hence, the modification of two axioms was sufficient to eliminate all the errors.
+In most cases, a significant number of obviously unintended new subsumptions
+were also detected. For example, merging OMIT and OINR resulted in the new
+subsumptions TechnicalReport  Date and TechnicalReport  date.Reference.
+Again, the obtained plans revealed the origin of the problems and facilitated
+their repair.
+
+Synthetic Repair of Automatically Generated Mappings. Having repaired the test ontologies using the gold standard mappings, we used ContentMap
+to automatically detect and repair errors resulting from the generation of new
+mappings using the mapping tools OLA , AROMA4 and CIDER5. Our goal was
+twofold: first, to show that the algorithms in ContentMap are practical; second,
+to show that ContentMap can be used to automatically detect and repair errors,
+as well as to improve the quality of automatically generated mappings.
+
+For each pair of test ontologies, and for various sets of automatically generated mappings, we performed the synthetic experiments described in Table 4,
+which closely follow our proposed method from Table 3. In contrast to Table
+3, however, the repair of errors is performed in two stages: first, the obvious
+errors (i.e. unsatisfiable concepts); then, those subsumptions that ContentMap
+heuristically found unintended. For these experiments we have used the smallest
+approximation of the deductive difference available in ContentMap.
+
+Due to space limitations, here we only summarise the main conclusions; the
+complete results are, however, available in our technical report [5]. First, from a
+computational point of view, the main bottleneck is the computation of all the
+justifications for the entailments of interest. Once the justifications have been
+computed, the time needed for computing the plans is relatively short. Hence,
+4 AROMA: http://www.inrialpes.fr/exmo/people/jdavid/
+5 CIDER: http://sid.cps.unizar.es/SEMANTICWEB/ALIGNMENT/
+
+E. Jim enez-Ruiz et al.
+
+it is important to investigate optimisations for computing all justifications; first
+steps in this direction have been taken in [13, 14].
+
+Second, the number of entailments in the computed differences is similar to
+the results obtained using the gold standard with the same approximation, and
+the number of obtained minimal plans varies from 1-50. Furthermore, the use
+of the dependencies given in Definition 5 significantly reduces the amount of
+information that the user would need to consider.
+
+Third, the use of automatically generated mappings did result in the occurrence of a significant number of unintended entailments. For example, when
+aligning OAIFB and OINR using CIDER with confidence threshold  = 0.1, we
+found 55 new unsatisfiable concepts. After fixing these errors, ContentMap found
+34 unintended subsumption relationships using Algorithm 1 with a threshold
+1 = 0.3. Moreover, we checked manually selected examples and found out that
+the heuristically detected unintended subsumptions were indeed errors; further-
+more, these errors were mainly caused by incorrect mappings.
+
+Fourth, the application of the plans resulted in the automatic correction of
+the identified errors, which resulted in an improvement in the precision of the
+automatically generated mappings. The improvement in precision occurred in all
+cases and varied from 1%-5%, achieving a good balance with respect to the recall,
+which remained unchanged in most cases, although a decrease from 1%-3% was
+observed in a few isolated cases.
+
+5 Related Work and Conclusion
+
+In the last few years, the problem of automatically generating mappings between
+ontologies has been extensively investigated. An comprehensive and up-to-date
+source of information about the topic (including papers, tools, ontologies for
+evaluation, etc.) can be found at http://www.ontologymatching.org/
+
+The problem of reasoning with the generated mappings has also received significant attention. Different semantics have been proposed for assigning formal
+meaning to ontology mappings (e.g. [6, 7]). As mentioned in Section 3, our general approach is applicable regardless of the semantics adopted for the mappings.
+Recently, research has been conducted on the debugging and revision of mappings [1, 2]. This research has so far been focused on mappings represented using
+Distributed Description Logics (DDL) [7]. Our work is also related to the existing approaches for debugging and repairing inconsistencies in OWL ontologies
+(e.g. [15, 12, 11, 13]). In both of these lines of research, the detected and repaired
+errors are limited to unsatisfiable concepts and inconsistent ontologies.
+
+When compared to this existing work, we believe that our approach presents a
+number of improvements. First,the entailments to be repaired are not restricted
+to obvious inconsistencies, but can include any unintended entailment. Second,
+users can customise the kinds of entailments to be taken into account when
+comparing the integrated ontology to the individual ones in order to detect errors
+(i.e., select the approximation of the deductive difference). Third, users can select
+not only which entailments should be invalidated, but also which ones should
+necessarily hold upon completion of the repair process. To this end, we provide
+?
+
+?
+
+?
+a number of novel techniques for helping the user to select which entailments are
+(un)intended, such as the computation of the dependencies between entailments
+(the relation ), confidence in entailments according to the confidence in the
+mappings, etc. Fourth, we provide efficient algorithms for computing all the
+repair plans and to help the user select the most suitable plan from amongst those
+computed. Fifth, when compared to existing work on debugging and repair in
+OWL, we provide a clear distinction between the ontologies being integrated and
+the mappings, and users can customise the ontologies from which the plans are
+allowed to delete axioms. Finally, we provide a fully-fledged editor and reasoning
+infrastructure integrated with Prot eg e 4.

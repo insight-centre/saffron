@@ -68,7 +68,7 @@ public class ProcessWikipedia {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-        }, null, null, Collections.EMPTY_SET);
+        }, null, null, Collections.EMPTY_SET).frequencyStats;
 
         mapper.writerWithDefaultPrettyPrinter().writeValue(new File(args[2]), stats);
     }
@@ -125,7 +125,7 @@ public class ProcessWikipedia {
                         //out.close();
                         //out = null;
                         inArticle = false;
-                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+                        return new Document(null, title, null, title, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
                     } else {
                         sb.append(line).append("\n");
                     }

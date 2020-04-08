@@ -1,0 +1,965 @@
+Web Semantics: Science, Services and Agents on the World Wide Web 7 (2009) 166176
+
+Contents lists available at ScienceDirect
+
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web
+
+j o u r n a l h o m e p a g e : w w w . e l s e v i e r . c o m / l o c a t e / w e b s e m
+
+From keywords to semantic queries
+Incremental query construction on the semantic web
+Gideon Zenz a, Xuan Zhou b, Enrico Minack a, Wolf Siberski a,, Wolfgang Nejdl a
+
+a L3S Research Center, Appelstr. 9a, 30167 Hannover, Germany
+b CSIRO ICT Centre, GPO Box 664, Canberra ACT 2601, Australia
+
+a r t i c l e
+
+i n f o
+
+a b s t r a c t
+
+Article history:
+Received 21 January 2009
+Received in revised form 22 July 2009
+Accepted 27 July 2009
+Available online 5 August 2009
+
+Semantic web
+Keyword search
+Query construction
+
+1. Introduction
+
+Constructing semantic queries is a demanding task for human users, as it requires mastering a query language as well as the schema which has been used for storing the data. In this paper, we describe QUICK, a
+novel system for helping users to construct semantic queries in a given domain. QUICK combines the convenience of keyword search with the expressivity of semantic queries. Users start with a keyword query
+and then are guided through a process of incremental refinement steps to specify the query intention. We
+describe the overall design of QUICK, present the core algorithms to enable efficient query construction,
+and finally demonstrate the effectiveness of our system through an experimental study.
+
+ 2009 Elsevier B.V. All rights reserved.
+
+With the advance of the semantic web, increasing amounts
+of data are available in a structured and machine understandable form. This opens opportunities for users to employ semantic
+queries instead of simple keyword based ones, to accurately
+express the information need. However, constructing semantic
+queries is a demanding task for human users [10]. To compose a
+valid semantic query, a user has to (1) master a query language (e.g.,
+SPARQL) and (2) acquire sufficient knowledge about the ontology
+or the schema of the data source. While there are systems which
+support this task with visual tools [20,25] or natural language interfaces [4,12,13,17], the process of query construction can still be
+complex and time consuming. According to [23], users prefer keyword search, and struggle with the construction of semantic queries
+although being supported with a natural language interface.
+
+Several keyword search approaches have already been proposed to ease information seeking on semantic data [15,31,33] or
+databases [1,30]. However, keyword queries lack the expressivity
+to precisely describe the users intent. As a result, ranking can at best
+put query intentions of the majority on top, making it impossible
+to take the intentions of all users into consideration.
+
+In this paper, we introduce QUICK,1 a novel system for querying
+semantic data. QUICK internally works on pre-defined domainspecific ontologies. A user starts by entering a keyword query,
+
+QUICK then guides the user through an incremental construction
+process, which quickly leads to the desired semantic query. Users
+are assumed to have basic domain knowledge, but dont need specific details of the ontology, or proficiency in a query language. In
+that way, QUICK combines the convenience of keyword search with
+the expressivity of semantic queries.
+
+The paper presents a detailed realization of the QUICK system,
+including the following contributions: (1) we defined a framework
+for incrementally constructing semantic queries from keywords;
+(2) we devised algorithms to generate near-optimal query construction guides, which enable users to quickly construct semantic
+queries; (3) to support the QUICK system, we designed a scheme
+for optimizing the execution of full-text queries on RDF data; (4)
+we conducted experiments to evaluate the effectiveness of QUICK
+and the efficiency of the proposed algorithms.
+
+The rest of the paper is organized as follows. Section 2 provides
+an overview on how to use QUICK. In Section 3 we present our
+framework for incremental query construction. Section 4 presents
+algorithms for generating near-optimal query guides. Section 5
+introduces optimization techniques to improve query execution
+performance. In Section 6, we present the results of our experimental evaluation. Section 7 reviews the related work. We close
+with conclusions in Section 8.
+
+2. QUICK overview
+
+ Corresponding author. Tel.: +49 51176217759; fax: +49 51176217779.
+E-mail addresses: zenz@L3S.de (G. Zenz), xuan.zhou@csiro.au (X. Zhou),
+minack@L3S.de (E. Minack), siberski@L3S.de (W. Siberski), nejdl@L3S.de (W. Nejdl).
+
+1 QUery Intent Constructor for Keywords.
+
+As illustrated in Fig. 1, the interface of QUICK consists of three
+parts, a search field (on the top), the construction pane showing
+query construction options (on the left), and the query pane showing semantic queries (on the right).
+
+1570-8268/$  see front matter  2009 Elsevier B.V. All rights reserved.
+doi:10.1016/j.websem.2009.07.005
+
+Fig. 1. QUICK user interface.
+
+Suppose a user looks for a movie set in London and directed by
+Egdar Wright.2 The user starts by entering a keyword query, for
+instance wright london. Of course, these keywords can imply a lot
+of other semantic queries than the intended one. For example, one
+possible query is about an actor called London Wright. Another one
+could search for a character Wright, who was performed by an actor
+London. QUICK computes all possible semantic queries and presents
+selected ones in the query pane. More importantly, it also generates a set of query construction options and presents them in the
+construction pane. If the intended query is not yet offered, the user
+can incrementally construct this query by selecting an option in
+the construction pane. Whenever the user makes a selection, the
+query pane changes accordingly, zooming into the subset of semantic queries that conform to the chosen options. At the same time, a
+new set of construction options is generated and presented in the
+construction pane. We call this series of construction options query
+guide, because it offers the user a path to the intended query. In
+the screenshot, the user has already selected that london should
+occur in the movie plot, and is now presented alternate construction options for wright. When the user selects the desired query,
+QUICK executes it and shows the results.
+
+The generated construction options ensure that the space of
+semantic interpretations is reduced rapidly with each selection. For
+instance, by specifying that london refers to a movie and not a per-
+son, more than half of all possible semantic queries are eliminated.
+
+After a few choices, the query space comprises only a few queries,
+from which the user can select the intended one easily.
+
+3. Query construction framework
+
+In this section, we introduce the query construction framework
+of QUICK. We describe our model for transforming keyword queries
+to semantic queries using an incremental refinement process.
+
+3.1. Preliminaries
+
+QUICK works on any RDF knowledge base with an associated
+schema in RDFS; this schema is the basis for generating semantic
+queries. We model schema information as a schema graph, where
+each node represents either a concept or a free literal, and each
+edge represents a property by which two concepts are related. To
+keep Definition 1 simple, we assume explicit rdf:type declarations
+of all concepts.
+
+Definition 1 (Knowledge base). Let L be the set of literals, U the set
+of URIs. A knowledge base is a set of triples G  (U  U  (U  L)).
+We use R = {r  U|(s p o) G : (r = s  r = o)} to represent the set
+of resources3,P = {p|s, o : (s p o) G} to represent the set of prop-
+erties, and C = {c|s : (s rdf : type c) G} to represent the set of
+concepts.
+
+2 Throughout this paper, we use the IMDB movie data set as an example to illus-
+
+3 To keep the presentation clear we do not consider blank nodes; adding them to
+
+trate our approach.
+
+the model is straightforward.
+
+G. Zenz et al. / Web Semantics: Science, Services and Agents on the World Wide Web 7 (2009) 166176
+
+Fig. 2. Sample query templates for the IMDB schema; the terms in gray represent instantiations of these templates to semantic queries for wright london.
+
+Definition 2 (Schema graph). The schema graph of a knowledge base G is represented by SG = (C, EC, EL), where C denotes
+a set of concepts, EC denotes
+the possible relationships
+between concepts, and EL denotes possible relationships between
+concepts and literals. Namely, EC = {(c1, c2, p)|r1, r2  R, p P :
+(r1, p, r2) G  (r1 rdf : type c1) G  (r2 rdf : type c2) G}, and EL =
+{(c1, p)|r1  R, p P, l  L : (r1, p, l) G  (r1 rdf : type c1) G }
+
+The schema graph serves as the basis for computing query tem-
+plates, which allow us to construct the space of semantic query
+interpretations, as discussed in the following.
+
+3.2. From keywords to semantic queries
+
+When a Keyword Query kq = {t1, , tn} is issued to a knowledge
+base, it can be interpreted in different ways. Each interpretation
+corresponds to a semantic query. For the query construction pro-
+cess, QUICK needs to generate the complete semantic query space,
+i.e., the set of all possible semantic queries for the given set of
+keywords.
+
+The query generation process consists of two steps. First, possible query patterns for a given schema graph are identified, not
+taking into account actual keywords. We call these patterns query
+templates. Templates corresponding to the example queries from
+Section 2 are: retrieve movies directed by a director or retrieve
+actors who have played a character.
+
+Formally, a query template is defined as composition of schema
+elements. To allow multiple occurrences of concepts or properties,
+they are mapped to unique names. On query execution, they are
+mapped back to the corresponding source concept/property names
+of the schema graph.
+Definition 3 (Query template). Given a schema graph SG =
+(CSG, ECSG, ELSG), T = (CT , ECT , ELT ) is a query template of SG, iff
+(1) there is a function  : CT  CSG mapping the concepts in
+CT to the source concepts in CSG, such that (c1, c2, p) ECT 
+((c1), (c2), p) ECSG and (c1, L, p) ELT  ((c1), L, p) ELSG; (2)
+the graph defined by T is connected and acyclic. We call a concept
+that is connected to exactly one other concept in T leaf concept.
+
+Fig. 2 shows three query templates with sample variable bind-
+ings. QUICK automatically derives all possible templates offline
+from the schema graph (up to a configurable maximum size),
+according to Definition 3. This is done by enumerating all templates having only one edge, and then recursively extending the
+produced ones by an additional edge, until the maximum template
+size is reached.
+
+Currently, we limit the expressivity of templates to acyclic
+conjunctions of triple patterns. Further operators (e.g., disjunc-
+tion) could be added, however at the expense of an increased
+query space size. Investigation of this tradeoff is part of future
+work.
+
+In the second step, semantic queries are generated by binding keywords to query templates. A keyword can be bound to a
+literal if an instance of the underlying knowledge base supports
+
+it. Alternatively, it can be bound to a concept or property, if the
+keyword is a synonym (or homonym) of the concept or property
+name. A full-text index on the knowledge base is used to efficiently
+identify such bindings. Fig. 2 shows some semantic queries for
+the keyword set wright london, which bind the keywords to the
+literals of three different query templates. The left one searches
+for a movie with wright and london in its title. The middle one
+searches for a movie with london in its title directed by a director
+wright. The right one searches for an actor wright playing a character in a movie with london in its title. Furthermore, keywords
+can also be matched to properties and classes, such as name or
+Movie.
+
+Definition 4 (Semantic query). Given a keyword query kq, a semantic query is a triple sq = (kq, T, 
+), where T = (CT , ECT , ELT ) is a query
+template, and 
+ is a function which maps kq to the literals, concepts and properties in T. sq = (kq, T, 
+) is a valid semantic query,
+iff for any leaf concept ci  CT , there exists a keyword ki  kq that is
+mapped by 
+ to ci itself, or a property or a literal connected to ci.
+The Semantic Query Space for a given query kq and schema
+graph SG is the set of all queries SQ = {sq|
+, T : (kq, T, 
+) is a query
+template}.
+
+In our model, each term is bound separately to a node of a tem-
+plate. Phrases can be expressed by binding all corresponding terms
+to the same property, c.f. the left-hand example in Fig. 2. Addition-
+ally, linguistic phrase detection could be performed as a separate
+analysis step; in this case, a phrase consisting of several keywords
+would be treated as one term when guiding the user through the
+construction process.
+
+The QUICK user interface prototype shows the queries as graphs
+as well as in textual form. The query text is created by converting
+graph edges to phrases. For each edge connecting a concept with a
+bound property, we create the phrase <concept> with <keyword>
+in <property>, using the respective concept and property labels.
+If an edge connects two concepts, the relation is translated to the
+phrase this <concept1> <property> this <concept2>. For the second query in Fig. 2, the following text is be generated: Movie with
+london in title and Director with wright in name such that Movie
+directed by this Director.
+
+As shown in Section 5, a semantic query corresponds to a combination of SPARQL triple pattern expressions, which can be directly
+executed on an RDF store.
+
+3.3. Construction guides for semantic queries
+
+QUICK presents the user with query construction options in
+each step. By selecting an option, the user restricts the query space
+accordingly.
+
+These options are similar to semantic queries, except they dont
+bind all query terms. Therefore, the construction process can be
+seen as the step-wise process of selecting partial queries that subsume the intended semantic query.
+
+Fig. 3. Part of a query guide for wright london.
+
+To describe precisely how a query guide is built, we introduce
+the notions of partial query and of sub-query relationship. Our
+notion of query subsumption relies on the RDF Schema definition
+of concept and property subsumption. Note that our algorithms
+are not dependent on a specific definition of query subsumption,
+it would work equally well with more complex approaches, e.g.,
+concept subsumption in OWL.
+Definition 5 (Sub-query, partial query). sa = (qa, Ta, 
+a) is a subquery of sb = (qb, Tb, 
+b), or sa subsumes sb, iff:
+(1) qa  qb;
+(2) there exists a sub-graph isomorphism  between Ta and Tb, so
+that each concept a1  Ta subsumes (a1) and each property
+p Ta subsumes (p);
+
+(3) for any k1  qa, (
+a(k1)) = 
+b(k1).
+
+A partial query is a sub-query of a semantic query.
+
+For example, in Fig. 3, the partial queries pq1, pq2 and pq3 are
+
+sub-queries of sq1, sq2 and sq3 respectively.
+
+The construction options of QUICK are modeled as a Query Construction Graph (QCG), as illustrated in Fig. 3. While the example
+shown is a tree, in general the QCG can be any directed acyclic
+graph with exactly one root node. Given a set of semantic queries
+SQ , a QCG of SQ satisfies:
+
+(1) the root of QCG represents the complete set of queries in SQ ;
+(2) each leaf node represents a single semantic query in SQ ;
+(3) each non-leaf node represents the union of the semantic queries
+
+of its children;
+
+(4) each edge represents a partial query;
+(5) the partial query on an incoming edge of a node subsumes all
+
+the semantic queries represented by that node.
+
+Definition 6 (Query construction graph). Given a set of semantic query SQ and its partial queries PQ , a Query Con-
+, E 
+struction Graph is a graph QCG = (V, E), where V  SQ
+{(v1, v2, p)|v1, v2  V, v2  v1, p PQ, p subsumes v2} andv V,|v| >
+1 : v =
+
+vi|p : (v, vi, p) E
+
+If SQ is the complete query space of a keyword query, a QCG of
+
+SQ is a Query Guide of the keyword query.
+
+Definition 7 (Query guide). A query guide for a keyword query is
+a query construction graph whose root represents the complete
+semantic query space of that keyword query.
+
+With a query guide, query construction can be conducted. The
+construction process starts at the root of the guide, and incrementally refines the users intent by traversing a path of the graph
+until a semantic query on a leaf is reached. In each step, the user
+is presented the partial queries on the outgoing edges of the current node. By selecting a partial query, the user traverses to the
+respective node of the next level. In the example of Fig. 3, after
+having chosen that wright is part of the actors name and london part of the movies title, QUICK can already infer the intended
+query. The properties of the query construction graph guarantee that a user can construct every semantic query in the query
+space.
+
+Every query guide comprises the whole query space, i.e., covers all query intentions. However, these guides vary widely in
+features such as branching factor and depth. A naively generated
+guide will either force the user to evaluate a huge list of partial query suggestions at each step (width), or to take many steps
+(depth) until the query intention is reached. For example, for only
+64 semantic queries, a naive algorithm produces a guide which
+requires the user to evaluate up to 100 selection options to arrive
+at the desired intention, while an optimal guide only requires
+
+G. Zenz et al. / Web Semantics: Science, Services and Agents on the World Wide Web 7 (2009) 166176
+
+17. Therefore, we aim at a query guide with minimal interaction
+cost.
+
+We define the interaction cost as the number of partial queries
+the user has to view and evaluate to finally obtain the desired
+semantic query. As QUICK does not know the intention when generating the guide, the worst case is assumed: the interaction cost
+is the cost of the path through the guide incurring most evaluations of partial queries. This leads to the following cost function
+definition:
+
+Algorithm 1. Straightforward query guide generation
+
+, E
+
+cp = (V
+
+(Interaction
+QCG = (V, E),
+
+Definition 8
+
+graph). Let
+ = {v1, . . . , vn}  V
+tion
+ = {(v1, v2, p1), (v2, v3, p2), . . . , (vn1, vn, pn1)}  E. Then:
+
+cost(cp) =  
+v V
+
+construction
+) be a path of a query construc-
+and
+
+i.e.,
+p : (v, v1, p) E
+
+, and
+
+graph
+
+cost(QCG) = max(cost(cp) : cp).
+
+cost
+
+of
+
+query
+
+Definition 9 (Minimum query construction graph). Given a set of
+semantic queries SQ , a query construction graph QCG is a minimum query construction graph of SQ , iff there does not exist
+ of SQ such that cost(QCG) >
+another query construction graph QCG
+cost(QCG
+
+).
+
+A query guide which satisfies Definition 9 leads the user to the
+intended query with minimal interactions. In the following section,
+we show how to compute such guides efficiently.
+
+4. Query guide generation
+
+For a given keyword query, multiple possible query guides exist.
+While every guide allows the user to obtain the wanted semantic
+query, they differ significantly in effectiveness as pointed out in Section 3.3. It is thus essential to find a guide that imposes as little effort
+on the user as possible, i.e., a minimum query guide. Query construction graphs have several helpful properties for constructing
+query guides:
+
+Lemma 10 (Query construction graph properties).
+
+(i) Given a node in a query construction graph, the complete sub-
+
+graph with this node as root is also a query construction graph.
+
+(ii) Suppose QCG is a query construction graph, and A is the set of
+children of its root. The cost of QCG is the sum of the number of
+nodes in A and the maximum cost of the sub-graphs with root in
+A, i.e. Cost(T) = |A| + MAX(Cost(a) : a A).
+
+(iii) Suppose QCG is a minimum query construction graph and A is
+the set of children of its root. If g is the most expensive subgraph with root in A, then g is also a minimum query construction
+graph.
+
+4.1. Straightforward guide generation
+
+Lemma 10 can be exploited to construct a query construction
+guide recursively. Based on Property (ii), to minimize the cost
+of a query construction graph, we need to minimize the sum of
+(1) the number of children of the root, i.e., |A| and (2) the cost
+of the most expensive sub-graph having one of these children
+as root, i.e., MAX(Cost(a) : a A). Therefore, to find a minimum
+construction graph, we can first compute all its possible minimum sub-graphs. Using these sub-graphs, we find a subset A with
+the minimum |A| + MAX(Cost(a) : a A). The method is outlined in
+Algorithm 1.
+
+). In fact, we can prove that the problem of finding
+
+According to Lemma 10, this algorithm always finds a minimum
+query guide. However, it relies on the solution of the SetCover
+problem, which is NP-complete [11]. Although there are polynomial approximation algorithms for minSetCover with logarithmic
+approximation ratio, our straightforward algorithm still incurs prohibitive costs. Using a greedy minSetCover, the complexity is still
+O(
+a minimum query guide is NP hard.
+Definition 11 (minSetCover). Given a universe U and a family S of
+subsets of U, find the smallest subfamily C  S of sets whose union
+is U.
+Theorem 12. The minConstructionGraphproblem is NP hard.
+Proof. We reduce minSetCover to minConstructionGraph: MS :
+U  US is a bipartite mapping between U and a set of semantic
+queries US. MP : S  SP is a bipartite mapping between S and a set
+of partial queries SP, such that each partial query p SP subsumes
+
+the semantic queries MS(M
+P (p)). Create another set of semantic
+queries AS and a set of partial queries AP. Let |AS| = 2  |MS|. Let
+AP contain two partial queries, each covering half of AS. Therefore,
+the cost of the minimum query construction graph of AS is |MS| + 1,
+which is larger than any query construction graph of MS. Based
+on Lemma 10, if we solve minConstructionGraph(US  AS, UP  AP),
+we solve minSetCover(U, S). 
+
+4.2. Incremental greedy query guide generation
+
+As shown, the straightforward algorithm is too expensive. In this
+section, we propose a greedy algorithm, which computes the query
+construction graph in a top-down incremental fashion.
+
+Algorithm 2 starts from the root node and estimates the optimal
+set of partial queries that cover all semantic queries. These form the
+second level of the query construction graph. In the same fashion, it
+recurses through the descendants of the root to expand the graph.
+Thereby, we can avoid constructing the complete query construction graph; as the user refines the query step-by-step, it is sufficient
+to compute only the partial queries of the node the user has just
+reached.
+
+The algorithm selects partial queries one by one. Then, it enumerates all remaining partial queries and chooses the one incurring
+
+minimal total estimated cost. It stops when all semantic queries are
+covered. The complexity of the algorithm is O(|P|  |S|).
+
+The formula for the total estimated cost of a query construction
+
+graph is given in Definition 13.
+
+Algorithm 2.
+
+Incremental greedy query guide generation.
+
+Fig. 4. SPARQL query for the right-hand sample in Fig. 2.
+
+To make QUICK work, these SPARQL queries need to be processed efficiently. Recent research in the area of SPARQL query
+evaluation has made significant progress [22,24,29,27], mainly
+based on dynamic programming, histograms and statistical methods for estimating cardinality and selectivity. However, available
+mature SPAQL engines either do not employ these techniques or do
+not offer them in combination with the full-text querying capabilities QUICK requires. In [19], we evaluated the performance of the
+most popular RDF engines with respect to these features, using an
+extended Lehigh University Benchmark (LUBM). The results show
+that the evaluated engines do not perform well on the type of hybrid
+queries needed by QUICK, as they still use rather simple heuristics
+to optimize the order of join operations.
+
+Statistics of join cardinality can be employed to optimize the
+join order effectively. We adopted this approach in QUICK to
+improve the semantic query execution performance. In the fol-
+lowing, we show how to estimate the cardinality of each triple
+pattern, and explain how to exploit these estimates for join
+ordering.
+
+5.1. Cardinality estimation
+
+Triple patterns in SPARQL queries can be categorized into four
+types. For each type, we use a different method to estimate the car-
+dinality. Let s p o be a triple pattern, where p is always a constant.
+For patterns of type s p ?o, where !s is a constant and ?o is a free
+variable, we exploit the B-Tree subject index, which is employed
+in most RDF stores [5,8,22]. We estimate the cardinality as the distance between the leftmost and rightmost matching element in
+the B-Tree. For patterns of type ?s p o, the B-Tree object index is
+used. For patterns of type !s p ?o, where s is a variable already
+bound in the query plan, and o is a free variable, the cardinality
+can  assuming uniform distribution of values  be estimated as
+card(s, p) = |triples(p)|/|subjects(p)|, where triples(p) are the triples
+containing p, and subjects(p) are the distinct subjects occurring in
+these triples. The same technique is applied to the pattern ?s p !o.
+These statistics can be precomputed, and only need to be updated
+on significant knowledge base changes.
+
+5.2.
+
+Join order optimization
+
+Among the set of SPARQL algebra operators, i.e., select, join and
+triple pattern, query execution costs are dominated by join in most
+cases. This makes join ordering crucial for efficient query pro-
+cessing. For a query containing n join operators, they cannot be
+exhaustively checked, as the number of possible join orders is facto-
+rial. Dynamic programming is thus used to identify a near-optimal
+join order [26]. Our implementation works as follows: it starts
+with a pool of (distinct) join sequence candidates, where each one
+initially contains only one join. Then, the join sequence with the
+minimum cost is chosen, and the join with smallest cardinality that
+is not yet in this sequence is added to the pool. The plan generation
+is complete as soon as the join sequence contains all joins.
+
+To compute the join operator cost, we rely on the fact that
+RDF stores use the Index Nested Loop Join (INLJ) (e.g., [5,9]). Let
+INLJ be a index nested loop join. Let INLJ.left (INLJ.right) represent
+the left (right) child of the join. Then the joins cost can be calcu-
+
+Definition 13 (Total estimated cost). Let S be the semantic queries
+to cover, SP the set of already selected partial queries, and p the
+partial query to evaluate, the estimated cost of the cheapest query
+construction graph is:
+max(minGraphCost(|p|) : p SP),
+
+TotalEstCost(S, SP) = |S|(|SP|/|S 
+
+SP|) +
+
+where
+
+minGraphCost(n) =
+
+n = 1 : 0
+n = 2 : 2
+n > 2 :
+
+e  ln(n)
+
+Here, minGraphCost(|p|) estimates the minimum cost of the
+query construction graph of p. Suppose f is the average fan-out
+for n queries, then the cost is approximately f  logf (n), which is
+minimal for f = e. The first addend of TotalEstCost estimates the
+expected number of partial queries that will be used to cover all
+semantic queries. This assumes the average number of semantic
+queries covered by each partial query does not to vary.
+
+As discussed above, the algorithm runs in polynomial time with
+respect to the number of partial and semantic queries. Although the
+greedy algorithm can still be costly when keyword queries are very
+long, our experimental results of Section 6.4 show that it performs
+very well if the number of keywords is within realistic limits
+
+5. Query evaluation
+
+When the user finally selects a query that reflects the actual
+intention, it will be converted to a SPARQL query and evaluated
+against an RDF store to retrieve the results. The conversion process
+is straight forward: For each concept node in the query or edge
+between nodes, a triple pattern expression of SPARQL is generated.
+In the first case, it specifies the node type, in the second case it
+specifies the relation between the nodes. Finally, for each search
+term, a filter expression is added. See Fig. 4 for an example.4
+
+4 In our actual implementation, we use the custom language extension of Luce-
+
+neSail to express full-text filters.
+
+G. Zenz et al. / Web Semantics: Science, Services and Agents on the World Wide Web 7 (2009) 166176
+
+Fig. 5. Query construction cost histograms for IMDB (left) and Lyrics (right) for three different query space sizes.
+
+lated as cost(INLJ) = cost(INLJ.left) + (card(INLJ)  cost(INLJ.right)),
+where card(INLJ) represents the cardinality estimation of the join.
+The join cardinality is estimated as card(join) = card(join.left) 
+card(join.right), where card(join.left) and card(join.right) are
+obtained using our statistics.
+
+As shown in Section 6.4.1, this approach ensures efficient eval-
+
+uation of semantic queries.
+
+6. Experimental evaluation
+
+We implemented the QUICK system using Java. The implementation uses Sesame2 [5] as RDF Store and the inverted index
+provided by LuceneSail [18] to facilitate semantic query generation.
+Parts of the described query optimization approaches have been
+integrated to Sesame2 version 2.2. We have used this implementation to conduct a set of experiments to evaluate the effectiveness
+and efficiency of the QUICK system and present our results in this
+section.
+
+6.1. Experiment setup
+
+Our experiments use two real world datasets. The first one is the
+Internet Movie Database (IMDB). It contains 5 concepts, 10 prop-
+erties, more than 10 million instances and 40 million facts. The
+second dataset (Lyrics, [2]) contains songs and artists, consists of 3
+concepts, 6 properties, 200 thousand instances and 750 thousand
+facts. Although the vocabulary of the datasets is rather small, they
+still enable us to show the effectiveness of QUICK in constructing
+domain-specific semantic queries.
+
+To estimate the performance of QUICK in real-world settings, we
+used a query log of the AOL search engine. We pruned the queries
+by their visited URLs to obtain 3000 sample keyword queries for
+IMDB and 3000 sample keyword queries for Lyrics web pages. Most
+of these queries are rather simple, i.e., only referring to a single con-
+cept, such as a movie title or an artists name, and thus cannot fully
+reflect the advantages of semantic queries. We therefore manually went through these queries and selected the ones referring to
+more than two concepts. This yielded 100 queries for IMDB and
+75 queries for Lyrics, consisting of 25 keywords. We assume that
+every user has had a clear intent of the keyword query, implying
+that each one can be interpreted as a unique semantic query for
+the knowledge base. We manually assessed the intent and chose
+the corresponding semantic query as its interpretation. It turned
+out that most keyword queries had a very clear semantics. These
+interpretations served as the ground truth for our evaluation.
+
+The experiments were conducted on a 3.60 GHz Intel Xeon
+server. Throughout the evaluation, QUICK used less than 1 GB
+memory.
+
+6.2. Effectiveness of query construction
+
+Our first set of experiments is intended to assess the effectiveness of QUICK in constructing semantic queries, that is, how fast
+
+a user can turn a keyword query into the corresponding semantic
+query. At each round of the experiment, we issued a keyword query
+to QUICK and followed its guidance to construct the corresponding
+semantic query. We measured the effectiveness using the following
+two metrics:
+
+(1) the interaction cost of each query construction process, i.e., the
+total number of options a user had evaluated to construct each
+semantic query;
+
+(2) the number of selections a user performed to construct each
+
+semantic query, i.e., the number of clicks a user had to make.
+
+The results of the experiments are presented in Table 1 and
+
+Figs. 5 and 6.
+
+Table 1 shows that the size of the semantic query space grows
+very fast with the number of terms in a keyword query. Because the
+datasets are large, a term usually occurs in more than one place of
+the schema graph. As the size of the query space is usually proportional to the occurrences of each term in the schema graph, it grows
+exponentially with the number of terms. Furthermore, even for less
+than five terms, the size of the query space can be up to 9000 for
+IMDB and up to 12,000 for Lyricssuch a huge query space makes it
+difficult for any ranking function to work effectively. For comparison purposes, we applied the SPARK [33] ranking scheme to the
+semantic queries generated by QUICK, but experiments showed
+that SPARK could not handle it in a satisfactory manner. In most
+cases, a user needed to go through hundreds or thousands of queries
+to obtain the desired one. In contrast, QUICK displays steady performance when confronted with such big query spaces. As shown
+in Table 1, the maximum number of options a user needs to examine until obtaining the desired semantic query is always low (33 for
+IMDB rsp. 22 for Lyrics). On average, only 9 rsp. 7 options have to be
+examined by the user. The cost of the query construction process
+grows only linearly with the size of the keyword queries. This verifies our expectation that QUICK helps users in reducing the query
+space exponentially, enabling them to quickly construct the desired
+query.
+
+Fig. 5 shows the cost distribution of the query construction for
+different query space sizes. We can see that for most queries, the
+user only has to inspect between 4 and 11 queries. Only in rare
+cases more than 20 queries had to be checked. The cost of the query
+construction process shows a similar trend, growing only logarithmically with the size of the query space. As shown on the left-hand
+side of Fig. 6, in most cases, only 25 user interactions were needed.
+On the right, we show the average position of the selected partial queries. These were almost always among the first 5 presented
+options.
+
+To summarize, this set of experiments shows that QUICK effectively helps users to construct semantic queries. In particular, the
+query construction process enables users to reduce the semantic
+query space exponentially. This indicates the potential of QUICK in
+handling large-scale knowledge bases.
+
+Fig. 6. Histograms of the number of interactions and average click position.
+
+Table 1
+Effectiveness of QUICK for IMDB and Lyrics.
+
+No. of terms
+
+Avg. query
+space size
+
+> 4
+All
+
+Cost
+
+Avg.
+
+Avg. query
+space size
+
+Max
+
+Lyrics
+
+Cost
+
+Avg.
+
+Max
+
+Table 2
+QUICK response time for IMDB and Lyrics.
+
+No. of terms
+
+Initial time (ms)
+
+Response time (ms)
+
+Lyrics
+
+120780
+
+Lyrics
+
+> 4
+All
+
+6.3. Efficiency
+
+To demonstrate that QUICK is feasible for real world applica-
+tions, we conducted experiments to measure the computation time
+for generating query guides and for retrieving the final intended
+semantic queries.
+
+6.3.1. Query guide generation
+
+We recorded the response times for each interaction of the query
+construction process. The initialization time as shown in the 2nd
+and 3rd column of Table 2 comprises (1) the creation of the semantic query space, (2) computation of sub-query relationships, and (3)
+keyword lookup in the full-text index. These tasks are fully dependant on the RDF store. The response time to user interactions were
+very short (4th and 5th column), enabling a smooth construction
+process.
+
+In implementing QUICK, we focused on efficient algorithms for
+query guide generation and query evaluation. We are confident
+that for the initialization tasks the performance can be improved
+significantly, too, e.g., by adapting techniques from [16] and by
+introducing special indexes.
+
+6.4. Quality of the greedy approach
+
+To evaluate the quality of the query guides generated by the
+greedy algorithm discussed in Section 4.2, we compared it against
+the straightforward algorithm of Section 4.1. As the latter is too
+expensive to be applied to a real dataset, we restricted the experiments to simulation. We generated artificial semantic queries,
+partial queries and sub-query relationships. The semantic queries
+subsumed by each partial query were randomly picked, while the
+number of these was fixed. Therefore, three parameters are tunable when generating the queries, n complete  the number of
+semantic queries, n partial  the number of partial queries, and
+coverage  the number of semantic queries subsumed by each partial query.
+
+In the first set of experiments, we fixed n complete to 128 and
+coverage to 48, and varied n partial between 4 and 64. We run
+both algorithms on the generated queries, and recorded the cost of
+the resulting query guides and their computation time. To achieve
+consistent results, we repeatedly executed the simulation and calculated the average.
+
+As shown in the left-hand side of Fig. 7, the chance to
+generate cheaper query guides increases with the number of
+partial queries. Guides generated by the greedy algorithm are
+only slightly worse (by around 10%) than those generated
+by the straightforward algorithm, independent of the number
+of partial queries. The computation time of the straightforward algorithm increases exponentially with the number of
+partial queries, while that of the greedy algorithm remains
+almost linear. This is consistent with the complexity analysis of
+Section 4.
+
+In the second set of experiments, we varied n complete between
+32 and 256, fixed n partial to 32, and set coverage to 1/4 of
+n complete. The results are shown in Fig. 8.
+
+Fig. 7. Varying number of partial queries.
+
+G. Zenz et al. / Web Semantics: Science, Services and Agents on the World Wide Web 7 (2009) 166176
+
+Fig. 8. Varying number of semantic queries.
+
+Fig. 9. Varying coverage of partial queries.
+
+As expected, as the number of semantic queries increases expo-
+nentially, the cost of query construction increases only linearly. The
+guides generated by the greedy algorithm are still only slightly
+worse (by around 10%) than those generated by the straightforward algorithm. This difference does not change significantly with
+the number of semantic queries. The performance conforms to the
+complexity analysis of Section 4.
+
+In the third set of experiments, we fixed n complete to 64 and
+
+n partial to 16, and varied coverage between 8 and 48.
+
+Fig. 9 shows that as the coverage increases, the cost of resulting
+query guides first decreases and then increases again. This confirms that partial queries with an intermediate coverage are more
+suitable for creating query construction graphs, as they tend to minimize the fan-out and the cost of the most expensive sub-graph
+simultaneously. The difference between the greedy algorithm and
+the straightforward algorithm increases with the coverage. This
+indicates that the greedy algorithm has a non-constant performance with respect to coverage, which was to be expected, as
+result of the logarithmic performance rate of minSetCover and the
+assumptions of Definition 13. Fortunately, in real data, most partial
+queries have a relatively small coverage (less than 20%), where this
+effect is less noticeable, justifying our assumptions.
+
+In summary the experiments showed the greedy algorithm to
+have the desired properties. In comparison to the straightforward
+algorithm, the generated guides are just slightly more costly for
+
+the user, but are generated much faster, thereby demonstrating
+the applicability of the QUICK approach.
+
+6.4.1. Query evaluation
+
+To assess the impact of the query evaluation techniques discussed in Section 5, we randomly selected 14 keyword queries
+from the IMDB query set. Using QUICK, we generated the semantic
+query space for these queries with a maximum size of 7. The 5305
+semantic queries which returned more than 100 results were used
+to assess the query evaluation performance.
+
+We computed the improvement factor in terms of query accel-
+eration. Fig. 10 shows the distribution of this factor. In comparison
+with the un-optimized RDF store, some queries did not run faster
+or even took slightly longer. However, the majority of the queries
+improved significantly (factor 440), demonstrating the benefits of
+our join order optimizations.
+
+7. Related work
+
+In recent years, a number of user interfaces have been proposed
+to facilitate construction of semantic queries. These interfaces can
+be mainly classified into visual graphic interfaces [20,25] and natural language interfaces [13,4,17]. Natural language interfaces are
+potentially more convenient for end users [12], as they require little
+prior knowledge of the data schema or a query language. However,
+
+Fig. 10. Histogram of performance improvements.
+
+the state-of-the-art natural language interfaces still require users
+to use a terminology that is compatible with the data schema and
+form grammatically well-formed sentences [12]. To overcome this
+limitation, a number of techniques have been used to help users
+construct valid natural language queries. For instance, the interface of [13] provides a dialog for users to align natural language
+terms to the ontology. The interface of [4] utilizes auto-completion
+to guide users to create meaningful sentences. In comparison with
+these methods, QUICK offers more flexibility in issuing queries. It
+accepts arbitrary keyword queries and allows users to incrementally structure the query through an optimized process.
+
+Extensive investigations have recently been conducted on how
+to perform keyword search on the Semantic Web [15,3133] and
+databases [1,30]. The majority of work treats each data set as a
+graph, and regards the query results as sub-graphs, e.g., Steiner
+trees [14], which contain the query terms. They have in common
+that relevance ranking of these graphs is performed. As identifying the top-k query results would incur prohibitive I/O and
+computational cost, most of the approaches have been focusing on
+improving the performance of query processing. In contrast, QUICK
+is designed to help users to construct semantic queries. As the query
+results are retrieved after the semantic query is constructed, query
+processing is not a critical issue for QUICK. Work that is closest
+to QUICK includes [31,33,30]. Instead of retrieving search results
+directly, these approaches attempt to translate a keyword query
+into a set of semantic queries that are most likely to be intended by
+users. However, these approaches can at best rank the most popular
+query intentions on top. As the number of semantic query interpretations is very high, it is impossible to take the intentions of all users
+into consideration. As QUICK allows users to clarify the intent of
+their keyword queries, it can satisfy diverse user information needs
+to a much higher degree.
+
+Automatic query completion [3,21,7] and refinement [28] are
+techniques that help users forming appropriate structured queries
+by suggesting possible structures, terms or refinement options
+based on the partial queries the user has already entered. By using
+these suggestions, the user constructs correct database queries
+without completely knowing the schema. However, as this technique still requires users to form complete structured queries, it
+is less flexible than QUICK, which allows users to start with arbitrary keyword queries. Moreover, they do not tackle the issue of
+minimizing the users interaction effort.
+
+A main advantage of QUICK is its ability to allow users to clarify
+the intent of their keyword queries through a sequence of steps.
+In the area of Information Retrieval, document clustering and
+classification have been used for similar purposes, especially in
+connection with faceted search interfaces. For example [6] classifies document sets based on pre-defined categories and lets users
+disambiguate their search intent by selecting the most preferred
+categories. However, Information Retrieval approaches do not
+work on complex structured data, because joins over different
+concepts are not supported.
+
+8. Conclusion
+
+In this paper, we introduced QUICK, a system for guiding users
+in constructing semantic queries from keywords. QUICK allows
+users to query semantic data without any prior knowledge of its
+ontology. A user starts with an arbitrary keyword query and incrementally transforms it into the intended semantic query. In this
+way, QUICK integrates the ease of use of keyword search with the
+expressiveness of semantic queries.
+
+The presented algorithms optimize this process such that the
+user can construct the intended query with near-minimal interac-
+tions. The greedy version of the algorithm exhibits a polynomial
+
+runtime behavior, ensuring its applicability on large-scale realworld scenarios. To our knowledge, QUICK is the first approach that
+allows users to incrementally express the intent of their keyword
+query. We presented the design of the complete QUICK system and
+demonstrated its effectiveness and practicality through an extensive experimental evaluation.
+
+As shown in our study, QUICK can be further improved and
+extended in the following directions. (i) While QUICK currently
+works well on focused domain schemas, large ontologies pose additional challenges with respect to usability as well as efficiency. To
+improve usability, we plan to make use of concept hierarchies to
+aggregate query construction options. In that way, we keep their
+number manageable and prevent the user from being overwhelmed
+by overly detailed options. To improve further on efficiency, we are
+working on an algorithm that streamlines the generation of the
+semantic query space. (ii) A further field of improvement is making the user interface more intuitive, especially for users without
+expertise in semantic web or databases. (iii) Based on the improved
+user interface, we will conduct a user study to verify its suitability
+for non-expert users and its effectiveness on a larger scale.

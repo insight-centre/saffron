@@ -1,0 +1,1024 @@
+Drug-Target Interaction Prediction
+
+Using Semantic Similarity and Edge Partitioning
+
+Guillermo Palma1, Maria-Esther Vidal1, and Louiqa Raschid2
+
+1 Universidad Sim on Bol var, Venezuela
+
+2 University of Maryland, USA
+
+gpalma,mvidal@ldc.usb.ve, louiqa@umiacs.umd.edu
+
+Abstract. The ability to integrate a wealth of human-curated knowledge from scientific datasets and ontologies can benefit drug-target interaction prediction. The hypothesis is that similar drugs interact with
+the same targets, and similar targets interact with the same drugs. The
+similarities between drugs reflect a chemical semantic space, while similarities between targets reflect a genomic semantic space. In this paper,
+we present a novel method that combines a data mining framework for
+link prediction, semantic knowledge (similarities) from ontologies or semantic spaces, and an algorithmic approach to partition the edges of
+a heterogeneous graph that includes drug-target interaction edges, and
+drug-drug and target-target similarity edges. Our semantics based edge
+partitioning approach, semEP, has the advantages of edge based community detection which allows a node to participate in more than one cluster
+or community. The semEP problem is to create a minimal partitioning of
+the edges such that the cluster density of each subset of edges is maximal.
+We use semantic knowledge (similarities) to specify edge constraints, i.e.,
+specific drug-target interaction edges that should not participate in the
+same cluster. Using a well-known dataset of drug-target interactions,
+we demonstrate the benefits of using semEP predictions to improve the
+performance of a range of state-of-the-art machine learning based prediction methods. Validation of the novel best predicted interactions of
+semEP against the STITCH interaction resource reflect both accurate
+and diverse predictions.
+
+Keywords: Drug-target interaction prediction, vertex coloring graph,
+community detection, graph partitioning.
+
+Introduction
+
+Linked Open Data has important applications across the biomedical enterprise
+where there is a nexus created by the availability of publicly accessible richly curated scientific collections and the extensive use of ontologies and thesauri. This
+ability to seamlessly integrate a wealth of human-curated knowledge can benefit
+many applications including drug-target interaction prediction and drug-drug
+similarity ranking. Consider that drugs are molecules that participate in some
+biomolecular reaction associated with a disease related genomic target (protein).
+
+P. Mika et al. (Eds.) ISWC 2014, Part I, LNCS 8796, pp. 131146, 2014.
+c Springer International Publishing Switzerland 2014
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+The ability to predict new drug-target interactions can have applications in drug
+re-purposing to find new targets for drugs. A related application is drug-drug
+side effect prediction, e.g., to construct the SIDER [16] side effect resource, or
+to populate ADEpedia [14], a knowledge base of adverse drug events (ADEs) for
+drug safety surveillance.
+
+Beyond drug-target interaction prediction, drug-drug similarity rankings are
+an important component of the comprehensive evidence that is used to make
+clinical or policy recommendations. Consider the following example relevant to
+a group of monoclonal antibodies (mab) drugs: On November 3, 2010, The New
+York Times reported that Genentech began offering secret rebates to ophthalmologists in an apparent inducement to get them to prescribe Ranibizumab
+rather than the less expensive Bevacizumab. Several studies have shown no superior effect of Ranibizumab over Bevacizumab for the treatment of macular
+degeneration, an aging-related eye condition. Subsequently, on April 8, 2014, the
+Washington Post highlighted the results from analyzing a BIGDATA Medicare
+collection revealing that one of the largest Medicare billers, an ophthalmologist
+in West Palm Beach, Fla., earned $20 million in 2012; a large fraction of his
+earnings came from injecting patients with Lucentis (Ranibizumab) instead of
+Avastin (Bevacizumab).
+
+Figures 1(a) and (b) show a schematic overview of drug-target interaction
+networks; drugs are circles and targets are squares. For interaction prediction,
+or to determine functionally equivalent drugs, one must exploit drug-drug and
+target-target similarities; the hypothesis is that similar drugs interact with the
+same targets, and similar targets interact with the same drugs. The similarities
+between drugs reflect a chemical semantic space, while similarities between targets reflect a genomic semantic space [8,21]. Within these semantic spaces, pairs
+of drugs or pairs of targets may have multiple semantics-based similarity scores.
+For example, drugs can have similarities based on chemical structure or shared
+side-effects, while gene targets may share sequence based or protein-protein interaction based similarity [21]; this is illustrated by the multiple edge types.
+
+For the purpose of this paper we focus on drug-target interaction edges. How-
+ever, our method can be applied to a variety of Linked Data collections and
+ontologies as will be seen in the next section.
+
+There are many approaches for link prediction or similarity ranking, e.g.,
+drug-target interaction networks [29] or citation graphs [20]. The importance of
+structured knowledge and collective classification for drug-target prediction was
+discussed in [11]. Structured knowledge include triads; in Figure 1(b), the interaction edge (di, tx), the similarity between targets tx and ty, and the potential
+interaction edge (di, ty) form a triad. Similarly, in Figure 1(a), the two interaction edges (di, tx) and (dj, ty), the corresponding drug-drug similarity between
+di and dj, and the target-target similarity between tx and ty, form a tetrad.
+Further, collective classification would support the simultaneous reasoning over
+the edges (di, tx), (di, ty), (di, tz), etc., in Figure 1(b), and their corresponding
+similarities.
+?
+
+?
+
+?
+(a) Drug-target interaction
+
+(b) Drug-target interaction prediction through collective classi-
+fication
+
+Fig. 1. (a) Drug-Target Interaction Network. Drugs are circles and diseases are rect-
+angles. (b) An Example of Collective Classification of Potential Interactions.
+
+We present semEP, an unsupervised semantics based edge partitioning method;
+semEP combines a data mining framework for link prediction, semantic knowledge (similarities) from ontologies or semantic spaces, and an algorithmic
+approach to partition the edges of a heterogeneous graph. For this paper, we
+consider a graph that includes drug-target interaction edges, and drug-drug and
+target-target similarities. The semEP problem is to create a minimal partitioning of the edges such that the cluster density of each subset of edges is maximal.
+An advantage of semEP edge clustering is that it allows a node to participate in
+more than one cluster or community; this is a natural match with the semantics
+of drugs that have multiple functions, and thus interact with different targets.
+We do not limit semEP to triad or tetrad clusters and we consider clusters of
+varying shape and size. Further, semEP can use semantic knowledge on similarities to specify edge constraints, i.e., specific pairs of drug-target interaction
+edges that should not occur in the same cluster.
+
+Using a well-known dataset of drug-target interactions [3,8], we demonstrate
+the benefits of using semEP predictions to improve the performance of all the
+state-of-the-art machine learning based prediction methods [8]. We also validate
+the best novel predictions of all the methods (where the interactions are not in
+the test dataset) against the STITCH drug-target interaction resource [17]. The
+good performance of semEP reflects its ability to exploit structured semantic
+knowledge to make accurate and diverse predictions.
+
+This paper is organized as follows: Section 2 provides a motivating example
+of Linked Data and ontological knowledge and Section 3 describes the semEP
+edge partitioning problem. Section 4 summarizes related research. Experimental
+results are reported in Section 5 and Section 6 concludes.
+
+2 Semantics of Annotations and Ontological Relatedness
+
+In this paper, we focus on a specific link prediction use case  the problem of predicting drug-target or drug-disease interaction edges. However, as motivation, we
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+(a) Bevacizumab and Cetuximab
+
+(b) ISA Hierarchy
+
+Fig. 2. (a) Drugs Bevacizumab and Cetuximab (green rectangles), Disease Annotations
+(orange rectangles) and NCI Thesaurus Terms (red ovals). Four communities are highlighted in blue. (b) Fragment of an ISA Hierarchy in the NCIt. The red lines indicate
+ISA relationships
+
+consider the more general problem of drug-drug similarity ranking. Bevacizumab
+and Cetuximab are exemplars of monoclonal antibodies that are anti-neoplastic
+agents used in cancer treatment. We consider the similarity of Bevacizumab
+and Cetuximab using their neighborhood graph of shared annotations of disease
+terms. Figure 2(a) represents (partial) disease annotations associated with each
+drug; the disease terms are mapped to terms in the NCI Thesaurus (NCIt). Each
+path between a pair of diseases, e.g., Colon Carcinoma and Stage IV Rectal
+Cancer, is identified with red circles representing intermediate NCIt terms.
+
+A simple shared annotation pattern would include the identical term, e.g.,
+Rectal Carcinoma. Ontological relatedness indicates that non-identical terms
+such as Colon Carcinoma and Stage IV Rectal Cancer are also related to
+each other. Combining shared annotation and ontological relatedness, we may determine that (Colon Carcinoma, Colorectal Carcinoma, Rectal Carcinoma,
+Stage IV Rectal Cancer), together, form a shared community of ontologically
+related disease terms. Further, (Malignant Colorectal Neoplasm, Stage IV
+Colon Cancer, Colorectal Adenocarcinoma) appear to form a (possibly over-
+lapping)
+Oropharyngeal
+Neoplasm, Head and Neck Neoplasm) and (Malignant Uterine Neoplasm,
+Malignant Ovarian Neoplasm) form additional distinct communities.
+
+(Thyroid Gland Neoplasm,
+
+community, while
+
+Figure 2(b) shows a fragment of the NCIt ISA hierarchy. Carcinoma can be
+specialized to various organs, e.g., Lung Carcinoma; to specific types of disease,
+e.g., Adenocarcinoma; to disease stages, e.g., Stage IV Breast Cancer; or to
+combinations, e.g., Stage III Colorectal Adenocarcinoma (not shown).
+?
+
+?
+
+?
+3 Semantics Based Edge Partitioning Problem (semEP)
+
+3.1 From Structured Knowledge to Link Prediction for Drug Target
+
+Interaction Networks
+
+Let D = {d1, d2,  , dm} be a drug set and let T = {t1, t2,  , tn} be a target set.
+Let Sd be a drug similarity matrix where the (i,j)-th element denoted sd(di,dj) is
+a similarity score (potentially there are multiple scores) between drugs di and dj .
+Let St be a target similarity matrix where the (i,j)-th element denoted st(ti,tj)
+is a similarity score between targets ti and tj.
+
+Let Y be a binary matrix of true labels of drug-target interactions. Yi,j =
+
+1 if drug di interacts with target tj; Yi,j = 0 otherwise.
+
+The objective is to produce a score matrix F where the (i,j)-th element de-
+
+noted Fi,j is the score or probability that the drug di interacts with target tj.
+
+The hypothesis underlying most solutions is that similar drugs interact with
+the same targets, and similar targets interact with the same drugs. While this
+appears to be straightforward, there are many challenges. First, there is no single
+approach to determine the similarities between drugs or between targets; indeed
+there are many similarities based on different semantics [21]. Referring to the
+Linked Data example in the previous section, the NCIt can be used to define a
+semantic space for drugs and for targets (diseases), while taxonomic metrics can
+be used to determine similarity scores using the NCIt structure.
+
+A bigger challenge is that the bipartite drug-target interaction network expresses multi-relational or graph structured knowledge. A drug di may be complex in its functional behavior and may have multiple targets. Hence, a drug dj
+that is similar to di based on chemical structure but not on side-effect similarity,
+may only share some of the targets of di.
+
+A state-of-the-art solution for the drug-target interaction prediction problem
+is presented in [11] where they propose a drug-target prediction framework based
+on Probabilistic Soft Logic (PSL) [5]. The PSL based solution reasons collectively
+over interactions using structured rules that capture the multi-relational nature
+of the network, e.g., the triads and tetrads of Figure 1(a) and (b). Finding the
+most promising candidates for triad and tetrad based learning is an expensive
+problem that requires significant tuning [11] and the PSL based program was
+thus limited to triads and tetrads.
+
+In contrast, semEP can make predictions using larger complex clusters. We
+can also exploit the drug-drug or target-target similarities to control the shape
+of the clusters. Figure 3 illustrates a drug-target interaction network on the left,
+with three drugs DB01100 (Pimozide), DB01244 (Bepridil), and DB00836 (Lop-
+eramide), and eight targets. Drugs DB01100 (Pimozide) and DB01244 (Bepridil)
+share 6 interactions. A node partition may place these two drugs into one community and place DB00836 (Loperamide) in a second community.
+
+Since semEP is an edge partitioning, it can instead consider more complex
+communities with an overlap of nodes. The broken (dotted) edges in Figure 3
+(left) connect each target to its least similar target. A visual inspection of these
+edges reveals that a split of the targets, with 782, 784, and 785 appearing in one
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+community, while 774, 776, 778, 779, and 8912 are placed in a second community,
+has the property that no target is placed in a community together with its least
+similar target. To capture such properties, semEP will consider edge constraints
+as follows: Consider the scenario where targets 784 and 779 have a mutual least-
+similar-target relationship. Then semEP will guarantee an edge constraint for
+this pair, i.e., no edge incident to 784 will be placed in the same cluster together
+with an edge incident to target 779.
+
+Thus, semEP combines the benefit of edge partitioning that allows node overlap in the clusters, and the edge constraints that prohibit (some) pairs of edges
+to be placed in the same cluster. This accommodates both the semantics of
+nodes with complex function (node overlap in multiple clusters), and the semantics of separating the edges incident to the least similar pairs of nodes (edge
+constraints).
+
+Figure 3 (b) shows the two edge communities created by semEP on the right.
+Community 1 includes drugs DB01100 (Pimozide), DB01244 (Bepridil), and
+five targets. Community 2 includes those two drugs as well as DB00836 (Lop-
+eramide), and has three targets. We note that these communities, with 6 and 7
+nodes, respectively, are more complex compared to triads. The predicted drugtarget interaction(s) based on these two communities are shown as broken edge(s)
+in the edge communities on the right. We note that through the use of structured knowledge (edge constraints), edge partitioning and node overlap, semEP
+predicts an interaction between DB00836 (Loperamide) and target 784.
+
+We summarize the objectives of semEP as follows:
+
+ An edge partitioning that allows the overlap of nodes in multiple clusters;
+
+this matches the semantics of complex function associated with nodes.
+
+ Create clusters with high cluster density to improve prediction accuracy.
+ Exploit semantic knowledge about the least similar pairs of nodes to identify
+edge constraints; they will be used to prohibit the placement of incident
+edges, of the least similar nodes, in the same cluster.
+
+ Balance these competing objectives by creating a minimal number of clus-
+
+ters, each of which has maximal cluster density.
+
+3.2 Problem Definition: semEP
+
+The semantics based edge partition problem (semEP) is the minimal partitioning
+P of the edges of a graph BG such that the aggregate cluster density over all
+subsets of edges (clusters) p  P is maximized. We note that a partitioning P
+of edges may result in the overlap of nodes across different clusters.
+
+Definition 1 (Cluster (Similarity) Density). Consider a labeled bipartite
+graph BG=(D  T , WE). Nodes in D represent a set of drugs and nodes in T
+represent a set of targets. W E is a set of drug-target interactions, i.e., there
+is an edge e = (d, t)  WE iff Yd,t = 1. Let p be a subset of interactions of
+WE. Let Dp  D be the drug set incident on the edges (d, t)  p, and let
+Tp  T be the target set incident on the edges (d, t)  p. Let sd(i, j) represent
+?
+
+?
+
+?
+DB00836
+
+DB01100
+
+DB01244
+
+Drug-Target Network
+
+DB01100
+
+DB01244
+
+Edge Community 1
+
+DB00836
+
+DB01244
+
+DB01100
+
+Edge Community 2
+
+Fig. 3. Using Structured Knowledge for semEP. (a) A drug-target interaction network
+of three drugs DB01100 (Pimozide), DB01244 (Bepridil) and DB00836 (Loperamide),
+and eight targets. (b) Two edge communities created by semEP. Community 1 includes
+drugs DB01100 (Pimozide) and DB01244 (Bepridil) and five targets. Community 2
+includes all three drugs and has three targets.
+
+the similarity score between a pair of drugs i and j  Dp. Let st(i, j) represent
+the similarity score between a pair of targets i and j  Dt. Under the condition
+that |Dp| > 0  |T p| > 0, the cluster (similarity) density of p cDensity(p) =
+. If |Dp| = 0, or if |T p| = 0, then we
+
+i,jDp [i=j]sd (i,j)
+|Dp|(|Dp|1)
+
+i,jT p [i=j]st (i,j)
+|T p|(|T p|1)
+
+2
+
+2
+
+1+
+
+replace the respective fraction by the value 0.
+
++
+
+To explain, the three terms in the numerator correspond to (1) the average
+score of the interaction edges in p, (2) the average drug-drug similarity score
+between all pairs of drugs in p, and (3) the average target-target similarity
+score between all pairs of targets in p, respectively. We note that the score for
+interactions is given by Yd,t and is an unweighted score of 1.0 for this special case
+of drug-target interactions. The cluster (similarity) cDensity penalizes singleton
+clusters or clusters with a singleton drug or target node.
+
+Definition 2 (The Semantics Based Edge Partition Problem (semEP)).
+Given a labeled bipartite graph BG=(D  T , WE) described as before, semEP
+identifies a (minimal) partition P of WE such that the aggregate cluster density
+over all subsets p  P semEP (P ) =
+
+pP (cDensity(p))
+
+is maximal.
+?
+
+?
+
+?
+|P|
+
+Recall that a solution to semEP corresponds to a partition of the edges where
+the number of clusters is minimized while the overall cDensity is maximized. We
+illustrate the impact of these two objectives on drug-target interaction prediction accuracy using the two edge partitions A and B in Figure 4. Consider the
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+Edge Partition A
+t1
+d1
+t2
+d2
+t3
+d3
+
+Cluster 1
+
+Edge Partition B
+t1
+t2
+
+d1
+d2
+
+Cluster 1
+
+d3
+
+Cluster 2
+
+t3
+
+Fig. 4. Two partitions with the same cDensity and red broken predicted edges
+
+following drug-drug and target-target similarity scores: sd(d1, d3) = sd(d2, d3) =
+st(t1, t3) = st(t2, t3) = 0.1, and sd(d1, d2) = st(t1, t2) = 0.4. Positive interaction
+edges are black solid edges while predicted edges are red broken edges. Both
+partitions have the same cDensity of 0.47. However, partition A includes four
+prediction edges while B only includes one prediction edge. Assuming that these
+are all true positive predictions, then partition A, which satisfies the two semEP
+objectives of maximum aggregate cDensity and minimal number of clusters, has
+the same precision and greater recall, compared to partition B.
+
+Definition 3 (Edge Constraint). Given nodes i and j, let Inc(i) and Inc(j)
+correspond to the sets of incident edges to i and j, respectively. Given a real
+number d or t in the range [0 : 1] and a similarity score sd(i, j) < d or
+st(i, j) < t, then there exists an edge constraint EdgeConstraint(i, j, Inc(i),
+Inc(j), ).
+
+Property 1 (Edge Constraint). Let P be a solution to the semEP. For a
+given edge constraint EdgeConstraint(i, j, Inc(i), Inc(j), ) to hold, there can be
+
+no cluster p in P such that ei  Inc(i) and ej  Inc(j) occur in p.
+
+We map semEP to the Vertex Coloring Graph (VCG) problem. The Vertex
+Coloring Graph problem assigns a color to every vertex in a graph such that
+adjacent vertices are colored with different colors and the number of colors is
+minimized. Each cluster (component) p in the partition P produced by semEP
+corresponds to a color in the VCG problem. This will ensure that a minimal
+number of colors will guarantee a minimal partitioning P .
+
+Definition 4 (Mapping of the Vertex Coloring Problem to the Semantics Based Edge Partition Problem). Consider a labeled bipartite graph
+BG=(D  T , WE) and a vertex coloring graph G=(V, F ). For each edge or interaction l in WE there is a node vi in V . Further, there is an edge l = (vi, vj)
+in F , iff there are nodes i and j such that vi  Inc(i), vj  Inc(j), and Edge-
+Constraint(i, j, Inc(i),Inc(j), )1 holds. Let P be the (minimal) partition of WE
+to maximize semEP(P ). Let M be a mapping from V to SC, where SC is a set
+of colors, two vertices from G share the same color if they are in the same partition component p of P and the value cDensity(p) is maximized. The Vertex
+
+1 There are thresholds d and t for drugs and targets, respectively.
+?
+
+?
+
+?
+Coloring Problem for BG is to identify M such that the number of colors used
+in the coloring of the graph G, namely nc(G), is minimized. Given the set UsedColors of colors in SC that are used in the coloring of the graph, the number
+of colors corresponds to nc(G)=
+sity(cl) represents the density of the labels of edges from component p in P , from
+BG, that are colored with the color cl.
+?
+
+?
+
+?
+cl  UsedColors(1 cDensity(cl)), where cDen-
+
+I1
+
+I2
+
+I3
+
+I4
+Vertex
+
+(b)
+Coloring
+Graph (VCG)
+
+I2
+I3
+
+d1
+d2
+d3
+Drug-
+In-
+
+I1
+
+t1
+t2
+I4
+t3
+(a)
+Target
+teraction
+Network
+p2
+p1
+I2
+
+I3
+
+I1
+
+I3
+
+p2
+p1
+I2
+
+I1
+
+p1
+I2
+
+I4
+I2
+
+p1
+t2
+
+p2
+I3
+
+p2
+p1
+I2
+p1
+
+I1
+
+p2
+I3
+
+I4
+I2
+
+I1
+
+I4
+
+I2
+
+I1
+
+I4
+I2
+
+I1
+
+p1
+t2
+p2
+t1
+
+d2
+
+d2
+
+d2
+
+d2
+d1
+d1
+d3
+Iteration 1 Iteration 2 Iteration 3 Iteration 4
+
+d1
+d3
+
+I4
+I1
+
+t2
+t3
+t1
+
+d1
+
+I3
+
+I3
+
+p1
+t2
+p2
+t1
+
+p1
+
+p2
+
+(c) Iterations of the semEP Algorithm. Colors in VCG
+correspond to clusters in the interaction network.
+
+Fig. 5. Example Iterations of semEP
+
+Example Iterations of semEP: Consider the drug-target interaction network
+of Figure 5(a) with four interactions and the following similar scores: st(t1, t2) =
+0.1, st(t1, t3) = 0.9, st(t2, t3) = 0.8, sd(d1, d2) = 0.75, sd(d1, d3) = 0.8, and
+sd(d2, d3) = 0.75. Consider thresholds d = t = 0.6 below which pairs of drug
+or pairs of targets are used to specify edge constraints. Figure 5(b) is the Vertex
+Coloring Graph (VCG) for the interaction network of Figure 5(a). For example
+the edge (I1, I2) is in VCG because the similarity score st(t1, t2) of targets t1 and
+t2 are below the threshold t = 0.6. Figure 5(c) shows the iterations of semEP;
+in each iteration, the figure on the top assigns a color to a node of the VCG while
+the figure at the bottom places an edge in a cluster. In the first iteration, semEP
+chooses vertex I2 of the VCG since it has the greatest degree, and assigns color
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+p1. Simultaneously, the interaction I is placed in the cluster p1. In the second
+iteration, vertices I1 and I3 have the greatest degree; semEP breaks the tie in
+favor of I1. Vertex I1 is assigned the color p2 and this creates a new cluster p2
+with interaction I1. In the third iteration, the vertex I3 is assigned the feasible
+color p2; this adds the interaction T3 to cluster p2. In the last iteration, vertex
+I4 can be colored with p1 or p2; semEP chooses p1 and interaction I4 is placed
+in cluster p1. The cluster p1 has a cDensity 1 = (1.0 + 0.8 + 0.75)/3 = 0.85,
+and cluster p2 has cDensity = (1.0 + 0.0 + 0.8)/3 = 0.6; thus, the aggregate
+cDdensity is (0.85 + 0.6)/2 = 0.73. If I4 had instead been placed in p2, the
+aggregate cDensity would have been lower and = (0.33 + 0.9)/2 = 0.62. Figure
+5(c) shows the two predicted edges (broken edges) in the fourth iteration.
+
+An Efficient Implementation of semEP: VCG is NP-hard [15], and many
+approximate algorithms have been proposed to solve this problem [23]. semEP
+extends the well-known approximate algorithm DSATUR [4] to solve VCG to
+obtain the edge partitions. DSATUR is a greedy iterative algorithm that colors each vertex of the graph once by following a heuristic to choose the colors.
+Given a graph G=(V,E), DSATUR orders vertices in V dynamically based on
+the number of different colors assigned to the adjacent vertices of each vertex in
+V , i.e., the vertices are chosen based on the degree of saturation on the partial
+coloring of the graph built so far. Only colored adjacent nodes are considered.
+Intuitively, selecting a vertex with the maximum degree of saturation allows one
+to first color the vertex (vertices) with more restrictions; this is one for which
+there is a smaller set of colors. Ties are broken based on the vertex degree of the
+adjacent nodes. As a result of casting the semEP problem to VCG, semEP iteratively adds an edge or interaction to a cluster following the DSATUR heuristic
+to create clusters that maximize the cluster density. semEP assigns a score to
+an edge e in WE according to the number of edges whose adjacent terms are
+dissimilar to the terms of e, and that have been already assigned to a cluster.
+Then, edges are chosen in terms of this score (descendant order). Intuitively,
+selecting an edge with the maximum score, allows semEP to place first the edges
+with more restrictions; this is one for which there is a smaller set of potential
+clusters. The selected edge is assigned to the cluster that maximized cDensity.
+Time complexity of DSATUR is O(|V |3), thus semEP is O(|WE|3).
+
+4 Related Work
+
+We briefly compare with research in graph data mining, link prediction, clus-
+tering, community detection and ranking. Graph data mining [7] covers a broad
+range of methods dealing with the identification of (sub)structures and patterns in graphs; state-of-the-art approaches include spectral graph clustering
+[26], RankClus [24], and GNetMine [13]. Spectral graph clustering relies on an
+unnormalized Laplacian graph representation of a homogeneous network to cluster the graph based on information encoded in its eigenvectors [26]. RankClus
+[24] and GNetMine [13] interleave link analysis-based ranking with clustering to
+?
+
+?
+
+?
+place highly ranked entities in highly ranked clusters. These approaches focus
+on the use of graph properties to partition the graph.
+
+The problem of dealing with multiple types of similarity scores has been modeled as follows: Perform simultaneous clustering with multiple heterogeneous
+networks over an identical set of nodes; the complexity has been shown to be as
+hard as the k densest subgraphs problem [18]. JointCluster [19] is a simultaneous
+clustering or partition of the nodes such that nodes within each set or cluster in
+the partition are well connected in each graph, and the total cost of inter-cluster
+edges (edges with endpoints in different clusters) is low. Khuller et al. presented
+one of the earliest solutions to a related K-Center problem [2].
+
+There has been significant work on community detection [1,9,20,22]; multiple approaches have been identified as follows: [9]: i) topology-based techniques
+that consider network structure; ii) topic-based approaches that rely on textual information within nodes; iii) hybrid solutions that combine topology- and
+topic-based approaches. The majority of existing techniques focus on partitioning
+nodes rather than edge partitioning. Similar to semEP, Ahn et al. [1] introduce
+a partition density function based on the similarity of nodes; they detect communities that maximize partition density using optimization methods. This may
+produce a large number of communities, unlike semEP that produces a minimal
+number. Ereteo et al. [10] tackle the problem of a semantic social network and
+propose a topology- and topic-based algorithm, SemTagP, to detect communities from the RDF representation of social networks. Osborne et al. [20] present
+Temporal Semantic Topic-Based Clustering (TST); it uses similarity between
+research trajectories and a Fuzzy C-Means algorithm.
+
+Ding et al. [8] provides a comprehensive survey of similarity-based machine
+learning approaches for drug-target interaction prediction. Several machine learning techniques have been evaluated [11,21,28,29]. Approaches presented by Zheng
+et al. [29] and Perlman et al. [21] consider feature engineering over multiple similarity features. A PSL based solution [11] directly considers multi-relational
+structured knowledge and learns from multiple similarity metrics.
+
+5 Evaluation of semEP and State-of-the-Art Methods
+
+5.1 Dataset and Evaluation Protocol
+
+Dataset: A well known dataset of over 900 drugs, almost 1,000 targets, and over
+5,000 interactions [3] has been used by Ding et al. to compare several state-of-
+the-art machine learning based interaction prediction methods [8]. This dataset
+provides a drug-drug chemical similarity score based on the hashed fingerprints
+from the SMILES resource, and a target-target similarity score based on the
+normalized Smith-Waterman sequence similarity score. The targets belong to the
+following four groups: Nuclear receptors, Gprotein-coupled receptors (GPCRs),
+Ion channels and Enzymes. Dataset statistics are reported in Table 1.
+
+A 10-fold cross validation will randomly select 90% of positive and negative
+interactions as training data, and will use the remaining 10% of elements as test
+data, for each of the four groups of targets in the dataset.
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+Table 1. Statistics for the Drug-Target Interaction Dataset [3]
+
+Statistics
+Number of drugs
+Number of targets
+Number of drug target interactions
+Average interaction count per target
+Average interaction count per drug
+Graph Density2
+
+Nuclear receptor GPCR Ion channel Enzyme
+?
+
+?
+
+?
+3.46
+1.66
+0.028
+?
+
+?
+
+?
+6.68
+2.84
+0.013
+?
+
+?
+
+?
+1,476
+7.23
+7.02
+0.017
+?
+
+?
+
+?
+2,926
+
+4.4
+6.57
+0.005
+
+semEP Prediction: Recall that Y is a binary matrix where Yi,j = 1 if drug
+di interacts with target tj and Fi,j is the score or probability of the prediction.
+Since semEP is not a machine learning method, it works as follows: We represent
+the training data from Y as a bipartite graph and apply edge partitioning. Table
+2 shows the values of the thresholds d and t used to specify edge constraints
+in Definition 1. For a selected cluster p, all missing interactions are assigned
+to be positive interactions in Y . The Fi,j score assigned to the interactions in
+p is the normalized graph density =
+cardinalities of the interactions, drugs and targets in p, respectively. We label
+this density as the interaction prediction density or iDensity.
+
+|Dp||Tp| , where |I|, |Dp| and |Tp| are the
+
+|I|
+
+Table 2. Score threshold d and t for edge constraints in Definition 1
+
+Threshold Nuclear receptor GPCR Ion channel Enzyme
+
+d
+t
+
+0.3421
+0.1832
+
+0.2759
+0.1416
+
+0.2619
+0.1355
+
+0.2333
+0.0209
+
+State-of-the-Art Methods: We used the code and results from multiple
+machine learning based prediction methods that are available as supplemental material to the research reported in [8]. Due to space limitations, we simply
+label and name all the methods as follows: i) BLM: Bipartite Local Method [6];
+ii) LapRLS: Laplacian Regularized Least Squares [27]; iii) GIP: Gaussian Interaction Profile [25]; iv) KBMF2K: Kernelized Bayesian Matrix Factorization with
+twin Kernels [12]; and v) NBI: Network-Based Inference [6].
+
+5.2 Results
+
+First, we demonstrate the benefits of using semEP predictions to improve the
+performance of the prediction methods in [8]. We then validate the best novel
+predictions of all the methods against the STITCH drug-target interaction resource [17].
+
+Using semEP to Improve Performance: To measure the impact of semEP
+predictions on the performance of the methods, we enhance the (initial) interaction prediction matrix Y of each method, over the hold-out test data, with
+the best predicted interactions of semEP. The best predictions of semEP are
+those with an iDensity prediction score equal or greater than a 0.5 threshold.
+
+2 Graph Density is defined as
+
+2#Edges
+
+#Nodes(#Nodes1) .
+?
+
+?
+
+?
+Further, we limit the added predictions to be no more than 30% of the positive
+interactions in the holdout set. We label this matrix YsemEP . We also create
+a control binary matrix Ycntrl which enhances the initial predictions of each
+method, Y with K interactions, where K corresponds to the cardinality of the
+added predictions in YsemEP . The entries in Yi,j = 0 are randomly chosen (K
+times) without replacement, following a uniform distribution, to create Ycntrl.
+
+We use the metrics Area Under the Curve (AUC) for precision, and Area
+Under the Precision-Recall curve (AUPR) for the trade-off between precision
+and recall. Table 3 reports on the AUC and AUPR of each machine learning
+method Y , the performance when using semEP predictions, YsemEP , and the
+control predictions Ycntrl, for each of the four target groups.
+
+The AUC for the methods are generally high, representing the robust performance of these methods. Despite this high baseline, YsemEP is able to improve
+the performance for all of the methods, for all of the target groups. We also
+observe that the performance of Ycntrl degrades for all of the methods, for all of
+the target groups.
+
+The impact of YsemEP is noteworthy when considering the AUPR; these values
+are somewhat low in general, for all methods, reflecting the sparse training data.
+Again, we observe a major improvement of AUPR, for all of the methods, for
+all of the target groups. In addition, there is a sharp decrease of performance of
+Ycntrl for all of the methods / target groups.
+
+Table 3. 10-fold cross validation AUC and AUPR for methods in [8]. Y is the state-
+of-the-art method; YsemEP is the semEP enhancement; Ycntrl is the random control.
+
+Method
+
+Nuclear receptor
+
+YsemEP Ycntrl Y
+
+YsemEP Ycntrl Y
+
+Ion channel
+
+YsemEP Ycntrl Y
+
+0.724
+
+0.690
+?
+
+?
+
+?
+0.861
+LapRLS 0.848
+KBMF2K 0.876
+
+0.778
+0.825
+0.895
+0.877
+0.914
+
+0.665 0.888
+0.670 0.833
+0.803 0.943
+0.799 0.941
+0.822 0.939
+
+0.911
+0.900
+0.958
+0.956
+0.960
+
+0.798 0.920 0.929
+0.769 0.925 0.947
+0.843 0.975 0.981
+0.844 0.967 0.972
+0.845 0.981 0.985
+
+Enzyme
+YsemEP Ycntrl
+0.838
+0.810
+0.874
+0.868
+0.869
+
+0.879 0.929 0.935
+0.888 0.895 0.915
+0.932 0.968 0.973
+0.925 0.962 0.966
+0.936 0.967 0.971
+
+Method
+
+Nuclear receptor
+
+YsemEP Ycntrl Y
+
+YsemEP Ycntrl Y
+
+Ion channel
+
+YsemEP Ycntrl Y
+
+0.242
+
+0.465
+
+0.657
+LapRLS 0.577
+KBMF2K 0.557
+
+0.369
+0.682
+0.749
+0.676
+0.725
+
+0.238 0.472
+0.342 0.615
+0.520 0.705
+0.468 0.630
+0.475 0.673
+
+0.481
+0.719
+0.764
+0.704
+0.760
+
+0.327 0.599 0.622
+0.467 0.829 0.854
+0.563 0.888 0.897
+0.517 0.800 0.818
+0.544 0.879 0.891
+
+Enzyme
+YsemEP Ycntrl
+0.373
+0.616
+0.700
+0.663
+0.656
+
+0.542 0.499 0.537
+0.744 0.786 0.818
+0.813 0.869 0.878
+0.733 0.830 0.838
+0.810 0.796 0.822
+
+To further explore the benefit of the semEP predictions, Table 4 compares
+the overlap of the Top 10 positive predictions in YsemEP and the Top 10 positive
+predictions of each method in Y . The overlap (equal count) is remarkably low,
+across all methods, and across all target groups. These results suggest that the
+interactions predicted by semEP are both accurate and diverse, compared to
+the range of state-of-the-art machine learning based prediction methods. The
+diversity explains the major impact on AUPR by YsemEP and the potential for
+semEP to exploit structured knowledge in the relevant semantic space(s).
+
+G. Palma, M.-E. Vidal, and L. Raschid
+
+Table 4. Overlap of Top 10 predictions of semEP and each of the methods in [8].
+Entries highlighted in bold are cases where predictions are all different.
+
+Nuclear receptor
+
+Ion channel
+
+Enzyme
+
+Method Equal Different Equal Different Equal Different Equal Different
+?
+
+?
+
+?
+LapRLS
+
+KBMF2K 4
+?
+
+?
+
+?
+Validation Using STITCH: We validated the Top 5 novel predicted interactions of all methods; novel interactions are those with Yi,j = 0 in the hold-out
+test dataset. The validation was performed against the latest online version of
+the STITCH [17] drug target interaction portal3. Table 5 reports on the number of validated novel predictions. We observe that as before, semEP is able to
+identify validated novel interactions across all target groups and it identifies the
+highest number of validated novel interactions for the target groups of GPCRs
+and Enzymes. We note that the graphs of GPCRs and Enzymes are sparser
+than the other two graphs (see Graph Density in Table 1). This provides few
+opportunities for learning in the training data. Nevertheless, semEP can exploit
+structured knowledge, edge partitioning and node overlap, to make accurate and
+diverse predictions, even in this sparse learning environment.
+
+Table 5. Top 5 novel interactions manually validated with STITCH. Entries highlighted in bold correspond to the largest number of novel validations.
+
+Method Nuclear receptor GPCR Ion channel Enzyme
+semEP
+?
+
+?
+
+?
+LapRLS
+KBMF2K
+?
+
+?
+
+?
+6 Conclusions and Future Work
+
+We defined the semEP problem to create a minimal partitioning of drug-target
+interaction edges such that the cluster density of each subset of interaction edges
+is maximal. We map the semEP problem to the Vertex Coloring Graph problem
+using Edge Constraints. semEP combines the benefits of edge partitioning and
+edge constraints (incident to the least similar drug-drug or target-target pairs)
+to identify communities. We conducted an extensive evaluation of semEP on a
+well-known dataset of drug-target interactions. The results suggest that semEP
+exploits structured knowledge from semantically annotated data, and is clearly
+able to predict novel interactions and enhance the performance of sophisticated
+machine learning methods.
+
+http://stitch.embl.de/
+?
+
+?
+
+?
+In future work, we will explore the use of semEP to identify interesting
+clusters, and combine / compare with the structure learning of the PSL-based
+method [11]. We will also apply semEP to other domains, e.g., citation graphs,
+to identify topical and to predict future relationships between researchers.
+
+Acknowledgement. This research has been partially supported by NSF grant
+1147144 and DID-USB. We thank Shobeir Fakhrael and Shanfeng Zhu for providing access to the datasets and algorithms that were evaluated in this paper
+and Shobeir for valuable feedback.

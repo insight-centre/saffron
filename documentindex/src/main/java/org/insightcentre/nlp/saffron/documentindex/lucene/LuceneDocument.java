@@ -30,8 +30,9 @@ public class LuceneDocument {
 	public static final String FULL_NAME = "full_name";
 	public static final String MIME_TYPE = "mime";
 	public static final String METADATA = "metadata";
+        public static final String DATE_NAME = "date";
 
-	public static Document makeDocument(String id, String text, URL url, List<Author> authors, String fullName, File original, String mimeType, Map<String, String> metadata) {
+	public static Document makeDocument(String id, String text, URL url, List<Author> authors, String fullName, File original, String mimeType, Map<String, String> metadata, String date) {
 		Document doc = new Document();
 		doc.add(new StringField(UID_NAME, id == null ? "" : id , Field.Store.YES));
 		doc.add(new TextField(CONTENTS_NAME, text == null ? "" : text, Field.Store.YES));
@@ -41,6 +42,7 @@ public class LuceneDocument {
 		doc.add(new TextField(AUTHORS_NAME, mkAuthors(authors), Field.Store.YES));
 		doc.add(new TextField(MIME_TYPE, mimeType == null ? "" : mimeType, Field.Store.YES));
 		doc.add(new TextField(METADATA, metadata == null ? "{}" : mkMetadata(metadata), Field.Store.YES));
+		doc.add(new TextField(DATE_NAME, date == null ? "" : date, Field.Store.YES));
 		return doc;
 	}
 

@@ -9,6 +9,7 @@ public class DefaultSaffronListener implements SaffronListener {
     @Override
     public void log(String message) {
         System.err.println(message);
+
     }
 
     @Override
@@ -21,10 +22,26 @@ public class DefaultSaffronListener implements SaffronListener {
         System.err.println();
     }
 
+
+    @Override
+    public void setStageComplete(String statusMessage, String taxonomyId) {
+        System.err.println(statusMessage);
+    }
+
+    @Override
+    public void warning(String message, Throwable cause) {
+
+    }
+
     @Override
     public void fail(String message, Throwable cause) {
         System.err.println(message);
         cause.printStackTrace();
+    }
+
+    @Override
+    public void setStageStart(String statusMessage, String taxonomyId) {
+        System.err.println(statusMessage);
     }
 
 }

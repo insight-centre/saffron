@@ -1,0 +1,1077 @@
+HELIOS  Execution Optimization for Link Discovery
+
+Axel-Cyrille Ngonga Ngomo
+
+Department of Computer Science
+
+University of Leipzig
+
+Johannisgasse 26, 04103 Leipzig
+
+ngonga@informatik.uni-leipzig.de
+
+http://limes.sf.net
+
+Abstract. Links between knowledge bases build the backbone of the Linked
+Data Web. In previous works, the combination of the results of time-efficient
+algorithms through set-theoretical operators has been shown to be very timeefficient for Link Discovery. However, the further optimization of such link specifications has not been paid much attention to. We address the issue of further
+optimizing the runtime of link specifications by presenting HELIOS, a runtime
+optimizer for Link Discovery. HELIOS comprises both a rewriter and an execution planner for link specifications. The rewriter is a sequence of fixed-point
+iterators for algebraic rules. The planner relies on time-efficient evaluation functions to generate execution plans for link specifications. We evaluate HELIOS on
+17 specifications created by human experts and 2180 specifications generated au-
+tomatically. Our evaluation shows that HELIOS is up to 300 times faster than a
+canonical planner. Moreover, HELIOS improvements are statistically significant.
+
+1 Introduction
+
+Link Discovery (LD) plays a central role in the realization of the Linked Data paradigm.
+Several frameworks such as LIMES [9] and SILK [5] have been developed to address
+the time-efficient discovery of links. These frameworks take a link specification (short:
+LS, also called linkage rule [5]) as input. Each LS is converted internally into a sequence
+of operations which is then executed. While relying on time-efficient algorithms (e.g.,
+PPJoin+ [17] and HR3 [7]) for single operations has been shown to be very timeefficient [9], the optimization of the execution of whole LS within this paradigm has
+been payed little attention to.
+
+In this paper, we address this problem by presenting HELIOS, the (to the best of our
+knowledge) first execution optimizer for LD. HELIOS aims to reduce the costs necessary
+to execute a LS. To achieve this goal, our approach relies on two main components: a
+rewriter and a planner. The rewriter relies on algebraic operations to transform an input
+specification into an equivalent specification deemed less time-consuming to execute.
+The planner maps specifications to execution plans, which are sequences of operations
+from which a mapping results. HELIOS planner relies on time-efficient evaluation functions to generate possible plans, approximate their runtime and return the one that is
+likely to be most time-efficient.1 Our contributions are:
+
+1 HELIOS was implemented in the LIMES framework. All information to the tool can be found
+at http://limes.sf.net. A graphical user interface for the tool can be accessed via the
+SAIM interface at http://aksw.org/projects/SAIM
+
+P. Mika et al. (Eds.) ISWC 2014, Part I, LNCS 8796, pp. 1732, 2014.
+c Springer International Publishing Switzerland 2014
+
+A.-C. Ngonga Ngomo
+
+1. We present a novel generic representation of LS as bi-partite trees.
+2. We introduce a novel approach to rewriting LS efficiently.
+3. We explicate a novel planning algorithm for LS.
+4. We evaluate HELIOS on 2097 LS (17 manually and 2080 automatically generated)
+and show that it outperforms the state of the art by up to two orders of magnitude.
+
+The rest of this paper is structured as follows: First, we present a formal specification
+of LS and execution plans for LS. Then, we present HELIOS and its two main compo-
+nents. Then, we evaluate HELIOS against the state of the art. Finally, we give a brief
+overview of related work and conclude.
+
+2 Formal Specification
+
+In the following, we present a graph grammar for LS. We employ this grammar to define a normal form (NF) for LS that will build the basis for the rewriter and planner of
+HELIOS. Thereafter, we present execution plans for LS, which formalize the sequence
+of operations carried out by execution engines to generate links out of specifications.
+As example, we use the RDF graphs shown in Table 1, for which the perfect LD results is {(ex1:P1, ex2:P1), (ex1:P2, ex2:P2), (ex1:P3, ex2:P3), (ex1:P4,
+ex2:P4)}.
+
+2.1 Normal Form for Link Specifications
+Formally, most LD tools aim to discover the set {(s, t)  S  T : R(s, t)} provided
+an input relation R (e.g., owl:sameAs), a set S of source resources (for example descriptions of persons) and a set T of target resources. To achieve this goal, declarative
+LD frameworks rely on LS, which describe the conditions under which R(s, t) can be
+assumed to hold for a pair (s, t)  ST . Several grammars have been used for describing LS in previous works [7,5,10]. In general, these grammars assume that LS consist of
+two types of atomic components: similarity measures m, which allow comparing property values of input resources and operators op, which can be used to combine these
+similarities to more complex specifications.
+
+Table 1. Examplary graphs
+
+Persons1 graph
+ex1:P1 ex:label "Anna"@en .
+ex1:P1 ex:age "12"xsd:integer .
+ex1:P1 a ex:Person .
+ex1:P2 ex:label "Jack"@en .
+ex1:P2 ex:age "15"xsd:integer .
+ex1:P2 a ex:Person .
+ex1:P3 ex:label "John"@en .
+ex1:P3 ex:age "16"xsd:integer .
+ex1:P3 a ex:Person .
+ex1:P4 ex:label "John"@en .
+ex1:P4 ex:age "19"xsd:integer .
+ex1:P4 a ex:Person .
+
+Persons2 graph
+ex2:P1 ex:label "Ana"@en .
+ex2:P1 ex:age "12"xsd:integer .
+ex2:P1 a ex:Person .
+ex2:P2 ex:label "Jack"@en .
+ex2:P2 ex:age "14"xsd:integer .
+ex2:P2 a ex:Person .
+ex2:P3 ex:label "Joe"@en .
+ex2:P3 ex:age "16"xsd:integer .
+ex2:P3 a ex:Person .
+ex2:P4 ex:label "John"@en .
+ex2:P4 ex:age "19"xsd:integer .
+ex2:P4 a ex:Person .
+?
+
+?
+
+?
+Without loss of generality, a similarity measure m can be defined as a function m :
+S  T  [0, 1]. We use mappings M  S  T  [0, 1] to store the results of the
+application of a similarity function to S  T or subsets thereof. We also store the results
+of whole link specifications in mappings. The set of all mappings is denoted by M.
+We call a measure atomic iff it relies on exactly one similarity measure  (e.g., the
+edit similarity, dubbed edit)2 to compute the similarity of a pair (s, t)  S  T
+with respect to the (list of) properties ps of s and pt of t and write m = (ps, pt). A
+similarity measure m is either an atomic similarity measure or the combination of two
+similarity measures via a metric operator such as max, min or linear combinations.
+For example, edit(s.label, t.label) is an atomic measure while max(edit(s.label,
+t.label), edit(s.age, t.age)) is a complex similarity measure.
+
+.
+We define a filter as any function which maps a mapping M to another mapping M
+Similarity filters f (m, ) return f (m, , M ) = {(s, t, r
+)|r : (s, t, r)  M m(s, t) 
+  r
+= min{m(s, t), r}}. Threshold filters i() return i(, M ) = {(s, t, r)  M :
+r  }. Note that i(0, M ) = M and that we sometimes omit M from similarity filters
+for the sake of legibility.
+?
+
+?
+
+?
+We call a specification atomic when it consists of exactly one filtering function.
+For example, applying the atomic specification f (edit(ex:label, ex:label), 1) to
+our input data leads to the mapping {(ex1:P3, ex2:P4, 1), (ex1:P2, ex2:P2, 1),
+(ex1:P4, ex2:P4, 1)}. A complex specification can be obtained by combining two
+specifications L1 and L2 by (1) a mapping operator (that allows merging the mappings
+which result from L1 and L2) and (2) a subsequent filter that allows postprocessing the
+results of the merging.3 In the following, we limit ourselves to the operators based on
+,  and \ (set difference), as they are sufficient to describe any operator based on set
+operators. We extend these operators to mappings as follows:
+ M1  M2 = {(s, t, r) : a, b (s, t, a)  M1  (s, t, b)  M2  r = min(a, b)}.
+ M1  M2 = {(s, t, r) : ((s, t, a)  M1  (s, t, r)  M2)  ((s, t, b) 
+M2  (s, t, r)  M1)  ((s, t, a)  M1  (s, t, b)  M2  r = max(a, b))}.
+ M1\M2 = {(s, t, r)  M1 : (s, t, a)  M2}.
+For example, if M1 = {(ex1:P1, ex2:P2, 1), (ex1:P1, ex2:P3, 1)} and M2 =
+{(ex1:P1, ex2:P2, 0.5)} then M1  M2 = M1, M1  M2 = M2 and M1\M2 =
+{(ex1:P1, ex2:P3, 1)}.
+
+Based on this grammar, we can regard all LS as bi-partite directed trees
+
+L = (V (L), E(L)) which abide by the following restrictions:
+1. The vertices of L can be either filter nodes f  F or operator nodes op  OP , i.e.,
+V (L) = F  OP . The leaves and the root of L are always filter nodes. The leaves
+are filters that run on S  T .
+2. Edges in L can only exist between filters and operators, i.e., E(L)  (F  OP ) 
+(OP  F ).
+
+2 We define the edit similarity of two strings s and t as (1 + lev(s, t))
+
+1, where lev stands for
+
+the Levenshtein distance.
+
+3 We rely on binary operators throughout this paper because n-ary set operators can always be
+
+mapped to a sequence of binary operators.
+
+A.-C. Ngonga Ngomo
+
+An example of a LS is shown in Figure 1. We call this representation of LS their NF. In
+the rest of this paper, we deal exclusively with finite specifications, i.e., specifications
+such that their NF contains a finite number of nodes. We call the number of filter nodes
+of a specification L the size of L and denote it |L|. For example, the size of the specification in Figure 1 is 3. We dub the direct child of Ls root the operator of L. For example,
+the operator of the specification in Figure 1 is . We call a LS L
+a sub-specification
+of L (denoted L
+s NF is a sub-tree of Ls NF that abides by the definition
+of a specification (i.e., if the root of L
+contains
+in L). For example, f (edit(label, label), 0.3) is a sub-specification
+all children of L
+ 1 L) if L
+
+of our example. We call a L
+is a sub-specification of L whose root node a grandchild of the Ls root. For example,
+f (edit(label, label), 0.3) is a direct sub-specification of the LS shown in Figure 1.
+Finally, we transliterate LS by writing f (m, , op(L1, L2)) where f (m, ) is Ls root,
+op is Ls operator, L1 1 L and L2 1 L.
+
+a direct sub-specification of L (denoted L
+
+  L) if L
+?
+
+?
+
+?
+s NF is a filter node and the NF of L
+?
+
+?
+
+?
+edit(label, label), 0.3
+
+eucl(age, age), 0.5
+
+
+
+identity, 0.5
+
+Fig. 1. A LS for linking the datasets Person1 and Person2. The filter nodes are rectangles while
+the operator nodes are circles. eucl(s.age, t.age) = (1 + |s.age  t.age|)
+1. This LS can be
+transliterated i((f (edit(label, label), 0.3), f (eucl(age, age), 0.5)), 0.5).
+
+2.2 Execution Plans
+
+We define an execution plan P as a sequence of processing steps p1, ..., pn of which
+each is drawn from the set A    T  M  M, where:
+1. A is the set of all actions that can be carried out. This set models all the processing
+
+operations that can be carried out when executing a plan. These are:
+(a) run, which runs the computation of filters f (m, ) where m is an atomic mea-
+
+sure. This action can make use of time-efficient algorithms such as HR3.
+
+(b) filter, which runs filters f (m, ) where m is a complex measure.
+(c) filterout, which runs the negation of f (m, ).
+(d) Mapping operations such as union, intersection and minus (mapping
+
+difference) and
+
+(e) return, which terminates the execution and returns the final mapping.
+The result of each action (and therewith of each processing step) is a mapping.
+
+which is used by actions that do not require measures (e.g., return).
+
+2.  is the set of all complex measures as described above united with the -measure,
+3. T is the set of all possible thresholds (generally [0, 1]) united with the -threshold
+4. M is the set of all possible mappings, i.e., the powerset of S  T  [0, 1].
+
+for actions that do not require any threshold (e.g., union) and
+?
+
+?
+
+?
+We call the plan P atomic if it consists of exactly one processing step. An execution
+planner EP is a function which maps a LS to an execution plan P . The canonical planner EP 0 is the planner that runs specification in postorder, i.e., by traversing the NF
+of LS in the order left-right-root. The approach currently implemented by LIMES [9]
+is equivalent to EP0. For example, the plan generated by EP0 for Figure 1 is shown
+in the left column of Table 2. For the sake of brevity and better legibility, we will use
+abbreviated versions of plans that do not contain  symbols. The abbreviated version
+of the plan generated by EP0 for the specification in Figure 1 is shown in the right
+column of Table 2. We call two plans equivalent when they return the same results for
+all possible S and T . We call a planner complete when it always returns plans that are
+equivalent to those generated by EP0.
+
+Table 2. Plans for the specification shown in Figure 1
+
+Canonical Plan
+M1=(run,edit(label,label),0.3,,)
+M2=(run,eucl(age,age),0.5,,)
+M3=(intersection,,,M1,M2)
+M4=(return,,,M3,)
+Alternative Plan1 (abbreviated)
+
+Abbreviated Canonical Plan
+
+M1=(run,edit(label,label),0.3)
+M2=(run,eucl(age,age),0.5)
+M3=(intersection,M1,M2)
+M4=(return,M3)
+
+Alternative Plan2 (abbreviated)
+
+M1=(run,edit(label,label),0.3)
+M2=(filter,eucl(age,age),0.5,M1)
+M3=(return,M2)
+
+M1=(run,eucl(age,age),0.5)
+M2=(filter,edit(label,label),0.3,M1)
+M3=(return,M2)
+
+The insight behind our paper is that equivalent plans can differ significantly with
+respect to their runtime. For example, the canonical plan shown in Table 2 would lead
+to 32 similarity computations (16 for edit and 16 for euclidean) and one mapping
+intersection, which can be computed by using 16 lookups. If we assume that each operation requires 1ms, the total runtime of this plan would be 48ms. The alternative plan
+1 shown in Table 2 is equivalent to the plans in Table 2 but only runs 16 computations
+of edit (leading to M1 of size 6) and 6 computations of euclidean on the data
+contained in M1. The total runtime of this plan would thus be 22ms. Detecting such
+runtime-efficient and complete plans is the goal of HELIOS.
+
+3 HELIOS
+?
+
+?
+
+?
+HELIOS is an optimizer for LS which consists of two main components: a rewriter
+(denoted RW) and a planner (denoted HP). Each LS L to be processed is first forwarded
+to RW, which applies several algebraic transformation rules to transform L into an
+that promises to be more efficient to execute. The aim of HP is then to
+equivalent LS L
+. This plan is finally sent to the execution engine, which
+derive a complete plan P for L
+runs the plan and returns a final mapping. In the following, we present each of these
+components.4 Throughout the formalization, we use  for logical implications and 
+to denote rules.
+4 Due to space restrictions, some of the details and proofs pertaining to the rewriter and planner
+?
+
+?
+
+?
+are omitted. Please consult http://limes.sf.net for more details.
+
+A.-C. Ngonga Ngomo
+
+3.1 The HELIOS Rewriter
+
+RW implements an iterative rule-based approach to rewriting. Each iteration consists of
+three main steps that are carried out from leaves towards the root of the input specifica-
+tion. In the first step, sub-graphs of the input specification L are replaced with equivalent
+sub-graphs which are likely to be more efficient to run. In a second step, dependency
+between nodes in L are determined and propagated. The third step consists of removing
+portions of L which do not affect the final results of Ls execution. These three steps
+are iterated until a fixpoint is reached.
+
+Step 1: Rewriting Given a LS L, RW begins by rewriting the specification using
+algebraic rules dubbed leaf generation rules.
+
+m1, 
+
+
+
+m2, 
+
+
+
+m1 + m2,   m1 + m2, 
+
+
+
+Fig. 2. Leaf generation rule for linear combinations
+
+The leaf generation rules (LR) make use of relations between metric operators and
+specification operators to transform leaf nodes with complex measures into graphs
+whose leaves contain exclusively atomic measures. For example, the rule shown in Figure 2 transforms a filter that relies on the linear combinations of 2 measures into a LS
+with three filters whose leaves only contain atomic measures as described in [9]. While
+it might seem absurd to alter the original filter in this manner, the idea here is that we
+can now run specialized algorithms for m1 and m2, then compute the intersection M of
+the resulting mapping and finally simply check each of the (s, t) with r : (s, t, r)  M
+for whether it abides by the linear combination in the root filter. This approach is usually
+more time-efficient than checking each (s, t)  S  T for whether it abides by the linear combination in the original specification. Similar rules can be devised for min (see
+Figure 3), max and the different average functions used in LD frameworks. After L has
+been rewritten by the rules in LR, each of its leaves is a filter with atomic measures.
+
+m1, 
+
+m2, 
+
+min(m1, m2),   identity, 
+
+
+
+Fig. 3. Rule for minimum. In the corresponding rule for maximum, the mapping union is used.
+?
+
+?
+
+?
+Step 2: Dependency Detection and Propagation. The idea behind the use of dependencies is to detect and eliminate redundant portions of the specification. Conse-
+quently, RW implements two types of dependency-based rules: dependency detection
+rules and dependency propagation rules. Formally, we say that L1 depends on L2 (de-
+noted depends(L1, L2)) if the mapping resulting from L1 is a subset of the mapping
+resulting from L2 for all possible S and T . RW generates dependencies between leaves
+(which now only contain atomic measures) by making use of
+
+L1 = f (m, 1)  L2 = f (m, 2)  1  2  depends(L1, L2).
+
+(1)
+
+Moreover, RW makes use of dependencies have been shown to apply between several
+similarity and distance measures that are commonly used in literature. For example,the
+authors of [17] show that for two non-empty strings x and y, jaccard(x, y)   
+1+ (|x| + |y|). Given that |x|  1 and |y|  1, we can infer that
+overlap(x, y)  
+jaccard(x, y)    overlap(x, y)  2
+1 + 
+
+(2)
+Thus, if L1 = f (jaccard(ps, pt), 1) and L2 = f (overlap(ps, pt), 2) with 2 
+, then depends(L1, L2) holds. Currently, RW implements dependencies between
+
+21
+1+1
+the overlap, trigrams and the jaccard similarities discussed in [17].
+
+.
+
+Leaf-level dependencies can be propagated towards the root of the specification
+
+based on the following rules:
+p1: L = i(, op(L1, L2))  L1 = f (m, 1, op1(L11, L12))  L2 = f (m, 2, op2(L21,
+L22)) 1   2  )  L := i(0, op(L1, L2)) (if the threshold of the father of
+any operator is smaller than that of all its children and the father node is an identity
+filter, then the threshold of the father can be set to 0).
+)L = f (m, ,(L1, L2))  depends(L, L
+
+)
+then the father of this conjunction
+, L2))  depends(L
+
+,
+depends on one child of a disjunction and the father of the disjunction has
+
+(if all children of a conjunction depend on L
+depends on L
+
+p3: L = f (m, 0,(L1, L2)) (depends(L
+
+p2: depends(L1, L
+?
+
+?
+
+?
+)depends(L2, L
+?
+
+?
+
+?
+, L1) depends(L
+?
+
+?
+
+?
+).
+?
+
+?
+
+?
+L) (if L
+the threshold 0 then L
+?
+
+?
+
+?
+depends on the father of the disjunction).
+
+Step 3: Reduction. Given two specifications L1 1 L and L2 1 L with depends
+(L1, L2), we can now reduce the size of L = f ilter(m, , op(L1, L2)) by using the
+following rules:
+?
+
+?
+
+?
+r1: L
+r2: L
+r3: L
+
+= f ilter(m, ,(L1, L2))  depends(L1, L2)  L
+
+= f ilter(m, ,(L1, L2))  depends(L1, L2)  L
+
+= f ilter(m, ,\(L1, L2))  depends(L1, L2)  L
+?
+
+?
+
+?
+:= f ilter(m, , L1)),
+:= f ilter(m, , L2)),
+:=  where := stands for
+
+overwriting.
+
+An example that elucidates the ideas behind DR is given in Figure 4. Set operators
+applied to one mapping are assumed to not alter the mapping.
+
+The leaf generation terminates after at most as many iterations as the total number of
+atomic specifications used across all leaves of the input LS L. Consequently, this step
+?
+
+?
+
+?
+decreases, leading to reduction rules being applicable at most |L
+
+A.-C. Ngonga Ngomo
+= LR(L). The generation of dependencies rehas a complexity of O(|L
+quires O(|L
+|2) node comparisons. Each time a reduction rule is applied, the size of the
+| times. The com-
+?
+
+?
+
+?
+|). In the worst case of a left- or right-linear
+plexity of the reduction is thus also O(|L
+specification, the propagation of dependencies can reach the complexity O(|L
+|2). All
+three steps of each iteration thus have a complexity of at most O(|L|2) and the specification is at least one node smaller after each iteration. Consequently, the worst-case
+complexity of the rewriter is O(|L
+
+|3).
+
+m4, 4
+
+m3, 3
+
+m4, 4
+
+m3, 3
+
+
+
+
+
+m2, 2
+
+m1, 1
+
+m2, 2
+
+m1, 1
+
+m2, 2
+
+
+
+m0, 0
+
+
+
+
+
+m0, 0
+
+
+
+ m0, 0
+
+Fig. 4. Example of propagation of dependencies. The dashed arrows represent dependencies. The
+dependencies from the left figure are first (using rule p1). Then, the reduction rule r2 is carried
+out, leading to the specification on the right.
+
+3.2 The HELIOS Planner
+
+The goal of the HELIOS planner HP is to convert a given LS into a plan. Previous work
+on query optimization for databases have shown that finding the optimal plan for a given
+query is exponential in complexity [15]. The complexity of finding the perfect plan for
+a LS is clearly similar to that of finding a play for a given query. To circumvent the
+complexity problem, we rely on the following optimality assumption: Given L1 1 L
+and L2 1 L with L = f (m, , op(L1, L2)), a good plan for L can be derived from
+plans for L1 and L2. In the following, we begin by explaining core values that HP needs
+to evaluate a plan. In particular, we explain how HP evaluates atomic and complex
+plans. Thereafter, we present the algorithm behind HP and analyze its complexity.
+
+Plan Evaluation. HP uses two values to characterize any plan P : (1) the approximate
+runtime of P (denoted (P )) and (2) the selectivity of P (dubbed s(P )), which encodes
+the size of the mapping returned by P as percentage of |S  T|.
+
+Computing (P ) and s(P ) for atomic LS: Several approaches can be envisaged to
+achieve this goal. In our implementation of HP, we used approximations based on sam-
+pling. The basic assumption behind our feature choice was that LD frameworks are
+usually agnostic of S and T before the beginning of the LD. Thus, we opted for approximating the runtime of atomic plans P by using |S| and |T| as parameters. We
+?
+
+?
+
+?
+chose these values because they be computed in linear time.5 To approximate (P ) for
+atomic plans, we generated source and target datasets of sizes 1000, 2000, . . . , 10000
+by sampling data from the English labels of DBpedia 3.8. We then stored the runtime
+of the measures implemented by our framework for different thresholds  between 0.5
+and 1.6 The runtime of the ith experiment was stored in the row yi of a column vector
+Y . The corresponding experimental parameters (1,|S|,|T|, ) were stored in the row ri
+of a four-column matrix R. Note that the first entry of all ri is 1 to ensure that we can
+learn possible constant factors. We finally computed the vector  = (0, 1, 2, 3)T
+such that
+
+(P ) = 0 + 1|S| + 2|T| + 3.
+
+(3)
+
+To achieve this goal, we used the following exact solution to linear regression:  =
+1RT Y. The computation of s(P ) was carried out similarly with the sole differ-
+(RT R)
+|Mi|
+ence that the entries yi for the computation of s(P ) were
+|S||T|, where Mi is the size
+of the mapping returned by the ith experiment. Figure 5 shows a sample of the results
+achieved by different algorithms in our experiments. The plan returned for the atomic
+LSf (m, ) is (run,m,).
+
+Computing (P ) and s(P ) for complex LS: The computation of the costs associated
+with atomic filter, filterout and operators was computed analogously to the
+computation of runtimes for atomic LS. For filters, the feature was the size of the input
+mapping. For non-atomic plans P , we computed (P ) by summing up the (pi) for all
+the steps pi included in the plan. The selectivity of operators was computed based on
+the selectivity of the mappings that served as input for the operators. To achieve this
+goal, we assumed that the selectivity of a plan P to be the probability that a pair (s, t)
+is returned after the execution of P . Moreover, we assumed the input mappings M1
+(selectivity: s1) resp. M2 (selectivity: s2) to be the results of independent computations.
+Based on these assumptions, we derived the following selectivities for op(M1, M2):
+ op =   s(op) = s1s2.
+ op =   s(op) = 1  (1  s1)(1  s2).
+ op = \  s(op) = s1(1  s2).
+
+The HP Algorithm. The core of the approach implemented by HP is shown in Algorithm 1. For atomic specifications f (m, ), HP simply returns (run,m,)
+(GETBESTPLAN method in Algorithm 1). If different algorithms which allow running
+m efficiently are available, HP chooses the implementation that leads to the smallest runtime (P ). Note that the selectivity of all algorithms that allow running m is
+exactly the same given that they must return the same mapping. If the specification
+L = (m, , op(L1, L2)) is not atomic, HPs core approach is akin to a divide-and-
+conquer approach. It first devises a plan for L1 and L2 and then computes the costs
+of different possible plans for op. For  for example, the following three plans are
+equivalent:
+5 Other values can be used for this purpose but our results suggest that using |S| and |T| is
+sufficient in most cases.
+
+6 We used the same hardware as during the evaluation.
+
+A.-C. Ngonga Ngomo
+
+(a) Runtimes for trigrams.
+
+(b) Heatmap for trigrams.
+
+(c) Runtimes for levenshtein.
+
+(d) Heatmap for levenshtein.
+
+Fig. 5. Runtimes achieved by PPJoin+ (trigrams) and EDJoin (levenshtein) for  = 0.5.
+The x-axis of the heatmap show |S| in thousands, while the y-axis shows |T| in thousands. The
+color bars show the runtime in ms.
+
+1. Canonical plan. This plan simply consists of merging (via the CONCATENATE
+method in Algorithm 1) the results of the best plans for L1 and L2. Consequently,
+the plan consists of (1) running the best plan for L1 (i.e., Q1 in Algorithm 1),
+(2) running the best plan for L2(i.e., Q2 in Algorithm 1), then (3) running the
+intersection action over the results of Q1 and Q2 and finally (4) running
+filter over the result of the intersection action.
+
+2. Filter-right plan. This plan uses f (m2, 2) as a filter over the results of Q1. Con-
+sequently, the plan consists of (1) running the best plan for L1, then (2) running the
+filter action with measure m2 and threshold 2 over the results of Q1 and finally
+(3) running filter with measure m and threshold  over the previous result.
+
+3. Filter-left plan. Analogous to the filter-right plan with L1 and L2 reversed.
+Similar approaches can be derived for the operators  and \ as shown in Algorithm 1.
+HP now returns the least costly plan as result (GETLEASTCOSTLY method in Algorithm 1). This plan is finally forwarded to the execution engine which runs the plan and
+returns the resulting mapping.
+
+Given that the alternative plans generated by HP are equivalent and that HP always
+chooses one of this plan, our algorithm is guaranteed to be complete. Moreover, HP
+approximates the runtime of at most 3 different plans per operator and at most k different plans for each leaf of the input specification (where k is the maximal number of
+?
+
+?
+
+?
+algorithms that implements a measure m in our framework). Consequently, the runtime
+complexity of HP is O(max{k, 3}  |L|).
+
+Algorithm 1. The PLAN method
+
+if L is atomic then
+
+P = GETBESTPLAN(L);
+
+if L = f (m, , op(L1)) then
+
+P := GETBESTPLAN(L1 )
+
+else
+
+else
+
+Q1 := PLAN(L1 )
+Q2 := PLAN(L2 )
+if L = f (m, , (L1, L2)) then
+
+P0 := CONCATENATE(intersection, Q1, Q2)
+P1 := CONCATENATE(filter(m1 , 1), Q2)
+P2 := CONCATENATE(filter(m2 , 2), Q1)
+P := GETLEASTCOSTLY (P0, P1, P2)
+
+else if L = f (m, , (L1, L2)) then
+
+P0 := CONCATENATE(union, Q1, Q2)
+P1 := CONCATENATE(union, filter(m2, 2, S  T ) , Q2)
+P2 := CONCATENATE(union, filter(m1, 1, S  T ) , Q1)
+P := GETLEASTCOSTLY (P0, P1, P2)
+
+else if L = f (m, , \(L1, L2)) then
+
+P0 := CONCATENATE(minus, Q1, Q2)
+P1 := CONCATENATE(filterout(m2 , 2), Q2)
+P := GETLEASTCOSTLY (P0, P1)
+
+end if
+
+end if
+a0 = f ilter(m, )
+P = CONCATENATE (a0, P )
+
+end if
+return P
+
+4 Evaluation
+
+4.1 Experimental Setup
+
+The aim of our evaluation was to measure the runtime improvement of HELIOS the
+overall runtime of LS. We thus compared the runtimes of EP0 (i.e., LIMES), RW (i.e.,
+RW + EP0), HP and HELIOS (i.e., RW +HP) in our experiments. We chose LIMES
+because it has been shown to be very time-efficient in previous work [9]. We considered
+manually created and automatically generated LS. All experiments were carried out on
+server running Ubuntu 12.04. In each experiment, we used a single kernel of a 2.0GHz
+AMD Opteron processor with 10GB RAM.
+
+The manually created LS were selected from the LATC repository.7 We selected 17
+LS which relied on SPARQL endpoints that were alive or on data dumps that were
+available during the course of the experiments. The specifications linked 18 different
+datasets and had sizes between 1 and 3. The small sizes were due to humans tending to
+generate small and non-redundant specifications.
+
+7 https://github.com/LATC/24-7-platform/tree/master/
+
+link-specifications
+
+A.-C. Ngonga Ngomo
+
+The automatic specifications were generated during a single run of specification
+learning algorithm EAGLE [8] on four different benchmark datasets described in Table 4.8 The mutation and crossover rates were set to 0.6 while the number of inquiries
+per iteration was set to 10. The population size was set to 10. The sizes of the specifications generated by EAGLE varied between 1 and 11. We compared 1000 LS on
+the OAEI 2010 Restaurant and the DBLP-ACM dataset each, 80 specifications on the
+DBLP-Scholar dataset and 100 specifications on LGD-LGD. We chose to use benchmark datasets to ensure that the specifications used in the experiments were of highquality w.r.t. the F-measure they led to. Each specification was executed 10 times. No
+caching was allowed. We report the smallest runtimes over all runs for all configurations
+to account for possible hardware and I/O influences.9
+
+4.2 Results on Manual Specifications
+
+The results of our experiments on manual specifications are shown in Table 3 and allow
+deriving two main insights: First, HELIOS can improve the runtime of atomic specifications (which made up 62.5% of the manual LS). This result is of tremendous importance
+as it suggests that the overhead generated by HELIOS is mostly insignificant, even for
+specifications which lead to small runtimes (e.g., DBP-DataGov requires 8ms). More-
+over, our experiments reveal that HELIOS achieves a significant improvement of the
+overall runtime of specifications with sizes larger than 1 (37.5% of the manual LS). In
+the best case, HELIOS is 49.5 times faster than EP0 and can reduce the runtime of the
+LS LDG-DBP (A) from 52.7s to 1.1s by using a filter-left plan. Here, we see that the
+gain in runtime generated by HELIOS grows with |S|  |T|. This was to be expected as
+a good plan has more effect when large datasets are to be processed. Overall, HELIOS
+outperforms LIMES canonical planner on all non-atomic specifications. On average,
+HELIOS is 4.3 times faster than the canonical planner on LS of size 3.
+
+4.3 Results on Automatic Specifications
+
+Overall, our results on automatic specifications show clearly that HELIOS outperforms
+the state of the art significantly. In Table 4, we show the average runtime of EP0, RW,
+HP and HELIOS on four different datasets of growing sizes. The overall runtime of
+HELIOS is clearly superior to that of EP0 on all datasets. As expected, the gain obtained by using HELIOS grows with the size of |S|  |T|. In particular, the results on
+the very small Restaurant dataset support the results achieved on the manual specifica-
+tions. While HP alone does not lead to a significant improvement, HELIOS leads to an
+improvement of the overall runtime by 6.35%. This improvement is mostly due to RW
+eliminating filters and therewith altering the plans generated by HP. These alterations
+allow for shorter and more time-efficient plans.
+
+8 The Restaurant data is available at http://oaei.ontologymatching.org/2010/
+
+DBLP-ACM and DBLP-Scholar are at http://dbs.uni-leipzig.de/en/
+research/projects/object matching/
+fever/benchmark datasets for entity resolution
+
+9 All evaluation results can be found at https://github.com/AKSW/LIMES
+?
+
+?
+
+?
+Table 3. Comparison of runtimes on manual specifications. The top portion of the table shows
+runtimes of specifications of size 1 while the bottom part shows runtimes on specifications of size
+3. EVT stands for Eventseer, DF for DogFood, (P) stands for person, (A) stands for airports, (U)
+stands for universities, (E) stands for events. The best runtimes are in bold.
+
+Source - Target
+
+DBP - Datagov
+RKB - DBP
+Epo - DBP
+Rail - DBP
+Stad - Rmon
+EVT - DF (E)
+Climb - Rail
+DBLP - DataSW
+EVT - DF (P)
+EVT - DBLP
+
+DBP - OpenEI
+DBP - GSpecies
+Climb - DBP
+DBP - LGD (E)
+Climb - LGD
+DBP - LGD (A)
+LGD - LGD
+
+|S|  |T|
+
+1.7  103
+2.2  103
+73.0  103
+133.2  103
+341.9  103
+531.0  103
+1.9  106
+92.2  106
+148.4  106
+161.0  106
+10.9  103
+94.2  103
+312.4  103
+34.1  106
+215.0  106
+383.8  106
+509.3  109
+
+EP0
+(ms)
+?
+
+?
+
+?
+2,477
+9,654
+?
+
+?
+
+?
+2,259
+24,249
+52,663
+46,604
+
+(ms)
+?
+
+?
+
+?
+2,482
+9,575
+?
+
+?
+
+?
+2,133
+24,835
+59,635
+38,560
+
+(ms)
+?
+
+?
+
+?
+2,503
+9,613
+?
+
+?
+
+?
+1,206
+3,497
+1,066
+32,831
+
+HELIOS
+(ms)
+
+Gain
+(ms)
+?
+
+?
+
+?
+2,434
+9,612
+?
+
+?
+
+?
+1,209
+3,521
+1,064
+22,497
+?
+
+?
+
+?
+-12
+?
+
+?
+
+?
+1,050
+20,728
+51,599
+24,107
+
+On the larger DBLP-ACM dataset, HELIOS achieve a runtime that is up to 185.8
+times smaller than that of EP0 (e.g., for f ((f (jaccard(authors, authors), 0.93),
+f (edit(venue, venue), 0.93)),0.53)). Yet, given that the runtime approximations are
+generic, HELIOS sometimes generated plans that led to poorer runtimes. In the worst
+case, a plan generated by HELIOS was 6.5 times slower than the plan generated by EP0
+(e.g., for f ((f (edit(authors, authors), 0.59), f (cosine(venue,venue),0.73)),0.4)).
+On average, HELIOS is 38.82% faster than EP0. Similar results can be derived from
+DBLP-Scholar, where HELIOS is 29.61% faster despite having run on only 80 specifi-
+cations. On our largest dataset, the time gain is even larger with HELIOS being 46.94%
+faster. Note that this improvement is very relevant for end users, as it translates to approximately 1h of runtime gain for each iteration of our experiments. Here, the best
+?
+
+?
+
+?
+(a) DBLP-ACM
+
+(b) LGD-LGD
+
+Fig. 6. Cumulative runtimes on DBLP-ACM and LGD-LGD
+?
+
+?
+
+?
+Table 4. Summary of the results on on automatically generated specifications. |L| shows for
+the average size  standard deviation of the specifications in the experiment. F1 shows the F-
+measure achieved by EAGLE on the dataset. The runtimes in four rightmost columns are the
+average runtimes in seconds.
+
+Restaurants
+DBLP-ACM
+DBLP-Scholar
+LGD-LGD
+
+|S|  |T|
+72.3  103
+6.0  106
+168.1  106
+5.8  109
+
+|L|
+4.441.79
+6.611.32
+6.421.47
+3.542.15
+
+F1
+
+0.89
+0.99
+0.91
+0.98
+
+EP0
+
+0.15
+1.38
+17.44
+102.33
+
+0.15
+1.37
+17.41
+97.40
+
+0.15
+1.00
+13.54
+72.19
+
+HELIOS
+
+0.14
+0.99
+13.46
+69.64
+
+plan generated by HELIOS is 314.02 times faster than EP0. Moreover, we can clearly
+see the effect of RW with average runtime improvement of 5.1% (see Figure 6).
+
+We regard our overall results as very satisfactory given that the algorithms underlying
+EP0 are in and of themselves already optimized towards runtime. Still, by combining
+them carefully, HELIOS can still cut down the overall runtime of learning algorithms
+and even of manually created link specifications. To ensure that our improvements are
+not simply due to chance, we compared the distribution of the cumulative runtimes of
+EP0 and RW, HP and HELIOS as well EP0 and HELIOS by using a Wilcoxon paired
+signed rank test at a significance level of 95%. On all datasets, all tests return significant results, which shows that the RW, HP and HELIOS lead to statistically significant
+runtime improvements.
+
+5 Related Work
+
+The task we address shares some similarities with the task of query optimization in
+databases [15]. A large spectrum of approaches have been devised to achieve this goal
+including System Rs dynamic programming query optimization [13], cost-based optimizers and heuristic optimizers [6] and approaches based on genetic programming [1].
+HELIOS is most tightly related to heuristic optimizers as it relies on an optimality assumption to discover plans in polynomial time. Overviews of existing approaches can
+be found in [2,15]. The main difference between the task at hand and query optimization for databases are as follows: First, databases can store elaborate statistics on the
+data they contain and use these to optimize their execution plan. LD frameworks do not
+have such statistics available when presented with a novel LS as they usually have to
+access remote data sources. Thus, HELIOS must rely on statistics that can be computed
+efficiently while reading the data. Moreover, our approach also has to rely on generic
+approximations for the costs and selectivity of plans. Still, we reuse the concepts of
+selectivity, rewriting and planning as known from query optimization in databases.
+
+This work is a contribution to the research area of LD. Several frameworks have
+been developed to achieve this goal. The LIMES framework [9], in which HELIOS
+is embedded, provides time-efficient algorithms for running specific atomic measures
+(e.g., PPJoin+ [17] and HR3 [7]) and combines them by using set operators and filters.
+While LIMES relied on graph traversal until now, most other systems rely on block-
+ing. For example, SILK [5] relies on MultiBlock to execute LS efficiently. Multiblock
+?
+
+?
+
+?
+allows mapping a whole link specification in a space that can be segmented to overlapping blocks. The similarity computations are then carried out within the blocks only. A
+similar approach is followed by the KnoFuss system [10]. Other time-efficient systems
+include [16] which present a lossy but time-efficient approach for the efficient processing of LS. Zhishi.links on the other hand relies on a pre-indexing of the resources to
+improve its runtime [11]. CODI uses a sampling-based approache to compute anchor
+alignments to reduce the its runtime [4]. Other systems descriptions can be found in the
+results of the Ontology Alignment Evaluation Initiative [3].10 The idea of optimizing
+the runtime of schema matching has also been considered in literature [14]. For exam-
+ple, [12] presents an approach based on rewriting. Still, to the best of our knowledge,
+HELIOS is the first optimizer for link discovery that combines rewriting and planning
+to improve runtimes.
+
+6 Conclusion and Future Work
+
+We presented HELIOS, the (to the best of our knowledge) first execution optimizer for
+LS. We evaluated our approach in manually created and automatically generated LS.
+Our evaluation shows that HELIOS outperforms the canonical execution planner implemented in LIMES by up to two orders of magnitude. Our approach was intended
+to be generic. Thus, we used generic evaluation functions that allowed to detect plans
+that should generally work. Our results suggest that using more dataset-specific features
+should lead to even better runtimes and higher improvements. We thus regard HELIOS
+as the first step in a larger agenda towards creating a new generation of self-configuring
+and self-adapting LD frameworks. During the development of HELIOS, we noticed interesting differences in the behaviour of LD algorithms for different languages. For
+example, the  vector for the different measures differs noticeably for French, English
+and German. We will investigate the consequences of these differences in future work.
+Moreover, we will investigate more elaborate features for approximating the selectivity
+and runtime of different algorithms.
+
+Acknowledgement. This work was partially financed the EU FP7 project GeoKnow
+(GA: 318159) and the DFG project LinkingLOD.

@@ -1,0 +1,700 @@
+A Caching Mechanism for
+
+Semantic Web Service Discovery
+
+Michael Stollberg, Martin Hepp, and J org Hoffmann
+
+Digital Enterprise Research Institute (DERI),
+
+University of Innsbruck, Austria
+firstname.lastname@deri.org
+
+Abstract. The discovery of suitable Web services for a given task is one
+of the central operations in Service-oriented Architectures (SOA), and
+research on Semantic Web services (SWS) aims at automating this step.
+For the large amount of available Web services that can be expected
+in real-world settings, the computational costs of automated discovery
+based on semantic matchmaking become important. To make a discovery
+engine a reliable software component, we must thus aim at minimizing
+both the mean and the variance of the duration of the discovery task.
+For this, we present an extension for discovery engines in SWS environments that exploits structural knowledge and previous discovery results
+for reducing the search space of consequent discovery operations. Our
+prototype implementation shows significant improvements when applied
+to the Stanford SWS Challenge scenario and dataset.
+
+1 Introduction
+
+Web service discovery is the process of finding suitable Web services for a given
+task, denoting one of the central operations in Service-oriented Architectures
+(SOA). There is already substantial work in the field Semantic Web services
+(SWS) on automating Web service discovery by semantic matchmaking, mostly
+focussing on the retrieval performance (e.g. [14,11,13,9]).
+
+However, the computational performance of semantically enabled discovery
+and the practical consequences for SWS environments have not received a lot of
+attention so far. Considering the increasing amount of available Web services,
+this becomes in particular relevant for employing a discovery engine as a heavily
+used component in systems for dynamic Web service composition or semantically enabled business process management (e.g. [19,8]). For this, we consider the
+following characteristics for judging the computational reliability of a discovery
+engine: efficiency as the time required for finding a suitable Web service, scalability as the ability to deal with a large search space of available Web services,
+and stability as a low variance of the execution time of several invocations.
+
+This paper presents a technique that addresses this challenge by adapting the
+concept of caching to Web service discovery. It captures knowledge on discovery
+results for generic descriptions of objectives to be achieved, and exploits this for
+optimizing Web service discovery for concrete requests at runtime.
+
+K. Aberer et al. (Eds.): ISWC/ASWC 2007, LNCS 4825, pp. 480493, 2007.
+c Springer-Verlag Berlin Heidelberg 2007
+?
+
+?
+
+?
+Fig. 1. Overview of Web Service Discovery Framework
+
+We refer to this as Semantic Discovery Caching (SDC). Figure 1 shows the
+basic idea as a dataflow diagram. There are three core conceptual entities: Web
+services that have a formal description, goal templates as generic objective descriptions that are stored in the system, and goal instances that describe concrete
+requests by instantiating a goal template with concrete inputs. At design time,
+Web services for goal templates are discovered. The result is captured in a special knowledge structure called the SDC graph. At runtime, a concrete client
+request is formulated as a goal instance for which suitable Web services need to
+be discovered. As the expectably most frequent operation in SOA applications,
+we optimize this by exploiting the SDC graph in order to reduce the search space
+and minimize the number of necessary matchmaking operations.
+
+The paper is structured as follows. Section 2 briefly describes our approach for
+semantically enabled Web service discovery as presented in earlier works [18,17].
+Then, Section 3 specifies the Semantic Discovery Caching technique. Section 4
+presents the evaluation, and discusses the relevance and specifics of our approach.
+Section 5 positions it within related work, and Section 6 concludes the paper.
+We use the shipment scenario from the Stanford SWS Challenge as a running
+example, a widely recognized initiative for demonstration and comparison of
+semantically enabled discovery techniques (http://www.sws-challenge.org).
+A detailed technical report on this work is provided in [16].
+
+2 Foundations of the Discovery Framework
+
+As the basis for the subsequent sections, the following summarizes our approach
+for semantically enabled Web service discovery as presented in earlier works.
+
+We follow the goal-driven approach for Semantic Web services as promoted
+by the WSMO framework [5]. In contrast to an invocation request for a Web
+service, a goal describes a client objective with respect to the problem that shall
+be solved while abstracting from technical details on Web service invocation.
+The aim is to facilitate problem-oriented Web service usage: the client merely
+specifies the objective to be achieved as a goal, and the system automatically
+discovers, composes, and executes suitable Web services for solving this [18].
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+The distinction of goal templates and goal instances allows to ease the goal
+formulation by clients, and it facilities the two-phase Web service discovery as
+outlined above. For this, we have defined a formal model that considers a statebased model of the world that Web services operate in, and provides precise
+definitions of goals, Web services, and the necessary matchmaking techniques.
+We here recall the central aspects; the full model is defined in [17].
+
+2.1 Web Services, Goals, and Functional Descriptions
+
+We consider functional aspects as the primary aspect for discovery: if a Web
+service does not provide the functionality for solving a goal, then it is not usable
+and other, non-functional aspects are irrelevant. The relevant parts of goal and
+Web service descriptions for discovery by semantic matchmaking are the formally
+described requested and the provided functionalities.
+
+In our state-based model, a particular execution of a Web service W denotes a
+sequence of states  = (s0, . . . , sm), i.e. a change of the world from a start state s0
+to an end state sm. In consequence, the overall functionality provided by W is the
+set of all possible executions of W , denoted by {}W . Analogously, we understand
+a particular solution of a goal as a sequence of states from the initial state into
+a state of the world wherein the objective is solved. A functional description D
+formally describes the possible executions of a Web service  respectively the
+possible solutions for a goal  with respect to the start- and end states.
+We define D over a signature , and use ontologies  as the background
+knowledge. D consists of a set of input variables IN = {i1, . . . , in}, a precondition
+pre that constrains the possible start states, and an effect eff that constrains
+the possible end states. To properly describe the dependency of the start- and end
+states, IN occur as free variables in both pre and eff ; the predicate out denotes
+the outputs. The formal meaning of D is defined as an implication semantics
+between the precondition and the effect. We say that a Web service W provides
+the functionality described by D, denoted by W |= D, if and only if for all
+  {}W holds that if s0 |= pre then sm |= eff . In order to deal with functional
+descriptions in terms of model-theoretic semantics, we present this as a FOL
+formula D of the form pre  eff . Then, W |= D is given if and only if every
+  {}W is represented by a -interpretation that is a model of D.
+Analogously, the functional description DG of a goal template G formally describes the set {}G as the state sequences that are possible solutions for G.
+Goal templates are generic objective descriptions that are kept in the system.
+At runtime, a concrete client request is formulated as a goal instance that instantiates a goal template with concrete inputs. We define a goal instance as a
+pair GI(G) = (G, ) with G as the corresponding goal template, and an input
+binding  : {i1, . . . , in}  U as a total function that assigns objects of U to
+each IN -variable of DG. This  is subsequently used to invoke a Web service
+in order to solve GI(G). We say that GI(G) is a consistent instantiation of its
+corresponding goal template, denoted by GI(G) |= G, if DG is satisfiable under
+the input binding . A usable Web service for GI(G) can only be found if this
+is given. Moreover, it holds that if GI(G) |= G then {}GI(G)  {}G.
+?
+
+?
+
+?
+Table 1. Examples for Functional Descriptions of Goals and Web Services
+
+Goal Template G
+
+Web Service W
+
+location & shipment ontology
+
+ship a package of any weight in Europe
+:
+IN : {?s,?r,?p,?w}
+pre: person(?s)  in(?s, europe)
+
+ person(?r)  in(?r, europe)
+ package(?p)  weight(?p, ?w)
+ maxW eight(?w, heavy).
+
+eff : ?o, ?price. out(?o)  (
+shipmentOrder(?o, ?p)
+ sender(?p, ?s)  receiver(?p, ?r)
+ costs(?o, ?price) ).
+
+shipment in Germany, max 50 kg
+
+:
+location & shipment ontology
+IN : {?s,?r,?p,?w}
+pre: person(?s)  in(?s, germany)
+
+ person(?r)  in(?r, germany)
+ package(?p)  weight(?p, ?w)
+ maxW eight(?w, 50).
+eff : ?o, ?price. out(?o)  (
+shipmentOrder(?o, ?p)
+ sender(?p, ?s)  receiver(?p, ?r)
+ costs(?o, ?price) ).
+
+Table 1 shows examples for functional descriptions in our running example.
+Using classical first-order logic as the specification language, the preconditions
+define conditions on the required inputs, and the effects state that the output is
+a shipment order with respect to the input values.1
+
+2.2 Semantic Matchmaking
+
+The matchmaking techniques for Web service discovery are defined on the basis
+of the functional descriptions explained above. We consider a Web service W to
+be usable for a goal template G if there exists at least one execution of W that is
+also a solution for G, i.e. if .   {}G  {}W . We express the usability of W
+for G in terms of matching degrees as defined in Table 2. Four degrees  exact,
+plugin, subsume, intersect  denote different situations wherein W is usable for
+solving G; the disjoint degree denotes that this is not given. We always use the
+highest possible degree as it holds that (1) plugin  subsume  exact, (2) plugin
+ intersect, (3) subsume  intersect, and (4)  intersect  disjoint.
+
+Analogously, we consider a Web service W to be usable for a goal instance
+GI(G) if W can provide a solution for GI(G) when it is invoked with the input
+binding  defined in GI(G). Formally, this is given if union of the formulae
+  {[DG], [DW ]} is satisfiable. This means that under consideration of the
+domain knowledge  and under the input binding  defined in GI(G) there
+must be a -interpretation that represents a solution for the corresponding goal
+template G as well as a possible execution of the Web service W . However, we
+
+1 (a) We consider Web services to provide deterministic functionalities, i.e. that the
+end-state of an execution is completely dependent on the start-state and the provided inputs; this is a pre-requisite for precise discovery by semantic matchmaking.
+(b) We consider all functional descriptions D to be consistent, i.e. that 
+is satisfiable under an input binding . Otherwise, a Web service W |= D would not
+realizable, and there would not be any solution for a goal. The full model further
+considers dynamic symbols that are changed during executions.
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+Table 2. Definition of Matching Degrees for DG, DW
+
+Definition
+
+Denotation
+exact(DG,DW )
+ |= . DG  DW
+plugin(DG,DW )
+ |= . DG  DW
+subsume(DG,DW )  |= . DG  DW
+intersect(DG,DW )  |= . DG  DW
+disjoint(DG,DW )
+ |= . DG  DW
+
+Meaning
+  {}W
+
+  {}G if and only if
+if   {}G then   {}W
+if   {}W then   {}G
+there is a  such that
+  {}G and   {}W
+there is no  such that
+  {}G and   {}W
+
+or
+or
+and   [DW ] is satisfiable, or
+
+can simplify the determination of the usability of W for GI(G) on the basis of
+the usability degree of W for the corresponding goal template G as follows.
+Definition 1. Let GI(G) = (G, ) be a goal instance with GI(G) |= G. Let W
+be a Web service, and let DW be a functional description such that W |= DW .
+W is usable for solving GI(G) if and only if:
+(i) exact(DG,DW )
+(ii) plugin(DG,DW )
+(iii) subsume(DG,DW )
+(iv) intersect(DG,DW ) and   [DG]  [DW ] is satisfiable.
+This states that only those Web services that are usable for the corresponding
+goal template G are potentially usable for the goal instance GI(G). If a Web
+service W is usable for G under the exact or plugin degree, then it is also
+usable for any goal instance of G because {}GI(G)  {}G  {}W . Under
+the subsume degree, all executions of W are solutions of G but not vice versa.
+Table 1 above is an example for this. Consider a goal instance that defines  =
+{?s|paris, ?r|vienna, ?p|aPackage, ?w|3.1}: although this properly instantiates
+the goal template,  does not allow to invoke the Web service (which is restricted
+to Germany); thus, it is not usable here. Under the intersect degree, the complete
+matching condition explained above must be checked at runtime.
+
+3 Semantic Discovery Caching
+
+We now turn towards the caching mechanism for Web service discovery. Working
+on the formal model explained above, the aim is to improve the computational reliability of Web service discovery for goal instances that is performed at runtime.
+We commence with the design principles, then provide the formal definition, and
+finally explain the optimization for the runtime discovery process.
+
+3.1 Overview
+
+The idea is to reduce the search space and minimize the necessary matchmaking operations for Web service discovery by exploiting the formal relationships
+?
+
+?
+
+?
+between goal templates, goal instances, and Web services. The central element for
+this is the SDC graph that organizes goal templates in a subsumption hierarchy
+with respect to their semantic similarity, and captures the minimal knowledge
+on the functional usability of the available Web services for the goal templates.
+Two goal templates Gi and Gj are considered to be similar if they have at
+least one common solution. Then, mostly the same Web services are usable for
+them. We express this in terms of similarity degrees d(Gi, Gj) that denote the
+matching degree between the functional descriptions DGi and DGj . Formally,
+these degrees are defined analog to Table 2 (cf. Section 2.2). In order to enable
+efficient search, we define the SDC graph such that the only occurring similarity
+degree is subsume(Gi, Gj). If this is given, then (1) the solutions for the child
+Gj are a subset of those for the parent Gi, and thus (2) the Web services that
+are usable for Gj are a subset of those usable for Gi.
+
+In consequence, the SDC graph is a directed acyclic graph that consists of two
+layers. The upper one is the goal graph that defines the subsumption hierarchy
+of goal templates by directed arcs. The lower layer is the usability cache that
+explicates the usability of each available Web service W for every goal template
+G by directed arcs that are annotated with the usability degree d(G, W ). The
+discovery operations use this knowledge structure by inference rules of the form
+d(Gi, Gj)  d(Gi, W )  d(Gj, W ) that result from the formal definitions.
+
+Figure 2 illustrates the SDC graph for our running example along with the
+most relevant inference rules. There are three goal templates: G1 for package
+shipment in Europe, G2 for Switzerland, and G3 for Germany. Their similarity
+degrees are subsume(G1, G2) and subsume(G1, G3), which is explicated in the
+goal graph. Consider some Web services, e.g. W1 for package shipment in Europe,
+W2 in the whole world, W3 in the European Union, and W4 in the Common-
+wealth. Their usability degree for each goal template is explicated in the usability
+cache, whereby redundant arcs are omitted. We shall explain the creation of the
+SDC graph as well as its usage for optimizing the discovery process below.
+
+Structure of SDC Graph
+
+Inference Rules for subsume(Gi, Gj)
+(1) exact(Gi, W )  plugin(Gj, W ).
+(2) plugin(Gi, W )  plugin(Gj, W ).
+(3) subsume(Gi, W )  exact(Gj, W )
+plugin(Gj, W )
+subsume(Gj, W )
+intersect(Gj, W )
+disjoint(Gj, W ).
+(4) intersect(Gi, W )  plugin(Gj, W )
+intersect(Gj, W )
+disjoint(Gj, W ).
+(5) disjoint(Gi, W )  disjoint(Gj, W ).
+
+Fig. 2. Example of a SDC Graph and Inference Rules
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+3.2 Definition
+
+The following provides the formal definition of the SDC graph and explains the
+algorithms for ensuring that the properties are maintained at all times.
+
+Definition 2. Let d(Gi, Gj) denote the similarity degree of goal templates Gi
+and Gj, and let d(G, W ) denote the usability degree of a Web service W for a
+goal template G. Given a set G of goal templates and a set W of Web services,
+the SDC graph is a directed acyclic graph (VG  VW , Esim  Euse) such that:
+(i) VG := G  GI is the set of inner vertices where:
+- G = {G1, . . . , Gn} are the goal templates; and
+- GI := {GI | Gi, Gj  G, d(Gi, Gj) = intersect, GI = Gi  Gj} is the
+set of intersected goal templates from G
+
+(ii) VW := {W1, . . . , Wm} is the set of leaf vertices representing Web services
+(iii) Esim := {(Gi, Gj) | Gi, Gj  VG} is the set of directed arcs where:
+- d(Gi, Gj) = subsume; and
+- not exists G  VG s.t. d(Gi, G) = subsume, d(G, Gj) = subsume.
+(iv) Euse := {(G, W ) | G  VG, W  VW} is set of directed arcs where:
+- d(G, W )  {exact, plugin, subsume, intersect}; and
+- not exists Gi  VG s.t. d(Gi, G) = subsume, d(Gi, W )  {exact, plugin}.
+This defines the structure of a SDC graph as outlined above. Two refinements are
+necessary to obtain this from an initial set of goal templates and Web services.
+The first one ensures that the only similarity degree that occurs in the SDC
+graph is subsume(Gi, Gj), cf. clause (iii). This denotes that Gj is a functional
+specialization of Gi such that {}Gj
+ {}Gi. In consequence, only those Web
+services that are usable for Gi can be usable for Gj because if {}Gi
+{}W = 
+{}W = , cf. rule (5) in Figure 2. With this as its constituting
+then also {}Gj
+element, the SDC graph provides an index structure for efficient search of goal
+templates and Web services as explained above. The other possible similarity
+degrees are handled as follows: if exact(Gi, Gj), only one goal template is kept
+while the other one is redundant; if plugin(Gi, Gj) then we store the opponent
+arc (Gj, Gi). If disjoint(Gi, Gj), then both are kept as disconnected nodes in
+the SDC graph. Effectively, each of its connected subgraphs covers a problem
+domain, e.g. one for the shipment scenario and another one for flight ticketing.
+The only critical similarity degree is intersect(Gi, Gj), denoting that Gi and
+Gj have a common solution but there are also exclusive solutions for each. This
+can cause cycles in the SDC graph which hamper its search properties. To avoid
+this, we create an intersection goal template GI(Gi, Gj) whose solutions are exactly those that are common to Gi and Gj, cf. clause (i). Formally, GI is defined
+as the conjunction of the functional descriptions of the original goal templates,
+ {}Gj. Because
+i.e. 
+of this, it holds that subsume(Gi, GI(Gi, Gj)) and subsume(Gj, GI(Gi, Gj)).
+Thus, GI becomes a child node of both Gi and Gj in the goal graph. This is applied for every occurring intersect similarity degree so that eventually all similar
+goal templates are organized in a subsumption hierarchy and no cycles occur in
+
+GI (Gi ,Gj ) = DGi  DGj so that {}GI(Gi,Gj) = {}Gi
+?
+
+?
+
+?
+the SDC graph. Intersection goal templates are only used as logical constructs;
+their functional descriptions do not have to be materialized.
+
+The second refinement ensures the minimality of the usability cache, cf. clause
+(iv). For optimizing the discovery operations, we must know the usability degree
+of every Web service for each goal template. However, in order to avoid redun-
+dancy, we omit arcs for which the precise usability degree can be inferred from
+the SDC graph. It holds that if subsume(Gi, Gj), then the usability degree of a
+Web service W for the child Gj is always plugin if W is usable for the parent Gi
+under the degrees exact or plugin because {}W  {}Gi
+ {}Gj. Thus, the
+arc (Gj , W ) is not explicated in the SDC graph. In the above example, the Web
+services W1 and W2 are usable under the plugin degree for both G2 and G3; this
+can be inferred from the usability cache arcs of G1 (cf. rules (1) and (2) in Figure 2). Therewith, Euse is the minimal set of arcs that are necessary to explicate
+the usability degrees of the available Web services for each goal template.
+
+In our implementation, the creation of a SDC graph is realized by the subsequent addition of goal templates. Applying the refinements explained above,
+a new goal template is first inserted at the right position in the goal graph and
+then the usability cache is created for it. The removal or modification of goal
+templates are manual maintenance operations; respective algorithms are ensure
+that the properties of the SDC graph are maintained. Analogous algorithms are
+provided for the addition, removal, and modification of Web services. These are
+automatically triggered by changes in the Web service repository.2
+
+3.3 Runtime Discovery Optimization
+
+We now explain the usage of the SDC graph for optimizing the runtime discovery
+process, i.e. for finding a Web service that is usable for solving a goal instance.
+We consider this as the most frequent operation in real-world SOA applications,
+while changes on goal templates and Web services are significantly less frequent
+maintenance operations. The optimization is achieved by (1) reducing the search
+space as only the Web services that are usable the corresponding goal template
+need to be inspected, and (2) minimizing the number of necessary matchmaking
+operations by first inspecting Web services for which no matchmaking is required
+at runtime. Listing 1 illustrates the algorithm for this.
+
+input: GI(G);
+
+consistentInstantiation (GI(G)) ) then fail ;
+
+if ( !
+if ( lookup(G) ) then return W;
+while ( subsume(G,G) and consistentInstantiation (GI(G)) ) do {
+
+replace (G,G);
+if ( lookup(G) ) then return W; }
+
+if ( otherWS(G) ) then return W;
+else fail ;
+
+Listing 1. Algorithm for SDC-enabled Runtime Discovery
+
+2 The SDC prototype is open source software available from the SDC homepage
+at members.deri.at/michaels/software/sdc/. It is realized as a discovery component in the WSMX system (the WSMO reference implementation, www.wsmx.org).
+We use vampire for matchmaking, a FOL automated theorem prover.
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+The input is a goal instance GI(G) = (G, ) for which a usable Web service
+shall be found. At first, we need to ensure that this is a consistent instantiation
+of its corresponding goal template G; if this is not given, a usable Web service
+can not be found. Then, we try to find a usable Web service by lookup. This
+searches in the SDC graph for a Web service W that is usable for G under the
+exact or the plugin degree; this W is usable for solving GI(G) without the need
+of matchmaking at runtime (cf. Definition 1, Section 2.2). If this is successful,
+W is returned and the discovery is completed successfully.
+
+Otherwise, we continue with refining the goal instance in order to reduce the
+search space. For this, we successively replace the corresponding goal template G
+by the child node G for which the goal instance still is a consistent instantiation.
+In the example from Figure 2, let GI(G1) be a goal instance for shipping a
+package from Munich to Berlin that instantiates G1 for package shipment within
+Europe. This is also a proper instantiation of G3 for shipment within Germany;
+hence, we refine the goal instance to GI(G3). In the SDC Graph, all children of
+G are disjoint  those for which there is no intersection goal template  so that
+there can only be one G with subsume(G, G) and GI(G) |= G. If there is an
+intersection goal template GI and GI(G) |= GI, this is found by following the
+path via either of its parents. We thus can search downwards in the goal graph
+until finding the lowest possible G: for this, the number of usable Web services
+is minimal. In each refinement step we invoke the lookup procedure because the
+probability of success is the higher the lower G is allocated in the goal graph.
+As the last option for finding a usable Web service, we inspect those ones
+that are usable for the (possibly refined) corresponding goal template under
+the degrees subsume and intersect; this requires matchmaking at runtime (cf.
+Definition 1). As soon as a usable Web service is detected, it is returned as the
+discovery result Otherwise, a Web service for solving GI(G) does not exist.
+
+This algorithm finds one Web service that is usable for a goal instance under functional aspects. Of course other aspects are also relevant for discovery.
+Most prominent in literature are selection and ranking techniques: the former
+reduces the set of suitable Web services with respect to quality-of-service criteria
+(e.g. [20]); the latter provides a preference order for the Web services (e.g. [12]).
+Under the reasonable premise of performing selection and ranking after functional discovery, the SDC technique provides a sufficient optimization technique
+for integrated discovery engines: the bottleneck is the number of available Web
+services, which is only relevant for the first processing step. The above algorithm
+can easily be modified to return the set of all functionally usable Web services.
+
+4 Evaluation
+
+In order to evaluate the performance gain achievable with the SDC technique, we
+have compared the our prototype implementation with a not-optimized discovery
+engine for goal instances that applies the same matchmaking techniques. The
+following explains the test set-up and methodology, summarizes the results, and
+discusses the impact of our observations.
+?
+
+?
+
+?
+4.1 Methodology
+
+The aim of this evaluation is to quantify the effect of the SDC technique on the
+duration of realistic discovery tasks over larger sets of available Web services
+that can be expected in real-world settings. We therefore compare the SDCenabled runtime discovery with a naive discovery engine for goal instances. We
+will discuss the relationship to other optimization techniques in Section 5.
+
+For the comparison, we use the original data set from the Stanford SWS
+challenge shipment scenario that already served as the running example above.
+Based on real-world services, this challenge defines five Web services for package
+shipment from the USA to different destination countries, and several examples
+of client requests. We map this to our framework such that goal templates are
+generic objective descriptions for package shipment, and the individual requests
+are described as goal instances. The formal functional descriptions of goals and
+Web services are analog to Table 1, cf. Section 2.1. The root goal template of
+the resulting SDC graph describes the objective of shipping a package of any
+weight from and to anywhere in the world. The more detailed levels of the goal
+graph are concerned with shipment between continents, the next levels between
+countries, and the lowest levels differentiate the weight classes. At the top of the
+goal graph, the most common usability degree for the Web services is subsume;
+this changes to plugin at the lower levels.
+
+On this basis, we define ten goal instances for which a usable Web service
+is to be found. These are modeled such that each part of the SDC-enabled
+runtime discovery algorithm is covered (cf. Section 3.3). The comparison engine
+is a naive runtime discoverer that does not apply any optimization techniques.
+It retrieves the available Web services in a random order, and performs the
+basic matchmaking to determine their usability for a goal instance as defined in
+Section 2.2. It uses the same matchmaking techniques and infrastructure as the
+SDC-enabled engine. For comparing the behavior of the engines, we perform Web
+service discovery for each goal instance with different numbers of available Web
+services. Among these are always the five Web services defined in the scenario
+that are potentially usable for the tested goal instance; all others are not.
+
+4.2 Results
+
+For the analysis, each comparison test has been run 50 times and the results are
+prepared in the following statistical standard notations: the arithmetic mean 
+as the average value, the median  x that denotes the value in the middle of the 50
+test runs, and the standard deviation  as a measurement for the value spread
+among the test runs. Table 3 shows a fragment of the augmented data of all test
+runs for all ten goal instances; the original data is provided in [16].3
+
+From this we can observe the following differences between the compared
+engines with respect to the three quality criteria for reliability: the SDC-enabled
+3 The comparison has been performed as a JUnit test for Java 5.0 in Eclipse 3.2; the
+test machine was a standard laptop with a 2 GHz Intel processor and 1 GB of RAM.
+For this use case, the average time for a single matchmaking operation has been 115
+msec, and 15 msec for the discovery-by-lookup procedure.
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+Table 3. Comparison Test Statistics (all values in seconds)
+
+no. of
+?
+
+?
+
+?
+Engine Mean  Median  x
+
+naive
+
+naive
+
+naive
+
+naive
+
+0.28
+0.41
+0.29
+3.96
+0.29
+37.69
+0.31
+72.96
+
+0.27
+0.39
+0.28
+3.68
+0.29
+33.22
+0.29
+65.55
+
+Standard
+
+Deviation 
+0.03 (11.74 %)
+0.21 (51.71 %)
+0.03 (11.53 %)
+2.55 (64.48 %)
+0.04 (14.79 %)
+26.28 (69.70 %)
+0.05 (18.03 %)
+52.13 (71.45 %)
+
+discovery is in average faster than the naive engine, even for smaller numbers of
+Web services (efficiency); the time required by the SDC-engine is independent of
+the number of available Web services while it grows proportionally for the naive
+engine (scalability); over several invocations, the SDC-engine varies a lot less
+than the naive engine (stability). The high variation of the naive engine results
+from the randomized order under which the available Web services are examined.
+In this particular use case, the SDC optimization is mainly achieved by the prefiltering via goal templates; the refinement step in the discovery algorithm reveals
+its potential when there are more usable Web services.
+
+This indicates that the SDC technique helps to satisfy the requirements for
+using a Web service discovery engine as a reliable component in large SOA
+systems. Future-oriented works for Web service composition or business process
+management envision that the actual Web services for execution are dynamically
+discovered at runtime in order to provide better flexibility and allow compensation (e.g. [19,8]). Considering that compositions or processes can be complex and
+may consist of several Web services, the absolute overhead and the predictability
+of the discovery engine becomes a pre-requisite for realizing such technologies.
+
+4.3 Discussion
+
+For the applicability of the SDC technique in real-world applications not only the
+performance but also the appropriateness of the conceptual model is relevant.
+
+To verify the our approach in this respect, we have examined its applicability
+for the SOA system maintained by the US-based telecommunication provider
+Verizon. This contains nearly 4000 Web services that provide basic functionalities
+for managing customer, product and order information; they differ in the specific
+usage conditions (e.g. in- and outputs, data formats, etc.). These are used by
+more than 600 applications that integrate the Web services into their software.
+The main challenges reported by the system providers is the precision of the
+discovery technique and the management of changes in the system. The former
+can be increased by discovery techniques with semantic matchmaking. The latter
+results from the currently hard-wired invocation of the Web services by the client
+applications. To overcome this, the usage tasks could be formulated in terms of
+?
+
+?
+
+?
+goals for which the actual Web services are discovered at runtime. Moreover,
+the tasks are very similar because most of the client applications work in the
+telecommunication domain. Thus, the relevant goal templates can be organized
+in a subsumption hierarchy so that the SDC technique can reveal its potential.
+Another central aspect is the creation of goal templates as the central element of the SDC graph. While an initial goal template of a problem domain
+must be defined manually, it possible to generate further ones on basis of the
+used domain ontologies. In our running example, the ontologies define several
+continents, countries, and weight classes. Given a goal template for package shipment in Europe, we can generate goal templates for shipment in each European
+country, for other continents, and so on. Eventually, we can generate all goal
+templates that can be expressed by the domain ontologies. These naturally are
+semantically similar, and thus will constitute a very fine-grained subsumption
+hierarchy in the resulting SDC graph. This enhances the achievable performance
+increase for Web service discovery: the more semantically similar goal templates
+are in the SDC graph, the higher is its effectiveness for reducing the search space
+and minimizing the number of necessary matchmaking operations.
+
+5 Related Work
+
+Although there is a wealth of work on Semantic Web services and semantically
+enabled Web service discovery, we are not aware of any work that addresses the
+performance challenge for discovery in a similar way. The following outlines the
+foundations of our approach and positions it within related works.
+
+The concept of goals as an abstraction layer for facilitating problem-oriented
+client-system interaction has initially been developed in AI technologies like BDI
+agents and cognitive architectures. Inspired by the works on UPML [6], our approach has been developed in the spirit of the WSMO framework that promotes
+a goal-driven approach for Semantic Web services [5], and the IRS system that
+provides a goal-based broker for Web service usage [2]. We have integrated these
+approaches, and extended them with a sufficiently rich formalization and the
+caching mechanism for Web service discovery.
+Discovery and Semantic Matchmaking. This has been subject to many
+research works that provide valuable insights on several aspects, e.g. on the architectural allocation in SWS systems [15], the quality criteria of discovery [13,9],
+and semantic matchmaking for different logical languages [11,14,10]. Our contribution towards this end is the two-phase Web service discovery with precise
+formal semantics and adequate matchmaking techniques ([17], cf. Section 2).
+Web Service Clustering. Other, not goal-based approaches aim at reducing
+the search space for discovery by indexing Web service repositories. Keywordbased categorization as already supported by UDDI is imprecise in comparison
+to the SDC graph: it can not be ensured that the classification scheme properly
+reflects the functionalities provided by Web services. More sophisticated solutions perform clustering on the basis of formal descriptions. E.g. [4] creates a
+
+M. Stollberg, M. Hepp, and J. Hoffmann
+
+search tree on based so-called interval constraints that describe Web services.
+These are significantly less expressive than our functional descriptions. Besides,
+although a logarithmic search time may be achieved (if the tree is balanced), still
+matchmaking is required for each new incoming request. The SDC technique can
+detect usable Web services without invoking a matchmaker.
+Caching. Caching techniques are a well-established means for performance optimization applied in several areas of computing, among others also for increasing
+the efficiency of reasoning techniques (e.g. [1,3]). Respective studies show that
+caching can achieve the highest efficiency increase if there are many similar
+requests [7]. This complies with the design of our approach: the SDC graph provides the cache structure for Web service discovery, and the more similar goals
+and Web services exists, the higher is the achievable optimization.
+
+6 Conclusions
+
+This paper has presented a novel approach for enhancing the computational
+performance of Web service discovery by applying the concept of caching. We
+capture the minimal knowledge on the functional usability of available Web
+services for goal templates as generic, formal objective descriptions. At runtime,
+a concrete client request is formulated as a goal instance that instantiates a goal
+template with concrete inputs. The captured knowledge is used for optimizing
+the detection of usable Web services. The approach is based on a profound
+formal model for semantically enabled discovery. An evaluation with real-world
+data shows that our technique can help in the realization of scalable and reliable
+automated discovery engines, which becomes important for their employment as
+a heavily used component in larger, semantically enabled SOA systems. For the
+future, we plan to adopt the model to other specification languages and further
+integrate the caching mechanism into Semantic Web services environments.
+
+Acknowledgements. The work presented in this paper has been supported by
+the European Commission under the projects SUPER (FP6-026850), SWING
+(FP6-26514), and MUSING (FP6-027097), and by the Austrian BMVIT/FFG
+under the FIT-IT project myOntology (Grant no. 812515/9284). The authors
+thank Holger Lausen, Stijn Heymans, and Dieter Fensel for fruitful discussions,
+and Michael Brodie (Verizon Chief Scientist) for the provision of information.

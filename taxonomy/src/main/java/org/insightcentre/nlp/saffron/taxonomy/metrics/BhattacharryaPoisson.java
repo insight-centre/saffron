@@ -1,12 +1,19 @@
 package org.insightcentre.nlp.saffron.taxonomy.metrics;
 
+import static java.lang.Math.E;
+import static java.lang.Math.PI;
+import static java.lang.Math.exp;
+import static java.lang.Math.pow;
+import static java.lang.Math.sqrt;
+
+import java.util.Arrays;
+import java.util.Set;
+
+import org.insightcentre.nlp.saffron.data.TaxoLink;
+import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
+
 import it.unimi.dsi.fastutil.objects.Object2IntArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
-import java.util.Set;
-import org.insightcentre.nlp.saffron.taxonomy.search.Solution;
-import org.insightcentre.nlp.saffron.taxonomy.search.TaxoLink;
-import static java.lang.Math.*;
-import java.util.Arrays;
 
 /**
  * A metric this measures a taxonomy based on the expected number of children.
@@ -37,9 +44,9 @@ import java.util.Arrays;
  * 
  * @author John McCrae
  */
-public class BhattacharryaPoisson implements TaxonomyScore {
-    private final TaxonomyScore baseScore;
-    private final Object2IntMap<String> topic2index;
+public class BhattacharryaPoisson implements HierarchicalScore {
+    private final Score baseScore;
+    private final Object2IntMap<String> term2index;
     private final int[] f;
     private final int[] c;
     private final double[] p;
@@ -48,26 +55,26 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     //private double alpha;
     private final double r;
 
-    public BhattacharryaPoisson(TaxonomyScore baseScore, Set<String> topics, 
+    public BhattacharryaPoisson(Score baseScore, Set<String> terms, 
             double lambda, double alpha) {
         this.baseScore = baseScore;
-        this.topic2index = new Object2IntArrayMap<>();
+        this.term2index = new Object2IntArrayMap<>();
         int i = 0;
-        for(String t : topics) {
-            this.topic2index.put(t, i++);
+        for(String t : terms) {
+            this.term2index.put(t, i++);
         }
-        this.f = new int[topics.size()];
-        this.N = topics.size() - 1;
+        this.f = new int[terms.size()];
+        this.N = terms.size() - 1;
         this.p = dpois(lambda, N);
         f[0] = N;
-        this.c = new int[topics.size()];
+        this.c = new int[terms.size()];
         this.lambda = lambda;
         this.r = alpha * N;
     }
 
-    private BhattacharryaPoisson(TaxonomyScore baseScore, Object2IntMap<String> topic2index, int[] f, int[] c, double[] p, int N, double lambda, double r) {
+    private BhattacharryaPoisson(Score baseScore, Object2IntMap<String> term2index, int[] f, int[] c, double[] p, int N, double lambda, double r) {
         this.baseScore = baseScore;
-        this.topic2index = topic2index;
+        this.term2index = term2index;
         this.f = f;
         this.c = c;
         this.p = p;
@@ -87,7 +94,7 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     
     @Override
     public double deltaScore(TaxoLink taxoLink) {
-        int t = topic2index.get(taxoLink.top);
+        int t = term2index.get(taxoLink.getTop());
         final double delta;
         if(c[t] > 0) {
             delta =
@@ -107,14 +114,14 @@ public class BhattacharryaPoisson implements TaxonomyScore {
     }
 
     @Override
-    public TaxonomyScore next(String top, String bottom, Solution soln) {
-        int t = topic2index.get(top);
+    public HierarchicalScore next(TaxoLink link, Solution soln) {
+        int t = term2index.get(link.getTop());
         int[] newC = Arrays.copyOf(c, c.length);
         newC[t]++;
         int[] newF = Arrays.copyOf(f, f.length);
         newF[c[t]]--;
         newF[newC[t]]++;
-        return new BhattacharryaPoisson(baseScore, topic2index, newF, newC, p, N, lambda, r);
+        return new BhattacharryaPoisson(baseScore, term2index, newF, newC, p, N, lambda, r);
     }
     // Calculates y ** x / x! mostly by the Sterling approximation
     // =~ 1/sqrt(2*pi*x) (e * y / x) ** x 

@@ -2,18 +2,14 @@ package org.insightcentre.nlp.saffron.authors.sim;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeSet;
+
+import java.util.*;
+
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
-import org.insightcentre.nlp.saffron.data.connections.AuthorTopic;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
 /**
  *
@@ -29,20 +25,19 @@ public class AuthorSimilarity {
         this.top_n = config.topN;
     }
 
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats) {
-        return authorSimilarity(ats, new DefaultSaffronListener());
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName) {
+        return authorSimilarity(ats, saffronDatasetName, new DefaultSaffronListener());
     }
        
-    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTopic> ats, SaffronListener log) {
-        List<AuthorAuthor> topicAuthors = new ArrayList<>();
+    public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName, SaffronListener log) {
+        List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
-        //System.err.printf("%d author topics\n", ats.size());
-        for (AuthorTopic at : ats) {
-            log.tick();
-            if (!vectors.containsKey(at.author_id)) {
-                vectors.put(at.author_id, new Object2DoubleOpenHashMap<String>());
+        //System.err.printf("%d author terms\n", ats.size());
+        for (AuthorTerm at : ats) {
+            if (!vectors.containsKey(at.getAuthorId())) {
+                vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
-            vectors.get(at.author_id).put(at.topic_id, at.score);
+            vectors.get(at.getAuthorId()).put(at.getTermId(), at.getScore());
         }
         //System.err.printf("\n%d vectors\n", vectors.size());
         for (String t1 : vectors.keySet()) {
@@ -66,18 +61,17 @@ public class AuthorSimilarity {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
-                        topN.add(new AuthorAuthor(t1, t2, s));
+                        topN.add(new AuthorAuthor(t1, t2, s, saffronDatasetName, new HashMap<String, String>(), saffronDatasetName ));
                     }
                 }
             }
             while (topN.size() > top_n) {
                 topN.pollFirst();
             }
-            topicAuthors.addAll(topN);
+            termAuthors.addAll(topN);
         }
-        
-        log.endTick();
-        return topicAuthors;
+
+        return termAuthors;
     }
 
     private double sim(Object2DoubleMap<String> v1, Object2DoubleMap<String> v2) {

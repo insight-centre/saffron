@@ -1,0 +1,981 @@
+A Relaxed Approach to RDF Querying
+
+Carlos A. Hurtado1,, Alexandra Poulovassilis2, and Peter T. Wood2
+
+1 Universidad de Chile
+churtado@dcc.uchile.cl
+{ap, ptw}@dcs.bbk.ac.uk
+
+2 Birkbeck, University of London
+
+Abstract. We explore flexible querying of RDF data, with the aim of
+making it possible to return data satisfying query conditions with varying
+degrees of exactness, and also to rank the results of a query depending
+on how closely they satisfy the query conditions. We make queries
+more flexible by logical relaxation of their conditions based on RDFS entailment and RDFS ontologies. We develop a notion of ranking of query
+answers, and present a query processing algorithm for incrementally computing the relaxed answer of a query. Our approach has application in
+scenarios where there is a lack of understanding of the ontology underlying the data, or where the data objects have heterogeneous sets of
+properties or irregular structures.
+
+1 Introduction
+
+The conjunctive fragment of most RDF query languages (e.g., see [8,9]) consists
+of queries of the form H  B, where the body of the query B is a graph pattern,
+that is, an RDF graph over IRIs, literals, blanks, and variables. The head of the
+query H is either a graph pattern or a tuple variable (list of variables). The
+semantics of these queries is simple. It is based on finding matchings from the
+body of the query to the data and then applying the matchings to the head of
+the query to obtain the answers.
+
+Recently, the W3C RDF data access group has emphasized the importance
+of enhancing RDF query languages to meet the requirements of contexts where
+RDF can be used to solve real problems. In particular, it has been stated that
+in RDF querying it must be possible to express a query that does not fail
+when some specified part of the query fails to match [5]. This requirement
+has motivated the OPTIONAL clause, presented in the emerging SPARQL W3C
+proposal for querying RDF [13] and previously introduced in SeRQL [3]. The
+OPTIONAL clause allows the query to find matchings that fail to match some conditions in the body. In contrast to other approaches to flexible querying (e.g.,
+[1,11]), the OPTIONAL construct incorporates flexibility from a logical stand-
+point, via relaxation of the querys conditions. This idea, however, is exploited
+only to a limited extent, since the conditions of a query could be relaxed in ways
+
+ Carlos A. Hurtado was supported by Millennium Nucleus, Center for Web Research
+
+(P04-067-F), Mideplan, and by project FONDECYT 1030810, Chile.
+
+I. Cruz et al. (Eds.): ISWC 2006, LNCS 4273, pp. 314328, 2006.
+c Springer-Verlag Berlin Heidelberg 2006
+?
+
+?
+
+?
+other than simply dropping optional triple patterns, for example by replacing
+constants with variables or by using the class and property hierarchies in an
+ontology associated with the data (such as that shown in Figure 1).
+
+1.1 RDFS Ontologies
+
+It is common that users interact with RDF applications in the context of an
+ontology. We assume that the ontology is modeled as an RDF graph with interpreted RDFS vocabulary. The RDFS vocabulary defines classes and properties
+that may be used for describing groups of related resources and relationships between resources. To state that a resource is an instance of a class, the property
+rdf:type may be used. In this paper we use a fragment of the RDFS vocabu-
+lary, which comprises (in brackets is the shorter name we will use) rdfs: range
+[range], rdfs:domain [dom], rdf:type [type], rdfs: subClassOf [sc] and rdfs:sub-
+PropertyOf [sp]1.
+
+range
+
+Document
+
+sc
+
+sc
+
+range
+
+Publication
+
+WebPage
+
+contributorOf
+sp
+sp
+authorOf
+
+range
+
+sc
+Article
+
+sc
+
+ConferenceArticle
+
+editorOf
+
+sp
+
+proceedingsEditorOf
+
+range
+
+Fig. 1. An RDFS ontology modeling documents and people who contribute to them
+
+As an example, the ontology of Figure 1 is used to model documents along with
+properties that model different ways people contribute to them (e.g., as authors,
+editors, or being the editor of the proceedings where an article is published).
+
+1.2 The RELAX Clause
+
+In this paper, we propose the introduction of a RELAX clause as a generalization
+of the OPTIONAL clause for conjunctive queries. As an example, consider the
+following SPARQL-like query Q2:
+
+?Z, ?Y  {(?X, name, ?Z), OPTIONAL{(?X, proceedingsEditorOf , ?Y )}}.
+
+1 We omit in this paper vocabulary used to refer to basic classes in RDF/S such as
+rdf: Property, rdfs: Class, rdfs:Resource, rdfs:Literal, rdfs:XMLLiteral, rdfs:Datatype,
+among others. We also omit vocabulary for lists, collections, and variations on these,
+as well as vocabulary used to place comments in RDF/S data.
+
+2 SPARQL has SQL-like syntax; for brevity, in this paper we express queries as rules.
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+
+The body of this query is a graph pattern comprising two triple patterns. This
+query returns names of people along with the IRIs of conference articles whose
+proceedings they have edited. Because the second triple pattern in the body
+of the query is within the scope of an OPTIONAL clause, the query also returns
+names of people for which the second pattern fails to match the data (i.e., people
+who have not edited proceedings).
+
+Now consider the ontology of Figure 1. Although the user may want to retrieve editors of proceedings at first, she/he might also be interested in knowing
+about people who have contributed to publications in other roles, along with the
+publications themselves. In order to save the user the effort of inspecting the
+ontology and rewriting the query, the system could automatically return more
+relaxed answers for the same original query. This is achieved by rewriting Q to
+replace OPTIONAL with RELAX. Now after returning editors of conference proceed-
+ings, the system can replace the triple pattern (?X, proceedingsEditorOf , ?Y )
+with (?X, editorOf , ?Y ), yielding a new, relaxed query that returns editors of
+publications along with their publications. Subsequently, this triple pattern can
+be rewritten to the triple pattern (?X, contributorOf , ?Y ) to obtain more general
+answers.
+
+Group A (Subproperty) (1) (a,sp,b) (b,sp,c)
+
+(a,sp,c)
+
+(2) (a,sp,b) (x,a,y)
+
+(x,b,y)
+
+Group B (Subclass) (3) (a,sc,b) (b,sc,c)
+
+(a,sc,c)
+
+(4) (a,sc,b) (x,type,a)
+
+(x,type,b)
+
+Group C (Typing) (5) (a,dom,c) (x,a,y)
+(6) (a,range,d) (x,a,y)
+(Simple Entailment) (7) For a map  : G  G : G
+G
+
+(y,type,d)
+
+(x,type,c)
+
+Fig. 2. RDFS Inference Rules
+
+The idea of making queries more flexible by the logical relaxation of their
+conditions is not new in database research. Gaasterland et al. [7] established the
+foundations of such a mechanism in the context of deductive databases and logic
+programming, and called the technique query relaxation.
+
+1.3 Notion of Query Relaxation for RDF
+
+We study the query relaxation problem in the setting of the RDF/S data model
+and RDF query languages and show that query relaxation can be naturally
+formalized using RDFS entailment. We use an operational semantics for the
+notion of RDFS entailment, denoted |=, characterized by the derivation rules
+given in Figure 2 (for details, see [8,10]). Rules in groups (A), (B), and (C)
+describe the semantics of the RDFS vocabulary we use in this paper (i.e., sp,
+sc, type, dom, and range), and rule 7 (which is based on the notion of map
+which we will explain in Section 2), essentially states that blank nodes behave
+?
+
+?
+
+?
+like existentially quantified variables. As an example, from a graph we can entail
+another graph which replaces constants with blanks or blanks with other blanks.
+Intuitively, as RDFS entailment is characterized by the rules of Figure 2, a
+ can be obtained from triple t by applying the derivarelaxed triple pattern t
+tion rules to t and triples from the ontology. As an example, the triple pattern
+(?X, proceedingsEditorOf , ?Y ) can be relaxed to (?X, editorOf , ?Y ), by applying rule 3 to the former and the triple (proceedingsEditorOf , sp, editorOf ) in
+the ontology of Figure 1. The different relaxed versions of an original query are
+obtained by combining relaxations of triple patterns that appear inside a RELAX
+clause.
+
+The notion of query relaxation we propose naturally subsumes two broad
+classes of relaxations (further types of relaxations within these two classes are
+listed in Section 3.4). The first class of relaxation, which we call simple relax-
+ations, consists of relaxations that can be entailed without an ontology, which
+include dropping triple patterns, replacing constants with variables, and breaking join dependencies. These are captured by derivation rule 7 (Figure 2). The
+second class of relaxations, which we call ontology relaxations, includes relaxations entailed using information from the ontology and are captured by rule
+groups (A),(B) and (C); these include relaxing type conditions, relaxing properties using domain or range restrictions and others.
+
+1.4 Summary of Contributions and Outline
+
+In this paper, we develop a framework for query relaxation for RDF. We introduce a notion of query relaxation based on RDFS entailment, which naturally
+incorporates RDFS ontologies and captures necessary information for relaxation
+such as the class and property hierarchies.
+
+By formalizing query relaxation in terms of entailment, we obtain a semantic
+notion which is by no means limited to RDFS and could also be extended to more
+expressive settings such as OWL entailment and OWL ontologies, to capture
+further relaxations. Our framework generalizes, for the conjunctive fragment
+of SPARQL, the idea of dropping query conditions provided by the OPTIONAL
+construct.
+
+An essential aspect of our proposal, which sets it apart from previous work on
+query relaxation, is to rank the results of a query based on how closely they
+satisfy the query. We present a notion of ranking based on a structure called
+the relaxation graph, in which relaxed versions of the original query are ordered
+from less to more general from a logical standpoint. Since the relaxation graph is
+based on logic subsumption, ranking does not depend on any syntactic condition
+on the knowledge used for relaxation (such as rule ordering in logic-programming
+approaches [7]). Finally, we sketch a query processing algorithm to compute the
+relaxed answer of a query, and examine its correctness and complexity.
+
+The rest of the paper is organized as follows. Section 2 introduces preliminary notation. Section 3 formalizes query relaxation and Section 4 studies query
+processing. In Section 5 we study related work and in Section 6 we present some
+concluding remarks.
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+
+2 Preliminary Definitions
+
+In this section we present the basic notation and definitions that will be used
+subsequently in this paper. Some of these were introduced in [2,8,10,12].
+RDF Graphs. In this paper we work with RDF graphs which may mention the
+RDFS vocabulary. We assume there are infinite sets I (IRIs), B (blank nodes),
+and L (RDF literals). The elements in I  B  L are called RDF terms. A triple
+(v1, v2, v3)  (IB)I(IBL) is called an RDF triple. In such a triple, v1 is
+called the subject, v2 the predicate and v3 the object. An RDF graph (just graph
+from now on) is a set of RDF triples. Given two RDF graphs G1, G2, a map from
+G1 to G2 is a function  from terms of G1 to terms of G2, preserving IRIs and
+literals, such that for each triple (a, b, c)  G1 we have ((a), (b), (c)))  G2.
+Entailment. We will decompose RDFS entailment into two notions of entailment.
+The first is simple entailment [10], which depends only on the basic logical form
+of RDF graphs and therefore holds for any vocabulary. An RDF graph G1 simply
+entails G2, denoted G1 |=simple G2, if and only if there exists a map from G2 to
+G1. That is, simple entailment is captured by rule 7 of Figure 2.
+The second notion of entailment captures the semantics added by the RDFS
+vocabulary. We write that G1 |=rule G2 if G2 can be derived from G1 by iteratively applying rules in groups (A), (B) and (C) of Figure 2. In this paper,
+we also use a notion of closure of an RDF graph G [10], denoted cl(G), which
+is the closure of G under the rules in groups (A), (B) and (C). We have that
+G1 |=rule G2 if and only if G2  cl(G1).
+
+Now, by a result from from [10], RDFS entailment (for the fragment of RDFS
+we use in this paper) can be characterized as follows: G1 RDFS-entails G2,
+denoted G1 |=RDFS G2, if and only if there is a graph G such that G1 |=rule G
+and G |=simple G2. An alternative characterization of RDFS entailment is the
+following: G1 |=RDFS G2 if and only if there is a map from G2 to cl(G1). Therefore,
+in order to test the entailment G1 |=RDFS G2, we can first apply rules in groups
+(A), (B), and (C) to compute cl(G1), and then check whether there exists a map
+from G2 to cl(G1).
+Graph Patterns. Consider a set of variables V disjoint from the sets I, B, and
+L. A triple pattern is a triple (v1, v2, v3)  (I  V )  (I  V )  (I  V  L). A
+graph pattern is a set of triple patterns. Given a graph pattern P , we denote by
+var(P ) the variables mentioned in P . The following notation is needed to define
+triple pattern relaxation in Section 3. The notion of map is generalized to graph
+patterns by treating variables as blank nodes. . In addition, t1 is S-isomorphic
+to t2 if there are maps 1 from t1 to t2 and 2 from t2 to t1 that both preserve
+S. In our examples, variables are indicated by a leading question mark, while
+literals are enclosed in quotes.
+Conjunctive Queries for RDF. A conjunctive query Q is an expression T  B,
+where B is a graph pattern, and T = T1, . . . , Tn is a list of variables which
+belongs to var(B). (The framework formalized in this paper can be easily extended to queries with graph patterns as query heads.) We denote T by Head(Q),
+?
+
+?
+
+?
+and B by Body(Q). A query Q may be formulated over an RDFS ontology
+O, which means that Q may mention vocabulary from O and its answer is
+obtained taking into account the semantics of O. We assume that the ontology is well designed in the sense that predicates of triples in O cannot be in
+the set {type, dom, range, sp, sc}. We define a matching to be a function from
+variables in Body(Q) to blanks, IRIs and literals. Given a matching , we denote by (Body(Q)) the graph resulting from Body(Q) by replacing each variable X by (X). Given an RDF graph G, the answer of Q is the set of tu-
+ples, denoted ans(Q, O, G), defined as follows: for each matching  such that
+(Body(Q))  cl(O G), return (Head(Q)). When O is clear from the context,
+we omit it, and write ans(Q, G) instead of ans(Q, O, G).
+
+3 Formalizing Query Relaxation
+
+We will present a relaxed semantics for queries in a stepwise manner. In Section 3.1, we present the notion of relaxation of triple patterns, and in Section 3.2
+we introduce the notion of the relaxation graph of a triple pattern. This is used
+in Section 3.3 to define the relaxation graph of a query. The relaxation graph is
+the basis for the notion of the relaxed answer and ranking of a query we propose
+in Section 3.5. In Section 3.4, we explain different types of relaxations.
+
+3.1 Triple Pattern Relaxation
+
+We model relaxation as a combination of two types of relaxations, ontology
+relaxation and simple relaxation. Intuitively, the former comprises relaxations
+that are based on the ontology at hand and do not replace terms of the original
+triple pattern. In contrast, simple relaxations consist only of replacements of
+terms of the original triple pattern (e.g., replacing a literal or URI with a variable
+or a variable with another variable).
+
+Relaxation will be defined in the context of an ontology, denoted by O, and a
+set of variables, called fixed variables, denoted by F . So we fix O and F for the
+definitions that follow.
+Let t1, t2 be triple patterns, where t1  cl(O), t2  cl(O), and var(t2) =
+var(t1)  F . Ontology relaxation is defined as follows: t1 
+onto t2 if ({t1} 
+O) |=rule t2. As an example, let O be the ontology of Figure 1 and let F = {?X}.
+Then, we have that (?X, type, ConferenceArticle) 
+onto (?X, type, Article), and
+we have that (JohnRobert , ContributorOf , ?X) 
+(?X, type, Document),
+onto
+among other ontology relaxations. It is not the case that (?X, ContributorOf , ?Y )
+
+onto (?Y, type, Document), since the set of variables of the triples are different.
+Simple relaxation is defined as follows: t1 
+simple t2 if t1 |=simple t2 via a map 
+that preserves F (recall the notion of a map preserving a set of variables from Section 2). As an example, we have (?X, type, Article) 
+simple (?X, type, ?Z) and
+(?X, type, Article) 
+of the following hold: (i) t1 
+
+We now define relaxation. We say that t2 relaxes t1, denoted t1 
+
+simple (?X, ?W, Article), among other simple relaxations.
+
+onto t2, (ii) t1 
+
+t2, if one
+simple t2, or (iii) there exists a triple
+?
+
+?
+
+?
+t and t 
+
+onto t and t 
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+
+t2. The following proposition proves that
+
+pattern t such that t1 
+simple relaxations always arise after ontology relaxations.
+Proposition 1. Let t1, t2 be triple patterns. Then t1 
+exists t such that t1 
+We will end this section by proving some properties of the relaxation relationships introduced. We define an ontology O to be acyclic if the subgraphs defined
+by sc and sp are acyclic. Acyclicity is considered good practice in modeling on-
+tologies. Recall the notion of graph pattern isomorphism with respect to a set
+of fixed variables from Section 2.
+simple and  be defined in the context of an on-
+onto, 
+Proposition 2. Let 
+tology O and a set F of fixed variables. (i) 
+onto is a partial order if and only
+if O is acyclic. (ii) 
+simple is a partial order up to F -isomorphism. (iii)  is a
+partial order up to F -isomorphism if and only if O is acyclic.
+
+t2 if and only if there
+
+In what follows we assume that O is acyclic, and assume triple patterns to be
+equal if they are F -isomorphic. Therefore, we consider the relaxation relations
+to be partial orders. In particular, if a variable is not in F , without loss of
+generality we assume it appears in no more that one triple pattern. We denote
+by  (direct relaxation) the reflexive and transitive reduction of  (relaxation).
+We use similar notation for ontology and simple relaxation.
+
+3.2 Relaxation Graph of a Triple Pattern
+
+t
+
+We are interested in relaxing each of the triple patterns that occurs inside the
+RELAX clause of a query, so we next adapt the relaxation relationship to use
+relaxation above a given triple pattern. The relaxation relation above a
+triple pattern t, denoted by 
+ such that
+t 
+, and where F = var(t) (i.e., the variables of t are the fixed variables in
+the relaxation). The relaxation graph of a triple pattern t is the directed acyclic
+graph induced by t.
+
+t , is  restricted to triple patterns t
+
+As an example, consider the ontology O of Figure 1. Let t be the triple pattern
+(?X, type, Publication). Figure 3 (A) shows the relaxation graph of (?X, type,
+Publication). We have that ?X is the unique fixed variable. The non-fixed variables in this graph are ?V 1, . . . , ?V 5. Figure 3 (B) shows the relaxation graph
+of (JohnRobert, editorOf , ?X). Now the non-fixed variables are ?U1, . . . , ?U9.
+Notice that this pattern directly relaxes to (?X, type, Publication), so this relaxation graph has as a subgraph the relaxation graph of Figure 3 (A).
+
+3.3 Query Relaxation
+
+In this section, we define query relaxation as the direct product of the relaxation
+relations of its triple patterns. We define the direct product of two partial order
+relations 1, 2, denoted 1  2, as the relation  such that (e1, e2)  (e
+2)
+if and only if e1 1 e
+2. The generalization of this definition to
+more than two relations is straightforward.
+
+1 and e2 2 e
+
+1, e
+?
+
+?
+
+?
+(?X,?U4,?U5)
+
+(?U8,?U9,?X)
+
+(?X,?V4,?V5)
+
+(?X,?U1,Publication)
+
+(?X,?U2,Document)
+
+(?X,type,?U3)
+
+(?X,?V1,Publication)
+
+(?X,?V2,Document)
+
+(?X,type,?V3)
+
+(?U6,contributorOf,?X)
+
+(John Robert,?U7,?X)
+
+(?X,type,Document)
+
+(?X,type,Document)
+
+(?X,type,Publication)
+
+(John Robert,contributorOf,?X)
+
+(?X,type,Publication)
+
+(A)
+
+(John Robert,editorOf,?X)
+
+(B)
+
+Fig. 3. (A) Relaxation graph of the triple pattern (?X, type, Publication). (B) Relaxation graph of the triple pattern (JohnRobert, editorOf , ?X).
+
+Given a query Q, let Body(Q) = {t1, . . . , tn}. For any triple ti not inside a
+RELAX clause, we overload the notation 
+ti and assume that ti relaxes only to
+ 
+ti. The relaxation relation above Q, denoted by 
+tn. Direct relaxation, denoted Q, is the reflexive and transitive reduction
+. . . 
+t2
+Q. The relaxation graph of Q is the directed acyclic graph induced by Q.
+of 
+Each node (t
+n) in the relaxation graph of Q denotes the conjunctive
+query Head(Q)  t
+n. In order to avoid name clashes, we assume that
+the sets of non-fixed variables introduced in the relaxation relations of the triple
+pattern are pairwise disjoint.
+
+Q, is defined as 
+?
+
+?
+
+?
+1, . . . , t
+
+t1
+?
+
+?
+
+?
+1, . . . , t
+
+3.4 Types of Relaxation
+
+The notion of relaxation that we propose in this paper encompasses several
+different types of relaxation. Those captured by simple relaxation are as follows:
+
+1. Dropping triple patterns. We can model the dropping of triple patterns by
+introducing an empty triple pattern, which can be regarded as a true
+condition to which any triple pattern relaxes. In this form, relaxation generalizes the use of the OPTIONAL clause within the conjunctive fragment of
+SPARQL.
+
+2. Constant relaxation: replacing a constant with a variable in a triple pattern.
+This can be further classified according to whether the variable replaces a
+property or a subject/object constant.
+
+3. Breaking join dependencies: generating new variable names for a variable
+that appears in multiple triple patterns. In order to model this type of re-
+laxation, we first transform queries by applying variable substitution. If a
+variable ?X appears n > 1 times in a query Q we replace each occurrence
+with a different variable and add triple patterns (?Xi, equal, ?Xj) for each
+pair of new variables ?Xi, ?Xj introduced. The predicate equal represents
+equality. Each of the equality clauses in a query can now also be subject to
+relaxation.
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+
+The following types of relaxation are captured by our notion of ontology
+
+relaxation (the examples given use the ontology of Figure 1):
+
+1. Type relaxation: replacing a triple pattern (a, type, b) with (a, type, c),
+where (b, sc, c)  cl(O). For example, the triple pattern (?X, type,
+ConferenceArticle) can be relaxed to (?X, type, Article) and then to
+(?X, type, Publication).
+2. Predicate relaxation: replacing a triple pattern (a, p, b) with (a, q, c), where
+(p, sp, q)  cl(O). For example, the triple pattern (?X, proceedingsEditorOf ,
+?Y ) can be relaxed to (?X, editorOf , ?Y ) and then to (?X, contributorOf , ?Y ).
+3. Predicate to domain relaxation: replacing a triple pattern (a, p, b) with
+(a, type, c), where (p, dom, c)  cl(O). There are no domain declarations in
+Figure 1.
+4. Predicate to range relaxation: replacing a triple pattern (a, p, b) with
+(b, type, c), where (p, range, c)  cl(O). For example, the triple pattern
+(?X, editorOf , ?Y ) can be relaxed to (?Y, type, Publication).
+
+5. Additional relaxations induced by additional rules from Figure 2. Combinations of rules yield additional forms of relaxation. For example, the triple
+pattern (Article, sc, ?Y ) can be relaxed to (ConferenceArticle, sc, ?Y ).
+
+3.5 Relaxed Answer and Ranking
+
+Any algorithm that computes a relaxed answer to a query should also return
+the tuples in the relaxed answer according to some ordering. So the output of
+a query processing algorithm can be viewed as twofold: (a) the relaxed answer
+(already defined) and (b) a rank function that defines an ordering for the tuples
+in the relaxed answer. We next define the notions of relaxed answer, rank function
+and consistency of a rank function. Roughly, consistency means that the tuple
+ordering defined by the rank function agrees with the ordering of queries imposed
+by the query relaxation graph.
+
+Let Q be an RDF query and G be an RDF graph. The level of a query
+Qi in the relaxation graph of Q is the length of the shortest path from Q
+to Qi. We denote by relax(Q, k) the set of queries in the relaxation graph
+whose level is less than or equal to k. The relaxed answer of Q over G at level
+k  1, ansrelax(Q, G, k), is the set of tuples
+, G). We will
+frequently mention ansrelax(Q, G, k) in a context where k is fixed, and in this
+context we will write ansrelax(Q, G, k) simply as ansrelax(Q, G).
+ in the relaxation graph of Q, and an RDF graph G, we define
+
+Qrelax(Q,k) ans(Q
+
+For a query Q
+?
+
+?
+
+?
+Qi:Qi
+
+, G) as ans(Q
+
+QQ ans(Qi, G)).
+
+newAnswer(Q
+Let Q be a query and G be an RDF graph. A rank function for the relaxed
+answer of Q over G is any function Q,G with signature Q,G : (ansrelax(Q, G)) 
+N. A rank function Q,G is consistent if and only if for each pair of tuples
+ti, tj  ansrelax(Q, G), if there are queries Qi, Qj such that Qi 
+Q Qj, ti 
+newAnswer(Qi, G), tj  newAnswer(Qj, G), then Q,G(ti) < Q,G(tj).
+Notice that in consistent rank functions, tuples in ans(Q, G) are returned first
+among the tuples in the relaxed answer. The notion of answer ranking sketched
+?
+
+?
+
+?
+, G)  (
+?
+
+?
+
+?
+here can be improved in several directions. We may impose additional ordering
+constraints in the relaxation graph. Other extensions may consider distance
+metrics based on paths in the relaxation graph.
+
+4 Query Processing
+
+In this section, we study the problem of computing the relaxed answer of a
+query. We propose an algorithm that incrementally generates matchings from
+a query to an RDF graph and also ranks tuples in the answer. In Section 4.1,
+we provide a procedure that computes the relaxation graph of a given triple
+pattern. In Section 4.2 we present an algorithm that efficiently computes the
+relaxed answer.
+
+4.1 Computing Relaxations of a Triple Pattern
+
+) = var(t), and (iii) t
+
+We denote by  (t) the set containing triples t
+  cl(O).
+
+We first describe the computation of the relaxation graph for ontology relax-
+ations. The procedure we propose is based on a variation of the notion of reduction of an RDFS ontology from [8]. The idea is to compute relaxed versions of a
+triple pattern t by applying the derivation rules (Figure 2) to t and and triples
+from the reduction. Given an ontology O, we denote by red(O) the RDF graph
+resulting as follows (reverse rule means deleting the triple deduced by the rule):
+(i) compute cl(O); (ii) apply reverse rules 2 and 4 until no longer applicable; and
+(iii) apply reverse rules 1 and 3 until no longer applicable. In what follows, we
+assume that red(O) has been precomputed.
+ such that (i) there exists a
+triple to  red(O) and t,to
+is an instance of a rule from groups (A), (B), or (C)
+t
+(Figure 2), (ii) var(t
+Proposition 3. Let t be a triple pattern, such that t  cl(O) and var(t)  F ,
+where F is the set of fix variables. (i) {t
+
+:
+t 
+Proposition 3 (i) does not longer hold if we reduce the ontology also using reverse
+rules 5 or 6. Proposition 3 (ii) follows directly from the definition of ontology
+relaxation. The set  (t) can be easily computed in time O(|red(O)|) by searching
+for triples to  red(O) such that t, to instantiates the antecedent of a rule,
+and testing the additional conditions given in the definition of  for the triple
+patterns derived. The relaxation graph of a triple t can be computed as follows.
+) with each new
+We start by computing  (t), and in iteration i, we compute  (t
+)
+triple pattern t
+, t
+). In each iteration, we detect and delete transitive edges (an
+for each t
+edge is transitive if it connects two nodes that are also connected by a path
+of length greater than one). In addition, we keep a list with triple patterns for
+which  has been already computed so that we do not repeat computations of
+ for the same triple pattern.
+
+}   (t). (ii)  (t)  {t
+
+ obtained in iteration i 1, and add to the graph an edge (t
+?
+
+?
+
+?
+   (t
+
+}.
+
+onto t
+?
+
+?
+
+?
+: t onto t
+
+It is straightforward to generalize this procedure to compute direct simple
+relaxations. We just need to add in each iteration direct relaxations to triples
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+
+that rename a constant with a variable or a variable (not in the original triple
+pattern t) with another variable. In each iteration, we also have to delete triple
+patterns that are isomorphic to some triple pattern already in the graph, and
+delete transitive edge.
+
+Proposition 4. Let t = (a, p, b) be a triple pattern and O be an ontology. Let
+R be the relaxation graph of t. (i) R has O(m2) triples, where m is the number
+of triples in red(O). (ii) Computing R takes time in O(r2m), where r is the
+number of triples in R.
+
+From Proposition 4, it follows that the relaxation graph of a query has O(m2n)
+nodes, where n is the number of triple patterns inside RELAX clauses in the query.
+
+4.2 Computing the Relaxed Answer
+
+In this section, we sketch a query processing algorithm which works by adapting
+the RDQL query processing scheme provided by Jena [15] to the processing
+of successive relaxations of a query. We assume the simplest storage scheme
+provided by Jena, in which the RDF triples are stored in a single table, called
+the statement table. The Jena query processing approach is to convert an RDF
+query into a pipeline of find patterns connected by join variables. Each triple
+pattern (find pattern in Jenas terminology) can be evaluated by a single SQL
+select query over the statement table. We formalize this with an operator called
+find that receives a triple pattern t and a statement table G and returns all
+matchings from t to the table.
+
+In what follows, Q is the query whose relaxed answer we intend to compute,
+ is an arbitrary query in the relaxation graph of Q. We have that H =
+and Q
+). For the sake of simplicity, we assume that each triple
+Head(Q) = Head(Q
+pattern in the body of Q is inside a RELAX clause. We assume that Body(Q) =
+) = {t
+n}. We also fix the statement table G
+{t1, . . . , tn}, and Body(Q
+
+1, . . . , . . . , t
+ can be computed by processing (in a pipelined
+we are querying. The answer of Q
+fashion) a view, denoted VQ, defined by the following expression:
+?
+
+?
+
+?
+H(find(t
+?
+
+?
+
+?
+1, G)  . . .  find(t
+?
+
+?
+
+?
+n, G)),
+
+where  is the standard projection operator and  is the natural join on variables shared by triple patterns. The answer of Q can be computed by a naive
+algorithm that traverses the relaxation graph of Q upwards, and in each step
+of the traversal, builds a view VQ, computes it, and returns those tuples which
+were not returned in previous steps.
+
+Next, we propose an algorithm that avoids the redundant processing of tuples
+i, G) as the set
+i matches p, and no triple pattern directly
+i, G)
+i, G) by filtering triples from the statement
+
+that arises with this naive approach. We define deltaFind(t
+containing triples p  G such that t
+below t
+can be computed similarly to find(t
+table. Define a delta view for Q
+?
+
+?
+
+?
+i in the relaxation graph of ti, matches p. The set deltaFind(t
+, denoted Q, as the following expression:
+1, G)  . . .  deltaFind(t
+
+H(deltaFind(t
+
+n, G)).
+?
+
+?
+
+?
+The following proposition shows that new answers (Section 3.5) correspond
+
+to delta views.
+?
+
+?
+
+?
+Proposition 5. Let Q be a query and G be a RDF graph. For each query
+ in the relaxation graph of Q, (i) ans(Q
+QQ Qi(G), and
+
+(ii) newAnswer(Q
+
+, G) = Q(G).
+
+Qi:Qi
+
+, G) =
+?
+
+?
+
+?
+The algorithm we propose (Figure 4), called RelaxEval, performs a breadth-first
+traversal of the relaxation graph of Q, building and processing each delta view
+Q in each step of the traversal. The function level returns the level of a triple
+i in the relaxation graph Ri of ti. Line 3(a) outputs the new answer
+pattern t
+of each query at level k. In order to find the queries at level k of the relaxation
+ (defined by
+graph, the algorithm applies the following property. The queries Q
+the join expression in Line 3 (a)) that belong to the level k of the relaxation
+graph of Q are those satisfying
+?
+
+?
+
+?
+i, Ri) = k.
+?
+
+?
+
+?
+i level(t
+
+Algorithm RelaxEval
+Input: a query Q (interpreted over an ontology O), where Body(Q) = {t1, . . . , tn}, a
+statement table G, and an integer maxLevel.
+Output: the set of tuples ansrelax(Q, G, maxLevel ), where new answers are returned
+successively at each level of the relaxation graph.
+
+1. k := 0, stillMore := true
+2. For each triple pattern ti  Body(Q), compute the relaxation graph Ri of ti up to
+3. While (k  maxLevel and stillMore) do
+
+level maxLevel (see Section 4.1).
+
+(a) For each combination t
+
+do output H(deltaFind(t
+(b) k := k + 1
+(c) stillMore := exist nodes t
+
+1  R1, . . . , t
+
+n  Rn such that
+1, G)  . . .  deltaFind(t
+1  R1, . . . , t
+
+n  Rn such that
+
+i
+n, G))
+
+level(t
+
+i, Ri) = k
+
+level(t
+
+i
+
+i, Ri) = k
+
+Fig. 4. Algorithm that computes the relaxed answer of a query
+
+The algorithm RelaxEval induces a rank function, denoted rankQ,G, which
+maps each tuple to the position at which RelaxEval returns it. The following
+proposition proves the correctness of RelaxEval (recall the notion of a consistent rank function from Section 3.5), where for a level k of the relaxation
+graph, we denote by RelaxEval(Q, G, k) the set of tuples returned in Line 3(a)
+of RelaxEval.
+
+Proposition 6. Let Q be a query and G be a RDF graph. (i) For all k we
+have RelaxEval(Q, G, k) = ansrelax(Q, G, k). (ii) The rank function rankQ,G is
+consistent.
+
+Both (i) and (ii) follow from Proposition 5 and the fact that the algorithm
+RelaxEval traverses the relaxation graph of Q in breadth-first fashion.
+
+C.A. Hurtado, A. Poulovassilis, and P.T. Wood
+?
+
+?
+
+?
+|find(t
+?
+
+?
+
+?
+i,G)|
+?
+
+?
+
+?
+1, G)| . . .|find(t
+
+We end this section by comparing the computation cost of RelaxEval with
+the naive approach. We estimate the cost of computing a view VQ as the expression |find(t
+n, G)|, which represents the cost of the join
+operations. Roughly, it can be assumed that the find and deltaFind operations have the same cost, so we omit this cost in the expression. In the following
+i in the
+proposition, we assume that  =
+relaxation graph of every triple pattern ti  Body(Q).
+Proposition 7. Let Q be a query (assume for simplicity that all its triple pattern are subject to relaxation), O be an ontology and G an RDF graph. (i) The
+naive approach to compute the relax answer at level k runs in time O(npT ),
+where T denotes the time taken by RelaxEval(Q, G, k), n = |Body(Q)|, and
+p = |relax(Q, k)|. (ii) RelaxEval(Q, G, k) runs in time O(m2n|G|n), where m
+is the number of triples in red(O).
+
+i,G)| is constant for every t
+
+|deltaFind(t
+?
+
+?
+
+?
+The above proposition shows that the algorithm has exponential complexity,
+however its complexity is polynomial in the size of the data queried for a fixed
+query Q (data complexity). In addition, the answer is generated incrementally
+and hence the processing can be halted at any level in the relaxation graph. The
+number of triples in red(O) provides an upper bound for k, the number of levels
+in the evaluation.
+
+An improvement to the algorithm would be to process several delta views at
+the same time in an integrated pipelined fashion. In practice, we can improve
+query processing performance by further caching the results of deltaFind(t, G)
+for all triple patterns t that occur more than once in the query relaxation graph
+(such duplicate occurrences can be detected as the relaxation graphs of the
+individual triple patterns in the original query are being constructed).
+
+5 Related Work
+
+Query languages based on regular expressions provide a form of flexible query-
+ing. The G+ query language by Cruz et al. [6] proposes graph patterns where
+edges are annotated with regular expressions over labels. In this form, each graph
+pattern represents a set of more basic graph patterns, and therefore, a query extracts matchings that relate to its body in a variety of ways. This work considers
+queries over directed labeled graphs.
+
+Kanza and Sagiv [11] propose a form of flexible querying based on a notion
+of homeomorphism between the query and the graph. Their data model is a
+simplified form of the Object Exchange Model (OEM).
+
+Bernstein and Kiefer [1] incorporate similarity joins into the RDQL query
+language. This is done by allowing sets of variables in an RDQL query to be
+declared as imprecise. Bindings for these variables are then compared based on
+a specified similarity measure, such as edit distance.
+
+Stuckenschmidt and van Harmelen [14] consider conjunctive queries over a
+terminological knowledge base that includes class, relation and object definitions.
+They also use query containment as a way of viewing query approximations, but
+?
+
+?
+
+?
+are concerned about evaluating less complex queries first, so that the original
+query is evaluated last. They use a query graph to decide which conjuncts from
+the original query should be successively added to the approximate query. This
+is analogous to SPARQL queries in which every conjunct is optional.
+
+Bulskov et al. [4] consider the language Ontolog which allows compound
+concepts to be formed from atomic concepts attributed with semantic relations.
+They define a similarity measure between concepts based on subsumption in
+a hierarchy of concepts. This gives rise to a fuzzy set of concepts similar to a
+given concept. They also introduce specialization/generalization operators into
+a query language that allow specializations or generalizations of concepts to be
+returned. They admit that combining this with similarity may make answers
+confusing.
+
+6 Concluding Remarks
+
+Despite being a relatively unexplored technique in the semantic Web, query
+relaxation may have an important role in improving RDF data access. One
+motivation for this technique is for querying data where there is a lack of understanding of the ontology that underlies the data. Another application is the
+extraction of objects with heterogeneous sets of properties because the data is incomplete or has irregular structure. As an example, a relaxed query can retrieve
+the properties that are applicable to each resource among a set of resources having different properties. Query relaxation can also make it possible to retrieve
+data that satisfies the query conditions with different degrees of exactitude.
+
+There are several areas for future work. One is the introduction of relaxation
+into general SPARQL queries, including disjunctions and optionals. This should
+also involve a generalization of the RELAX clause so that it can be applied to entire
+graph patterns instead of single triple patterns. Another important issue for
+future work is the design, implementation and empirical evaluation of algorithms
+for computing relaxed answers. The graph-like nature of RDF provides additional
+richness for a query relaxation framework, which can be exploited in future
+work. For example, join dependencies between triple patterns of the query can
+be relaxed to connectivity relationships in RDF graphs.
