@@ -578,18 +578,6 @@ public class TermExtraction {
         }
     }
 
-    private void loadBlacklistFromFile(Set<String> configBlacklist, SaffronPath blacklistFile) {
-        try(BufferedReader r = new BufferedReader(new FileReader(blacklistFile.toFile()))) {
-            String line;
-            while((line = r.readLine()) != null) {
-                configBlacklist.add(line);
-            }
-        } catch(IOException x) {
-            System.err.println("Could not load black list file");
-            throw new RuntimeException(x);
-        }
-    }
-
     public static class Result {
 
         public Set<Term> terms;
