@@ -7,8 +7,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.TaxoLink;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.SupervisedTaxo;
 import org.junit.After;
@@ -23,22 +24,22 @@ import static org.junit.Assert.*;
  * @author jmccrae
  */
 public class GreedyTest {
-    
+
     public GreedyTest() {
     }
-    
+
     @BeforeClass
     public static void setUpClass() {
     }
-    
+
     @AfterClass
     public static void tearDownClass() {
     }
-    
+
     @Before
     public void setUp() {
     }
-    
+
     @After
     public void tearDown() {
     }
@@ -58,60 +59,60 @@ public class GreedyTest {
                 return 0.0;
             }
         }
-        
+
     }
-    
-    private void addTopic(HashMap<String, Topic> topics, String t, double score) {
-        topics.put(t, new Topic(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
+
+    private void addTerm(HashMap<String, Term> terms, String t, double score) {
+        terms.put(t, new Term(t, 0, 0, score, Collections.EMPTY_LIST, Status.none.toString()));
     }
-    
+
     /**
      * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
      */
     @Test
     public void testExtractTaxonomy() throws Exception {
         System.out.println("extractTaxonomy");
-        HashMap<String, Topic> topics = new HashMap<>();
-        addTopic(topics, "", 0.0);
-        addTopic(topics, "a", 0.0);
-        addTopic(topics, "b", 0.0);
-        addTopic(topics, "c", 0.0);
-        addTopic(topics, "ab", 0.0);
-        addTopic(topics, "ac", 0.0);
-        addTopic(topics, "abc", 0.0);
-        addTopic(topics, "ba", 0.0);
-        addTopic(topics, "bd", 0.0);
-        
+        HashMap<String, Term> terms = new HashMap<>();
+        addTerm(terms, "", 0.0);
+        addTerm(terms, "a", 0.0);
+        addTerm(terms, "b", 0.0);
+        addTerm(terms, "c", 0.0);
+        addTerm(terms, "ab", 0.0);
+        addTerm(terms, "ac", 0.0);
+        addTerm(terms, "abc", 0.0);
+        addTerm(terms, "ba", 0.0);
+        addTerm(terms, "bd", 0.0);
+
         Greedy instance = new Greedy(new SumScore(new TestSupervisedTaxo()));
-        Taxonomy result = instance.extractTaxonomy(topics);
+        Taxonomy result = instance.extractTaxonomy(terms);
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
     }
-    
+
         /**
      * Test of extractTaxonomy method, of class GreedySplitTaxoExtract.
      */
     @Test
     public void testExtractTaxonomyWithBlackWhiteList() throws Exception {
         System.out.println("extractTaxonomyWithBlackWhiteList");
-        HashMap<String, Topic> topics = new HashMap<>();
-        addTopic(topics, "", 0.0);
-        addTopic(topics, "a", 0.0);
-        addTopic(topics, "b", 0.0);
-        addTopic(topics, "c", 0.0);
-        addTopic(topics, "ab", 0.0);
-        addTopic(topics, "ac", 0.0);
-        addTopic(topics, "abc", 0.0);
-        addTopic(topics, "ba", 0.0);
-        addTopic(topics, "bd", 0.0);
-        
+        HashMap<String, Term> terms = new HashMap<>();
+        addTerm(terms, "", 0.0);
+        addTerm(terms, "a", 0.0);
+        addTerm(terms, "b", 0.0);
+        addTerm(terms, "c", 0.0);
+        addTerm(terms, "ab", 0.0);
+        addTerm(terms, "ac", 0.0);
+        addTerm(terms, "abc", 0.0);
+        addTerm(terms, "ba", 0.0);
+        addTerm(terms, "bd", 0.0);
+
         Set<TaxoLink> whiteList = new HashSet<>();
         Set<TaxoLink> blackList = new HashSet<>();
         whiteList.add(new TaxoLink("", "ab"));
         blackList.add(new TaxoLink("", "c"));
-        
+
         Greedy instance = new Greedy(new SumScore(new TestSupervisedTaxo()));
-        Taxonomy result = instance.extractTaxonomyWithBlackWhiteList(topics, whiteList, blackList);
+        Taxonomy result = instance.extractTaxonomyWithBlackWhiteList(terms, whiteList, blackList);
         assertEquals("", result.root);
         assertEquals(3, result.children.size());
         assert(result.children.stream().anyMatch((Taxonomy t) -> t.root.equals("a")));

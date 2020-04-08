@@ -1,0 +1,886 @@
+The Not-So-Easy Task
+
+of Computing Class Subsumptions in OWL RL
+
+Markus Krotzsch
+
+Department of Computer Science, University of Oxford, UK
+
+markus.kroetzsch@cs.ox.ac.uk
+
+Abstract. The lightweight ontology language OWL RL is used for reasoning with large amounts of data. To this end, the W3C standard provides a simple system of deduction rules, which operate directly on the
+RDF syntax of OWL. Several similar systems have been studied. How-
+ever, these approaches are usually complete for instance retrieval only.
+This paper asks if and how such methods could also be used for computing entailed subclass relationships. Checking entailment for arbitrary
+OWL RL class subsumptions is co-NP-hard, but tractable rule-based
+reasoning is possible when restricting to subsumptions between atomic
+classes. Surprisingly, however, this cannot be achieved in any RDF-based
+rule system, i.e., the W3C calculus cannot be extended to compute all
+atomic class subsumptions. We identify syntactic restrictions to mitigate
+this problem, and propose a rule system that is sound and complete for
+many OWL RL ontologies.
+
+1 Introduction
+
+The lightweight ontology language OWL RL [16] is widely used for reasoning
+with large amounts of data, and many systems support query answering over
+OWL RL ontologies. Commercial implementations of (parts of) OWL RL include
+Oracle 11g [12], OWLIM [2], Virtuoso [4], and AllegroGraph [5].
+
+What makes OWL RL so appealing to users and implementers alike are
+its favourable computational properties. As for all three lightweight profiles of
+OWL 2, typical reasoning tasks for OWL RL can be solved in polynomial time.
+Possibly even more important, however, is the fact that this low complexity
+can be achieved by relatively straightforward algorithms that perform bottom-
+up, rule-base materialisation of logical consequences until saturation. While it
+is also possible to use similar algorithms for OWL EL [14], a simple rule-based
+algorithm for OWL RL is already given in the W3C specification [16]. Various
+similar rule sets have been published for fragments of OWL RL (e.g., [9,7,20]).
+Another advantage of these rule systems is that they operate directly on the
+RDF serialisation of OWL. OWL RL reasoning thus can easily be implemented
+on top of existing RDF databases that support some form of production rules to
+infer additional information. Basic rule-matching capabilities are found in most
+RDF stores, since they are similar to query matching. Indeed, SPARQL rules
+have been proposed as a natural rule extension of the SPARQL query language
+
+P. Cudre-Mauroux et al. (Eds.): ISWC 2012, Part I, LNCS 7649, pp. 279294, 2012.
+c Springer-Verlag Berlin Heidelberg 2012
+
+M. Krotzsch
+
+that can fully express the OWL RL rule system [19]. It is important that neither
+value invention (blank node creation) nor non-monotonic negation are needed in
+OWL RL, as both features complicate rule evaluation significantly [19].
+
+A common strategy for evaluating larger amounts of OWL RL data is to
+separate terminological information (schema-level axioms) from assertional information (facts), since the latter are typically significantly larger [13,8,20]. To
+further reduce the rules that need to be applied to the data, it would be useful
+to pre-compute terminological inferences, especially all subclass relationships.
+
+Unfortunately, it is not known how to do this. To the best of our knowledge, no
+polynomial time algorithm has been published for computing schema entailments
+in OWL RL. As shown in Section 2, the W3C rule system is not complete for
+computing class subsumptions, and, more problematically, it is not possible to
+compute all class subsumptions without taking assertions into account.
+
+However, it is still possible to obtain RDF-based rule systems that can discover
+more entailments than the W3C rules. Using various abbreviations introduced in
+Section 3, we present one such algorithm in Section 4. We identify ObjectHasValue
+as the main obstacle  if it does not occur in superclasses, our algorithm can
+compute all class subsumptions. In Section 5, we take a look at RDF-based rules
+and show how our results transfer to this setting.
+
+In Section 6, we discuss the problem of computing class subsumptions in unrestricted OWL RL ontologies, where ObjectHasValue is allowed in superclasses.
+It is still possible to use polynomial time rule systems for this case, but it turns
+out that there is no RDF-based rule system for this task. This surprising result
+shows an inherent limitation of the expressive power of RDF-based rules.
+
+Most of our presentation is based on the Functional-Style Syntax of OWL
+[17]. This yields a more concise presentation (compared to the RDF serialisa-
+tion) and still is close to the actual language. We assume basic familiarity with
+the syntax and semantics of OWL on the level of the OWL Primer [6]. If not
+stated otherwise, we generally consider the Direct Semantics of OWL, but we
+also mention some results about the RDF-based Semantics. When writing OWL
+entities in axioms, we tacitly use prefixes for suggesting abbreviated IRIs. Some
+proofs are omitted for reasons of space; they are found in a technical report [15].
+
+2 Challenges of Schema Reasoning in OWL RL
+
+Before we focus on the task of computing class subsumptions for OWL RL, it is
+worth pointing out some limitations and challenges that do not seem to be well
+known, even among practitioners and implementers.
+Checking Entailment of OWL RL Axioms is Not Tractable. The W3C specification mentions that Class Expression Subsumption in OWL RL is PTimecomplete w.r.t. the size of the ontology [16, Section 5]. This might evoke the
+impression that one could check in polynomial time whether an OWL RL class
+inclusion axiom is entailed by an OWL RL ontology. This is not the case.1
+1 The 2012 update of the OWL 2 specification will correct this; see Section 7.
+?
+
+?
+
+?
+Proposition 1. Given an OWL RL ontology O and an OWL RL SubClassOf
+axiom A, checking whether O entails A is co-NP-hard.
+Proof. We show this by reducing 3SAT unsatisfiability to OWL RL entailment
+checking. An instance of the 3SAT problem is a set of propositional clauses
+{(L11 L12 L13), . . . , (Ln1 Ln2 Ln3)}, where each Lij is a propositional variable or a negated propositional variable. The question whether the conjunction
+of these clauses is satisfiable is NP-complete. For each propositional variable
+p, we introduce two new class names Tp and Fp. To each literal Lij, we assign a class name c(Lij) as follows: if Lij = p, then c(Lij ) := Tp; if Lij = p,
+then c(Lij) := Fp. For every clause (Li1  Li2  Li3), we define a class expression Ci as ObjectUnionOf( c(L11) c(L12) c(L13) ). Now let A be the axiom
+SubClassOf( ObjectIntersectionOf( C1 . . . Cn ) owl:Nothing ), and let O be the ontology that consists of the axioms DisjointClasses( Tp Fp ) for every propositional
+variable p. Clearly, A is an OWL RL axiom and O is an OWL RL ontology.
+However, O entails A if and only if the given instance of 3SAT has no solution.
+Indeed, if A is not entailed, then O has a model where an individual e is an
+instance of each of the class expression Ci. We can construct a propositional
+truth assignment as follows: if e is an instance of Tp, then p is mapped to true;
+otherwise p is mapped to false. It is easy to see that this is a solution to the
+
+3SAT instance, since e cannot be an instance of Tp and Fp for any p.
+Another way to find hardness proofs is to use DataSomeValuesFrom in the sub-
+class, together with datatypes such as XML Schema boolean, which is admissible
+in OWL RL subclasses. Moreover, similar problems can be found for other axiom
+types; e.g., checking entailment of hasKey axioms is also intractable.
+These problems are hardly surprising from a logical perspective, since checking
+the entailment of A from O is equivalent to checking the consistency of O{A},
+where A is the negation of the axiom A (as a logical formula). For the latter
+to be in OWL RL, one needs to impose different syntactic restrictions on A.
+The check is then possible in PTime. A particularly relevant case where this is
+possible is that A is a subclass relationship between two class names. This is the
+task that we will focus on in the remainder of this work.
+
+The W3C Rule System is Not Complete for Class Subsumption Checking. The
+W3C specification states a completeness theorem for its rule system, which asserts completeness only for entailment of assertional axioms. However, the rule
+system contains a number of rules that would not be necessary to achieve this
+especially in Table 9, entitled The Semantics of Schema Vocabulary. This might
+lead to the wrong impression that the rules can infer all schema axioms, or at
+least all class subsumptions. The following example illustrates that this is wrong.
+Example 1. We consider an ontology of three axioms:
+
+SubClassOf( :A :B )
+SubClassOf( :A :C )
+SubClassOf( ObjectIntersectionOf( :B :C ) :D )
+
+(1)
+(2)
+(3)
+
+M. Krotzsch
+
+This ontology clearly entails SubClassOf( :A :D ). However, this is not entailed by
+the W3C rule system. The only entailment rules that refer to ObjectIntersectionOf
+are rules cls-int1, cls-int2, and scm-int in [16]. The former two rules are only
+applicable to individual instances. Rule scm-int can be used to infer SubClassOf(
+ObjectIntersectionOf( :B :C ) :B ) and SubClassOf( ObjectIntersectionOf( :B :C ) :C ) 
+the rule can be viewed as a schema-level version of cls-int2. However, there is
+no rule that corresponds to cls-int1 on the schema level, so one can not infer
+SubClassOf( :A ObjectIntersectionOf( :B :C ) ).
+This example extends to many other types of axioms. For example, one cannot
+infer all entailed property domains or ranges if some class subsumptions have
+been missed.
+Assertions Can Not be Ignored when Checking Class Subsumptions. Since many
+OWL RL ontologies are dominated by assertional axioms (i.e., data), it would be
+useful if this part of the ontology would not be relevant if one is only interested
+in computing class subsumptions. This cannot work in general, since assertions
+can cause the ontology to become inconsistent, which in turn leads to the entailment of arbitrary class subsumptions. However, even for consistent ontologies,
+assertions cannot be ignored when computing class subsumptions, as shown in
+the next example.
+Example 2. We consider an ontology of three axioms:
+
+InstanceOf( :B :b )
+SubClassOf( :A ObjectHasValue( :P :b ) )
+SubClassOf( ObjectSomeValuesFrom( :P :B ) :C )
+
+(4)
+(5)
+(6)
+
+This ontology entails SubClassOf( :A :D ): every instance of :A has a :P successor
+:b (5), that is an instance of :B (4); thus the subclass in (6) is a superclass of :A.
+Without (4) this entailment would be missed.
+The relevant assertional information in this example was directly given, but it is
+clear that it could also be the result of more complicated reasoning. Therefore, it
+is not possible in general to compute all class subsumptions of an ontology without also computing a significant amount of fact entailments as well. Theorem 3
+in Section 4 below identifies a case where assertions can be ignored.
+
+3 A Simpler OWL RL
+
+OWL is a very rich language that provides many redundant syntactic constructs
+for the convenience of ontology engineers. When specifying a rule system for
+OWL RL, this abundance of syntax precludes a concise presentation  the W3C
+calculus already counts 78 rules. To avoid this problem, we introduce various
+simplification rules that allow us to restrict to a much smaller number of features.
+Syntactic simplifications can affect the semantics of an ontology. On the one
+hand, they may introduce auxiliary vocabulary symbols that had not been defined by the original ontology. On the other hand, any syntactic transformation
+?
+
+?
+
+?
+Rca1
+
+Rpc1
+
+Rpc2
+
+ClassAssertion( C a )
+
+SubClassOf( ObjectOneOf(a) C )
+
+Rca2
+
+SubClassOf( ObjectOneOf(a) C )
+
+ClassAssertion( C a )
+
+ObjectPropertyAssertion( P a b )
+
+SubClassOf( ObjectOneOf(a) ObjectSomeValuesFrom( P ObjectOneOf(b) ) )
+
+SubClassOf( ObjectOneOf(a) ObjectSomeValuesFrom( P ObjectOneOf(b) ) )
+
+ObjectPropertyAssertion( P a b )
+
+Fig. 1. Rules for expressing assertions as class subsumptions
+
+of expressions has an impact on the RDF-based Semantics of OWL, which entails only axioms about expressions that are syntactically present in the ontology.
+Adding a new expression, even if tautological, thus changes entailments. How-
+ever, we expect applications that rely on the RDF-based Semantics to tolerate
+this effect. Alternatively, it is possible to view our syntactic simplifications as a
+mere abbreviation scheme for a much larger number of rules.
+Lists in Axioms. We generally assume that all lists of classes or properties in
+OWL axioms have been binarised, that is, broken down into lists of length two.
+This is always possible by introducing additional axioms; we omit the details
+of this frequently used technique. We point out that this simplification is least
+essential for our rules. It is easy to generalise all rules we state for binary lists
+to lists of arbitrary length.
+Datatypes and Data Properties. We omit all features related to datatypes from
+our presentation. It is not hard to add them. In essence, datatypes in OWL RL
+behave like classes for which certain subsumptions are given upfront (e.g., decis a superclass of integer), and for which some disjointness axioms are
+imal
+known (e.g., rational is disjoint from string). Likewise, datatype literals behave
+like individual names for which the membership in some class (i.e., datatype)
+is known. This auxiliary information can be added when loading an ontology.
+Thereafter, datatypes can be treated like classes, using the same rule system.
+Assertions as Class Inclusions. Class and property assertions can be expressed as
+class inclusion axioms, and indeed many rules for assertions are just special forms
+of the rules needed for terminological axioms. To avoid unnecessary repetition,
+we generally use the respective forms interchangeably. This is formalised by
+the rules in Fig. 1. The rules are applied top to bottom: whenever the axioms
+above the line are found, the axioms below the line are added. C denotes a class
+expression (not necessarily a class name), and P denotes an object property
+expression. We use a and b for individual names (IRIs).
+
+We will make use of the shorter syntactic form of assertions whenever possible.
+Note that the class subsumptions in rules Rpc1 and Rpc2 are not in OWL RL,
+which does not allow ObjectOneOf in superclasses. Allowing this does not increase reasoning complexity as long as one restricts to exactly one individual in
+
+M. Krotzsch
+
+Table 1. Syntactic simplifications for OWL RL constructs
+
+ObjectMaxCardinality( 0 P )
+ObjectMaxCardinality( 0 P C )
+ObjectHasValue( P d )
+ObjectOneOf( a1 . . . an )
+EquivalentClasses( C1 . . . Cn )
+DisjointClasses( C1 . . . Cn )
+
+ObjectAllValuesFrom( P owl:Nothing )
+ObjectAllValuesFrom( P ObjectComplementOf(C) )
+ObjectSomeValuesFrom( P ObjectOneOf(c) )
+ObjectUnionOn( ObjectOneOf(a1) . . . ObjectOneOf(an) )
+SubClassOf( C1 C2 ), . . . , SubClassOf( Cn C1 )
+SubClassOf( ObjectIntersectionOf( Ci Cj ) owl:Nothing )
+
+for all 1  i < j  n
+
+ObjectPropertyDomain( P C )
+ObjectPropertyRange( P C )
+EquivalentObjectProperties( P1 . . . Pn ) SubObjectPropertyOf( P1 P2 ), . . . , SubObjectPropertyOf( Pn P1 )
+InverseObjectProperties( P Q )
+
+SubClassOf( ObjectSomeValuesFrom( P owl:Thing ) C )
+SubClassOf( owl:Thing ObjectAllValuesFrom( P C ) )
+
+SymmetricObjectProperty( P )
+TransitiveObjectProperty( P )
+FunctionalObjectProperty( P )
+InverseFunctionalObjectProperty( P )
+AsymmetricObjectProperty( P )
+SameIndividual( a1 . . . an )
+
+SubObjectPropertyOf( P ObjectInverseOf(Q) ),
+SubObjectPropertyOf( Q ObjectInverseOf(P ) )
+SubObjectPropertyOf( P ObjectInverseOf(P ) )
+SubObjectPropertyOf( ObjectPropertyChain( P P ) P )
+SubClassOf( owl:Thing ObjectMaxCardinality( 1 P ) )
+SubClassOf( owl:Thing ObjectMaxCardinality( 1 ObjectInverseOf(P ) ) )
+DisjointObjectProperties( P ObjectInverseOf(P ) )
+SubClassOf( ObjectOneOf(a1) ObjectOneOf(a2) ), . . . ,
+SubClassOf( ObjectOneOf(an) ObjectOneOf(a1) )
+
+NegativeObjectPropertyAssertion( P a b ) SubClassOf( ObjectOneOf(a) ObjectComplementOf(
+
+DifferentIndividuals( a1 . . . an )
+
+SubClassOf( ObjectOneOf(ai)
+
+ObjectSomeValuesFrom( P ObjectOneOf(b) ) )
+ObjectComplementOf( ObjectOneOf(aj ) ) ) for all 1  i < j  n
+
+Table 2. Subclasses (CL) and superclasses (CR) in syntactically simplified OWL RL
+CL ::= Class | ObjectIntersectionOf( CL CL ) | ObjectUnionOf( CL CL ) |
+ObjectOneOf(Individual) | ObjectSomeValuesFrom( Property CL )
+CR ::= Class | ObjectIntersectionOf( CR CR ) | ObjectComplementOf(CL) |
+ObjectAllValuesFrom( Property CR ) | ObjectMaxCardinality( 1 Property CL ) |
+ObjectSomeValuesFrom( Property ObjectOneOf(Individual) ) | ObjectOneOf(Individual)
+
+ObjectOneOf (indeed, this is also done in the tractable OWL EL profile). We will
+therefore introduce such expressions whenever this simplifies presentation.
+
+Syntactic Sugar. Many OWL features are directly expressible in terms of others.
+Table 1 lists straightforward syntactic transformations. C, D, E denote class
+expressions, P , Q object property expressions, and all lower-case letters denote
+individuals. Below, we can therefore disregard all features on the left of this
+table. As before, some of the expressions that we use here are not in OWL RL.
+Besides ObjectOneOf superclasses as discussed above, OWL RL also disallows
+owl:Thing to be used as a subclass. Again, introducing this does not complicate
+reasoning. The main motivation for leaving out owl:Thing in the standard is that
+it may lead to a big number of uninteresting entailments, since every individual
+is an instance of owl:Thing.
+
+In summary, we therefore consider only OWL class inclusion axioms of the
+
+form SubClassOf( CL CR ), where CL and CR are defined as in Table 2.
+?
+
+?
+
+?
+Csco
+
+Cinit
+
+SubClassOf( C D ) SubClassOf( D E )
+
+SubClassOf( C E )
+
+C a class expression in the ontology
+
+SubClassOf( C C ) SubClassOf( C owl:Thing )
+
+)
+Cint SubClassOf( C ObjectIntersectionOf( D1 D2 )
+SubClassOf( C D1 ) SubClassOf( C D2 )
+
+Cint+
+
+SubClassOf( C D1 ) SubClassOf( C D2 )
+SubClassOf( C ObjectIntersectionOf( D1 D2 )
+)
+
+Ccom SubClassOf( C D ) SubClassOf( C ObjectComplementOf(D)
+
+SubClassOf( C owl:Nothing )
+
+)
+
+Cuni+
+
+Csa
+
+SubClassOf( C D ) where D = D1 or D = D2
+
+SubClassOf( C ObjectUnionOf( D1 D2 )
+
+)
+
+SubClassOf( ObjectOneOf(c) ObjectOneOf(d)
+SubClassOf( ObjectOneOf(d) ObjectOneOf(c)
+
+)
+)
+
+Fig. 2. OWL RL inference rules for class subsumptions
+
+4 A Rule-Based Classification Calculus for OWL RL
+
+In this section, we specify a class subsumption algorithm for OWL RL, and we
+introduce conditions under which it is complete. Using the simplifications of the
+previous section, the only OWL axioms that we need to consider are SubClassOf,
+SubObjectPropertyOf, DisjointObjectProperties, IrreflexiveObjectProperty, and HasKey.
+Remaining expressive features are those given in Table 2 (for class expressions)
+and ObjectPropertyChain (for property inclusions).
+
+Figures 2 and 3 specify a rule system for deriving class subsumptions, where
+we use the same notation for rules as above. The rules in Fig. 2 apply to class
+subsumptions and, using the correspondences of Fig. 1, also to assertions. In
+contrast, the rules in Fig. 3 are only applicable to specific assertions and are not
+generalised to other subsumptions. For example, rule Pinv is sound, but the
+following generalisation to class inclusions would of course be wrong:
+
+SubClassOf( C ObjectSomeValuesFrom( ObjectInverseOf(P ) D )
+
+)
+
+SubClassOf( D ObjectSomeValuesFrom( P C )
+
+)
+
+As an additional condition for applying rules, we require that all class and property expressions in the conclusion also occur in the ontology. This is a restriction
+only for the rules Cint+, Cuni+, Psvf+, and Pinv+, since they are the only rules
+that derive expressions that are not mentioned in their premise.
+For an OWL ontology O, we say that a class subsumption SubClassOf( C D )
+is inferred by the rule system if one of the following axioms is derived by applying
+the rules exhaustively to O:
+ SubClassOf( C D ),
+ SubClassOf( C owl:Nothing ), or
+ ClassAssertion( owl:Nothing c ) for some individual c.
+
+M. Krotzsch
+
+Pavf ObjectPropertyAssertion( P c d ) ClassAssertion( ObjectAllValuesFrom( P E ) c )
+
+ClassAssertion( E d )
+
+Psvf+
+
+ObjectPropertyAssertion( P c d ) ClassAssertion( E d )
+
+ClassAssertion( ObjectSomeValuesFrom( P E ) c )
+
+Pinv ObjectPropertyAssertion( ObjectInverseOf(P ) c d )
+
+ObjectPropertyAssertion( P d c )
+
+Pinv+
+
+Pspo
+
+Pspc
+
+Pdp
+
+Pip
+
+Pkey
+
+Pfun
+
+ObjectPropertyAssertion( P d c )
+
+ObjectPropertyAssertion( ObjectInverseOf(P ) c d )
+
+ObjectPropertyAssertion( P c d ) SubObjectPropertyOf( P Q )
+
+ObjectPropertyAssertion( Q c d )
+
+SubObjectPropertyOf( ObjectPropertyChain( P Q ) R )
+
+ObjectPropertyAssertion( P c d ) ObjectPropertyAssertion( Q d e )
+
+ObjectPropertyAssertion( R c e )
+
+DisjointObjectProperties( P Q )
+
+ObjectPropertyAssertion( P c d ) ObjectPropertyAssertion( Q c d )
+
+ClassAssertion( owl:Nothing c )
+
+ObjectPropertyAssertion( P c c )
+
+IrreflexiveObjectProperty(P )
+
+ClassAssertion( owl:Nothing c )
+
+HasKey( E (P1 . . . Pn) () )
+
+ClassAssertion( E c ) ClassAssertion( E d )
+
+ObjectPropertyAssertion( P1 c e1 ) . . . ObjectPropertyAssertion( Pn c en )
+ObjectPropertyAssertion( P1 d e1 ) . . . ObjectPropertyAssertion( Pn d en )
+
+SubClassOf( ObjectOneOf(c) ObjectOneOf(d)
+
+)
+
+ClassAssertion( ObjectMaxCardinality( 1 P D ) c )
+
+ObjectPropertyAssertion( P c e1 ) ObjectPropertyAssertion( P c e2 )
+
+ClassAssertion( D e1 ) ClassAssertion( D e2 )
+SubClassOf( ObjectOneOf(e1) ObjectOneOf(e2)
+)
+
+Fig. 3. OWL RL inference rules that are specific to property assertions
+
+The first condition corresponds to a direct derivation, the second captures the
+case that C is inconsistent (necessarily empty), and the third case occurs whenever O is inconsistent. The inference rules in [16] use a special conclusion false
+to encode ontology inconsistency, but this just a minor difference.
+
+Theorem 1. The rule system is sound, that is, if a class subsumption A is
+inferred from O, then O entails A under the Direct Semantics and under the
+RDF-based Semantics of OWL.
+
+However, the rule system is not complete. The following examples illustrate two
+interesting cases that are not covered.
+?
+
+?
+
+?
+Example 3. We consider an ontology of four axioms:
+
+InstanceOf( :D :d )
+SubClassOf( :D :C )
+SubClassOf( :C ObjectHasValue( :P :a ) )
+InstanceOf( ObjectMaxCardinality( 1 ObjectInverseOf(:P) owl:Thing ) :a )
+
+(7)
+(8)
+(9)
+(10)
+From this, the axiom SubClassOf( :C :D ) follows. Indeed, (9) and (10) together
+imply that :C can have at most one instance; by (7) and (8), this instance is
+:d and thus contained in :D. However, this is not entailed by our rule system.
+Axioms (9) and (10) can be represented as follows:
+
+SubClassOf( :C ObjectSomeValuesFrom( :P ObjectOneOf(:a) ) )
+InstanceOf( ObjectAllValuesFrom( ObjectInverseOf(:P) ObjectOneOf(:e) ) :a )
+
+(11)
+(12)
+where :e is an auxiliary individual. Using Csco and the rules of Fig. 1, we can
+derive ObjectPropertyAssertion( :P :d :a ) from (7), (8), and (11). By applying rule
+Pinv+, we obtain ObjectPropertyAssertion( ObjectInverseOf(:P)
+:a :d ). Together
+with (12), Pavf implies ClassAssertion( ObjectOneOf(:e)
+:d ). The same could
+be derived for any other instance :d of :C, showing that all such instances must
+be equal, and instances of :D. However, we cannot derive SubClassOf( :C :D ).
+Example 4. Consider the ontology of the following axioms:
+
+SubClassOf( :D ObjectHasValue( :P :a ) )
+
+SubObjectPropertyOf( ObjectPropertyChain( :P ObjectInverseOf(:P) ) :R )
+
+SubClassOf( ObjectSomeValuesFrom( :R owl:Thing ) :E )
+
+SubClassOf( :C ObjectHasValue( :Q :b ) )
+
+ObjectPropertyRange( :Q :D )
+ObjectPropertyDomain( :Q :D )
+
+(13)
+(14)
+(15)
+(16)
+(17)
+(18)
+These axioms imply SubClassOf( :C :E ). Indeed, axioms (16) and (17) together
+imply that every pair of instances of :D is connected by property :R. Axioms
+(14) and (15) in turn imply that :Q only connects instances that are in :D. Thus,
+we find that :Q is a subproperty of :P, which is an interesting inference in its
+own right. Combining this with (13) and (18), we obtain the claimed entailment
+SubClassOf( :C :E ). Again, this is not inferred by our inference rules.
+Examples 3 and 4 illustrate two very different forms of semantic interactions
+that lead to entailments not inferred by our rule system. It is interesting to note,
+however, that ObjectHasValue plays a crucial role in both cases. Indeed, we find
+that this feature is involved in every situation where an entailment is missed:
+Theorem 2. If O is an OWL RL ontology that does not contain ObjectHasValue
+in superclasses, then the rule system is complete for O. More precisely, let O be
+the syntactic simplification of O as discussed above. If :A and :B are class names
+and O entails SubClassOf(
+:A :B ) under Direct Semantics, then SubClassOf(
+:A :B ) is inferred from O by the rule system.
+
+M. Krotzsch
+
+Even in this case, we need to take assertions into account during reasoning, since
+they might make the ontology inconsistent. For consistent ontologies, however,
+the rule system can be simplified further.
+Theorem 3. For a consistent OWL RL ontology O that does not contain ObjectHasValue in superclasses, all entailed subsumptions between class names can be
+computed using the rules of Fig. 2 only, without taking assertions into account.
+More precisely, let Ot  O be the set of all axioms in O that do not use Class-
+Assertion, ObjectPropertyAssertion, SameIndividual, DifferentIndividuals, or Nega-
+t be the syntactic simplification of Ot. If O
+tiveObjectPropertyAssertion. Let O
+entails SubClassOf(
+:A :B ) under Direct Semantics, and :A and :B are class
+names, then SubClassOf( :A :B ) or SubClassOf( :A owl:Nothing ) is derived from
+O
+t by the rules of Fig. 2.
+
+This tells us that the computation of class subsumptions in OWL RL is indeed very simple for consistent ontologies without ObjectHasValue in superclasses.
+Provided that this situation can be assumed, it would therefore be feasible to
+pre-compute class subsumptions without taking assertions into account. In datacentric ontologies, this can lead to a much smaller set of axioms. In addition, the
+set of rules that need to be applied becomes relatively small as well.
+
+5 RDF-Based Rule Systems
+
+We have formulated rules above using the Functional-Style Syntax of OWL. In
+this section, we explain how these results transfer to RDF-based rules in the
+style of the W3C specification [16], which act on the RDF serialisation of OWL
+[18]. This also prepares the ground for discussing the limitations of such rules in
+the next section.
+
+Definition 1. An RDF-based rule is a first-order implication of the form
+
+T (s1, t1, u1)  . . .  T (sn, tn, un)  T (s, t, u)
+
+where s(i), t(i), and u(i) are RDF terms (i.e., IRIs, literals, or blank nodes) or
+first-order logic variables. All variables are assumed to be universally quantified.
+An (RDF-based) rule system is a finite set R of RDF-based rules. R is applied to an RDF graph by considering RDF triples s p o as facts T (s, p, o).
+A rule system R is applied to an OWL ontology O by applying it to the RDF
+serialisation of O [18].
+A rule system R is a sound and complete classification system for a class C
+of ontologies if, for every ontology O in C and all class names :A and :B:
+
+SubClassOf( :A :B ) is entailed by O
+
+R infers T (:A, rdfs:subClassOf, :B) from O.
+
+if and only if
+?
+
+?
+
+?
+The main features of RDF-based rule systems are thus as follows:
+
+ Finiteness: the set of rules is finite
+ Monotonicity: the larger the set of (derived) facts, the larger the number of
+
+rules that can be applied
+
+ No value invention: applying rules does not introduce new terms
+ Uniformity: the applicability of rules does not depend on the IRIs of the
+entities it is applied to, but only on the statements that these IRIs occur in
+
+ Triple-based: the only relation symbol used in inferences is the ternary T
+
+The W3C OWL RL inference rules do not constitute a rule system in the sense
+of Definition 1, since they are not finite in number. The reason is that the
+rules support list-based OWL features for lists of arbitrary length, leading to an
+infinite number of possible patterns. A rule system that is not restricted to be
+finite can trivially solve all reasoning tasks: for every ontology O for which we
+require an inference T (s, p, o), we can add a rule TO  T (s, p, o), where TO is
+the triple pattern that corresponds to the RDF serialisation of O. It is also clear,
+however, that the infinite W3C rule system does not use this potential power.
+
+Theorem 4. The rules of Section 4 give rise to an RDF-based sound and complete classification system for (the syntactic simplification of) OWL RL ontologies without ObjectHasValue in superclasses.
+
+This result is based on the rule system from Section 4, which we already know
+to be sound and complete. These rules can be easily expressed in the RDF
+serialisation of OWL based on the T predicate. For example, Cint+ can be written
+as follows, where question marks denote variables as in [16]:
+
+T (?x, rdfs:subClassOf, ?y1)  T (?x, rdfs:subClassOf, ?y2) 
+) 
+T (?c, owl:intersectionOf, ?l)  T (?l, rdf:first, ?y1)  T (?l, rdf:rest, ?l
+, rdf:rest, rdf:nil)
+
+, rdf:first, ?y2)  T (?l
+
+T (?l
+?
+
+?
+
+?
+ T (?x, rdfs:subClassOf, ?c)
+
+This is the rule that is mainly missing from [16]. Note how the check for the existence of the expression ObjectIntersectionOf( D1 D2 ) that is required for applying
+Cint+ is performed naturally as part of the rule application. This does not work
+for the rules in Fig. 1, which do not require existence of all class expressions in
+the consequence. Either they are created as part of the syntactic simplification
+stage, or the remaining rules need to be extended to allow for multiple alternative
+forms of each premise. The latter approach is taken in the W3C specification.
+
+6 Rule-Based Classification of Unrestricted OWL RL
+
+So far, we have seen that the (RDF-based) rule systems for OWL RL can be
+extended to obtain a sound and complete approach for computing class sub-
+sumptions, as long as we disallow ObjectHasValue in superclasses. The natural
+
+M. Krotzsch
+
+question is whether this can be extended to arbitrary OWL RL ontologies. The
+answer is no, as we will show in this section.
+
+This negative result is caused by the use of RDF as a basis for deduction
+rules. Without this restriction, it is not hard to find rule-based classification
+systems that are sound and complete, though not necessarily efficient. Namely,
+one can always check SubClassOf( C D ) by adding an axiom InstanceOf( C e ) for
+a new individual e, and checking whether InstanceOf( D e ) using the existing rulebased approaches for instance retrieval. The problem is that this executes a single
+check, based on a modification of the ontology, rather than computing all class
+subsumptions at once. Tests for different classes may lead to different inferences.
+To address this, we can augment each inferred axiom with the test class C for
+which we have assumed InstanceOf( C e ) (the IRI of e is immaterial and does not
+need to be recorded). The rules are restricted to the case that all premises can be
+derived under the same assumption, and computation can proceed concurrently
+without interactions between independent assumptions. Similar solutions and
+various optimisations have been suggested and implemented for OWL EL [14,10].
+Unfortunately, however, it is not obvious how to represent such an extended form
+of inferences in RDF without introducing new entities or blank nodes.
+
+The main result of this section is that this problem is not just due to an
+overly naive approach for extending the rules, but rather an inherent limitation
+of RDF-based rules:
+
+Theorem 5. There is no RDF-based sound and complete classification system
+for OWL RL.
+
+This is a very general result, since it makes a statement about every conceivable
+RDF-based rule system. A technique for proving such results has been developed
+in the context of rule-based reasoning for OWL EL [14]. Recalling this in full
+detail is beyond the scope of this paper. Instead, we extract the main insights
+on the level of ontological reasoning (Lemma 1), and present the crucial steps
+for applying this approach to our scenario.
+
+The argumentation is based on the analysis of derivations in rule systems,
+which can be represented as proof trees. The key observation is that every proof
+tree of a rule system can be used to construct further proof trees by selectively
+renaming constants (i.e., IRIs). This renaming leads to proof trees that derive the
+same conclusion, applying rules in the same order, but based on a renamed input
+ontology. The renaming may not be uniform, that is, multiple occurrences of the
+same constant might be renamed differently. The proof uses the fact that such
+renaming may destroy entailments. Ontologies that are particularly sensitive in
+this respect are called critical:
+Definition 2. A renaming of an ontology O is an ontology O that is obtained
+from O by replacing occurrences of entity names by fresh entity names, where
+neither the old nor the new entities have a special semantics in OWL. A renaming is uniform if all occurrences of one entity have been replaced in the same
+way; otherwise it is non-uniform.
+?
+
+?
+
+?
+An ontology O is critical for an axiom A if A is entailed by O, and A is not
+
+entailed by any non-uniform renaming of O.
+Roughly speaking, an ontology is critical if all of its axioms are really needed
+for obtaining the desired conclusion. The next result explains the significance of
+critical ontologies O. It states that, given a sound and complete classification
+system, it must be possible to decompose O into sets Osplit and O \ Osplit. The
+requirement is that both sets touch in at most 3 axioms, which reflects the
+arity of RDF triples. By finding a critical ontology for which this is not possible,
+we can show that there is no sound and complete classification system.
+Lemma 1. Suppose that R is a sound and complete classification system with
+at most  atoms T (s, t, u) in the premise of any rule, and consider an ontology
+O that is critical for an axiom SubClassOf( C D ) with class names C and D.
+
+For every O  O with |O| > 3( + 1), there is Osplit  O such that:
+ |O  Osplit|  4,
+ |O  (O \ Osplit)|  4,
+ at most 3 axioms in Osplit share any vocabulary symbols with O \ Osplit.
+This result is obtained as a summary of various insights from [14]. Lemma 1
+requires critical ontologies to contain at least 3( + 1) axioms. Since  depends on
+the rule system we consider, we require critical OWL RL ontologies of arbitrary
+size. The following definition provides this crucial ingredient.
+Definition 3. For every natural number k  0, we define an ontology Ok as
+follows. We consider class names A, B, Di (i = 0, . . . , k + 1), property names
+V , W , Pi (i = 0, . . . , k), Qi (i = 0, . . . , k + 1), and individual names a, b, c, di
+(i = 1, . . . , k + 1). The ontology Ok consists of the following axioms:
+
+0  i  k
+0  i  k
+
+SubClassOf( Di ObjectHasValue( Pi di+1 )
+SubClassOf( Di ObjectAllValuesFrom( Pi Di+1 )
+SubClassOf( D0 ObjectHasValue( W a ) )
+SubClassOf( D0 ObjectAllValuesFrom( W A ) )
+SubClassOf( A C )
+SubClassOf( C ObjectHasValue( Qk+1 b ) )
+SubClassOf( A ObjectHasValue( V c ) )
+SubClassOf( Dk+1 ObjectHasValue( V c ) )
+
+InverseFunctionalObjectProperty( V )
+SubObjectPropertyOf( ObjectPropertyChain( Pi Qi+1 ) Qi )
+
+0  i  k
+
+SubClassOf( ObjectHasValue( Q0 b ) B )
+
+(19)
+(20)
+(21)
+(22)
+(23)
+(24)
+(25)
+(26)
+(27)
+(28)
+(29)
+
+Lemma 2. For every k  0, Ok entails SubClassOf( D0 B ).
+This can be seen as follows: If D0 does not contain any instances, then the
+statement clearly holds. If D0 contains some instance o, then it is the start of a
+
+M. Krotzsch
+?
+
+?
+
+?
+Fig. 4. Illustration of syntactic dependencies in Ok
+
+property chain P0, . . . , Pk (through individuals d1, . . . , dk+1) due to (19) and
+(20). In particular, dk is an instance of Dk+1, hence, by (26), dk has a V successor
+c. Similarly, by (21) and (22), a is an instance of A. By (23), (24), and (25), a
+thus has a Qk+1 successor b and a V successor c. Since V is inverse functional
+(27), a must therefore be equal to dk, so dk has a Qk+1 successor b. Applying
+axioms (28) to the chain of di elements, we find that di has the Qi successor b
+for all 1  i  k. Accordingly, the instance o of D0 has Q0 successor b. By (29),
+o thus is an instance of B. Since this reasoning applies to every instance o of D0,
+we find that SubClassOf( D0 B ) as claimed.
+rences of symbols within Ok are renamed in a non-uniform way:
+Lemma 3. For every k  0, Ok is critical for SubClassOf( D0 B ).
+
+It is not hard to see that this entailment is no longer valid if any two occur-
+
+To complete the proof of Theorem 5 we thus need to argue that there are critical
+ontologies that cannot be split as in Lemma 1.
+Lemma 4. Consider Ok and let O be the subset of all axioms (20). For every
+Osplit  O such that |Osplit  O|  4 and |O \ Osplit|  4, there are at least 4
+axioms in Osplit that share vocabulary symbols with O \ Osplit.
+
+Proof. We can illustrate the syntactic dependencies in an ontology by means of
+a (hyper)graph where each axiom is an edge between all entities that it refers to.
+Figure 4 shows part of the according graph for Ok, showing only axioms (20),
+(22)(26), (28), and (29). A subset of these axioms thus corresponds to a subset
+of edges, and the shared vocabulary symbols are shared nodes.
+The assumptions on Osplit require that Osplit contains at least 4 of the axioms
+(20) (upper row in Fig. 4), and also misses at least 4 of the axioms (20). Using
+the illustration in Fig. 4, it is not hard to see that this requires Osplit to share
+
+signature symbols with at least 4 axioms not in Osplit.
+Thus, for any rule system R with at most  atoms in rule premises, the ontology
+Ok for k = 3( + 1) is critical but does not satisfy the conditions of Lemma 1.
+Thus, R cannot be a sound and complete classification system.
+?
+
+?
+
+?
+7 Conclusion
+
+From a practical perspective, the main contribution of this work is to clarify the
+problems of OWL RL classification, and to propose rule systems for solving this
+task in relevant cases. The rules that we proposed produce sound conclusions
+on arbitrary OWL ontologies, under either of the two semantics of OWL. If the
+input is an OWL RL ontology where ObjectHasValue is not used in superclasses,
+the rule system is also guaranteed to be complete.
+
+Our findings have also been brought to the attention of the OWL Working
+Group, which is preparing an editorial update of the OWL 2 specification at the
+time of this writing. This new version will correct the complexity claims about
+OWL RL. Extending the inference rules to be complete for computing class
+subsumptions in ontologies without ObjectHasValue, however, is beyond the scope
+of this editorial update. OWL RL tools can achieve completeness in this sense
+by adding, in essence, the one additional rule given after Theorem 4 (generalised
+to conjunctions of arbitrary arity). This does not affect official conformance.
+
+Interestingly, ObjectHasValue in superclasses is the one OWL RL feature that
+complicates schema reasoning the most. This contrasts with OWL EL, where
+such expressions are as easy to handle as assertions [10]. The reason is that inverse properties, ObjectAllValuesFrom, and ObjectMaxCardinality, all of which allow
+for some complicated interactions with ObjectHasValue, are not in OWL EL.
+
+Another interesting insight of this work is that there are practical problems
+in OWL RL reasoning that RDF-based rules are too inexpressive to solve. This
+limitation is due to the triple-based representation of RDF, which could be
+overcome by allowing predicates of higher arities as in Datalog [1] or RIF [11].
+For keeping closer to features supported in RDF databases, it might be possible
+to use quads or named graphs for expressing 4-ary predicates, but it is doubtful
+if this would be an adequate use of these features. On the other hand, 4-ary
+relations are only needed as intermediate results during reasoning, so individual
+systems can implement solutions without referring to any language standard.
+
+Another approach is to allow rules with value creation (blank nodes in rule
+heads) to encode n-ary relationships by introducing auxiliary entities. Value
+invention is problematic in general, as it can lead to non-termination and un-
+decidability. Many works have studied conditions that ensure termination of
+bottom-up reasoning in the presence of value creation  see [3] for a recent
+overview  but it is unclear if any of these conditions would apply in our case.
+
+Acknowledgements. The research reported herein was supported by the EPSRC projects ConDOR and ExODA.

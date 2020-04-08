@@ -1,0 +1,1216 @@
+DOGMA: A Disk-Oriented Graph Matching Algorithm
+
+for RDF Databases
+
+Matthias Br ocheler1, Andrea Pugliese2, and V.S. Subrahmanian1
+
+1 University of Maryland, USA
+2 Universit`a della Calabria, Italy
+
+Abstract. RDF is an increasingly important paradigm for the representation of
+information on the Web. As RDF databases increase in size to approach tens of
+millions of triples, and as sophisticated graph matching queries expressible in
+languages like SPARQL become increasingly important, scalability becomes an
+issue. To date, there is no graph-based indexing method for RDF data where the
+index was designed in a way that makes it disk-resident. There is therefore a
+growing need for indexes that can operate efficiently when the index itself resides on disk. In this paper, we first propose the DOGMA index for fast subgraph
+matching on disk and then develop a basic algorithm to answer queries over this
+index. This algorithm is then significantly sped up via an optimized algorithm that
+uses efficient (but correct) pruning strategies when combined with two different
+extensions of the index. We have implemented a preliminary system and tested
+it against four existing RDF database systems developed by others. Our experiments show that our algorithm performs very well compared to these systems,
+with orders of magnitude improvements for complex graph queries.
+
+1 Introduction
+
+RDF is becoming an increasingly important paradigm for Web knowledge representa-
+tion. As more and more RDF database systems come online and as RDF gets increasing emphasis from both established companies like HP and Oracle, as well as from a
+slew of startups, the need to store and efficiently query massive RDF datasets is becoming increasingly important. Moreover, large parts of query languages like SPARQL
+increasingly require that queries (which may be viewed as graphs) be matched against
+databases (which may also be viewed as graphs)  the set of all possible matches is
+returned as the answer.
+
+For example, the GovTrack database [1] tracks events in the US Congress and stores
+the data in RDF. RDF triple stores primarily store triples (s, p, v) where s is a subject, p
+is a property, and v is a value. Fig. 1(a) shows a small portion of the GovTrack dataset
+(we have changed the names of individuals identified in that dataset). The reader can
+readily see that the RDF data forms a graph where the nodes correspond to subjects
+and values, and the edges linking them are labeled with a property. For instance, in
+Fig. 1(a), we see that Jeff Ryster sponsored Bill B0045 whose subject is Health Care.
+This corresponds to two triples (Jeff Ryster, sponsor, Bill B0045) and (Bill B0045,
+subject, Health Care). A user who is using such a database might wish to ask queries
+
+A. Bernstein et al. (Eds.): ISWC 2009, LNCS 5823, pp. 97113, 2009.
+c Springer-Verlag Berlin Heidelberg 2009
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+Male
+
+gender
+
+?v3
+
+sponsor
+
+subject
+
+?v2
+
+Health
+Care
+
+?v1
+
+amendmentTo
+
+sponsor
+
+Carla
+Bunes
+
+(b)
+
+(a)
+
+Fig. 1. Example RDF graph (a) and query (b)
+
+such as that shown in Fig. 1(b). This query asks for all amendments (?v1) sponsored by
+Carla Bunes to bill (?v2) on the subject of health care that were originally sponsored
+by a male person (?v3). The reader can readily see that when answering this query, we
+want to find all matches for this query graph in the original database. The reader who
+tries to answer this very simple query against this very tiny database will see that it
+takes time to do so, even for a human being!
+
+In this paper, we propose a graph-based index for RDF databases called DOGMA,
+that employs concepts from graph theory to efficiently answer queries such as that
+shown above. DOGMA is tuned for scalability in several ways. First, the index itself
+can be stored on disk. This is very important. From experiences in relational database
+indexing, it is clear that when the data is large enough to require disk space, the index
+will be quite large and needs to be disk resident as well. DOGMA, defined in Section 3,
+is the first graph-based index for RDF that we are aware of that is specifically designed
+to reside on disk. We define the DOGMA data structure and develop an algorithm to
+take an existing RDF database and create the DOGMA index for it. In Section 4, we
+develop algorithms to answer graph matching queries expressible in SPARQL [2] (we
+emphasize that we do not claim DOGMA supports all SPARQL queries yet). Our first
+algorithm, called DOGMA basic, uses the index in a simple manner. Subsequently, we
+provide the improved algorithm DOGMA adv and two extensions of the index called
+DOGMA ipd and DOGMA epd, that use sophisticated pruning methods to make the
+search more efficient without compromising correctness. Third, in Section 5, we show
+the results of an experimental assessment of our techniques against four competing RDF
+database systems (JenaTDB, Jena2, Sesame2, and OWLIM). We show that DOGMA
+performs very well compared to these systems.
+?
+
+?
+
+?
+2 Preliminaries
+In this section, we briefly explain our notation. We assume the existence of a set S
+whose elements are called subjects, a set P whose elements are called properties and a
+set V whose elements are called values. Throughout this paper, we assume that S,P,V
+are all arbitrary, but fixed sets. If s  S, p  P and v  V, then (s, p, v) is called an
+RDF triple. Note that V and S are not required to be disjoint. An RDF database is a
+finite set of RDF triples. For example, as mentioned earlier, (Jeff Ryster, sponsor, Bill
+B0045) and (Bill B0045, subject, Health Care) are RDF triples. Every RDF database R
+has an associated RDF graph GR = (VR, ER, R) where VR = S  V, ER  S V,
+and R : ER  P is a mapping such that for all (s, p, v)  R, R(s, v) = p. 1 As
+there is a one-one correspondence between RDF graphs and RDF databases, we will
+often use the terms synonymously.
+
+In this paper, we only focus on graph matching queries. In order to define such
+queries, we assume the existence of some set VAR of variable symbols. In this paper, all
+variable symbols will start with a ?. A graph query is any graph Q = (VQ, EQ, Q)
+where VQ  VAR  S  V, EQ  VQ VQ, and Q : EQ  P is a mapping. Suppose
+Q is a query. A substitution for query Q is a mapping VQ  VAR  S  V. In other
+words, a substitution maps all variable vertices in query Q to either a subject or a value.
+For instance, in Fig. 1, the mapping  which assigns B0744 to ?v1, B0744 to ?v2 and
+Jeff Ryster to ?v3 is a substitution. If  is a substitution for query Q, then Q denotes
+the replacement of all variables ?v in VQ by (?v). In other words, the graph structure
+of Q is exactly like that of Q except that nodes labeled with ?v are replaced by (?v).
+A substitution  is an answer for query Q w.r.t. database R iff Q is a subgraph of GR.
+The answer set for query Q w.r.t. an RDF database R is the set { | Q is a subgraph
+of GR}.
+
+Example 1. Consider the example query and RDF database in Fig. 1. In this case, the
+substitution  such that (?v1) = Amendment A0056, (?v2) = Bill B1432, and
+
+(?v3) = Pierce Dickes is the only answer substitution for this query.
+
+3 The DOGMA Index
+
+In this section, we develop the DOGMA index to efficiently answer graph queries in
+situations where the index itself must be very big (which occurs when R is very big).
+Before we define DOGMA indexes, we first define what it means to merge two graphs.
+Suppose G is an RDF graph, and G1 and G2 are two RDF graphs such that V1, V2 
+VR and k is an integer such that k  max(|V1|,|V2|). Graph Gm is said to be a k-merge
+of graphs G1, G2 w.r.t. G iff: (i)|Vm| = k ; (ii) there is a surjective (i.e. onto) mapping
+ : V1  V2  Vm called the merge mapping such that v  Vm, rep(v) = {v
+ 
+V1  V2 | (v
+2  rep(v2) such
+
+2)  E. The basic idea tying k-merges to the DOGMA index is that we want
+
+that (v
+1 For the sake of simplicity, we ignore many features in RDF such as reification, containers,
+blank nodes, etc. Moreover, we define ER  S  V for notational convenience; our implementation allows for multiple edges between vertices.
+
+) = v}, and (v1, v2)  E iff there exist v
+?
+
+?
+
+?
+1, v
+
+1  rep(v1), v
+?
+
+?
+
+?
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+DOGMA to be a binary tree each of whose nodes occupies a disk page. Each node is
+labeled by a graph that captures its two children in some way. As each page has a
+fixed size, the number k limits the size of the graph so that it fits on one page. The idea
+is that if a node N has two children, N1 and N2, then the graph labeling node N should
+be a k-merge of the graphs labeling its children.
+A DOGMA index for an RDF database R is a generalization of the well known
+
+binary-tree specialized to represent RDF graph data in a novel manner.
+Definition 1. A DOGMA index of order k (k  2) is a binary tree DR with the following properties:
+
+1. Each node in DR equals the size of a disk page and is labeled by a graph.
+2. DR is balanced.
+3. The labels of the set of leaf nodes of DR constitute a partition of GR.
+4. If node N is the parent of nodes N1, N2, then the graph GN labeling node N is a
+
+k-merge of the graphs GN1, GN2 labeling its children.
+
+Note that a single RDF database can have many DOGMA indexes.
+
+Example 2. Suppose k = 4. A DOGMA index for the RDF graph of Fig. 1(a) might
+split the graph into the 8 components indicated by dashed lines in Fig. 1(a) that become
+the leaf nodes of the index (Fig. 2). Consider the two left-most leaf nodes. They can be
+4-merged together to form a parent node. Other leaf nodes can also be merged together
+(due to space constraints, the results of k-merging are not shown in the inner nodes). 
+Even though many different DOGMA indexes can be constructed for the same RDF
+database, we want to find a DOGMA index with as few cross edges between subgraphs stored on different pages as possible. In other words, if node N is the parent
+of nodes N1, N2, then we would like relatively fewer edges in R between some node
+
+N1
+
+N2
+
+Term
+10/02/94
+
+hasRole
+
+John
+McRie
+
+forOffice
+
+sponsor
+
+Tax
+Code
+
+subject
+
+B0744
+
+Alice
+
+Nimber
+
+Has    Role
+
+Term
+10/12/94
+
+amendmentTo
+
+For   Office
+
+A0772
+
+A2187
+
+A0342
+
+Senate
+
+Term
+11/06/90
+
+hasRole
+
+Carla
+Bunes
+
+gender
+
+Female
+
+A0056
+
+B1432
+
+sponsor
+
+Jeff
+
+Ryser
+
+Bill
+
+B0045
+
+hasRole
+
+Term
+10/21/94
+
+Senate
+
+For Office
+
+Term
+11/10/90
+
+Term
+10/02/94
+
+Has  Role
+
+Keith
+Farmer
+
+Male
+
+gender
+
+sponsor
+
+A1232
+
+Health
+Care
+
+A1589
+
+A0467
+
+amendmentTo
+
+sponsor
+
+subject
+
+Bill
+
+B0532
+
+Pierce
+Dickes
+
+Senate
+
+sponsor
+
+Has   Role
+
+Peter
+Traves
+
+Term
+10/12/94
+
+Fig. 2. A DOGMA index for the RDF database of Fig. 1(a)
+?
+
+?
+
+?
+in GN1 and some node in GN2. The smaller this number of edges, the more self-
+contained nodes N1, N2 are, and the less likely that a query will require looking at
+both nodes N1 and N2. In the description of our proposed algorithms, we employ an
+external graph partitioning algorithm (many of which have been proposed in the liter-
+ature) that, given a weighted graph, partitions its vertex set in such a way that (i) the
+total weight of all edges crossing the partition is minimized and (ii) the accumulated
+vertex weights are (approximately) equal for both partitions. In our implementation, we
+employ the GGGP graph partitioning algorithm proposed in [3].
+
+Fig. 3 provides an algorithm to build a DOGMA index for an RDF graph GR. The
+BuildDOGMAIndex algorithm starts with the input RDF graph, which is set to G0.
+It assigns an arbitrary weight of 1 to each vertex and each edge in G0. It iteratively
+coarsens G0 into a graph G1 that has about half the vertices in G0, then coarsens G1
+into a graph G2 that has about half the vertices as G1, and so forth until it reaches a Gj
+that has k vertices or less.
+
+Algorithm BuildDOGMAIndex
+Input: RDF graph GR, page size k
+
+(level L, colors C)
+
+Output: DOGMA index DR
+
+weight(v)  1
+weight(e)  1
+
+1 G0  GR
+2 for all v  VR
+
+4 for all e  ER
+
+6 i  0
+7 while |Gi| > k
+
+9 Gi, i  CoarsenGraph(Gi1 )
+10 root(DR)  a new empty node R
+11 BuildTree(R, i, Gi)
+12 ColorRegions(L, DR, C) / Only required for the DOGMA epd index discussed later /
+13 return DR
+
+i  i + 1
+?
+
+?
+
+?
+R, merge mapping 
+
+v  uniformly random chosen vertex from V
+?
+
+?
+
+?
+R}
+?
+
+?
+
+?
+R) / identity map /
+?
+
+?
+
+?
+Algorithm CoarsenGraph
+Input: RDF graph GR
+Output: Coarsened graph G
+R  GR
+
+1 G
+2   (VR  V
+3 while 2  |V
+R| > |VR|
+?
+
+?
+
+?
+5 Nv  {u | (u, v)  E
+6 m  x  Nv s.t. x  y y  Nv
+?
+
+?
+
+?
+17 E
+18 return G
+
+else
+R  E
+?
+
+?
+
+?
+weight((m, u))  weight((v, u))
+R \ {v}
+R  V
+?
+
+?
+
+?
+1(v))  m
+(
+R  E
+R \ {(v, u)  E
+?
+
+?
+
+?
+R, 
+
+weight(m)  weight(m) + weight(v)
+for all (v, u)  E
+?
+
+?
+
+?
+if (m, u)  ER
+
+weight((m, u))  weight((m, u))
+
++weight((v, u))
+R  {(m, u)}
+?
+
+?
+
+?
+R}
+?
+
+?
+
+?
+Algorithm BuildTree
+Input: Binary tree node N, level i,
+Output: Graph merge hierarchy {Gj}j0
+
+subgraph S at level i
+and merge mappings {j}j0
+
+1 label(N)  S
+2 if |S| > k
+S1, S2  GraphPartition(S)
+
+L  lef tChild(N)
+
+5 R  rightChild(N)
+SL  induced subgraph in Gi1
+
+by vertex set {v | i(v)  VS1
+
+SR  induced subgraph in Gi1
+
+by vertex set {v | i(v)  VS2
+
+BuildTree(L, i  1, SL)
+
+BuildTree(r, i  1, SR)
+
+12 PN  {v | i(i1(. . . 1(v)))  VS}
+13 for all v  PN / Only for DOGMA ipd /
+ipd(v, N)  minuV0\PN dG0 (u, v)
+
+}
+}
+
+Fig. 3. BuildDOGMAIndex, CoarsenGraph, and BuildTree algorithms
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+The coarsening is done by invoking a CoarsenGraph algorithm that randomly
+chooses a vertex v in the input graph, then it finds the immediate neighbors Nv of v,
+and then finds those nodes in Nv that are best according to a total ordering . There are
+many ways to define ; we experimented with different orderings and chose to order by
+increasing edge weight, then decreasing vertex weight. The CoarsenGraph algorithm
+appropriately updates node and edge weights and then selects a maximally weighted
+node, denoted m, to focus the coarsening on. The coarsening associated with the node
+v merges neighbors of the node m and m itself into one node, updates weights, and
+removes v. Edges from m to its neighbors are removed. This process is repeated till we
+obtain a graph which has half as many vertices (or less) than the graph being coarsened.
+The result of CoarsenGraph is a k-merge where we have merged adjacent vertices.
+The BuildDOGMAIndex algorithm then uses the sequence G0, G1, . . . , Gj denoting
+these coarsened graphs to build the DOGMA index using the BuildTree subroutine.
+Note that Line 12 in the BuildDOGMAIndex algorithm (where L denotes the level at
+which to color the subgraphs and C is a list of unique colors) is only needed for the
+DOGMA epd index introduced later, as well as lines 1214 in BuildTree are for the
+DOGMA ipd index. They are included here to save space.
+
+Proposition 1. Algorithm BuildDOGMAIndex correctly builds a DOGMAindex for
+an RDF graph GR. Moreover, the worst-case time complexity of Algorithm BuildDOGMAIndex is O(|ER| + (k)
+|VR|
+k ) where (k) is the worst-case time complexity of
+Algorithm GraphPartitionover a graph with k vertices and O(k) edges.
+
+4 Algorithms for Processing Graph Queries
+
+In this section, we first present the DOGMA basic algorithm for answering queries
+against a DOGMA index stored on external memory. We then present various extensions that improve query answering performance on complex graph queries.
+
+4.1 The DOGMA basic Query Processing Algorithm
+?
+
+?
+
+?
+Fig. 4 shows our basic algorithm for answering graph matching queries using the
+DOGMA index. In the description of the algorithm, we assume the existence of two
+index retrieval functions: retrieveNeighbors(DR, v, l) that retrieves from DOGMA index DR the unique identifiers for all vertices v
+that are connected to vertex v by an
+edge labeled l, i.e., the neighbors of v restricted to label l, and retrieveVertex(DR, v)
+that retrieves from DR a complete description of vertex v, i.e., its unique identifier and
+its associated metadata. Note that retrieveVertex implicitly exploits locality, since after looking up neighboring vertices, the probability is high that the page containing the
+current vertexs description is already in memory.
+DOGMA basic is a recursive, depth-first algorithm which searches the space of all
+substitutions for the answer set to a given query Q w.r.t an RDF database R. For each
+variable vertex v in Q, the algorithm maintains a set of constant vertices Rv  VR
+(called result candidates) to prune the search space; for each answer substitution  for
+Q, we have (v)  Rv. In other words, the result candidates must be a superset of the
+set of all matches for v. Hence, we can prune the search space by only considering those
+?
+
+?
+
+?
+Algorithm DOGMA basic
+Input: Graph query Q, DOGMA index DR, partial substitution , candidate sets {Rz}
+Output: Answer set A, i.e. set of substitutions  s.t. Q is a subgraph of GR
+
+return / done - a correct answer substitution has been found /
+for all z  VQ  VAR
+for all c  VQ  (S  V)
+
+Rz  null / no candidate substitutions for any vars in the query initially /
+for all edges e = (c, v) incident on c and some v  VQ  VAR
+
+Rv  retrieveNeighbors(DR, c, Q(e)) / use index to retrieve all nbrs of c with same label as e  /
+Rv  Rv retrieveNeighbors(DR, c, Q(e)) / restrict space of possible subst. for z /
+
+else
+
+|Rz|
+
+if Rv = null
+
+1 if z  VQ  VAR : c : (z  c)  
+2 A  A  {}
+
+4 if  = 
+?
+
+?
+
+?
+13 Rw  argminRz=null,s.t. zVQV\dom()
+14 if Rw = 
+
+16 else
+?
+
+?
+
+?
+return NO
+for all m  Rw
+
+z  Rz
+?
+
+?
+
+?
+if Rv = null
+
+DOGMA basic(
+?
+
+?
+
+?
+, {R
+z})
+?
+
+?
+
+?
+v  retrieveNeighbors(DR, m, Q(e))
+?
+
+?
+
+?
+else
+v  Rv retrieveNeighbors(DR, m, Q(e))
+?
+
+?
+
+?
+(Q), DR, 
+
+retrieveVertex(DR, m)
+    {w  m}
+
+for all z  VQ  VAR
+for all edges e = (w, v) incident on w and some v  VQ  VAR \ dom()
+
+Fig. 4. DOGMA basic algorithm
+
+substitutions  for which (v)  Rv for all variable vertices v in Q. DOGMA basic
+is called initially with an empty substitution and uninitialized result candidates (lines
+4-6). We use uninitialized result candidates Rv = null to efficiently denote Rv = VR,
+i.e., the fact that there are no constraints on the result candidates yet. The algorithm then
+initializes the result candidates for all variable vertices v in Q which are connected to
+a constant vertex c in Q through an edge labeled by l (lines 7-12). Here we employ the
+fact that any answer substitution  must be such that (v) is a neighbor of c, and thus
+the set of all neighbors of c in GR reachable by an edge labeled l are result candidates
+for v. We use the DOGMA index DR to efficiently retrieve the neighborhood of c. If
+v is connected to multiple constant vertices, we take the intersection of the respective
+constraints on the result candidates.
+
+At each recursive invocation, the algorithm extends the given substitution and
+narrows down the result candidates for all remaining variable vertices correspondingly.
+To extend the given substitution , we greedily choose the variable vertex w with the
+smallest set of result candidates (line 13). This yields a locally optimal branching factor
+of the search tree since it provides the smallest number of extensions to the current
+substitution. In fact, if the set of result candidates is empty, then we know that  cannot
+be extended to an answer substitution, and we thus directly prune the search (lines
+14-15). Otherwise, we consider all the possible result candidates m  Rw for w by
+deriving extended substitutions 
+from  which assign m to w (lines 17-19) and then
+calling DOGMA basic recursively on 
+(line 27). Prior to this, we update the result
+?
+
+?
+
+?
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+candidates for all remaining variable vertices (lines 20-26). By assigning the constant
+vertex m to w we can constrain the result candidates for all neighboring variable vertices
+as discussed above.
+
+Note that our description of the algorithm assumes that edges are undirected, to simplify the presentation. Obviously, our implementation takes directionality into account
+and thus distinguishes between outgoing and incoming edges when determining vertex
+neighborhoods.
+
+Example 3. Consider the example query and RDF database in Fig. 1. Fig. 5(a) shows
+the initial result candidates for each of the variable vertices ?v1, ?v2, ?v3 in boxes. After
+initialization, DOGMA basic chooses the smallest set of result candidates to extend
+| = 3; suppose
+the currently empty substitution  = . We have that |Rv1
+Rv2 is chosen. We can now extend  by assigning each of the result candidates (Bill
+(?v2) = Bill B0045.
+B0045, Bill B0532, Bill B1432) to ?v2. Hence, we first set 
+This introduces a new constant vertex into the query and we thus constrain the result
+candidates of the two neighbor variable vertices v1, v3 by the amendmentTo and
+sponsor neighborhood of Bill B0045 respectively. The result is shown in Fig. 5(b);
+here we call DOGMA basic recursively to encounter the empty result candidates for
+v1. Hence we reached a dead end in our search for an answer substitution and the
+algorithm backtracks to try the remaining extensions for . Eventually, DOGMA basic
+considers the extension v2  Bill B1432 which leads to the query answer.
+?
+
+?
+
+?
+| = |Rv2
+
+Jeff Ryser
+John McRie
+Keith Farmer
+Peter Traves
+Pierce Dickes
+
+Male
+
+gender
+
+?v3
+
+sponsor
+
+Bill B0045
+Bill B0532
+Bill B1432
+
+Carla
+Bunes
+
+sponsor
+
+?v1
+
+amendmentTo
+
+subject
+
+?v2
+
+Health
+Care
+
+Bill B0744
+Amendment A0342
+Amendment A0056
+
+(a)
+
+Jeff Ryser
+
+Male
+
+gender
+
+?v3
+
+sponsor
+
+Carla
+Bunes
+
+sponsor
+
+?v1
+
+amendmentTo
+
+Bill
+
+B0045
+
+subject
+
+Health
+Care
+
+(b)
+
+Fig. 5. Execution of DOGMA basic on the example of Fig. 1
+
+Proposition 2. Suppose DR is a DOGMA index for an RDF database R and Q is
+a graph query. Then: DOGMAbasic(Q, DR,{}, null) returns the set of all correct
+answer substitutions for query Q w.r.t. R. Moreover, the worst-case complexity of the
+DOGMAbasicalgorithm is O(|VR||VQ  V AR|).
+
+The algorithm is therefore exponential in the number of variables in the query in
+the worst case. However, the algorithm is efficient in practice as we will show in
+Section 5. Furthermore, we propose two extensions of the DOGMA index that improve
+its performance.
+?
+
+?
+
+?
+4.2 The DOGMA adv Algorithm
+The basic query answering algorithm presented in the previous section only uses short
+range dependencies, i.e., the immediate vertex neighborhood of variable vertices, to
+constrain their result candidates. While this suffices for most simple queries, considering long range dependencies can yield additional constraints on the result candidates
+and thus improve query performance. For instance, the result candidates for v1 in our
+example query not only must be immediate neighbors of Carla Bunes: in addition,
+they must be at most at a distance of 2 from Health Care. More formally, let dR(u, v)
+denote the length of the shortest path between two vertices u, v  VR in the undirected
+counterpart of a RDF graph GR, and let dQ(u, v) denote the distance between two vertices in the undirected counterpart of a query Q; a long range dependency on a variable
+vertex v  VQ is introduced by any constant vertex c  VQ with dQ(v, c) > 1.
+
+We can exploit long range dependencies to further constrain result candidates. Let
+v be a variable vertex in Q and c a constant vertex with a long range dependency on
+v. Then any answer substitution  must satisfy dQ(v, c)  dR((v), c) which, in turn,
+means that {m | dR(m, c)  dQ(v, c)} are result candidates for v. This is the core
+idea of the DOGMA adv algorithm shown in Fig. 6, which improves over and extends
+DOGMA basic. In addition to the result candidates sets Rv, the algorithm maintains
+sets of distance constraints Cv on them. As long as a result candidates set Rv remains
+uninitialized, we collect all distance constraints that arise from long range dependencies
+on the variable vertex v in the constraints set Cv (lines 15-16 and 34-35). After the
+result candidates are initialized, we ensure that all elements in Rv satisfy the distance
+constraints in Cv (lines 17-18 and 37-38). Maintaining additional constraints therefore
+reduces the size of Rv and hence the number of extensions to  we have to consider
+(line 23 onward).
+DOGMA adv assumes the existence of a distance index to efficiently look up
+dR(u, v) for any pair of vertices u, v  VR (through function retrieveDistance), since
+computing graph distances at query time is clearly inefficient. But how can we build
+such an index? Computing all-pairs-shortest-path has a worst-case time complexity
+O(|VR|3) and space complexity O(|VR|2), both of which are clearly infeasible for large
+RDF databases. However, we do not need to know the exact distance between two vertices for DOGMA adv to be correct. Since all the distance constraints in DOGMA adv
+are upper bounds (lines 18, 31, and 38), all we need is to ensure that u, v  VR, re-
+trieveDistance(DR, u, v)  dR(u, v).
+
+Thus, we can extend the DOGMA index to include distance information and build
+two lower bound distance indexes, DOGMA ipd and DOGMA epd, that use approximation techniques to achieve acceptable time and space complexity.
+
+4.3 DOGMA ipd
+For building the DOGMA index, we employed a graph partitioner which minimizes
+cross edges, to ensure that strongly connected vertices are stored in close proximity on
+disk; this implies that distant vertices are likely to be assigned to distinct sets in the
+partition. We exploit this to extend DOGMA to a distance index.
+As seen before, the leaf nodes of the DOGMA index DR are labeled by subgraphs
+which constitute a partition of GR. For any node N  DR, let PN denote the union
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+Algorithm DOGMA adv
+Input: Graph query Q, DOGMA Index DR, partial substitution , candidate sets {Rz}, constraint sets {Cz}
+Output: Answer set A, i.e. set of substitutions  s.t. (Q)  G
+
+Rz  null
+for all edges e = (c, v) incident on c and some v  VQ  VAR
+
+Rv  retrieveNeighbors(DR, c, Q(e))
+Rv  Rv retrieveNeighbors(DR, c, Q(e))
+
+else
+
+for all variable vertices v  VQ  VAR s.t. dQ(c, v) > 1
+
+Cv  Cv  {(c, dQ(c, v))}
+Rv  {u  Rv | retrieveDistance(DR, c, u)  dQ(c, v)}
+
+else
+
+|Rz|
+
+if Rv = null
+
+if Rv = null
+
+for all c  VQ  (S  V)
+
+1 if z  VQ  VAR : c : (z  c)  
+2 A  A  {}
+return
+
+4 if  = 
+for all z  VQ  VAR
+?
+
+?
+
+?
+for all c  VQ  (S  V)
+?
+
+?
+
+?
+19 Rw  argminRz=null,s.t. zVQVAR\dom()
+20 if Rw = 
+return
+
+22 else
+for all m  Rw
+?
+
+?
+
+?
+retrieveVertex(DR, m)
+    {w  m}
+
+for all z  VQ  VAR
+
+z  Rz
+?
+
+?
+
+?
+z  Cz
+?
+
+?
+
+?
+if Rv = null
+
+DOGMA basic(
+
+if Rv = null
+?
+
+?
+
+?
+(Q), DR, 
+
+for all edges e = (w, v) incident on w and some v  VQ  VAR \ dom()
+
+v  {u  retrieveNeighbors(DR, m, Q(e)) | (c, d)  Cv : retrieveDistance(DR, c, u)  d}
+?
+
+?
+
+?
+else
+v  Rv retrieveNeighbors(DR, m, Q(e))
+?
+
+?
+
+?
+for all variable vertices v  VQ  VAR \ dom() s.t. dQ(w, v) > 1
+
+Cv  Cv  {(m, dQ(w, z))}
+Rv  {w  Rv | retrieveDistance(DR, m, v)  dQ(w, v)}
+
+else
+?
+
+?
+
+?
+z}, {C
+, {R
+?
+
+?
+
+?
+z})
+?
+
+?
+
+?
+Fig. 6. DOGMA adv algorithm
+
+of the graphs labeling all leaf nodes reachable from N . Hence, PN is the union of
+all subgraphs in GR that were eventually merged into the graph labeling N during
+index construction and therefore corresponds to a larger subset of GR. For example,
+the dashed lines in Fig 1(a) mark the subgraphs PN for all index tree nodes N of the
+DOGMA index shown in Fig. 2 where bolder lines indicate boundaries corresponding
+to nodes of lower depth in the tree.
+The DOGMA internal partition distance (DOGMA ipd) index stores, for each index
+node N and vertex v  PN , the distance to the outside of the subgraph corresponding
+to PN . We call this the internal partition distance of v, N , denoted ipd(v, N), which
+is thus defined as ipd(v, N) = minuVR\PN dR(v, u). We compute these distances
+during index construction as shown in Fig. 3 (BuildTree algorithm at lines 12-14). At
+query time, for any two vertices v, u  VR we first use the DOGMA tree index to
+identify those distinct nodes N = M in DR such that v  PN and u  PM , which
+are at the same level of the tree and closest to the root. If such nodes do not exist
+(because v, u are associated with the same leaf node in DR), then we set dipd(u, v) = 0.
+Otherwise we set dipd(u, v) = max(ipd(v, N), ipd(u, M)). It is easy to see that dipd
+?
+
+?
+
+?
+is an admissible lower bound distance, since PN  PM = . By choosing those distinct
+nodes which are closest to the root, we ensure that the considered subgraphs are as large
+as possible and hence dipd(u, v) is the closest approximation to the actual distance.
+
+Proposition 3. Building the DOGMAipd index has a worst-case time complexity
+O(log
+
+k (|ER| + |VR| log |VR|)) and space complexity O(|VR| log
+|VR|
+
+|VR|
+k ).
+
+Example 4. Consider the example of Fig. 1. As shown in Fig. 7(a), there is a long range
+dependency between Carla Bunes and variable vertex v2 at distance 2. The boldest
+dashed line in Fig. 1(a) marks the top level partition and separates the sets PN1, PN2,
+where N1, N2 are the two nodes directly below the root in the DOGMA index in Fig. 2.
+We can determine that ipd(Carla Bunes, N2) = 3 and since Bill B0045 and B0532 lie in
+the other subgraph, it follows that dipd(Carla Bunes, B0045/B0532) = 3 and therefore
+
+we can prune both result candidates.
+
+(a)
+
+(b)
+
+Fig. 7. Using DOGMA ipd and DOGMA epd for query answering
+
+4.4 DOGMA epd
+
+The DOGMA external partition distance (DOGMA epd) index also uses the partitions
+in the index tree to compute a lower bound distance. However, it considers the distance
+to other subgraphs rather than the distance within the same one. For some fixed level
+L, let NL denote the set of all nodes in DR at distance L from the root. As discussed
+above, P = {PN}NNL is a partition of GR. The idea behind DOGMA epd is to
+assign a color from a fixed list of colors C to each subgraph PN  P and to store,
+for each vertex v  VR and color c  C, the shortest distance from v to a subgraph
+colored by c. We call this the external partition distance, denoted epd(v, c), which is
+thus defined as epd(v, c) = minuPN ,(PN )=c dR(v, u) where  : P  C is the color
+assignment function. We store the color of PN with its index node N so that for a given
+pair of vertices u, v we can quickly retrieve the colors cu, cv of the subgraphs to which
+u and v belong. We then compute depd(v, u) = max(epd(v, cu), epd(u, cv)). It is easy
+to see that depd is an admissible lower bound distance.
+
+Ideally, we want to assign each partition a distinct color but this exceeds our
+storage capabilities for large database sizes. Our problem is thus to assign a limited
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+?
+
+?
+
+?
+PNP
+
+PMP,(PN )=(PM )
+
+number of colors to the subgraphs in such a way as to maximize the distance between subgraphs of the same color. Formally, we want to minimize the
+d(PN ,PM ) where d(PN , PM ) =
+objective function
+minuPN ,vPM dR(u, v). Inspired by the work of Ko and Rubenstein on peer-to-peer
+networks [4], we designed a probabilistic, locally greedy optimization algorithm for the
+maximum distance coloring problem named ColorRegions, that we do not report here
+for reasons of space. The algorithm starts with a random color assignment and then iteratively updates the colors of individual partitions to be locally optimal. A propagation
+radius determines the neighborhood that is analyzed in determining the locally optimal
+color. The algorithm terminates if the cost improvement falls below a certain threshold
+or if a maximum number of iterations is exceeded.
+
+Proposition 4. Computing the external partition distance has a worst-case time complexity O(|C| (|ER| + |VR| log |VR|)) and space complexity O(|VR||C|).
+Example 5. Consider the example of Fig. 1(a) and assume each set in the lowest level
+of the DOGMA index in Fig. 2 is colored with a different color. Figure 7(b) indicates
+some long range dependencies and shows how the external partition distance can lead
+to additional prunings in the three result candidates sets which can be verified against
+
+Fig. 1(a).
+
+5 Experimental Results
+
+In this section we present the results of the experimental assessment we performed of
+the DOGMA adv algorithm combined with DOGMA ipd and DOGMA epd indexes.
+We compared the performance of our algorithm and indexes with 4 leading RDF
+database systems developed in the Semantic Web community that are most widely used
+and have demonstrated superior performance in previous evaluations [5]. Sesame2 [6] is
+an open source RDF framework for storage, inferencing and querying of RDF data, that
+includes its own RDF indexing and I/O model and also supports a relational database
+as its storage backend. We compare against Sesame2 using its native storage model
+since initial experiments have shown that Sesame2s performance drops substantially
+when backed by a relational database system. Jena2 [7] is a popular Java RDF framework that supports persistent RDF storage backed by a relational database system (we
+used PostgreSQL [8]). SPARQL queries are processed by the ARQ query engine which
+also supports query optimization [9]. JenaTDB [10] is a component of the Jena framework providing persistent storage and query optimization for large scale RDF datasets
+based on a native indexing and I/O model. Finally, OWLIM [11] is a high performance
+semantic repository based on the Sesame RDF database. In the experiments, we compared against the internal memory version of OWLIM which is called SwiftOWLIM
+and is freely available. SwiftOWLIM loads the entire dataset into main memory prior
+to query answering and therefore must be considered to have an advantage over the
+other systems.
+
+Moreover, we used 3 different RDF datasets. GovTrack [1] consists of more than 14.5
+million triples describing data about the U.S. Congress. The Lehigh University Benchmark (LUBM) [12] is frequently used within the Semantic Web community as the basis
+?
+
+?
+
+?
+Fig. 8. Query times (ms) for graph queries of low complexity
+
+for evaluation of RDF and ontology storage systems. The benchmarks RDF generator employs a schema which describes the university domain. We generated a dataset
+of more than 13.5 million triples. Finally, a fragment of the Flickr social network [13]
+dataset was collected by researchers of the MPI Saarbr ucken to analyze online social
+networks [14] and was generously made available to us. The dataset contains information on the relationships between individuals and their memberships in groups. The
+fragment we used for the experiments was anonymized and contains approximately 16
+million triples. The GovTrack and social network datasets are well connected (with
+the latter being denser than the former), whereas the dataset generated by the LUBM
+benchmark is a sparse and almost degenerate RDF graph containing a set of small and
+loosely connected subgraphs.
+
+In order to allow for a meaningful comparison of query times across the different
+systems, we designed a set of graph queries with varying complexity, where constant
+vertices were chosen randomly and queries with an empty result set were filtered out.
+Queries were grouped into classes based on the number of edges and variable vertices.
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+Fig. 9. Query times (ms) for graph queries of high complexity
+
+We repeated the query time measurements multiple times for each query, eliminated
+outliers, and averaged the results. Finally, we averaged the query times of all queries
+in each class. All experiments were executed on a machine with a 2.4Ghz Intel Core 2
+processor and 3GB of RAM.
+
+In a first round of experiments, we designed several relatively simple graph queries
+for each dataset, containing no more than 6 edges, and grouped them into 8 classes.The
+results of these experiments are shown in Fig. 8 which reports the query times for each
+query class on each of the three datasets. Missing values in the figure indicate that
+the system did not terminate on the query within a reasonable amount of time (around
+20 mins). Note that the query times are plotted in logarithmic scale to accommodate
+the large discrepancies between systems. The results show that OWLIM has low query
+times on low complexity queries across all datasets. This result is not surprising, as
+OWLIM loads all data into main memory prior to query execution. The performance
+advantage of DOGMA ipd and DOGMA epd over the other systems increases with
+query complexity on the GovTrack and social network dataset, where our proposed
+?
+
+?
+
+?
+Fig. 10. Index size (MB) for different datasets
+
+techniques are orders of magnitude faster on the most complex queries. On the LUBM
+dataset, however, Sesame2 performs almost equally for the more complex queries. Fi-
+nally, DOGMA epd is slightly faster on the LUBM and social network dataset, whereas
+DOGMA ipd has better performance on the Govtrack dataset.
+
+In a second round of experiments, we significantly increased the complexity of the
+queries, which now contained up to 24 edges. Unfortunately, the OWLIM, JenaTDB,
+and Jena2 systems did not manage to complete the evaluation of these queries in reasonable time, so we exclusively compared with Sesame2. The results are shown in Fig. 9.
+On the GovTrack and social network dataset, DOGMA ipd and DOGMA epd continue to have a substantial performance advantage over Sesame2 on all complex graph
+queries of up to 40000%. For the LUBM benchmark, the picture is less clear due to the
+particular structure of the generated dataset explained before.
+
+Finally, Fig. 10 compares the storage requirements of the systems under comparison
+for all three datasets. The results show that DOGMA ipd,DOGMA epd and Sesame2
+are the most memory efficient.
+
+To wrap up the results of our experimental evaluation, we can observe that both
+DOGMA ipd and DOGMA epd are significantly faster than all other RDF database
+systems under comparison on complex graph queries over non-degenerate graph
+datasets. Moreover, they can efficiently answer complex queries on which most of the
+other systems do not terminate or take up to 400 times longer, while maintaining a satisfactory storage footprint. DOGMA ipd and DOGMA epd have similar performance,
+yet differences exist which suggest that each index has unique advantages for particular
+queries and RDF datasets. Investigating these is subject of future research.
+
+6 Related Work
+
+Many approaches to RDF storage have been proposed in the literature and through
+commercial systems. In Section 5 we briefly reviewed four such systems that we used in
+the performance comparison. Discussing all prior work on RDF storage and retrieval in
+detail is beyond the scope of this paper. Approaches differ with respect to their storage
+
+M. Br ocheler, A. Pugliese, and V.S. Subrahmanian
+
+regime, index structures, and query answering strategies. Some systems use relational
+databases as their back-end [15]; for instance by inferring the relational schema of the
+given RDF data [16,17], or using a triple based denormalized relational schema [7],
+whereas others propose native storage formats for RDF [11]. To efficiently retrieve
+triples, RDF databases typically rely on index structures, such as the popular B-tree and
+its generalizations, over subjects, predicates, objects or any combination thereof [18].
+Query answering is either handled by the relational database back-end after a SPARQL
+query is translated into its SQL equivalent or employs existing index structures to retrieve stored triples that match the query. [19] does some additional tuning through
+B+-tree page compression and optimized join processing. Recent work on query optimization for RDF uses triple selectivity estimation techniques similar to those used in
+relational database systems [9].
+
+Despite these differences, the great majority of RDF databases are triple oriented
+in the sense that they focus on the storage and retrieval of individual triples. In con-
+trast, our work is graph oriented because we analyze the graph spanned by RDF data
+and exploit graph properties, such as connectedness and shortest path lengths, for efficient storage and, more importantly, retrieval. This explains DOGMAs performance
+advantage on complex queries. GRIN [20] was the first RDF indexing system to use
+graph partitioning and distances in the graphs as a basis for indexing for SPARQLlike queries. However, GRIN did not operate on disk and the authors subsequently
+found errors in the experimental results reported in that paper. There is also some related work in other communities. LORE [21], a database system for semi-structured
+data, proposed path indexes based on the assumption that the input data can be accurately represented as a tree. This assumption clearly does not hold for RDF data.
+Furthermore, there is a lot work on approximate query answering over graph datasets in
+the bioinformatics community [22]. However, the biological datasets are small enough
+to fit into main memory and hence storage and retrieval are not being addressed. Fi-
+nally, [19,23] focus on the physical data structures to optimally store RDF triples. Their
+work is thus orthogonal to ours, since a DOGMA index could be built on the physical
+data structures proposed in these papers in order to additionally exploit graph distance
+locality.
+
+7 Conclusions and Future Work
+
+In this paper, we proposed the DOGMA index for fast subgraph matching on disk and
+developed algorithms to answer queries over this index. The algorithms use efficient
+(but correct) pruning strategies and can be combined with two different extensions of
+the index. We tested a preliminary implementation of the proposed techniques against
+four existing RDF database systems, showing very good query answering performance.
+Future work will be devoted to an in-depth study of the advantages and disadvantages
+of each of the proposed indexes when dealing with particular queries and RDF datasets.
+Moreover, we plan to extend our indexes to support efficient updates, also trying to
+improve over usual index maintenance schemes such as those based on a partial use of
+the space in index nodes.
+?
+
+?
+

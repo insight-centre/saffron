@@ -1,0 +1,193 @@
+
+M. Schmidt et al.
+
+inproceedings with properties dc:creator, bench:booktitle,
+Q2. Extract all
+dc:title, swrc:pages, dcterms:partOf, rdfs:seeAlso, foaf:homepage, dcterms:issued, and
+optionally bench:abstract, including these properties.
+Q2 implements a star-join-like graph pattern. Result size grows with document
+size (cf. Table 2) and the solution modifier Order By forces result ordering.
+The nine outer SPARQL triple patterns translate into nine predicate (triple)
+table accesses in the VP (TR) scenario, connected through eight subject-subject
+joins, due to variable ?inproc. The Optional clause causes an additional left
+outer join. The RS query gathers all relevant information from tables Document,
+Publication, PublicationType, Author, Person, Document_seeAlso, Venue,
+and Document_homepage, and also contains a left outer join with table Abstract.
+Like for Q1, the subject-subject joins should be realized by merge joins in
+the TR and VP scenario, but MonetDB chooses QEPs that mostly use fetch
+joins, involving merge joins only in few cases. These fetch joins consume the
+major part of execution time. Lastly, none of both schemes succeeds for the
+25M triples document. Sesame is about one order of magnitudes slower. The RS
+scheme requires less joins and is significantly faster than the other approaches.
+
+Q3abc. Select all articles with property (a) swrc:pages, (b) swrc:month, or
+(c) swrc:isbn.
+We restrict on a discussion of Q3b, as the results for Q3a and Q3c are similar. As
+explained in [13], the Filter in Q3b selects about 0.65% of all articles. The TR
+translation contains a subject-subject join on table Triples and a Where valuerestrictions for predicate swrc:month. Although variable ?property occurs in predicate position, we chose a VP translation that does not compute the union of
+all predicate tables, but operates directly on the table for predicate swrc:month,
+which is implicitly fixed by the Filter. The RS translation is straightforward.
+The VP approach is a little faster than TR, because it operates on top of the
+swrc:month predicate table, instead of the full triples table. The query contains
+only one subject-subject join, and we observe that the VP and TR approaches
+explode for the 25M document, again due to expensive fetch joins (cf. Q1, Q2).
+Sesame is competitive and scales even better, while RS shows best performance.
+
+Q4. Select all distinct pairs of article author names for authors that have
+published in the same journal.
+Q4 contains a long graph chain, i.e. variables ?name1 and ?name2 are linked
+through the articles that different authors have published in the same journal.
+When translated into TR and VP, the chain is mapped to a series of subject-
+subject, subject-object, and object-object joins. The RS query gathers all articles
+and their authors from the relevant tables twice and joins them on Venue.ID.
+
+As apparent from Table 2, the query computes very large results. Due to the
+subject-object and object-object joins, the TR and VP scenarios have to compute
+many expensive (non-merge) joins, which makes the approaches scale poorly.
+Sesame is one order of magnitude slower. In contrast, RS involves simpler joins
+(e.g., efficient joins on foreign keys) and shows the best performance.
+?
+
+?
+
+?
+Q5ab. Return the names of all persons that occur as author of at least one
+inproceeding and at least one article.
+Q5a joins authors implicitly on author names (through the Filter condition),
+while Q5b explicitly joins on variable ?person. Although in general not equiv-
+alent, the one-to-one mapping between authors and their names in SP2Bench
+implies equivalence of Q5a and Q5b. All translations share these join character-
+istics, i.e. all translations of Q5a model the join by an equality condition in the
+SQL Where-clause, whereas translations of Q5b contain an explicit SQL Join.
+Sesame scales bad for Q5a, probably due to the implicit join (it performs
+much better for Q5b). In the SQL scenarios there are no big differences between
+implicit and explicit joins; such situations are resolved by relational optimizers.
+
+Q6. Return, for each year, the set of all publications authored by persons
+that have not published in years before.
+Q6 implements closed world negation (CWN), expressed through a combination
+of operators Optional, Filter, and bound. The block outside the Optional
+computes all publications and the inner one constitutes earlier publications from
+authors that appear outside. The outer Filter then retains all publications
+for which ?author2 is unbound, i.e. those from newcomers. In the TR and VP
+translation, a left outer join is used to connect the outer to the inner part. The
+RS query extracts, for each year, all publications and their authors, and uses a
+SQL NOT EXISTS clause to filter away authors without prior publications.
+
+One problem in the TR and VP queries is the left join on top of a less-than
+comparison, which complicates the search for an efficient QEP. In addition, both
+queries contain each two subject-object joins on the left and on the right side of
+the left outer join. Ultimately, both scale poorly. Also Sesame scales very bad.
+In contrast, the purely relational encoding is elegant and much more efficient.
+
+Q7. Return the titles of all papers that have been cited at least once, but
+not by any paper that has not been cited itself.
+This query implements a double-CWN scenario. Due to the nested Optional
+clauses, the TR and VP translations involve two nested left outer joins with joinintensive subexpressions. The VP translation is complicated by three unions of
+all predicate tables, caused by the SPARQL variables ?member2, ?member3,
+and ?member4 in predicate position. When encoding them at the bottom of
+the evaluator tree, the whole query builds upon these unions and the benefit of
+sorted and indexed predicate tables gets lost. We tested different versions of the
+query and decided for the most performant (out of the tested variants), where
+we pulled off the outermost union, thus computing the union of subexpressions
+rather than individual tables. The RS query uses two nested SQL Not In-clauses
+to express double negation. We could have used nested Not Exists-clauses
+instead (cf. Q6), but decided to vary, to test the impact of both operators.
+
+Due to the unbound predicates, the VP approach has severe problems in
+evaluating this query and behaves worse than the TR scheme. This illustrates
+the disadvantages of the vertical approach in scenarios where unbound predicates
+
+M. Schmidt et al.
+
+occur. Sesame also behaves very bad, while the nested Not In-clause in RS, a
+common construct in relational queries, constitutes the only practical solution.
+
+Q8. Compute authors that have published with Paul Erdoes or with an
+author that has published with Paul Erdoes.
+Q8 contains a SPARQL Union operator, so all translations contain a SQL union.
+The TR and VP versions of this query are straightforward. The RS translation
+separately retrieves persons that have published with Paul Erdoes and persons
+that have published with one of its coauthors (each from the Author and the
+Person table), and afterwards computes the union of both person sets.
+
+Again, the TR scenario turns out to be competitive to VP, but both schemes
+fail to find an efficient QEP for large documents, due to the subject-object and
+object-object joins and the additional non-equality Where-condition over the
+subject and object columns. The Sesame engine scales surprisingly well for this
+query, but is still one order of magnitude slower than the relational scheme.
+
+Q9. Return incoming and outgoing properties of persons.
+Both parts of the union in Q9 contain a fully unbound triple pattern, which
+selects all RDF database triples. The TR translation is straightforward. Concerning the unbound ?predicate variable, we again pulled off the union of the
+predicate tables in the VP scenario, thus computing the same query separately
+for each predicate table and building the union of the results afterwards. As
+discussed in Q7, this was more efficient than the union at the bottom of the
+operator tree. The result size is always 4 (the first part constitutes properties
+dc:creator and swrc:editor, and the second one rdf:type and foaf:name). A meaningful RS translation of this query, which accesses schema information, is not
+possible: In RS, the properties are encoded as (fixed) table attributes names.4
+
+Although a little bit slower than the TR approach for small documents, VP
+succeeds in evaluating the 25M triple document. Though, both approaches seem
+to have problems with the unbound triple pattern and scale poorly. Sesames
+native store offers better support, but is still far from being performant.
+
+Q10. Return all subjects that stand in any direct relation with Paul Erdoes.
+In our scenario the query can be reformulated as Return publications and
+venues in which Paul Erdoes is involved as author or editor, respectively.
+Q10 implements an object bound-only RDF access path. The TR and RS translations are standard. Due to the unbound variable ?predicate, the VP query
+involves a union of the predicate tables. As for Q9, the implementation of this
+union on top of the operator tree turned out to be the most performant solution.
+Recalling that Paul Erdoes is active between 1940 and 1996, the result size
+has an upper bound (cf. Table 2 for the 5M and 25M documents). VP and
+TR show very similar behavior. As illustrated by the results of Sesame, this
+query can be realized in constant time (with an appropriate index). The index
+
+4 A lookup query for fixed values in the DBMS system catalog is not very interesting.
+?
+
+?
+
+?
+selection strategy of MonetDB in TR and VP is clearly suboptimal. RS scales
+much better, but (in contrast to Sesame) still depends on the document size.
+
+Q11. Return (up to) 10 electronic edition URLs starting from the 51st
+publication, in lexicographical order.
+Q11 focuses on the combination of solution modifiers Order By, Limit, and
+Offset, which arguably remains the key challenge in all three translations.
+
+The VP query operates solely on the predicate table for rdfs:seeAlso and,
+consequently, is a little faster than TR. Sesame scales superlinearly and is slower
+than both. Once more, RS dominates in terms of performance and scalability.
+
+Conclusion. Our results bring many interesting findings. First, the MonetDB
+optimizer often produced suboptimal QEPs in the VP and TR scenario (e.g.,
+for Q1, Q2, and Q3b not all subject-subject join patterns were realized by merge
+joins). This shows that relational optimizers may have problems to cope with
+the specific challenges that arise in the context of RDF. Developers should be
+aware of this when implementing RDF schemes on top of relational systems.
+
+Using the SP2Bench queries we have identified limitations of the vertical ap-
+proach. We observe performance bottlenecks in complex scenarios with unbound
+predicates (e.g., Q7), for challenging operator constellations (e.g., CWN-queries
+Q6, Q7), and identified queries with many non-subject-subject joins as a serious
+weakness of the VP scheme. While the latter weakness has been noted before
+in [11], our experiments reveal the whole extent of this problem. The materialization of path expressions might improve the performance of such queries [11],
+but comes with additional costs (e.g., disk space), and is not a general solution.
+Another finding is that a triple store with physical (predicate,subject,object)
+sort order is more competitive to the vertical scheme, and might even outperform
+it for queries (e.g., Q7) with unbound predicates (cf. [16]). This relativizes the
+results from [11], where the triple store was implemented with (subject, predicate,
+object) sort order and only tested in combination with a row-store DBMS.
+
+Finally, none of the tested RDF schemes was competitive to a comparable
+purely relational encoding. Although relational schemata are domain-specific
+and, in this regard, optimized for the underlying scenario, we observed a gap of
+at least one order of magnitude for almost all queries already on small documents,
+typically increasing with document size. We therefore are convinced that there is
+still room for optimization in RDF storage schemes, to reduce the gap between
+RDF and relational data processing and bring forward the Semantic Web vision.
+
+Acknowledgment. The authors thank the MonetDB team for its support in
+setting up MonetDB and interesting discussions on RDF storage technologies.

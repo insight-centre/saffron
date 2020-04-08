@@ -1,0 +1,787 @@
+Using Semantic Distances for Reasoning with
+
+Inconsistent Ontologies
+
+Zhisheng Huang and Frank van Harmelen
+
+Computer Science Department, Vrije Universiteit Amsterdam, The Netherlands
+
+{huang,Frank.van.Harmelen}@cs.vu.nl
+
+Abstract. Re-using and combining multiple ontologies on the Web is
+bound to lead to inconsistencies between the combined vocabularies.
+Even many of the ontologies that are in use today turn out to be inconsistent once some of their implicit knowledge is made explicit. However,
+robust and efficient methods to deal with inconsistencies are lacking from
+current Semantic Web reasoning systems, which are typically based on
+classical logic. In earlier papers, we have proposed the use of syntactic
+relevance functions as a method for reasoning with inconsistent ontolo-
+gies. In this paper, we extend that work to the use of semantic distances.
+We show how Google distances can be used to develop semantic relevance functions to reason with inconsistent ontologies. In essence we
+are using the implicit knowledge hidden in the Web for explicit reasoning purposes. We have implemented this approach as part of the PION
+reasoning system. We report on experiments with several realistic ontolo-
+gies. The test results show that a mixed syntactic/semantic approach can
+significantly improve reasoning performance over the purely syntactic ap-
+proach. Furthermore, our methods allow to trade-off computational cost
+for inferential completeness. Our experiment shows that we only have to
+give up a little quality to obtain a high performance gain.
+
+There is nothing constant in this world but inconsistency.
+-Jonathan Swift (1667-1745)
+
+1 Introduction
+
+A key ingredient of the Semantic Web vision is avoiding to impose a single on-
+tology. Hence, merging ontologies is a key step. Earlier experiments (e.g. [10])
+have shown that merging multiple ontologies can quickly lead to inconsistencies.
+Other studies have shown how migration [18] and evolution [9] also lead to in-
+consistencies. This suggests the importance and omnipresence of inconsistencies
+in ontologies in a truly web-based world.
+
+At first sight, it might seem that many ontologies are semantically so lightweight
+(e.g. expressible in RDF Schema only[6]) that the inconsistency problem doesnt
+arise, since RDF Schema is too weak to even express an inconsistency1. However,
+
+1 Besides the rather limited case of disjoint datatypes.
+
+A. Sheth et al. (Eds.): ISWC 2008, LNCS 5318, pp. 178194, 2008.
+c Springer-Verlag Berlin Heidelberg 2008
+?
+
+?
+
+?
+[17] has shown that on a closer look, many of these semantically lightweight ontologies make implicit assumptions such as the Unique Name Assumption, or assuming
+that sibling classes are disjoint. Such implicit assumptions, although not stated,
+are in fact used in the applications that deploy these ontologies. Not making these
+disjointness assumptions explicit harms the re-usability of these ontologies. How-
+ever, if such assumptions are made explicit, many ontologies turn out to be in fact
+inconsistent.
+
+One way to deal with inconsistencies is to first diagnose and then repair them.
+[18] proposes a nonstandard reasoning service for debugging inconsistent termi-
+nologies. This is a possible approach, if we are dealing with one ontology and
+we would like to improve this ontology. Another approach to deal with inconsistent ontologies is to simply avoid the inconsistency and to apply a non-standard
+reasoning method to obtain answers that are still meaningful, even though they
+have been obtained from an inconsistent ontology. The first approach could be
+dubbed removing inconsistencies, while the second could be called living with
+inconsistencies. This latter approach is more suitable for an open Web setting.
+where one would be importing ontologies from other sources, making it impossible to repair them, and where the scale of the combined ontologies would be
+too large to make repair effective. Therefore, this paper investigates the latter
+approach, namely, the approach of reasoning with inconsistent ontologies.
+
+The classical entailment in logics is explosive: any formula is a logical consequence of a contradiction. Therefore, conclusions drawn from an inconsistent
+knowledge base by classical inference may be completely meaningless. The general task of a system of reasoning with inconsistent ontologies is: given an inconsistent ontology, return meaningful answers to queries. In [12] we developed a
+general framework for reasoning with inconsistent ontologies, in which an answer
+is meaningful if it is supported by a selected consistent sub-ontology of the
+inconsistent ontology, while its negation is not supported. In that work, we used
+relevance based selection functions to obtain meaningful answers. The main idea
+of the framework is: (1) a relevance function is used to select some consistent
+sub-theory from an inconsistent ontology; (2) then we apply standard reasoning
+on the selected sub-theory to try and find meaningful answers; (3) if a satisfying
+answer cannot be found, the relevance degree of the selection function is made
+less restrictive, thereby extending the consistent sub-theory for further reason-
+ing. In this way the system searches for increasingly large sub-theories of an
+inconsistent ontology until the selected sub-theory is large enough to provide an
+answer, but not yet so large so as to become itself inconsistent.
+
+In [13,11], several syntactic relevance based selection functions were devel-
+oped. However, these approaches suffer several limitations and disadvantages.
+As we will show with a simple example later in this paper, such syntactic relevance functions are very sensitive to the accidental syntactic form of an ontology,
+which can easily lead to undesired conclusions on one syntactic form. A simple
+semantics preserving syntactic reformulation would have lead to the appropriate conclusion, but such careful design is unrealistic to require from knowledge
+engineers.
+
+Z. Huang and F. van Harmelen
+
+In this paper, we investigate the approach of semantic relevance selection
+functions as an improvement over the syntactic relevance based approach. We
+will examine the use of co-occurrence in web-pages, provided by a search engine like Google, as a measure of semantic relevance, assuming that when two
+concepts appear more frequently in the same web page, they are semantically
+more relevant. We will show that under this intuitive assumption, information
+provided by a search engine can be used for semantic relevance based selection
+functions for reasoning with inconsistent ontologies.
+
+The main contributions of this paper are (1) to define some general formal
+properties of semantic relevance selection functions, (2) to propose the Google
+Distance as a particular semantic relevance function, (3) to provide an implementation of semantic relevance functions for reasoning with inconsistent ontologies
+in the PION system, (4) to run experiments with PION to investigate the quality
+of the obtained results, and (5) to highlight the cost/performance trade-off that
+can be obtained using our approach.
+
+This paper is organised as follows. Section 2 briefly summarises the framework for reasoning with inconsistent ontologies. Section 3 introduces the notion
+of semantic relevance functions. Setion 4 presents a mixed approach which combine the advantages of both the syntactic approach and the semantic approach.
+Section 5 reports on our experiments of running PION on a realistic ontology
+before concluding the paper.
+
+2 Reasoning with Inconsistent Ontologies
+
+2.1 General Framework
+
+Selection functions are central to the framework of reasoning with inconsistent
+ontologies. Such a selection function is used to determine which consistent subsets of an inconsistent ontology should be considered during its reasoning process.
+The selection function can either be based on a syntactic approach, like syntactic
+relevance [3], or based on semantic relevance. Examples of such semantic relevance are for example Wordnet distance [2], or (as we will propose in this paper)
+based on the co-occurrence of concepts in search engines like Google.
+
+Given an ontology (i.e., a formula set)  and a query , a selection function
+s returns at each step k > 0 a subset of . Let L be the ontology language,
+which is denoted as a formula set. A selection function s is then a mapping
+s : P(L)  L  N  P(L) such that s(, , k)  .
+In the following, we use  |=  to denote that  is a consequence of  in the
+standard reasoning, and we will use  |  to denote that  is a consequence
+of  in the non-standard reasoning. The values of non-standard inference are
+defined as {Accepted, Rejected, Overdetermined, Undetermined}, following the
+4-valued schema by [1].
+Figure 1 shows a strategy to compute  | . This procedure is called a linear
+ is chosen, and alternatives
+extension strategy because only one candidate 
+are not considered. This is attractive because the reasoner doesnt need to keep
+track of the extension chain. The disadvantage of the linear strategy is that it
+?
+
+?
+
+?
+ |(cid:167)  
+
+k :=1
+
+s(,,0)
+
+=s(,,k)
+
+
+
+consistent?
+
+Yes
+
+No
+
+Yes
+
+(cid:128)  ?
+No
+
+ 2 ?
+Yes
+
+No
+
+No
+
+ 2 ?
+Yes
+
+Over
+
+Un
+
+determined
+
+determined
+
+answer
+
+answer
+ |(cid:167) /
+
+Accepted
+
+Rejected
+
+ |(cid:167) 
+
+ |(cid:167) :
+
+Increase
+ := 
+k := k+1
+
+Fig. 1. Linear Extension Strategy
+
+may result in too many undetermined or overdetermined answers when the
+selection function picks the wrong sequence of monotonically increasing subsets.
+In the case of s(, , k) being inconsistent, we can refine the procedure from
+figure 1 with a backtracking step, which tries to reduce s(, , k) to a set that still
+extends s(, , k 1), but that is still consistent. This would reduce the number
+of overdetermined answers, and hence improve the linear extension strategy. We
+call this procedure overdetermined processing(ODP). ODP introduces a degree of
+non-determinism: selecting different maximal consistent subsets of s(, , k) may
+yield different answers to the query  | . An easy solution to overdetermined
+processing is to return the first maximal consistent subset (FMC) of s(, , k),
+based on certain search procedure. Query answers which are obtained by this
+procedure are still meaningful, because they are supported by a consistent subset
+of the ontology. However, it does not always provide intuitive answers because it
+depends on the search procedure of maximal consistent subset in overdetermined
+processing. A natural search procedure is to perform breadth-first search among
+the subsets of s(, , k) in decreasing cardinality, until we find the first (and
+hence maximal) consistent subset.
+
+2.2 Syntactic Selection Functions
+
+Direct relevance between two formulas is defined as a binary relation on formulas:
+R  L L. Given any direct relevance relation R, we can extend it to a relation
+
+Z. Huang and F. van Harmelen
+
+R+ on a formula and a formula set, i.e. R+  L  P(L), as follows:
+
+,   R+ iff    such that ,   R.
+
+In other words, a formula  is relevant to a formula set  iff there exists a
+formula    such that  and  are relevant. Two formulas , 
+ are k-relevant
+with respect to a formula set  iff there exist formulas 0, . . . k+1   such
+ and all i and i+1 are directly relevant.
+that  = 0 k+1 = 
+
+We can use such a relevance relation to define a selection function s as follows:
+
+s(, , 0) = 
+s(, , 1) = { | and  are directly relevant}
+s(, , k) = { | is directly relevant to s(, , k  1)} f or k > 1
+
+There are various ways to define a syntactic relevance R between two formulas
+in an ontology. Given a formula , we use I(), C(), R() to denote the sets of
+individual names, concept names, and relation names that appear in  respec-
+tively. In [12], we proposed a direct relevance which considers the presence of a
+common concept/role/individual name in two formulas: two formulas  and 
+are directly syntactically relevant, written RSynRel(, ), iff there is a common
+name which appears in both formulas.
+
+In [11,12], we provided a detailed evaluation of the syntactic relevance approach
+by applying it to several inconsistent ontologies. The tests show that the syntactic
+relevance approach can obtain intuitive results in most cases for reasoning with
+inconsistent ontologies. The reason for this is that syntactic relevance mimics our
+intuition that real-world truth is (generally) preserved best by the argument with
+the shortest number of steps; and whatever process our intuitive reasoning uses, it
+is very likely that it would somehow privilege just these shortest path arguments2.
+However, as we will see, the problem is that the syntactic relevance approach requires that the syntactic encoding of the ontology by knowledge engineers correctly represents their intuitive understandings of the knowledge.
+Example: A simple example where syntactic relevance works very well is the
+traditional penguin example in which birds are specified as flying animals and
+penguins are specified as birds which cannot fly. In this example, the reasoning
+path from penguin to f ly is shorter than that from penguin to f ly:
+
+penguin  f ly, penguin  bird  f ly.
+
+Example: However, the syntactic relevance approach does not work very well
+on the MadCow example3, in which Cows are specified as vegetarians whereas
+MadCows are specified as Cows which eats brains of sheep (and hence are not
+vegetarians). Under the syntactic relevance selection functions, the reasoner returns the accepted answer to the query is the mad cow a vegetarian?. This
+counter-intuitive answer results from the weakness of the syntactic relevance ap-
+proach, because it always prefers a shorter relevance path when a conflict occurs.
+In the MadCow example, the path mad cow - cow - vegetarian is shorter than
+
+2 Thanks to Norman Gray, for pointing this out in personal communication.
+3 The Mad Cow ontology is used in OilEd tutorials
+?
+
+?
+
+?
+the path mad cow - eat brain - eat bodypart - sheep are animals - eat animal -
+not vegetarian. Therefore, the syntactic relevance-based selection function finds
+a consistent sub-theory by simply ignoring the fact sheep are animals.
+
+2.3 Pros and Cons of Syntactic Relevance
+Empirically good results. In [11,12], we provided a detailed evaluation of the
+syntactic relevance approach by applying it to several inconsistent ontologies.
+The tests show that the syntactic relevance approach can obtain intuitive results
+in most cases for reasoning with inconsistent ontologies.
+Sensitive to syntactic encoding. As shown above, the syntactic relevance
+approach is very dependent on the particular syntactic encoding that was chosen
+for the knowledge, since it selects short reasoning paths over longer ones. This
+works apparently works well in many cases (as shown in [11,12]), but it is not
+hard to think of natural examples where the shortest reasoning chain is not the
+correct one to follow.
+Often needs a backtracking step. Because of the fan out behaviour of
+the syntactic selection function, the relevance set will grow very quickly, and
+will become very large after a small number of iterations. A very large relevance
+set is in danger of becoming inconsistent itself, causing the system to need the
+backtracking step that we called overdetermined processing.
+Backtracking is blind. To make matters worse, the backtracking step of the
+syntactic approach is essentially blind. It is hard to think of ways to make this
+backtracking more involved, based only on syntactic features.
+
+3 Semantic Selection Functions
+
+A wide space of semantic relevance measures exist, varying from Wordnet distance [2], to the co-occurrence of concepts in search engines like Google [5,4]. In
+this paper, we will use the latter, since we want to take advantage of the vast
+knowledge on the Web that is implicitly encoded in search engines. In this way,
+we can obtain light-weight semantics for selection functions.
+
+The basic assumption here is that the more frequently two concepts appear
+in the same web page, the more semantically close they are, because most web
+pages are meaningful texts. Therefore, information provided by a search engine
+can be used to measure semantic relevance among concepts.
+
+3.1 General Properties of Semantic Relevance
+Semantic relevance is considered as the reverse relation of semantic dissimilar-
+ity: the more semantically relevant two concepts are, the smaller the distance
+between them. Assuming that both relevance and distance are taken from the
+[0,1] interval, this boils down to Similarity(x, y) = 1  Distance(x, y)4.
+4 In the following we use the terminologies semantic dissimilarity and semantic dis-
+
+tance interchangeably.
+
+Z. Huang and F. van Harmelen
+
+To use semantic dissimilarity for reasoning with inconsistent ontologies, we
+define the dissimilarity measure between two formulas in terms of the dissimilarity measure between two concepts/roles/individuals from the two formulas.
+Moreover, in the following we consider only concept names C() as the symbol
+set of a formula  to simplify the formal definitions. However, note that the definitions can be easily generalised into ones in which the symbol sets contain also
+roles and individuals. We use SD(, ) to denote the semantic distance between
+two formulas. We expect the semantic distance between two formulas SD(, )
+to satisfy the following intuitive properties:
+Range. The semantic distance is a real number between 0 and 1: 0  SD(, )
+
+Reflexivity. Any formula is always semantically closest to itself: SD(, ) = 0
+
+ 1 for any  and .
+
+for any .
+
+Symmetry. The semantic distance between two formulas is symmetric: SD
+
+(, ) = SD(, ) for any  and .
+
+Maximum distance. If all symbols in a formula are semantically most-dissi-
+milar from any symbol of another formula, then the two formulas are totally dissimilar: if SD(Ci, Cj) = 1 for all Ci  C() and Cj  C(), then
+SD(, ) = 1.
+
+Intermediate values. If some symbols are shared between two formulas, and
+some symbols are semantically dissimilar, the semantic distance between
+the two formulas is neither minimal nor maximal: If C()  C() =  and
+C()  C() and C()  C() then 0 < SD(, ) < 1.
+
+3.2 Google Distance as Semantic Relevance
+
+In [5,4], the Google Distance is introduced to measure the co-occurrence of two
+keywords on the Web. Normalised Google Distance (NGD) is introduced to
+measure the semantic distance between two concepts by the following definition:
+
+Definition 1 (Normalised Google Distance [4]).
+
+N GD(x, y) = max{log f(x), log f(y)}  log f(x, y)
+log M  min{log f(x), log f(y)}
+
+where f(x) is the number of Google hits for the search term x, f(y) is the number
+of Google hits for the search term y, f(x, y) is the number of Google hits for the
+tuple of search terms x and y, and M is the number of web pages indexed by
+Google.
+
+N GD(x, y) can be understood intuitively as the symmetric conditional probability of co-occurrence of the search terms x and y. N GD(x, y) is defined between
+two search items x and y. Simple ways to extend this to measure the semantic
+distance between two formulas are to take either the minimal, the maximal or
+the average NGD values between two concepts (or roles, or individuals) which
+?
+
+?
+
+?
+appear in two formulas as follows:
+
+SDmin(, ) = min{N GD(Ci, Cj)|Ci  C() and Cj  C()}
+SDmax(, ) = max{N GD(Ci, Cj)|Ci  C() and Cj  C()}
+SDave(, ) = sum{N GD(Ci,Cj)|CiC() and CjC()}
+
+(|C()||C()|)
+
+where |C()| means the cardinality of C(). However, it is easy to see that
+SDmin and SDmax do not satisfy the Intermediate Values property, and SDave
+does not satisfy Reflexivity.
+
+We therefore propose a semantic distance which is measured by the ratio of
+the summed distance of the difference between two formulas to the maximal
+distance between two formulas:
+Definition 2 (Semantic Distance).
+
+SD(, ) = sum{N GD(Ci, Cj)|Ci  C()\C(), Cj  C()\C()}
+
+(|C()|  |C()|)
+
+The intuition behind this definition is to sum the semantic distances between
+all terms that are not shared between the two formulae, but these must be
+normalised (divided by the maximum distance possible) to bring the value back
+to the [0,1] interval. It is easy to prove the following:
+Proposition 1. The semantic distance SD(, ) satisfies the properties Range,
+Reflexivity, Symmetry, Maximum Distance, and Intermediate Values.
+
+Using the semantic distance defined above, the obvious way to define a relevance relation for selection functions in reasoning with inconsistent ontologies is
+to take the semantically closest formulas as directly relevant:
+
+,   Rsd iff
+
+   : SD(, 
+?
+
+?
+
+?
+) < SD(, ).
+
+(i.e. there exist no other formulas in the ontology that is semantically closer)
+
+Given this semantic relevance relation, we now need to define a selection
+function. In the syntactic approach of the previous section, we used the query
+formula as the starting point for the selection function. We can define a similar
+selection function s in terms of the semantic relevance relation Rsd. Namely,
+the newly defined selection function will track along the concept hierarchy in an
+ontology and always add to the selected set the closest formulas which have not
+yet been selected5.
+Example: Figure 2 shows how the semantic distance is used to obtain intuitive answers on the MadCow ontology (where the syntactic distance failed). By
+calculation of the Normalised Google Distance, we know that
+
+N GD(M adCow, Grass) = 0.722911, N GD(M adCow, Sheep) = 0.612001.
+
+5 It is easy to see the definition about SD(, ) is easily extended into a definition
+about SD(, C), where ,  are formulas, and C is a concept. Moreover, it is easy
+to see that SD(1, C) < SD(2, C) iff N GD(D1, C) < N GD(D2, C) for any 1 is
+of the form C1  D1 and any 2 is of the form C1  D2 where C, C1, D1 and D2
+are different concepts.
+
+Z. Huang and F. van Harmelen
+
+Fig. 2. NGD and MadCow Queries
+
+Hence, the semantic distance between MadCow and Sheep is shorter than the
+semantic distance between MadCow and Grass (even though their syntactic distance is larger). Because of this, the reasoning path between MadCow and Sheep is
+preferred to the reasoning path between MadCow and Grass. Thus, we obtain the
+intuitive answer that MadCow are not Vegetarians instead of the previously obtained counter-intuitive answer that MadCow are Vegetarians. The intuition here
+is that although syntactically, the MadCow - Sheep path is the longer of the two,
+the accumulated semantic distance on this syntactically longer path is still shorter
+than the semantic distance on the syntactically short MadCow - Grass path.
+
+3.3 Pros and Cons of Semantic Relevance
+
+Although empirical findings will only be discussed in section 5, we can already
+establish some of the advantages and disadvantages of the semantic approach to
+relevance.
+Slower fan out behaviour. As is clear from the definition the growth of a relevance based on semantic distance is much slower than one based on syntactic
+relevance. In fact, at each step the semantic relevance set grows by a single for-
+?
+
+?
+
+?
+mula (barring the exceptional case when some formulas share the same distance
+to the query).
+Almost never needs a backtracking step. This slower growth of semantic
+relevance means that it will also hardly ever need a backtracking step, since the
+relevance set is unlikely to become too large and inconsistent.
+Expensive to compute. Again by inspecting the definition, it is clear that
+computing the semantic relevance is expensive: it requires to know the semantic
+distance between the query and every formula  in the theory . Furthermore,
+this must be done again for every new query concept C1. With realistic modern
+ontologies often at a size of O(105) concepts, and a computation time in the
+order of 0.2 secs for a single NGD-value, this would add a prohibitive cost to
+each query6.
+
+4 Mixed Approach
+
+The picture that emerges from the pros and cons in sections 2.3 and 3.3 is
+syntactic relevance is cheap to compute, but grows too quickly and then has
+to rely on a blind backtracking step, while semantic relevance has controlled
+growth, with no need for backtracking, but is expensive to compute.
+
+In this section, we will propose a mixed approach which combine the advantages of both: we will use a syntactic-relevance selection function to grow the
+selection set cheaply, but we will use semantic relevance to improve the backtracking step. Instead of picking the first maximal consistent subset through
+a blind breadth-first descent, we can prune semantically less relevant paths to
+obtain a consistent set. This is done by removing the most dissimilar formulas
+from the set s(, , k)  s(, , k  1) first, until we find a consistent set such
+that the query  can be proved or disproved.
+Example: Taking the same example of the MadCow ontology above, we can see
+from Figure 2 that the path between MadCow and Grass can be pruned first,
+rather than pruning the path between MadCow and Sheep, because the NGD
+between M adCow and Sheep is smaller than the NGD between M adCow and
+Grass. Thus, the path MadCow - Grass (which lead to the counter-intuitive
+conclusion that MadCow are vegetarians) is pruned first.
+
+We call this overdetermined processing (ODP) using path pruning with Google
+distance. While syntactic overdetermined processing (from section 2.1) can be
+seen as a blind breadth-first search, semantic-relevance ODP can be seen as a
+hill-climbing procedure, with the semantic distance as the heuristic.
+Possible loss of completeness and soundness. Notice that semantic backtracking is not guaranteed to yield a maximal consistent subset. Consequently,
+the completeness of the algorithm may be affected, since we might have removed
+too many formulas from the relevance set in our attempt to restore consistency,
+
+6 Although some of this can be amortised over multiple queries by caching parts of
+
+the values that make up the NGD (definition 1).
+
+Z. Huang and F. van Harmelen
+
+thereby loosing the required implication to obtain the intuitive answer. Fur-
+thermore, it is possible that the semantic backtracking might lead to the wrong
+consistent subset, one supporting  where  would have been the intuitive an-
+swer, or vice versa. In our experiment in section 5 we will find that indeed the
+completeness drops (as expected), but not by very much, while the unsoundness
+does not increase at all (making us belief that SD is a good heuristic for the
+hill-climbing search towards a consistent subset).
+Cutting levels in ODP. Finally, the semantic distance provides the possibility
+for adjustable behaviour of the backtracking increments that are taken in the
+overdetermined processing phase. We introduce a cutting level  (0    1),
+and instead of only pruning the semantically least relevant paths one by one
+until we obtain a consistent subset, we now prune in one step all formulas whose
+distance to the query is higher than . In this way,  plays the role of a threshold,
+so that the processing can be sped up by pruning in a single step all those
+formulas which do not meet the relevance threshold. This might of course increase
+the amount of undetermined answers (since we may have overpruned), but it
+allows us to make a tradeoff between the amount of undetermined answers and
+the time performance. In Section 5 we will report an experiment in which this
+tradeoff obtains a 500% efficiency gain in exchange for only a 15.7% increase in
+undetermined answers.
+
+5 Implementation and Experiments
+
+We have implemented these definitions and algorithms in PION (Processing Inconsistent ONtologies)7. In this section, we report several experiments on reasoning with inconsistent ontologies using the selection functions introduced above.
+
+5.1 Data
+
+As already observed before, many ontologies on the Semantic Web (e.g. those
+indexed by Swoogle8) do not contain explicit inconsistencies. This would make
+it hard to obtain test-data for running our experiments and indeed, it would
+question the need for our inconsistency reasoning methods in the first place. The
+following brief analysis shows that under the surface, the situation is different.
+Disjointness constraints between classes in an ontology are necessary for a suitable formalisation of a conceptualisation, and are required to draw the required
+inferences in tasks such as search, navigation, visualisation, service matching,
+etc [19]. However, as shown by [17] and [16], knowledge engineers often neglect
+to add disjointness statements to their ontologies, simply because they are not
+aware of the fact that classes which are not explicitly declared to be disjoint will
+be considered as potentially overlapping. Furthermore, an experiment by V olker
+
+7 Available for download at wasp.cs.vu.nl/sekt/pion
+8 swoogle.umbc.edu
+?
+
+?
+
+?
+and her colleagues in [19] showed that when prompted to add disjointness state-
+ments, human experts are very prone to introducing inadvertent inconsistencies.
+Since we will take the ontologies that resulted from that experiment as our
+dataset, we will describe that experiment in some detail.
+
+The experiment in [19], takes as its starting point a subset of the PROTON
+Ontology9. The selected subset of PROTON contains 266 classes, 77 object prop-
+erties, 34 data-type properties and 1388 siblings. Each concept pair was randomly
+assigned to 6 different people - 3 from a group of professional ontologists, and
+3 from a group of students without profound knowledge in ontological engineer-
+ing. Each of the annotators was given between 385 and 406 concept pairs along
+with a natural language descriptions of the classes whenever those were avail-
+able, and were asked to annotate each concept pair as disjoint, overlapping
+or unknown. Two enriched versions of the ontology were then constructed by
+adding those disjointness statements that were agreed upon by 100% of the experts and of the students respectively. We will call these the experts and the
+students ontologies respectively. These two ontologies were both inconsistent.
+For example, the students ontology alone already contained some 24 unsatisfiable concepts. Even more telling is the following example:
+Example: 100 percent of students and experts (!) agree on the following axioms,
+which are, however inconsistent:
+
+Reservoir  Lake
+Reservoir  HydrographicStructure
+
+Lake  W aterRegion
+
+HydrographicStructure  F acility
+Disjoint(W aterRegion, F acility)
+
+This case shows that inconsistency and incoherence occurs much more easily
+than what is often expected. Interestingly enough, this problem would be handled by our semantic relevance approach. Normalised Google Distance tells us
+that Lake and W aterRegion are more semantically relevant than F acility and
+HydrographicStructure to Reservoir. Thus, using the semantic relevance based
+selection function, we would conclude that Reservoir is a W aterRegion.
+
+The essence of all this is that although the original ontology did not contain
+inconsistencies (due to lack of disjointness statements), the inconsistencies arise
+as soon as human knowledge engineers are asked to add explicit disjointness
+statements to the best of their capabilities. Thus, the resulting ontologies contain
+natural inconsistencies. This makes the resulting set of inconsistent ontologies
+a realistic data-set for our experiments.
+
+5.2 Tests
+Goal. Given that the mixed approach (using syntactic relevance for growing
+the relevant set, and using semantic relevance for backtracking, possibly using
+-cuts) seems to be the best alternative to the purely syntactic approach of
+
+9 proton.semanticweb.org/
+
+Z. Huang and F. van Harmelen
+
+our earlier work, our experiment is aimed at (1) finding out the quality of the
+answers generated by the mixed approach, and (2) finding out the quality/cost
+trade-offs that can be obtained by varying the -levels.
+Test Queries and Answers. We created 529 subsumption queries randomly,
+and obtained PIONs answers of these queries with backtracking done either
+blindly (First Maximal Consistent Subset, FMC), or via the semantic distance
+(SD). We compared these answers against a hand-crafted Gold Standard that
+contained the humanly-judged correct answer for all of these 529 queries. For
+each query, the answer given by PION can be classified in one of the following
+categories, based on the difference with the intuitive answer in the Gold Stan-
+dard:
+Intended Answer: PIONs answer is the same as the intuitive answer from the
+Gold Standard.
+Counter-intuitive Answer: PIONs answer is opposite to the intuitive answer,
+i.e. the intuitive answer is accepted whereas PIONs answer is rejected, or
+vice versa.
+Cautious Answer:The intuitive answer is accepted or rejected, but PIONs
+answer is undetermined.
+Reckless Answer: PIONs answer is accepted or rejected while the intuitive answer is undetermined.
+
+Obviously, one would like to maximise the Intended Answers, and minimise
+the Reckless and Counter-intuitive Answers. Furthermore, we introduced different -thresholds in the overdetermined processing to see how the tradeoff
+between the quality of query-answers and the time performance is effected by
+different cutting levels.
+
+5.3 Results
+Our results obtained by running PION with the data and the tests described
+above are shown in Figure 3. The first 4 rows show experiments on the experts
+ontology, the final 2 rows on the students ontology. In all cases, we use syntactic relevance for growing the relevance set until an answer can be found, but
+they differ on what happens when the relevance set becomes inconsistent, and
+backtracking is required. On the first line (labelled FMC, for First Maximal Consistent subset), the backtracking is done blindly, on the other lines, backtracking
+is guided by the semantic distance function, at different -levels (i.e. with different sizes of the backtracking steps; smaller values for , i.e. lower thresholds,
+means that more formulas are removed during backtracking). Not listed in the
+table is the fact that among the 529 queries, 414 (i.e. 78%) resulted in relevance
+sets that became inconsistent before the query could be answered meaningfully,
+hence they needed a backtracking phase.
+
+Answer quality. The tables shows that when switching from syntactic backtracking (labelled FMC) to semantic backtracking (labelled SD) the intended
+?
+
+?
+
+?
+Ontology Method  Query IA(IA rate) CA RA CIA ICRate(%) Time TRatio
+experts FMC
+experts SD
+experts SD
+experts SD
+students FMC
+students SD
+
+266 (50%) 219 32 12
+246 (47%) 238 32 13
+239 (45%) 246 32 12
+225 (43%) 260 32 12
+234 (44%) 249 33 13
+189 (36%) 309 22
+
+n/a
+
+0.85 529
+0.80 529
+0.75 529
+n/a
+
+1.00 529
+
+91.68
+91.49
+91.68
+91.68
+91.30
+94.14
+
+114.63
+54.28
+39.96
+22.37
+45.05
+28.11
+
+n/a
+2.11
+2.87
+5.12
+n/a
+1.62
+
+IA = Intended Answers, CA = Cautious Answers, RA = Reckless Answers, CIA =
+Counter-Intuitive Answers, IA Rate = Intended Answers(%), IC Rate = IA+CA(%),
+FMC = First Maximal Consistent subset, SD = Semantic Distance, =Threshold,
+Time = Time Cost per Query (seconds), TRatio = TimeCost(FMC)/TimeCost(SD)
+
+Fig. 3. PION test results by using FMC or SD for overdetermined processing
+
+answer (IA) rate does indeed drop, as predicted in section 4. Furthermore, the
+IA-rate declines slowly with decreasing -levels. Similarly, the cautious answer
+rate increases slowly with decreasing -levels. This is again as expected: larger
+backtracking steps are more likely to remove too many formulas from the relevance set, hence potentially making the relevance set too small. Or put another
+way: the hill-climbing search performed in the ODP phase is aiming to get close
+to a maximal consistent subset, but larger hill-climbing steps make it harder to
+end up close to such a set, because of possible overpruning.
+
+The combined IC-rate (combining intended and cautious answers, i.e. those
+answers that are not incorrect, but possibly incomplete), stays constant across
+between FMC and SD, and across all -levels. It is important to note that the
+numbers of reckless and counter-intuitive answers remains constant. This means
+that although the semantically guided large-step reductions (at low -levels) do
+of course remove formulas, they do not remove the wrong formulas, which could
+have potentially lead to reckless or counter-intuitive answers.
+
+Summarising, when switching from FMC to SD, and with decreasing -levels,
+the completeness of the algorithm (IA Rate) gradually declines, while the soundness of the algorithm (IC rate) stays constant.
+
+Cost/Quality trade-offs. Although these findings on the answer quality are
+reassuring (the semantic backtracking doesnt damage the quality), they are not
+by themselves a reason to prefer semantic backtracking over syntactic backtrack-
+ing. The strong point of the semantic backtracking becomes clear when we look
+at the computational costs of syntactic and semantic backtracking, particularly
+in the light of the answer quality.
+
+Above, we have seen that the answer quality only degrades very gradually
+with decreasing -levels. The final two columns of table 3 however show that
+the answer costs reduce dramatically when switching from syntactic to semantic
+backtracking, and that they drop further with decreasing -levels. The absolute
+computation time is more than halved when switching from FMC to SD ( =
+0.85), and is again more than halved when dropping  from 0.85 to 0.75, leading
+to an overall efficiency gain of a factor of 5. Of course, this efficiency is gained at
+
+Z. Huang and F. van Harmelen
+
+the cost of some loss of quality, but this loss of quality (the drop in completeness,
+the IA rate) is very modest: the twofold efficiency gain at  = 0.85 is gained at
+a price of a drop of only 3 percentage points in completeness, and the fivefold
+efficiency gain at  = 0.75 is gained at a price of a drop of only 7 percentage
+points in completeness. Summarising, semantic backtracking with cut-off levels
+yields a very attractive cost/quality trade-off between costs in terms of run-time,
+and the quality in terms of soundness and completeness of the answers.
+
+6 Discussion and Conclusions
+
+Research from a number of different areas is relevant to the current work. Semantic distances and similarity measures have been widely used in computational
+linguistics [2,14] and ontology engineering [8,15]. [7] proposes the use of a Googlebased similarity measure to weigh approximate ontology matches. Our research
+in this paper is the first attempt to introduce the Google Distance for reasoning with inconsistent ontologies. In essence we are using the implicit knowledge
+hidden in the Web for explicit reasoning purposes.
+
+The main contributions of this paper are: a) we investigated how a semantic
+relevance-based selection function can be developed by using information provided by a search engine, in particular, by using the Normalized Google Distance;
+b) we provided variants of backtracking strategies for reasoning with inconsistent
+ontologies, and c) we showed that semantic distances can be used for handling
+large scale ontologies through a tradeoff between run-time and the degree of
+incompleteness of the algorithm.
+
+In our experiment we applied our PION implementation to realistic test data.
+The experiment used a high-quality ontology that became inconsistent after
+adding disjointness statements that had the full support of a group of experts.
+The test showed that the run-time of informed semantic backtracking is much
+better than that of blind syntactic backtracking, while the quality remains com-
+parable. Furthermore the semantic approach can be parametrised so as to stepwise further improve the run-time with only a very small drop in quality.
+
+Clearly, our experiments should be repeated on many different ontologies in order to see how generalisable our results are. We are now developing a benchmark
+system for reasoning with inconsistent ontologies, by which various approaches
+and selection functions can be tested with different application scenarios on much
+larger ontology data. This is an inherently difficult task, because existing ontologies will often need to be enriched by making disjointness statements explicit before they can be used as test data. Furthermore, a Gold Standard of intuitive answers can often only be created by hand. These high costs experiment-construction
+costs also justify why we did not run more experiments in the scope of this paper.
+One of the future tasks is to make the NGD (Normalized Google Distance)
+component well integrated with the architecture of PION, so that the NGD
+values can be dynamically obtained at run time, rather than as the pre-loaded
+libraries, as it is done in the present implementation.
+?
+
+?
+
+?
+Acknowledgements. The work reported in this paper was partially supported
+by the EU-funded projects SEKT, KnowledgeWeb, and LarKC. We thank Annette ten Teije for useful clarifying discussions and Johanna V olker for providing
+the inconsistent PROTON ontologies.

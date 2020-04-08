@@ -15,7 +15,7 @@ import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
-import org.insightcentre.nlp.saffron.data.Topic;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.term.TermExtraction.Result;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -52,7 +52,7 @@ public class TermExtractionTest {
     static int docs = 0;
 
     private Document mkDoc(String contents) {
-        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents);
+        return new Document(null, "doc" + (docs++), null, null, "text/plain", Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents, null);
     }
 
     /**
@@ -126,7 +126,7 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override
@@ -136,7 +136,7 @@ public class TermExtractionTest {
 
         }, tokenizer);
         FrequencyStats expResult = new FrequencyStats();
-        FrequencyStats result = instance.extractStats(searcher, null, null, Collections.EMPTY_SET);
+        FrequencyStats result = instance.extractStats(searcher, null, null, Collections.EMPTY_SET).frequencyStats;
         expResult.docFrequency.put("test", 4);
         expResult.docFrequency.put("good test", 2);
         expResult.termFrequency.put("test", 5);
@@ -147,10 +147,10 @@ public class TermExtractionTest {
     }
 
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics() throws Exception {
+    public void testExtractTerms() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -217,7 +217,7 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override
@@ -226,14 +226,14 @@ public class TermExtractionTest {
             }
 
         }, tokenizer);
-        Result res = instance.extractTopics(searcher);
+        Result res = instance.extractTerms(searcher);
     }
-    
+
         /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopics2() throws Exception {
+    public void testExtractTerms2() throws Exception {
         System.out.println("extractStats");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -300,7 +300,7 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
         TermExtractionConfiguration config = new TermExtractionConfiguration();
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
@@ -309,34 +309,35 @@ public class TermExtractionTest {
                 return tagger;
             }
 
-        }, tokenizer, 
-                config.maxDocs, 
-                0, 
-                null, 
+        }, tokenizer,
+                config.maxDocs,
+                0,
+                null,
                 new HashSet<String>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
                 config.preceedingTokens,
                 config.headTokens,
-                config.middleTokens,  
-                config.ngramMin,  
-                config.ngramMax,  
-                config.headTokenFinal,  
-                config.method,  
-                config.features,  
-                null,  
-                1,  
-                config.baseFeature,  
-                config.blacklist,  
-                true);
-        Result res = instance.extractTopics(searcher);
-        assert(res.topics.size() > 1);
+                config.middleTokens,
+                config.ngramMin,
+                config.ngramMax,
+                config.headTokenFinal,
+                config.method,
+                config.features,
+                null,
+                1,
+                config.baseFeature,
+                config.blacklist,
+                true,
+                config.intervalDays);
+        Result res = instance.extractTerms(searcher);
+        assert(res.terms.size() > 1);
     }
-    
-    
+
+
     /**
-     * Test of extractTopics method, of class TermExtraction.
+     * Test of extractTerms method, of class TermExtraction.
      */
     @Test
-    public void testExtractTopicsWithBlackWhite() throws Exception {
+    public void testExtractTermsWithBlackWhite() throws Exception {
         System.out.println("extractStatsBlackWhite");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -403,9 +404,9 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
-        
+
         TermExtractionConfiguration config = new TermExtractionConfiguration();
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override
@@ -414,21 +415,21 @@ public class TermExtractionTest {
             }
 
         }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
-                config.preceedingTokens, config.headTokens, config.middleTokens, 
-            config.ngramMin, config.ngramMax, config.headTokenFinal, 
-            config.method, config.features, 
-            null, 1, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+                config.preceedingTokens, config.headTokens, config.middleTokens,
+            config.ngramMin, config.ngramMax, config.headTokenFinal,
+            config.method, config.features,
+            null, 1, config.baseFeature, config.blacklist,
+            config.oneTermPerDoc, config.intervalDays);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
-        
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time")));
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
+
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time")));
     }
-    
+
     @Test
     public void testWhiteListing() {
-        
+
         System.out.println("extractStatsBlackWhite");
         final POSTagger tagger = new POSTagger() {
             @Override
@@ -495,9 +496,9 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
-        
+
         TermExtractionConfiguration config = new TermExtractionConfiguration();
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override
@@ -506,19 +507,19 @@ public class TermExtractionTest {
             }
 
         }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
-                config.preceedingTokens, config.headTokens, config.middleTokens, 
-            config.ngramMin, config.ngramMax, config.headTokenFinal, 
-            config.method, config.features, 
-            null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
+                config.preceedingTokens, config.headTokens, config.middleTokens,
+            config.ngramMin, config.ngramMax, config.headTokenFinal,
+            config.method, config.features,
+            null, 2, config.baseFeature, config.blacklist,
+            config.oneTermPerDoc, config.intervalDays);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
-        Result res = instance.extractTopics(searcher,whiteList,blackList,new DefaultSaffronListener());
-        
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("great time")));
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("good time") && t.status == Status.accepted));
+        Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
+
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("great time")));
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("good time") && t.getStatus() == Status.accepted));
     }
-    
+
     @Test
     public void testTermExtractionWithImproperTerms() {
         System.out.println("extractStatsBlackWhite");
@@ -584,9 +585,9 @@ public class TermExtractionTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-            
+
         };
-        
+
         TermExtractionConfiguration config = new TermExtractionConfiguration();
         TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
             @Override
@@ -595,15 +596,15 @@ public class TermExtractionTest {
             }
 
         }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
-                config.preceedingTokens, config.headTokens, config.middleTokens, 
-            config.ngramMin, config.ngramMax, config.headTokenFinal, 
-            config.method, config.features, 
-            null, 2, config.baseFeature, config.blacklist, 
-            config.oneTopicPerDoc);
-        Result res = instance.extractTopics(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
-        
-        assert(res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("plan")));
-        assert(!res.topics.stream().anyMatch((Topic t) -> t.topicString.equals("401k plan")));
+                config.preceedingTokens, config.headTokens, config.middleTokens,
+            config.ngramMin, config.ngramMax, config.headTokenFinal,
+            config.method, config.features,
+            null, 2, config.baseFeature, config.blacklist,
+            config.oneTermPerDoc, config.intervalDays);
+        Result res = instance.extractTerms(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
+
+        assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("plan")));
+        assert(!res.terms.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
 
     }
 }

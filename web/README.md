@@ -15,7 +15,7 @@ API Routes in place:
 
 * **DELETE /run/{saffron-run-id}**
 
-> This DELETE request will a given saffron run for the given saffron run ID. 
+> This DELETE request will a given saffron run for the given saffron run ID.
 
 ---
 
@@ -26,10 +26,10 @@ API Routes in place:
 
 ---
 
-* **GET /run/{saffron-run-id}/topics**
+* **GET /run/{saffron-run-id}/terms**
 
-> This GET request will return all topics for for a given saffron run ID.  
-> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_topics_response.json)
+> This GET request will return all terms for for a given saffron run ID.  
+> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_terms_response.json)
 
 ---
 
@@ -40,50 +40,50 @@ API Routes in place:
 
 ---
 
-* **GET /run/{saffron-run-id}/topics/{topic}/children**
+* **GET /run/{saffron-run-id}/terms/{term}/children**
 
-> This GET request will return all children topics for a given saffron run ID and topic string.  
+> This GET request will return all children terms for a given saffron run ID and term string.  
 > - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_children_response.json)
- 
---- 
- 
-* **GET /run/{saffron-run-id}/topics/{topic}/parent**
 
-> This GET request will return the parent topic for a given saffron run ID and topic string.  
+---
+
+* **GET /run/{saffron-run-id}/terms/{term}/parent**
+
+> This GET request will return the parent term for a given saffron run ID and term string.  
 > - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/get_parent_response.json)
 
 ---
 
-* **POST /run/{saffron-run-id}/topics/changeroot (Change Topic root)**
+* **POST /run/{saffron-run-id}/terms/changeroot (Change Term root)**
 
-> This POST request will change the parent topic for a given set of saffron topics and for a given saffron run ID. 
+> This POST request will change the parent term for a given set of saffron terms and for a given saffron run ID.
 
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_rq.json)
 > - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/change_root_resp.json)
 
 ---
 
-* **POST /run/{saffron-run-id}/topics/update (Update accept/reject/none status)**
+* **POST /run/{saffron-run-id}/terms/update (Update accept/reject/none status)**
 
-> This POST request will change topic status (Accepted/Rejected/None) for a given set of saffron topics and for a given saffron run ID.  
+> This POST request will change term status (Accepted/Rejected/None) for a given set of saffron terms and for a given saffron run ID.  
 
-> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rq.json)
-> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_topic_rs.json)
+> - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_term_rq.json)
+> - [Sample Response](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/accept_reject_term_rs.json)
 
 ---
- 
+
 * **POST /run/rerun/{saffron-run-id}**
 
 > This POST request will rerun the taxonomy in order to recalculate the scoring based on changes made for a given saffron run ID.  
-> - [request] - Empty body 
- 
+> - [request] - Empty body
+
 ---
 
-* **POST /run/{saffron-run-id}/topics/updaterelationship**
+* **POST /run/{saffron-run-id}/terms/updaterelationship**
 
 > This POST request will change the status of taxonomy relationships. Currently this relationship can be "accepted" or "none"
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/issue92/examples/api/post_change_relationship_request.json)
- 
+
 ---
 
 * **POST /run/new/zip/{saffron-run-id}**
@@ -113,4 +113,3 @@ API Routes in place:
 
 > Get the status of an executing run
 > - [Sample Request](https://gitlab.insight-centre.org/saffron/saffron/blob/master/examples/api/status_response.json)
-

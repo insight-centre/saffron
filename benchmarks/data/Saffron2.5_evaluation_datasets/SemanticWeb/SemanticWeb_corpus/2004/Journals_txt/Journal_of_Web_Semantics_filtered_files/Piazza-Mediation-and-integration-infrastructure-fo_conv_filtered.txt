@@ -1,0 +1,1875 @@
+Web Semantics: Science, Services and Agents
+
+on the World Wide Web 1 (2004) 155175
+
+Piazza: mediation and integration infrastructure
+
+for Semantic Web data
+
+Zachary G. Ives a,
+
+, Alon Y. Halevy b, Peter Mork b, Igor Tatarinov b
+
+a Department of Computer and Information Science, University of Pennsylvania, 3330 Walnut Street, Philadelphia, PA 19104-6389, USA
+
+b Department of Computer Science and Engineering, University of Washington, Box 352350, Seattle, WA 98195-2350, USA
+
+Received 23 June 2003; received in revised form 28 August 2003; accepted 19 November 2003
+
+Abstract
+
+The Semantic Web envisions a World Wide Web in which data is described with rich semantics and applications can pose complex queries. To this point, researchers have defined new languages for specifying meanings for concepts and developed techniques
+for reasoning about them, using RDF as the data model. To flourish, the Semantic Web needs to provide interoperabilityboth
+between sites with different terminologies and with existing data and the applications operating on them. To achieve this, we
+are faced with two problems. First, most of the worlds data is available not in RDF but in XML; XML and the applications
+consuming it rely not only on the domain structure of the data, but also on its document structure. Hence, to provide interoperability between such sources, we must map between both their domain structures and their document structures. Second, data
+management practitioners often prefer to exchange data through local point-to-point data translations, rather than mapping to
+common mediated schemas or ontologies.
+
+This paper describes the Piazza system, which addresses these challenges. Piazza offers a language for mediating between data
+sources on the Semantic Web, and it maps both the domain structure and document structure. Piazza also enables interoperation
+of XML data with RDF data that is accompanied by rich OWL ontologies. Mappings in Piazza are provided at a local scale
+between small sets of nodes, and our query answering algorithm is able to chain sets mappings together to obtain relevant data
+from across the Piazza network. We also describe an implemented scenario in Piazza and the lessons we learned from it.
+ 2003 Elsevier B.V. All rights reserved.
+
+Keywords: Semantic Web; XML; Peer data management systems; Mediation; Data transformation
+
+
+Corresponding author. Tel.: +1-215-746-2789;
+
+fax: +1-215-898-0587.
+
+E-mail addresses: zives@cis.upenn.edu (Z.G. Ives),
+
+alon@cs.washington.edu (A.Y. Halevy),
+pmork@cs.washington.edu (P. Mork), igor@cs.washington.edu
+(I. Tatarinov).
+
+1. Introduction
+
+HTML and the World Wide Web have had amazing
+impact on the process of distributing human-readable
+data to even casual computer users. Yet these technologies are actually quite limited in scope: Web data
+lacks machine-understandable semantics, so it is generally not possible to automatically extract concepts or
+relationships from this data or to relate items from different sources. Research into developing a Semantic
+
+1570-8268/$  see front matter  2003 Elsevier B.V. All rights reserved.
+doi:10.1016/j.websem.2003.11.003
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+Web [8] aims to address this limitation by providing
+data with embedded semantic information, and it then
+seeks to develop sophisticated query tools to interpret
+and combine this information. The result should be a
+much more powerful knowledge-sharing environment
+than todays Web: instead of posing queries that match
+text within documents, a user could ask questions that
+can only be answered via inference or aggregation;
+data could be automatically translated into the same
+terminology; information could be easily exchanged
+between different organizations.
+
+Much of the research focus on the Semantic Web
+is based on treating the Web as a knowledge base
+defining meanings and relationships. In particular,
+researchers have developed knowledge representation (KR) languages for representing meanings
+relating them within custom ontologies for different
+domainsand reasoning about
+the concepts. The
+best-known example is RDF and the languages that
+build upon it: RDF Schema, DAML+ OIL, and OWL
+[15].
+
+The progress on developing ontologies and representation languages leaves us with two significant
+problems. The first problem (also noted by [38]) is that
+there is a wide disconnect between the RDF world and
+most of todays data providers and applications. RDF
+represents everything as a set of classes and proper-
+ties, creating a graph of relationships. As such, RDF is
+focused on identifying the domain structure. In con-
+trast, most existing data sources and applications export their data into XML, which tends to focus less on
+domain structure and more around important objects
+or entities. Instead of explicitly spelling out entities
+and relationships, they often nest information about
+related entities directly within the descriptions of more
+important objects, and in doing this they sometimes
+leave the relationship type unspecified. For instance,
+an XML data source might serialize information about
+books and authors as a list of book objects, each with
+an embedded author object. Although book and author are logically two related objects with a particular
+association (e.g., in RDF, author writes book), applications using this source may know that this document
+structure implicitly represents the logical writes rela-
+tionship.
+
+The vast majority of data sources (e.g., relational
+tables, spreadsheets, programming language objects,
+e-mails, and web logs) use hierarchical structures
+
+and references to encode both objects and domain
+structure-like relationships. Moreover, most application development tools and web services rely on these
+structures. Clearly, it would be desirable for the Semantic Web to be able to inter-operate with existing
+data sources and consumerswhich are likely to persist indefinitely since they serve a real need. From the
+perspective of building Semantic Web applications,
+we need to be able to map not only between different
+domain structures of two sources, but also between
+their document structures.
+
+The second challenge we face concerns the scale of
+ontology and schema mediation on the Semantic Web.
+Currently, it is widely believed that there will not exist
+a single ontology for any particular domain, but rather
+that there will be a few (possibly overlapping) ones.
+However, the prevailing culture, at least among users
+of data management tools, entails that the number of
+ontologies/schemas we will need to mediate among
+is actually substantially higher. Suppliers of data are
+not used to mapping their schemas to a select small
+set of ontologies (or schemas): it is very hard to build
+a consensus about what terminologies and structures
+should be used. In fact, it is for this reason that many
+data warehouse projects tend to fail precisely at the
+phase of schema design [45]. Interoperability is typically attained in the real world by writing translators (usually with custom code) among small sets of
+data sources that are closely related and serve similar needs, and then gradually adding new translators
+to new sources as time progresses. Hence, this practice suggests a practical model for how to develop a
+large-scale system like the Semantic Web: we need
+an architecture that enables building a web of data by
+allowing incremental addition of sources, where each
+new source maps to whatever sources it deems most
+convenientrather than requiring sources to map to a
+slow-to-evolve and hard-to-manage standard schema.
+Of course, in the case of the Semantic Web, the mappings between the sources should be specified declara-
+tively. To complement the mappings, we need efficient
+algorithms that can follow semantic paths to obtain
+data from distant but related nodes on the web.
+
+This paper describes the Piazza System, whose goal
+is to pave the way for a fruitful combination of data
+management and knowledge representation techniques
+in the construction of the Semantic Web. As such, Piazza provides an infrastructure for building Semantic
+
+Web applications that is based on a bottom-up approach to the Semantic Web. The bottom-up approach
+begins with distributed sharing of XML data and
+building in expressive power from there.
+
+A Piazza application consists of many nodes, each
+of which can serve either or both of two roles: supplying source data in its schema, or providing a schema
+(and later, an ontology) that can be queried. A very
+simple node might only supply data (perhaps from
+a relational database); at the other extreme, a node
+might simply provide a schema to which other nodes
+schemas may be mapped. The semantic glue in Piazza is provided by local mappings between small
+sets (usually pairs) of nodes. When a query is posed
+over the schema of a node, the system will utilize data
+from any node that is transitively connected by semantic mappings, by chaining mappings. Piazzas architecture can accommodate both local point-to-point
+mappings between data sources, as well as collaboration through select mediated schemas. Since the architecture is reminiscent of peer-to-peer architectures,
+we refer to Piazza as a peer data management system
+(PDMS).
+
+We make the following specific contributions.
+
+ We propose a language for mediating between nodes
+that allows mapping simple forms of domain structure and rich document structure. The language is
+based on XQuery [10], the emerging standard for
+querying XML. We also show that this language can
+map between nodes containing RDF data and nodes
+containing XML data.
+ We describe an algorithm for answering queries
+in Piazza that chains semantic mappings specified
+in our language. The challenge in developing the
+algorithm is that the mappings are directional, and
+hence may sometimes need to be traversed in re-
+verse. In fact, the algorithm can also go in reverse
+through mappings from XML to RDF that flatten
+out the document structure. Previous work [22] has
+presented an analogous algorithm for the simple
+case where all data sources are relational. Here we
+extend the algorithms considerably to the XML
+setting.
+ Finally, we describe an implemented scenario using
+Piazza and several observations from this experi-
+ence. The scenario includes 15 nodes (based on the
+structures and data of real web sites) that provide
+
+information about different aspects of the database
+research community.
+
+We emphasize that the techniques offered in Piazza are not a replacement for rich ontologies and
+languages for mapping between ontologies. Our goal
+is to provide the missing link between data described
+using rich ontologies and the wealth of data that is currently managed by a variety of tools. To extend Piazza
+to handle richer languages, we need to develop reformulation algorithms for these languages (in the spirit
+of [7]).1
+
+The paper is organized as follows. Section 2 provides an overview of Piazza, Section 3 identifies
+requirements for mapping between Semantic Web
+data sources, and Section 4 describes our language
+for mapping between nodes in Piazza. Section 5
+presents the key algorithm underlying query answering in Piazza. In Section 6 we offer our experiences
+from implementing the scenario. Section 7 describes
+related work, and Section 8 concludes.
+
+2. System overview
+
+We begin with an overview of the concepts underlying Piazza and our approach to building Semantic
+Web applications.
+
+2.1. Data, schemas, and queries
+
+Our ultimate goal with Piazza is to provide query
+answering and translation across the full range of
+data, from RDF and its associated ontologies to XML,
+which has a substantially less expressive schema lan-
+guage. The main focus of this paper is on sharing
+XML data, but we explain how RDF and OWL data
+instances can also be incorporated.
+
+Today, most commercial and scientific applications
+have facilities for automatically exporting their data
+into XML form. Hence, for the purpose of our discus-
+sion, we can consider XML to be the standard representation of a wide variety of data sources (as do others [38]). In some cases, accessing the actual data may
+require an additional level of translation (e.g., with
+systems like [19,42]). Perhaps of equal importance,
+
+1 See [25] for a discussion of additional challenges in this area.
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+many applications, tools, and programming languages
+or libraries have facilities for loading, processing, and
+importing XML data. In the ideal case, one could map
+the wealth of existing XML-style data into the Semantic Web and query it using Semantic Web tools; cor-
+respondingly, one could take the results of Semantic
+Web queries and map them back into XML so they
+can be fed into conventional applications.
+
+RDF is neutral with respect to objects importance:
+it represents a graph of interlinked objects, proper-
+ties, and values. RDF also assigns uniform semantic
+meaning to certain reserved objects (e.g., containers)
+and properties (e.g., identifiers, object types, refer-
+ences). Relationships between pairs of objects are explicitly named. (This actually resembles what is done
+in entityrelationship diagrams, which are used to design relational databases.)
+
+The main distinctions between RDF and unordered
+XML2 are that XML (unless accompanied by a
+schema) does not assign semantic meaning to any
+particular attributes, and XML uses hierarchy (mem-
+bership) to implicitly encode logical relationships.
+Within an XML hierarchy, the central objects are
+typically at the top, and related objects are often embedded as subelements within the document structure;
+this embedding of objects creates binary relationships.
+Of course, XML may also include links and can represent arbitrary graphs, but the predominant theme
+in XML data is nesting. Whereas, RDF names all
+binary relationships between pairs of objects, XML
+typically does not. The semantic meaning of these relationships is expressed within the schema or simply
+within the interpretation of the data. Hence, it is important to note that although XML is often perceived
+as having only a syntax, it is more accurately viewed
+as a semantically grounded encoding for data, in a
+similar fashion to a relational database. Importantly,
+as pointed out by Patel-Schneider and Simeon [38], if
+XML is extended simply by reserving certain attribute
+names to serve as element IDs and IDREFs, one can
+maintain RDF semantics in the XML representation.
+the XML and RDF worlds use
+different
+formalisms for expressing schema. The
+XML world uses XML Schema, which is based
+on object-oriented classes and database schemas: it
+
+As with data,
+
+2 In this paper we consider only unordered XML; order infor-
+
+mation can still be encoded within the data.
+
+defines classes and subclasses, and it specifies or restricts their structure and also assigns special semantic
+meaning (e.g., keys or references) to certain fields. In
+contrast, languages such as RDFS, DAML+ OIL [23]
+and the various levels of OWL [15] come from the
+knowledge representation heritage, where ontologies
+are used to represent sets of objects in the domain
+and relationships between sets. OWL uses portions of
+XML Schema to express the structure of so-called domain values. In the remainder of this paper, we refer to
+OWL as the representative of this class of languages.
+Much of the functionality of KR descriptions and
+concept definitions can be captured in the XML world
+(and more generally, in the database world) using
+views. In the KR world, concept definitions are used to
+represent a certain set of objects based on constraints
+they satisfy, and they are compared via subsumption
+algorithms. In the XML world, queries serve a similar purpose, and furthermore, when they are named
+as views, they can be referenced by other queries or
+views. Since a view can express constraints or combine data from multiple structures, it can perform a role
+like that of the KR concept definition. Queries can be
+compared using query containment algorithms. There
+is a detailed literature that studies the differences between the expressive power of description logics and
+query languages and the complexity of the subsumption and containment problem for them (e.g., [27]).
+For example, certain forms of negation and number
+restrictions, when present in query expressions, make
+query containment undecidable, while arbitrary join
+conditions cannot be expressed and reasoned about in
+description logics.
+
+2.2. Data sharing and mediation
+
+Logically, a Piazza system consists of a network of
+different sites (also referred to as peers or nodes), each
+of which contributes resources to the overall system.
+The resources contributed by a site include one or
+more of the following: (1) ground or extensional data,
+e.g., XML or RDF data instances, (2) models of data,
+e.g., XML schemas or OWL ontologies. In addition,
+nodes may supply computed data, i.e., cached answers
+to queries posed over other nodes.
+
+When a new site (with data instance or schema)
+is added to the system, it is semantically related to
+some portion of the existing network, as we describe
+
+in the next paragraph. Queries in Piazza are always
+posed from the perspective of a given sites schema,
+which defines the preferred terminology of the user.
+When a query is posed, Piazza provides answers that
+utilize all semantically related XML data within the
+system.3
+
+In order to exploit data from other sites, there
+must be semantic glue between the sites,
+in the
+form of semantic mappings. Mappings in Piazza
+are specified between small numbers of sites, usually pairs. In this way, we are able to support the
+two rather different methods for semantic mediation
+mentioned earlier: mediated mapping, where data
+sources are related through a mediated schema or
+ontology, and point-to-point mappings, where data
+is described by how it can be translated to conform
+to the schema of another site. Admittedly, from a
+formal perspective, there is little difference between
+these two kinds of mappings, but in practice, content
+providers may have strong preferences for one or the
+other.
+
+2.3. Query processing
+
+Ultimately, the goal of a Semantic Web is to answer
+queries from users. In our system this means answering an XQuery when given a set of sites and the semantic mappings between them. There are two aspects
+to the query answering problem: (1) how to obtain a
+semantically correct set of operations for answering
+the query, and (2) how to process the resulting operations efficiently over the data. In this paper we focus
+mostly on the first problem, called query reformula-
+tion. Section 5 describes a query answering algorithm
+for the Piazza mapping language: given a query at a
+particular site, we need to expand and translate it into
+appropriate queries over semantically related sites, as
+well. Query answering may require that we follow semantic mappings in both directions. In one direction,
+composing semantic mappings is simply query composition for an XQuery-like language. In the other di-
+rection, composing mappings requires using mappings
+in the reverse direction, which is known as the problem of answering queries using views [21]. These two
+problems are well understood in the relational database
+
+3 It is also be possible to let the user narrow the set of sites
+
+considered in a query; this does not introduce any difficulties.
+
+setting (i.e., when data is relational and mappings
+are specified as some restricted version of SQL), but
+they have only recently been treated in limited XML
+settings.
+
+3. Mapping requirements for structured data
+
+Between any two independently developed ontologies or schemas, there is likely to be a significant variation in the representations of their data
+instancespartly because of unique preferences in
+different data modelers approaches, and partly because of inherent differences in how data will be
+used. In this section, we briefly discuss some of the
+requirements for mapping schemas or ontologies on
+the Semantic Web, and we discuss how these fit into
+our framework.
+
+We distinguish between modeling variations at the
+data-instance level from those at the schema/ontology
+level. At the data-instance level, values may have
+different representations (e.g., an address can be
+a single string or composed of several sub-fields;
+names can be represented differently). The common
+approach for handling such discrepancies are concordance tables, which use a binary relation of the form
+(schema1 attrib; schema2 attrib) to describe associations between values in each of the representations.
+Note that concordance tables can represent m:n correspondences as well as 1:1 ones. Database query
+languages, including Piazzas mapping language, can
+easily make use of concordance tables by joining them
+with existing data items. Of course, the key question
+is how concordance tables are constructed. There is a
+significant work from both the artificial intelligence
+[37,44] and database communities [4,13]) on object
+matching, and recent work in [5] has looked at the
+problem of composing concordance table mappings.
+Piazza can make direct use of these existing matching
+algorithms and techniques, as well as any new ones
+that produce similar output.
+
+At the schema level, the simplest form of a mapping is a attribute correspondence, where a property
+or attribute value in one representation corresponds
+to a different value in the other representation. This
+is the type of correspondence captured by OWLs
+owl:equivalentProperty construct. It is also possible to
+have correspondences at a higher level, that of the class
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+(in ontologies) or view (in databases). These can be
+very simple equivalences (as in owl:equivalentClass),
+or they can be more complex. For instance, a mapping may express containment (one views results are
+contained in anothers, or one class is subsumed by
+another), overlap (a subset of class 1 is equivalent to
+a subset of class 2), disjointness, and so on. An extra
+layer of complexity occurs when mapping concepts in
+an XML world: two classes may describe concepts that
+are semantically the same, but the XML representations may be structured differently. Mapping between
+such classes requires some form of structural trans-
+formation, one that includes both the ability to coalesce multiple entries and to split a single entry into
+multiple fragments. This particular type of structural
+mapping is the main innovation of Piazzas mapping
+language (see Section 4). Note that one class of XML
+we support is a serialization of RDF: here, we must
+convert from an RDF graph structure to an XML tree
+structure, or vice-versa. In the next section, we will illustrate mappings between XML sources and between
+XML and RDF. Our example XML DTDs and OWL
+ontology definition appear in Fig. 1.
+
+Finally, there may be a need for so-called higherorder transformations, e.g., between a class in one
+ontology and a relationship in another. OWL has no
+capability for this, but most XML query languages,
+including XQuery, include support for tag variables
+that represent element or attribute tag names. We exploit this capability in Piazza to achieve certain kinds
+of higher-order mappings, e.g., between relationships
+and values.
+
+Source1.xml DTD:
+pubs
+
+book*
+
+title
+author*
+
+name
+
+publisher*
+
+name
+
+Source2.xml DTD:
+authors
+
+author*
+
+full-name
+publication*
+
+title
+pub-type
+
+4. Schema mappings in Piazza
+
+In this section, we describe the language we use for
+mapping between sites in a Piazza network. As described earlier, we focus on nodes whose data is available in XML (perhaps via a wrapper over some other
+system). For the purposes of our discussion, we ignore
+the XML document order. Each node has a schema,
+expressed in XML Schema, which defines the terminology and the structural constraints of the node. We
+make a clear distinction between the intended domain
+of the terms defined by the schema at a node and
+the actual data that may be stored there. Clearly, the
+stored data conforms to the terms and constraints of
+the schema, but the intended domain of the terms may
+be much broader than the particular data stored at the
+node. For example, the terminology for publications
+applies to data instances beyond the particular ones
+stored at the node.
+
+Given this setting, mappings play two roles. The
+first role is as storage descriptions that specify which
+data is actually stored at a node. This allows us to separate between the intended domain and the actual data
+stored at the node. For example, we may specify that
+a particular node contains publications whose topic is
+computer science and have at least one author from
+the University of Washington. The second role is as
+schema mappings, which describe how the terminology and structure of one node correspond to those in
+a second node. The language for storage mappings is
+a subset of the language for schema mappings, hence
+our discussion focuses on the latter.
+
+Source3.rdf OWL class definition:
+Class id = "book"
+
+DataTypeProperty id = "bookTitle"
+
+domain = "#book"
+range = "&xsd;string"
+
+DataTypeProperty id = "bookAuthor"
+
+domain = "#book"
+range = "#author"
+
+Class id = "author"
+
+DataTypeProperty id = "authorName"
+
+domain = "#author"
+range = "&xsd;string"
+
+Fig. 1. Structures of three different data sources (two XML sources and one RDF source with an OWL ontology). Source1.xml contains
+books with nested authors; Source2.xml contains authors with nested publications. Indentation illustrates nesting and a * suffix indicates
+0 or more occurrences of. . . , as in a BNF grammar. Source3.rdf is a set of OWL class and property definitions with a slightly simplified
+notation.
+
+The ultimate goal of the Piazza system is to use
+mappings to answer queries; we answer each query
+by rewriting it using the information in the mapping.
+Of course, we want to capture structural as well as
+terminological correspondences.
+
+information about
+
+As such, it is important that the mapping capture maximal
+the relationship
+between schemas, but also about the data instances
+themselvessince information about content can be
+exploited to more precisely answer a query.
+
+The field of data integration has spent many years
+studying techniques for precisely defining such mappings with relational data, and we base our techniques
+on this work. In many ways, the vision of Piazza
+is a broad generalization of data integration: in conventional data integration, we have a mediator that
+presents a mediated schema and a set of data sources
+that are mapped to this single mediated schema; in Pi-
+azza, we have a web of sites and semantic mappings.
+The bulk of the data integration literature uses
+queries (views) as its mechanism for describing map-
+pings: views can relate disparate relational structures,
+and can also impose restrictions on data values. There
+are two standard ways of using views for specifying
+mappings in this context: data sources can be described as views over the mediated schema (this is
+referred to as local-as-view or LAV), or the mediated
+schema can be described as a set of views over the
+data sources (global-as-view or GAV). The direction
+of the mapping matters a great deal: it affects both
+the kinds of queries that can be answered and the
+complexity of using the mapping to answer the query.
+In the GAV approach, query answering requires only
+relatively simple techniques to unfold (basically,
+macro-expand) the views into the query so it refers
+to the underlying data sources. The LAV approach
+requires more sophisticated query reformulation algorithms (surveyed in [21]), because we need to use the
+views in the reverse direction. It is important to note
+that in general, using a view in the reverse direction
+is not equivalent to writing an inverse mapping.
+
+As a result of this, LAV offers a level of flexibility that is not possible with GAV. In particular, the
+important property of LAV is that it enables to describe data sources that organize their data differently
+from the mediated schema. For example, suppose the
+mediated schema contains a relationship Author, between a paper-id and an author-id. A data source, on
+
+the other hand, has the relationship CoAuthor that relates two author-ids. Using LAV, we can express the
+fact that the data source has the join of Author with
+itself. This description enables us to answer certain
+querieswhile it is not possible to use the source to
+find authors of a particular paper, we can use the source
+to find someones co-authors, or to find authors who
+have co-authored with at least one other. With GAV
+we would lose the ability to answer these queries, because we lose the association between co-authors. The
+best we could say is that the source provides values
+for the second attribute of Author.4 (Recall that the
+relational data model is very weak at modeling incomplete information).
+
+This discussion has a very important consequence
+as we consider mappings in Piazza. When we map
+between two sites, our mappings, like views, will be
+directional. One could argue that we can always provide mappings in both directions, and even though this
+doubles our mapping efforts, it avoids the need for using mappings in reverse during query reformulation.
+However, when two sites organize their schemas dif-
+ferently, some semantic relationships between them
+will be captured only by the mapping in one of the di-
+rections, and this mapping cannot simply be inverted.
+Instead, these semantic relationships will be exploited
+by algorithms that can reverse through mappings on
+a per-query basis, as we illustrated in our example
+above. Hence, the ability to use mappings in the reverse direction is a key element of our ability to share
+data among sites, and therefore the focus of Section 5.
+Our goal in Piazza has been to leverage both LAV
+and GAV algorithms from data integration, but to extend them in two important directions. First, we must
+extend the basic techniques from the two-tier data integration architecture to the peer data management
+systems heterogeneous, graph-structured network of
+interconnected nodes; this was the focus of our work
+in [22]. Our second direction, which we discuss in this
+paper, is to move these techniques into the realms of
+XML and its serializations of RDF.
+
+Following the data integration literature, which uses
+a standard relational query language for both queries
+
+4 Note that in principle it is possible to define a CoAuthor view
+in the mediated schema, and map the data source to the view.
+However, the algorithmic problem of query answering would be
+identical to the LAV scenario.
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+and mappings, we might elect to use XQuery for both
+our query language and our language for specifying
+mappings. However, we found XQuery inappropriate
+as a mapping language for the following reasons. First,
+an XQuery user thinks in terms of the input documents
+and the transformations to be performed. The mental connection to a required schema for the output is
+tenuous, whereas our setting requires thinking about
+relationships between the input and output schemas.
+Second, the user must define a mapping in its entirety
+before it can be used. There is no simple way to define mappings incrementally for different parts of the
+schemas, to collaborate with other experts on developing subregions of the mapping, etc. Finally, XQuery
+is an extremely powerful query language (it is, in fact,
+Turing-complete), and as a result some aspects of the
+language make it difficult or even impossible to reason
+about.
+
+4.1. Mapping language and examples
+
+Our approach is to define a mapping language that
+borrows elements of XQuery, but is more tractable to
+reason about and can be expressed in piecewise form.
+Mappings in the language are defined as one or more
+mapping definitions, and they are directional from a
+source to a target: we take a fragment of the target
+schema and annotate it with XML query expressions
+that define what source data should be mapped into
+that fragment. The mapping language is designed to
+make it easy for the mapping designer to visualize
+
+the target schema while describing where its data
+originates.
+
+Conceptually, the results of the different mapping
+definitions are combined to form a complete mapping
+from the source document to the target, according
+to certain rules. For instance, the results of different mapping definitions can often be concatenated
+together to form the document, but in some cases different definitions may create content that should all be
+combined into a single element; Piazza must fuse
+these results together based on the output elements
+unique identifiers (similar to the use of Skolem
+functions in languages such as XML-QL [16]). A
+complete formal description of the language would
+be too lengthy for this paper. Hence, we describe
+the main ideas of the language and illustrate it via
+examples.
+
+Each mapping definition begins with an XML template that matches some path or subtree of a legal
+instance of the target schema, i.e., a prefix of a legal
+string in the target DTDs grammar. Elements in the
+template may be annotated with query expressions (in
+a subset of XQuery) that bind variables to XML nodes
+in the source; for each combination of bindings, an
+instance of the target element will be created. Once
+a variable is bound, it can be referenced anywhere
+within its scope, which is defined to be the enclosing
+tags of the template. Variable bindings can be output
+as new target data, or they can be referenced by other
+query expressions to correlate data in different areas
+of the mapping definition. Fig. 2(a) illustrates a simple
+
+<pubs>
+
+<book>
+
+{: $a IN document("Source2.xml")\
+
+/authors/author,
+
+$t IN $a/publication/title,
+$typ IN $a/publication/pub-type
+WHERE $typ = "book" :}
+
+<title>{ $t }</title>
+<author>
+
+<name> {: $a/full-name :} </name>
+
+</author>
+
+</book>
+
+</pubs>
+
+<pubs>
+
+<book piazza:id={$t}>
+
+{: $a IN document("Source2.xml")\
+
+/authors/author,
+
+$t IN $a/publication/title,
+$typ IN $a/publication/pub-type
+WHERE $typ = "book" :}
+
+<title piazza:id={$t}>{ $t }</title>
+<author piazza:id={$t}>
+
+<name> {: $a/full-name :} </name>
+
+</author>
+
+</book>
+
+</pubs>
+
+(a) Initial mapping
+
+(b) Refined mapping that coalesces entries
+
+Fig. 2. Simple examples of mappings from the schema of Source2.xml in Fig. 1 to Source1.xmls schema.
+
+initial mapping from the schema of Source2.xml of
+Fig. 1 to Source1.xml.
+
+We make variable references within {} braces and
+delimit query expression annotations by {: :}. This
+mapping definition will instantiate a new book element in the target for every occurrence of variables $a,
+$t, and $typ, which are bound to the author, title,
+and publication-type elements in the source, respec-
+tively. We construct a title and author element for each
+occurrence of the book. The author name contains a
+new query expression annotation ($a/full-name),
+so this element will be created for each match to the
+XPath expression (for this schema, there should only
+be one match).
+
+The example mapping will create a new book element for each author-publication combination. This
+is probably not the desired behavior, since a book
+with multiple authors will appear as multiple book en-
+tries, rather than as a single book with multiple author subelements. To enable the desired behavior in
+situations like this, Piazza reserves a special piazza:id
+attribute in the target schema for mapping multiple
+binding instances to the same output: if two elements
+created in the target have the same tag name and ID
+attribute, then they will be coalescedall of their attributes and element content will be combined. This
+coalescing process is repeated recursively over the
+combined elements.
+
+Example 1. See Fig. 2(b) for an improved mapping
+that does coalescing of book elements. The sole difference from the previous example is the use of the
+piazza:id attribute. We have determined that book titles in our collection are unique, so every occurrence
+of a title in the data source refers to the same book.
+Identical books will be given the same piazza:id and
+coalesced; likewise for their title and author subelements (but not author names). Hence, in the target we
+will see all authors nested under each book entry. This
+example shows how we can invert hierarchies in going
+from source to target schemas.
+
+Sometimes, we may have detailed information
+about the values of the data being mapped from the
+source to the targetperhaps in the above example,
+we know that the mapping definition only yields book
+titles starting with the letter A. Perhaps more inter-
+estingly, we may know something about the possible
+
+values of an attribute present in the target but absent
+in the sourcesuch as the publisher. In Piazza, we refer to this sort of meta-information as properties. This
+information can be used to help the query answering
+system determine whether a mapping is relevant to
+a particular query, so it is very useful for efficiency
+purposes.
+
+Example 2. Continuing with the previous schema,
+consider the partial mapping:
+
+<pubs>
+
+<book piazza:id={$t}>
+
+{: $a IN document(Source2.xml)/
+
+authors/author,
+$t IN $a/publication/title,
+$typ IN $a/publication/pub-type
+WHERE $typ = book
+PROPERTY $t >= A AND $t < B
+
+:}
+<title piazza:id={$t}>{ $t }</title>
+<author piazza:id={$t}>
+<name> {: $a/full-name :} </name>
+
+</author>
+[:
+<publisher>
+
+<name> {: PROPERTY $this
+
+IN {PrintersInc, PubsInc} :}
+</name>
+
+</publisher>
+:]
+
+</book>
+
+</pubs>
+
+The first PROPERTY definition specifies that we
+know this mapping includes only titles starting with
+A. The second defines a virtual subtree (delimited
+by [: :]) in the target. There is insufficient data at the
+source to insert a value for the publisher name; but
+we can define a PROPERTY restriction on the values
+it might have. The special variable $this allows us
+to establish a known invariant about the value at the
+current location within the virtual subtree: in this case,
+it is known that the publisher name must be one of the
+two values specified. In general, a query over the target
+looking for books will make use of this mapping; a
+query looking for books published by BooksInc will
+not. Moreover, a query looking for books published by
+PubsInc cannot use this mapping, since Piazza cannot
+tell whether a book was published by PubsInc or by
+PrintersInc.
+
+Finally, while we have been focusing mostly on
+pure XML data to this point, our mappings are also
+useful in translating to and from XML serializations
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+of RDF. We now present an example that maps from
+XML to RDF and also uses value mappings from a
+concordance table.
+
+Example 3. Suppose that we are attempting to map
+from Source2.xml of Fig. 1 and the OWL instance
+Source3.rdf. Furthermore, let us assume that the title
+of each book is specified differently in each of the
+sources (perhaps one source uses an all-caps format
+and the other uses mixed-case). Let us further assume
+that a concordance table, concordance.xml, has been
+populated and that it has a DTD of the following form:
+
+table
+
+entry*
+
+source2-name
+source3-name
+
+We can use the following mapping to map data from
+
+Source2.xml into Source3.rdf:
+
+<book piazza:id={$s3} rdf:id={http://myorg.org/
+
+Source3/ + $s3}>
+{:
+
+$a IN document(Source2.xml)/
+authors/author,
+
+$t IN $a/publication/title,
+$an IN $a/full-name
+$typ IN $a/publication/pub-type,
+
+$e IN document(concordance.xml)/
+table/entry,
+
+$s2 IN $e/source2-name,
+$s3 IN $e/source3-name
+
+WHERE $typ = book AND $t = $s2 :}
+<bookTitle rdf:resource={# + $an}/>
+<bookName>{$s3}</bookName>
+
+</bookTitle>
+
+</book>
+<author rdf:id={http://myorg.org/Source3/
++ $an}>
+
+{:
+
+$a IN document(Source2.xml)/
+authors/author,
+
+$typ IN $a/publication/pub-type,
+$an IN $a/full-name
+WHERE $typ = book :}
+
+<authorName>{$an}</authorName>
+
+</author>
+
+This example highlights the ability to express a
+mapping between an XML data source and an RDF
+data source in Piazza. When an XML document adheres to a valid RDF serialization, it is accessible to Semantic Web applications. Piazza mappings can be used
+to convert arbitrary XML into valid RDF, and hence,
+and data that is available to Piazza (either directly or
+through following paths in Piazza) can be made accessible to Semantic Web applications. These mappings
+
+also capture semantic relationships between XML
+paths (like document(Source2.xml)/authors/author)
+and RDFS classes (e.g., author).
+
+A more challenging question is to enable flow of
+data with richer semantics within Piazza. Specifically,
+Piazza mappings suffice for capturing data described
+in RDF (and RDFS(FA) [35]), but they cannot capture
+the richness of description logics and therefore of data
+sources that employ OWL. In order for two sources
+in Piazza, both described using ontologies in OWL,
+to fully capture the semantics of each others data,
+we need to extend our mapping language and query
+reformulation algorithms. While such extensions are
+beyond the scope of this paper, techniques for answering queries using views described in description logics
+(e.g., [7,12]) can be adapted to our context.
+
+4.2. Semantics of mappings
+
+We briefly sketch the principles underlying the semantics of our mapping language. At the core, the semantics of mappings can be defined as follows. Given
+an XML instance, Is, for the source node S and the
+mapping to the target T, the mapping defines a subset
+of an instance, It, for the target node. The reason that
+It is a subset of the target instance is that some elements of the target may not exist in the source (e.g.,
+the publisher element in the examples). In fact, it may
+even be the case that required elements of the target
+are not present in the source. In relational terms, It is
+a projection of some complete instance I
+t of T on a
+subset of its elements and attributes. In fact, It defines
+a set of complete instances of T whose projection is It.
+When we answer queries over the target T, we provide
+only the answers that are consistent with all such I
+ts
+(known as the certain answers [2], the basis for specifying semantics in the data integration literature). It
+is important to note that partial instances of the target are useful for certain queries, in particular, when
+a query asks for a subset of the elements. Instances
+for T may be obtained from multiple mappings (and
+instances of the sources, in turn, can originate from
+multiple mappings), and as we described earlier, may
+be the result of coalescing the data obtained from multiple bindings using the piazza:id attribute.
+
+A mapping between two nodes can either be an
+inclusion or an equality mapping (analogues of rdfs:
+subClassOf and owl:equivalentClass, respectively). In
+
+the former case, we can only infer instances of the target from instances of the source. In the latter case, we
+can also infer instances of the source from instances of
+the target. However, since the mapping is defined from
+the source to the target, using the mapping in reverse
+requires special reasoning. The algorithm for doing
+such reasoning is the subject of Section 5. Finally, we
+note that storage descriptions, which relate the nodes
+schema to its actual current contents allow for both the
+open-world assumption or the closed-world assump-
+tion. In the former case, a node is not assumed to store
+all the data modeled by it schema, while in the latter case it is. In practice, very few data sources have
+complete information.
+
+son, we do not validate the schema of answers before
+returning them to the user.
+
+While we have been discussing the relationship between our techniques and those of data integration, we
+remark that there are similar parallels in the knowledge
+representation community. Specifically, asserting that
+a derived (or complex) concept or property defined in
+the target ontology corresponds to a base property or
+class in a source ontology is similar in spirit to LAV,
+whereas asserting that a base property or class in the
+target ontology corresponds to a derived (or complex)
+concept or property in the source ontology corresponds
+to GAV.
+
+4.3. Discussion
+
+5. Query answering algorithm
+
+This section describes Piazzas query answering al-
+gorithm, which performs the following task: given a
+network of Piazza nodes with XML data, a set of semantic mappings specified among them, and a query
+over the schema of a given node, efficiently produce
+all the possible certain answers that can be obtained
+from the system.
+
+To complete the discussion of our relationship to
+data integration, we briefly discuss how our mapping
+language relates to the LAV and GAV formalisms.
+In our language, we specify a mapping from the perspective of a particular target schemain essence, we
+define the target schema using a GAV-like definition
+relative to the source schemas. However, two important features of our language would require LAV definition in the relational setting. First, we can map data
+sources to the target schema even if the data sources
+are missing attributes or subelements required in the
+source schema. Hence, we can support the situation
+where the source schema is a projection of the target.
+Second, we support the notion of data source prop-
+erties, which essentially describes scenarios in which
+the source schema is a selection on the target schema.
+Hence, our language combines the important properties of LAV and GAV. It is also interesting to note
+that although query answering in the XML context
+is fundamentally harder than in the relational case,
+specifying mappings between XML sources is more
+intuitive. The XML world is fundamentally semistruc-
+tured, so it can accommodate mappings from data
+sources that lack certain attributeswithout requiring
+null values. In fact, during query answering we allow
+mappings to pass along elements from the source that
+do not exist in the target schemawe would prefer
+not to discard these data items during the transitive
+evaluation of mappings, or query results would always
+be restricted by the lowest-common-denominator
+schemas along a given mapping chain. For this rea-
+
+From a high level, an algorithm proceeds along
+the following lines. Given a query Q posed over the
+schema of node P, we first use the storage descriptions
+of data in P (i.e., the mappings that describe which
+data is actually stored at P) to rewrite Q into a query
+over the data stored at P. Next, we consider the se-
+
+mantic neighbors of P, i.e., all nodes that are related
+to elements of Ps schema by semantic mappings. We
+use these mappings to expand the reformulation of
+
+query Q to a query Q
+over the neighbors of P. In turn,
+so it only refers to stored data in P and
+we expand Q
+its neighbors; then we union it with Q
+, eliminating
+any redundancies. We repeat this process recursively,
+following all mappings between nodes schemas, and
+the storage mappings for each one, until there are no
+remaining useful paths.
+
+Ignoring optimization issues, the key question in
+designing such an algorithm is how to reformulate a
+query Q over its semantic neighbors. Since semantic
+mappings in Piazza are directional from a source node
+S to a target node T, there are two cases of the reformulation problem, depending on whether Q is posed
+over the schema of S or over that of T. If the query
+is posed over T, then query reformulation amounts
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+S1.xml:
+
+people
+
+faculty*
+
+name
+advisee*
+
+student*
+
+S2.xml:
+
+people
+
+faculty*
+student
+name
+advisor*
+
+<result> {
+
+for $faculty in
+
+document("S1.xml")/people/faculty,
+
+$name in $faculty/name/text(),
+$advisee in $faculty/advisee/text()
+
+where $name = "Ullman"
+return
+
+<student> {$advisee} </student>
+
+</result>
+
+(a)XML DTDs of two data sources
+
+(b)XQuery posed over source S1.xml
+
+Fig. 3. Two schemas about advisors and students, and a query posed over one of the schemas.
+
+to query composition: to use data at S, we compose
+the query Q with the query (or queries) defining T in
+terms of S. Our approach to XML query composition
+is based on that of [19], and we do not elaborate on it
+here.
+
+The second case is when query is posed over S and
+we wish to reformulate it over T. Now both Q and T
+are defined as queries over S. In order to reformulate
+Q, we need to somehow use the mapping in the reverse direction, as explained in the previous section.
+This problem is known as the problem of answering
+queries using views (see [21] for a survey), and it is
+conceptually much more challenging. The problem is
+well understood for the case of relational queries and
+views, and we now describe an algorithm that applies
+to the XML setting. The key challenge we address
+for the context of XML is the nesting structure of
+the data (and hence of the query)relational data is
+flat.
+
+5.1. Query representation
+
+Our algorithm operates over a graph representation of queries and mappings. Suppose we start with
+the schemas of Fig. 3(a), which differ in how they
+represent advisor-advisee information. S1 puts advisee names under the corresponding faculty advisor
+whereas S2 does the opposite by nesting advisor
+names data under corresponding students. Now suppose we are provided with a mapping from S1 to
+S2, and we are attempting to answer the XQuery of
+Fig. 3(b).
+
+The query is represented graphically by the leftmost
+portion of Fig. 4. Note that the result element in the
+query simply specifies the root element for the result-
+
+ing document. Each box in the figure corresponds to
+a query block, and indentation indicating the nesting
+structure. With each block we associate the following
+constructs that are manipulated by our algorithm:
+
+A set of tree patterns: XQuery uses XPath expressions in the FOR clause to bind variables,
+e.g., $faculty in document(S1.xml)/
+$people/faculty binds the variable $faculty
+to the nodes satisfying the XPath expression. The
+bound variable can then be used to define new XPath
+expressions such as $faculty/name and bind new
+variables. Our algorithm consolidates XPath expressions into logically equivalent tree patterns for use in
+reformulation.5 For example, the tree pattern for our
+example query is indicated by the thick forked line in
+the leftmost portion of Fig. 4.
+
+For simplicity of presentation, we assume here that
+every node in a tree pattern binds a single variable; the
+name of the variable is the same as the tag of the corresponding tree pattern node. Hence, the node advisee
+of the tree pattern binds the variable $advisee.
+
+A set of predicates: a predicate in a query specifies
+a condition on one or two of the bound variables. Predicates are defined in the XQuery WHERE clause over
+the variables bound in the tree patterns. The variables
+referred to in the predicate can be bound by different
+tree patterns. In our example, there is a single predi-
+cate: name=Ullman. If a predicate involves a
+comparison between two variables, then it is called a
+join predicate, because it essentially enforces a relational join.
+
+5 We focus on the subset of XPath that corresponds to regular
+path expressions, so tree patterns capture the required semantics.
+
+Query:
+
+<result>
+
+Mapping:
+<S2>
+
+S1
+
+<S2>
+
+<people> {: $people=document("S1.xml")/people :}
+
+S1
+people
+faculty
+
+name
+
+advisee
+
+$name="Ullman"
+
+<student>
+
+{$advisee}
+
+<people>
+
+people
+
+<faculty>
+
+faculty
+name
+
+<faculty>
+
+{$name}
+
+<student>
+
+student
+
+<name>
+
+{$student}
+
+faculty
+advisee
+name
+$advisee=$student
+{$name}
+
+<advisor>
+
+{: $name in $people/faculty/name/text() :}
+{ $name }
+
+</faculty>
+
+<student>
+
+{: $student in $people/student/text() :}
+<name> { $student } </name>
+
+<advisor>{: $faculty in $people/faculty,
+
+$name in $faculty/name/text(),
+$advisee in $faculty/advisee/text()
+where $advisee=$student :}
+
+{ $name }
+
+</advisor>
+
+</student>
+
+</people>
+
+</S2>
+
+Fig. 4. Matching a query tree pattern into a tree pattern of a schema mapping. The matching tree patterns are shown in bold. The schema
+mapping corresponding to the middle graph is shown on the right.
+
+A set of variable equivalence classes (ECs): the
+equality predicates in a query define the equivalence
+classes between query variables. EC information allows for substituting a variable for an equivalent
+one. Note that the ECs of a query block contain the
+ECs of the outer blocks. In other words, if a block has
+the condition $x = $y, the same condition applies in
+all of the inner blocks (but not vice versa).
+
+Output results: output, specified in the XQuery
+RETURN clause, consists of element or attribute
+names and their content. An element tag name is usually specified in the query as a string literal, but it can
+also be the value of a variable. This is an important
+feature, because it enables transformations in which
+data from one source becomes schema information in
+another. In our query graph of Fig. 4, an element tag
+is shown in angle brackets. Hence, the element tag of
+the top-level block is result. The element tag of the
+inner block is student. The contents of the returned
+element of a query block may be a sequence of el-
+ements, attributes, string literals, or variables. (Note
+that our algorithm does not support mixed content,
+in which subelements and data values may be sib-
+lings, as this makes reformulation much harder).We
+limit our discussion to the case of a single returned
+
+item. In the figure, the variable/value returned by a
+query block is enclosed in curly braces. Thus, the top
+level block of our example query has empty returned
+contents, whereas the inner block returns the value of
+the $advisee variable.
+
+5.2. The rewriting algorithm
+
+Our algorithm makes the following simplifying
+assumptions about the queries and the mappings (we
+note that in the scenario we implemented, all the
+mappings satisfied these restrictions). First, we assume the query over the target schema contains a
+single non-trivial block, i.e., a block that includes
+tree patterns and/or predicates. The mapping, on the
+other hand, is allowed to contain an arbitrary number of blocks. Second, we assume that all returned
+variables are bound to atomic values, i.e., text()
+nodes, rather than XML element trees (this particular
+limitation can easily be removed by expanding the
+query based on the schema). In Fig. 4 the variable
+$people is bound to an element; variables $name
+and $student are bound to values. Third, we assume that queries are evaluated under a set semantics.
+In other words, we assume that duplicate results are
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+eliminated in the original and rewritten query. Finally,
+we assume that a tree pattern uses the child axis of
+XPath only. It is possible to extend the algorithm to
+work with queries that use the descendant axis. For
+purposes of exposition, we assume that the schema
+mapping does not contain sibling blocks with the
+same element tag. Handling such a case requires the
+algorithm to consider multiple possible satisfying
+paths (and/or predicates) in the tree pattern.
+
+The pseudocode for the algorithm is shown in Fig. 5.
+In the rest of this section we describe the algorithm
+in more detail. Intuitively, the rewriting algorithm performs the following tasks (see the rewriteQueryBlock
+function in the pseudocode). Given a query Q, it begins by comparing the tree patterns of the mapping
+definition with the tree pattern of Qthe goal is to
+find a corresponding node in the mapping definitions
+tree pattern for every node in the Qs tree pattern.
+Then the algorithm must restructure Qs tree pattern
+to parallel the way the mapping restructures its input
+tree patterns (Q must be rewritten to match against the
+target of the mapping rather than its source). That is
+done in the function rewriteTreePattern. Next, the algorithm considers the variable(s) returned by the query
+and makes sure that the variables are still available in
+the rewritten query. The function rewriteVar is used
+here. Finally, the algorithm must ensure that the predicates of Q can be satisfied using the values output
+by the mapping, see function rewritePredicates. The
+steps performed by the algorithm are:
+
+Step 1 (Pattern matching and rewriting). This step
+(function rewriteTreePattern, see Fig. 6) considers the
+tree patterns in the query, and finds corresponding patterns in the target schema. Intuitively, given a tree pat-
+
+tern, t in Q, our goal is to find a tree pattern t
+on the
+target schema such that the mapping guarantees that
+an instance of that pattern could only be created by following t in the source. The algorithm first matches the
+tree patterns in the query to the expressions in the mapping and records the corresponding nodes. In Fig. 4,
+the darker lines in the representation of the schema
+mapping denote the tree pattern of the query (far left)
+and its corresponding form in the mapping (second
+from left). The algorithm then creates the tree pattern
+over the target schema as follows: starting with the
+recorded nodes in the mapping, it recursively marks
+all of their ancestor nodes in the output template. It
+
+Note that t
+
+then builds the new tree pattern over the target schema
+by traversing the mapping for all marked nodes.
+
+may enforce additional conditions beyond those of t, and furthermore, there may be several
+patterns in the target that match a pattern in the query,
+ultimately yielding several possible queries over the
+target that provide answers to Q. If no match is found,
+then the resulting rewriting will be empty (i.e., the target data does not enable answering the query at the
+source).
+
+Step 2 (Handling returned variables and predi-
+cates). In this step the algorithm ensures that all of
+the variables required in the query can be returned,
+and that all of the predicates in the query have been
+applied. Here, the nesting structure of XML data
+introduces subtleties beyond the relational case.
+
+To illustrate the first potential problem, recall that
+our example query returns advisee names, but the
+mapping does not actually return the advisee, and
+hence the output of Step 1 does not return the advisee.
+We must extend the tree pattern to reach a block
+that actually outputs the $advisee element, but
+the <advisor> block where $advisee is bound
+does not have any subblocks, so we cannot simply
+extend the tree pattern. Fortunately, the <advisor>
+block includes an equality condition that puts the
+$advisee and $student variables in the same
+equivalence class. Since $student is output by the
+<name> block we can rewrite the tree pattern as
+$student in document(S2.xml)/peo-
+ple/student, $advisor in $student/ad-
+visor, $name in $student/name. Of course, it
+is not always possible to find such equalities, and in
+those cases there will be no rewriting for that pattern.
+Query predicates raise another problem. Predicates
+can be handled in one of the four ways as noted in
+the pseudocode. First, case (1), a query predicate (or
+one that subsumes it) might already be applied by
+the relevant portion of the mapping (or it might be
+a known property of the data being mapped). In this
+case, the algorithm can consider the predicate to be
+satisfied. Case (2) occurs when the mapping does not
+impose the predicate, but returns all variables necessary for testing the predicate. Here, the algorithm
+simply inserts the predicate into the rewritten query.
+The third possibility, case (3), is more XML-specific:
+
+Query rewriteQuery(Query q, Mapping m) {
+
+// we assume q contains only one non-trivial block
+return new Query(rewriteQueryBlock(q.queryBlock, m));
+
+// return a single rewriting; we note when multiple rewritings are possible
+QueryBlock rewriteQueryBlock(QueryBlock qb, Mapping m) {
+
+// assume a single tree pattern in the query; the case of multiple tree patterns can be reduced to a single pattern
+TreePattern rtp = rewriteTreePattern(qb.treePattern, m);
+
+// may need to extend the rewritten tree pattern (rtp) to rewrite the content variable
+// multiple rewritings are possible here due to many equivalent vars and different ways of extending rtp.
+Set eqVars = qb.eqClassMap[qb.contentVar];
+Var rContentVar = rewriteVar(eqVars, rtp, m);
+If failure, return failure  not possible to rewrite the content variable.
+For each pred in qb.predicates {
+
+Check if the predicate is already enforced in the mapping (1) // see text
+If success, no need to add the predicate to the rewritten query block
+Else
+
+// rewrite the predicate; multiple rewritings are possible. (2)
+Predicate rPred = rewritePredicate(pred, rtp, m).
+If success add rPred to the rewritten query block and consider next predicate.
+Else
+
+Try extending rtp so that an equivalent predicate in the mapping applies. (3)
+If success, no need to add the predicate to the rewritten query block.
+Else
+
+Try folding rtp to enforce pred as described in text (4)
+If success, no need to add the predicate to the rewritten query block
+Else return failure.
+
+return new QueryBlock(rtp, rPreds, rContentVar);
+
+// this function rewrites a given query tree pattern using a mapping.
+TreePattern rewriteTreePattern(TreePattern tp, Mapping m) {
+
+Map m.tp into tp; m.tp may have extra branches (path expressions) in all possible ways
+Return a rewritten tp that navigates through the matching block structure of m
+
+// rewrite one of the given equivalent vars; extend the given rtp if necessary
+Var rewriteVar(Set vars, TreePattern rtp, Mapping m) {
+
+// pick one of the equivalent vars; in general every equiv. var will result in a different rewriting
+Find if any of the mapping blocks corresponding to rtp return a variable that is the image of one of the vars.
+If success, return the original var.
+
+Try extending rtp so that one of the var images is returned.
+If success, return the original var;
+Else return failure  no way to get any of the equiv. variables using the mapping
+
+// rewrite a given query predicate; make sure all vars are available
+Predicate rewritePredicate(Predicate pred, TreePattern rtp, Mapping m) {
+Rewrite each of pred's variables using rewriteVar(); if success, return rPred.
+// can't rewrite the predicae
+return failure;
+
+Fig. 5. The algorithm for rewriting a single-block query using a mapping.
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+Mapping:
+
+<x> a
+
+<y>
+
+<z> $c=$d
+
+<u>
+
+<v>
+
+Query:
+
+$c=$d
+
+<result>
+
+Rewritten tree pattern:
+
+Folded tree pattern:
+
+Fig. 6. Folding the rewritten tree pattern for predicate rewriting. The result of rewriting the query tree pattern (on the left) using the
+mapping, cannot be used to enforce the predicate of the query. The folded tree pattern on the right can.
+
+the predicate is not applied by the portion of the mapping used in the query rewriting, nor can the predicate be evaluated over the mappings outputbut a
+different sub-block in the mapping may impose the
+predicate. If this occurs, the algorithm can add a new
+path into the rewritten tree pattern, traversing into the
+sub-block. Now the rewritten query will only return
+a value if the sub-block (and hence the predicate) is
+satisfied. Finally, case (4) applies when the mapping
+contains the required predicate, but the rewritten tree
+pattern has to be massaged or folded as described
+below in order for case (1) to be applicable.
+
+In our example query, the predicate can be reformulated in terms of the variables bound by the
+replacement tree pattern as follows: $advisor=
+Ullman. Hence, case (2) applies and the resulting rewritten query is the following:
+<result> {
+
+for $student in document-
+
+(S2.xml)/people/student,
+$advisor in $student/
+
+advisor/text(),
+
+$name in $student/name/text()
+
+where $advisor = Ullman
+return
+
+<student> {$name} </student>
+
+</result>
+
+In order to test if a given predicate in the mapping
+can be used to enforce a query predicate as in case
+(1), the following condition needs to be satisfied. For
+each variable in the mapping predicate, we find the
+
+node in the rewritten tree pattern that corresponds to
+that variable. If the resulting set of nodes lie on a single path from the root, the mapping predicate is ap-
+plicable; otherwise, it is not. To illustrate this rule,
+consider the example query in Fig. 6. The singleblock
+query in this example contains a predicate $c=$d.
+The mapping does not return the variables matching
+$c and $d, however. Hence, the only way to enforce
+the predicate is to exploit a predicate in the query. Un-
+fortunately, the rewritten tree pattern does not allow
+for that as the two z nodes corresponding to the query
+variables $c and $d do not lie on one path from the
+root. To fix this problem, the tree pattern needs to be
+folded, see case (4) in the pseudocode, along the $y
+and $z nodes as shown on the right in this figure. The
+resulting tree pattern is more restrictive but it allows
+for exploiting the predicate in the mapping. Note that
+because folding results in a more restrictive tree pat-
+tern, it should only be applied when it is necessary for
+predicate enforcement. Otherwise, some answers may
+be lost.
+
+Note that in the above discussion, we always made
+the assumption that a mapping is useful if and only
+if it returns all output values and satisfies all predi-
+cates. In many cases, we may be able to loosen this
+restriction if we know more information about the
+relationships within a set of mappings, or about the
+properties of the mappings. For instance, if we have
+two mappings that share a key or a parent element,
+we may be able to rewrite the query to use both mappings if we add a join predicate on the key or the
+parent element ID, respectively. Conversely, we may
+be able to make use of properties to determine that
+
+a mapping cannot produce any results satisfying the
+query.
+
+6. A Piazza application
+
+To validate our approach, we implemented a small
+but realistic Semantic Web application in Piazza. This
+section briefly reports on our experiences. While our
+prototype is still relatively preliminary, we can already
+make several interesting observations that are helping
+to shape our ideas for future research.
+
+The Piazza system consists of two main compo-
+nents. The query reformulation engine takes a query
+posed over a node, and it uses the algorithm described
+in Section 5 in order to chain through the Semantic Web and output a set of queries over the relevant
+nodes. Our query evaluation engine is based on the
+Tukwila XML Query Engine [24], and it has the important property that it yields answers as the data is
+streaming in from the nodes on the network.
+
+We chose our application, DB Research, to be representative of certain types of academic and scientific data exchange. Our prototype relates 15 nodes
+concerning different aspects of the database research
+field (see Fig. 7, where directed arrows indicate the
+direction of mappings). The nodes of DB Research
+were chosen so they cover complimentary but overlapping aspects of database research. All of the nodes
+of DB Research, with the exception of DB-Projects,
+contribute data. DB-Projects is a schema-only node
+whose goal is to map between other sources.
+
+DB Research nodes represent university database
+groups (Berkeley, Stanford, UPenn, and UW), research
+labs (IBM and MSR), online publication archives
+(ACM, DBLP, and CiteSeer), web sites for the major
+database conferences (SIGMOD, VLDB, and PODS),
+and DigReview, which is an open peer-review web
+
+Table 1
+The test queries and their respective running times
+
+DBP rojects
+
+V LDB
+
+Stanford
+
+UPenn
+
+Berkeley
+
+CiteSeer
+
+SIGMOD
+
+Submissions                                 DigReview
+
+Fig. 7. The topology of the DB research Piazza application.
+
+site. The Submissions node represents data that is
+available only to a PC chair of a conference, and not
+shared with others. The node schemas were designed
+to mirror the actual organization and terminology of
+the corresponding web sites. When defining map-
+pings, we tried to map as much information in the
+source schema into the target schema as possible,
+but a complete schema mapping is not always possible since the target schema may not have all of
+the attributes of the source schema. We report our
+experiences on four different aspects.
+
+the
+
+Reformulation times:
+
+second and third
+columns of Table 1 show the reformulation time for
+the test queries and the number of reformulations obtained (i.e., number of queries that can be posed over
+the nodes to obtain answers to the query).We observe
+that even with relatively unoptimized code, the reformulation times are quite low, even though some of
+them required traversing paths of length eight in the
+network. Hence, sharing data by query reformulation
+along semantic paths appears to be feasible. Although
+we expect many applications to have much larger
+networks, we also expect many of the paths in the
+network to require only very simple reformulations.
+Furthermore, by interleaving reformulation and query
+
+Query
+
+Description
+
+Reformulation time (s)
+
+No. of reformulations
+
+Q1
+Q2
+Q3
+Q4
+Q5
+
+XML-related projects
+Co-authors who reviewed each others work
+PC members with a paper at the same conference
+PC chairs of recent conferences + their projects
+Conflicts-of-interest of PC members
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+evaluation, we can start providing answers to users
+almost immediately.
+
+Optimization issues: the interesting optimization
+issue that arises is reducing the number of reformu-
+lations. Currently, our algorithm may produce more
+reformulations than necessary because it may follow
+redundant paths in the network, or because it cannot
+detect a cyclic path until it traverses the final edge.
+Minimizing the number of reformulations has been
+considered in two-tier data integration systems, but the
+graph-structured nature of Piazza presents novel optimization issues.
+
+Management of mapping networks: as we noted,
+due to differences between schemas of nodes, mappings may lose information. Just because there are two
+paths between a pair of nodes does not mean that one
+of them is redundant: one path may preserve information lost in the other. In fact, we sometimes may
+want to boost a set of paths by adding a few mappings
+that were not originally there. Analyzing mapping networks for information loss and proposing additional
+mappings presents an interesting set of challenges to
+investigate.
+
+Locality of concept management: even comprehensive attempts to model the world with schemas or
+ontologies are ultimately approximations of the real
+world, and there may always exist some ambiguity in
+their meanings. Most users will have the same understanding of the concepts defined by a schema, but
+some discrepancies are bound to occur. In this respect,
+we believe that the point-to-point nature of the Piazza
+network architecture provides a significant advantage
+over the use of global ontologies or mediated schemas.
+Since nodes are free to choose with whom they would
+like to establish semantic connections, a node is likely
+to map into other nodes with a similar schema, because that is simply easier. As a result, a large network
+is likely to have clusters of nodes with a similar view
+of the world, and it will be easier to track discrepancies across clusters. In contrast, an architecture that
+maps all nodes to a single mediated schema is likely
+to suffer more severely from discrepancies because it
+requires global consistency.
+
+Finally, we note that Semantic Web applications will
+differ on how strict answers need to be. If an application affects sensitive resources (e.g., bank accounts or
+even schedules), we should ensure that mappings are
+carefully controlled. However, much of the promise
+
+of the Semantic Web lies in systems that use the semantic markup to provide best effort query answering.
+Piazza provides an infrastructure for supporting both
+kinds of systems, but it emphasizes the flexibility and
+scalability needed for the latter kind.
+
+7. Related work
+
+One of the key goals of Piazza is to provide semantic
+mediation between disparate data sources. Federated
+databases [43] and data integration systems [36,28]
+both address this problem, but they generally rely on a
+two-tier mediator architecture, in which data sources
+are mapped to a global mediated schema that encompassed all available information. This architecture requires centralized administration and schema design,
+and it does not scale to large numbers of small-scale
+collaborations. (Some works, e.g., [46], have proposed
+hierarchies of mediators, but these require that the mediated schemas to fit into a tree or DAG of increasing
+generality, which is frequently not the case.)
+
+To better facilitate data sharing, Piazza adopts a
+peer-to-peer-style architecture and eliminates the need
+for a single unified schemaessentially, every nodes
+schema can serve as the mediated schema for a query,
+and the system will evaluate schema mappings transitively to find all related data. Our initial work in
+this direction focused on the relational model and was
+presented in [22]; a language for mediating between
+relational sources has recently been presented in [9].
+Mappings between schemas can be specified in many
+ways. Cluet et al. suggest a classification of mapping
+schemes between XML documents in [14]; following
+their framework, we could classify our system as mapping from paths to (partial) DTDs. The important, but
+complementary issue of providing support for generating semantic mappings between peers has been a
+topic of considerable interest in the database community [17,40], and in the ontology literature [18,29,34].
+A model for estimating information loss in approximate mappings has also been studied [30]. An important problem that we have not yet addressed is that of
+potential data source inconsistencies; but this problem
+has received recent attention in [6,26].
+
+A second goal of this paper is to address not only
+mediation between XML sources, but to provide an intermediary between the XML and RDF worlds, since
+
+most real-world data is in XML but ontologies may
+have richer information. Patel-Schneider and Simeon
+[38] propose techniques for merging XML and RDF
+into a common, XML-like representation. Conversely,
+the Sesame [11] stores RDF in a variety of underlying
+storage formats. Amann et al. [3] discuss a data integration system whereby XML sources are mapped into
+a simple ontology (supporting inheritance and roles,
+but no description logic-style definitions).
+
+The Edutella system [32] represents an interesting design point in the XMLRDF interoperability
+spectrum. Like Piazza, it is built on a peer-to-peer
+architecture and it mediates between different data
+representations. The focus of Edutella is to provide
+query and storage services for RDF, but with the
+ability to use many different underlying stores. Thus
+an important focus of the project is on translating
+the RDF data and queries to the underlying storage
+format and query language. Rather than beginning
+with data in a particular document structure and attempting to translate between different structures,
+Edutella begins with RDF and uses canonical mappings to store it in different subsystems. As a result
+of its inherent RDF-mediated architecture, Edutella
+does not employ point-to-point mappings between
+nodes. Edutella uses the JXTA peer-to-peer framework in order to provide replication and clustering
+services.
+
+The architecture we have proposed for Piazza is a
+peer-to-peer, Web-like system. Several other projects
+in the database community are developing similar
+architectures, though their focus is on issues other
+than schema mediation [1,5]. In the KR community,
+work on the OBSERVER [31] and Kraft [39] systems
+have explored a number of issues in distributed on-
+tologies, including mappings from structured sources
+and approximate mappings between concepts in
+ontologies.
+
+The work [33] describes PeerDB, a P2P-based system for distributed data sharing. Similar to Piazza,
+PeerDB does not require a global schema. Unlike Pi-
+azza, PeerDB does not use schema mappings for query
+reformulation. Instead, PeerDB employs an Information Retrieval-based approach for query reformula-
+tion. In their approach, a peer relation (and each of its
+columns) is associated with a set of keywords. Given
+a query over a peer schema, PeerDB reformulates the
+query into other peer schemas by matching the key-
+
+words associated with the two schemas. Unlike Piazza,
+PeerDB does not need to chain multiple reformulation
+steps as the keywords in any pair of schemas can be
+matched directly. Also, in PeerDB, some reformulated
+queries may not be meaningful, and the user has to
+decide which queries are to be executed.
+
+Recently, there has been significant interest in developing grid computing architectures (see http://www.
+mygrid.org.uk, http://www.gridcomputing.com), modeled after the electric power grid system. The goal
+is to construct a generic parallel, distributed environment for resource sharing and information exchange,
+and to allow arbitrary users (especially scientific users)
+to plug in to the grid. As noted in the lively discussion in [41], there will be some interesting relationships between grid computing and the Semantic
+Web. We believe that Piazza provides a data management infrastructure to support data services on the
+grid.
+
+Finally, we note that Piazza is a component of the
+larger effort to cross the structure chasm [20], where
+we address the entire life-cycle of content creation
+on the Semantic Web, and consider the problems of
+facilitating and enticing non-techincal users to create
+structured data on the Semantic Web.
+
+8. Conclusions and future work
+
+The vision of the Semantic Web [8] is compelling
+and will certainly lead to significant changes in how
+the Web is used, but we are faced with a number of
+technical obstacles in realizing this vision. Knowledge representation techniques and standardized ontologies will undoubtedly play a major role in the
+ultimate solution. However, we believe that the Semantic Web cannot succeed if it requires everything
+to be rebuilt from the ground up: it must be able
+to make use of structured data from non-Semantic
+Web-enabled sources, and it must inter-operate with
+traditional applications. This requires the ability to
+deal not only with domain structure, but also with
+document structures that are used by applications.
+Moreover, mediated schemas and ontologies can
+only be built by consensus, so they are unlikely to
+scale.
+
+In this paper, we have presented the Piazza peer
+data management architecture as a means of address-
+
+Z.G. Ives et al. / Web Semantics: Science, Services and Agents on the World Wide Web 1 (2004) 155175
+
+ing these two problems, and we have made the following contributions. First, we described a mapping
+language for mapping between sets of XML source
+nodes with different document structures (including
+those with XML serializations of RDF). Second, we
+have proposed an architecture that uses the transitive
+closure of mappings to answer queries. Third, we have
+described an algorithm for query answering over this
+transitive closure of mappings, which is able to follow mappings in both forward and reverse directions,
+and which can both remove and reconstruct XML
+document structure. Finally, we described several key
+observations about performance and research issues,
+given our experience with an implemented Semantic
+Web application.
+
+Although our prototype application is still somewhat preliminary, it already suggests that our architecture provides useful and effective mediation for
+heterogeneous structured data, and that adding new
+sources is easier than in a traditional two-tier environ-
+ment. Furthermore, the overall Piazza system gives
+us a strong research platform for uncovering and exploring issues in building a semantic web. We are
+currently pursuing a number of research directions. A
+key aspect of our system is that there may be many
+alternate mapping paths between any two nodes.
+An important problem is identifying how to prioritize
+these paths that preserve the most information, while
+avoiding paths that are too diluted to be useful. A
+related problem at the systems level is determining
+an optimal strategy for evaluating the rewritten query.
+We are also interested in studying Piazzas utility in
+applications that are much larger in scale, and in investigating strategies for caching and replicating data
+and mappings for reliability and performance.
+
+Acknowledgements
+
+The authors would like to express their gratitude
+to Natasha Noy, James Carroll, Rachel Pottinger,
+Dan Weld, and the anonymous reviewers for their
+invaluable comments and suggestions about prior
+versions of this paper, and to Carina Friedrich Dorneles for pointing out further related work. This work
+was funded in part by NSF ITR grants IIS-0205635
+and PECASE Grant IIS-9985114 and a gift from
+Microsoft Research.

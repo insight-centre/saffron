@@ -154,14 +154,15 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
     }
 
     private static org.insightcentre.nlp.saffron.data.Document fromLucene(Document d) {
-        return new org.insightcentre.nlp.saffron.data.Document(new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
+        return new org.insightcentre.nlp.saffron.data.Document(d.get(LuceneDocument.SOURCE_FILE).equals("") ? null : new SaffronPath(d.get(LuceneDocument.SOURCE_FILE)),
                 d.get(LuceneDocument.UID_NAME),
                 docURL(d),
                 d.get(LuceneDocument.FULL_NAME),
                 d.get(LuceneDocument.MIME_TYPE),
                 LuceneDocument.unmkAuthors(d.get(LuceneDocument.AUTHORS_NAME)),
                 LuceneDocument.unmkMetadata(d.get(LuceneDocument.METADATA)),
-                d.get(LuceneDocument.CONTENTS_NAME));
+                d.get(LuceneDocument.CONTENTS_NAME),
+                org.insightcentre.nlp.saffron.data.Document.parseDate(d.get(LuceneDocument.DATE_NAME)));
     }
 
     private static URL docURL(Document d) {
@@ -184,8 +185,11 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
             IndexWriterConfig conf = new IndexWriterConfig(DocumentSearcherFactory.LUCENE_VERSION, analyzer);
             try (IndexWriter writer = new IndexWriter(directory, conf)) {
                 Term t = new Term(LuceneDocument.UID_NAME, id);
-                writer.updateDocument(t, LuceneDocument.makeDocument(doc.id, doc.contents(), doc.url, doc.authors, doc.name, doc.file == null ? null : doc.file.toFile(), doc.mimeType, doc.metadata));
-            } 
+                writer.updateDocument(t, LuceneDocument.makeDocument(doc.id,
+                        doc.contents(), doc.url, doc.authors, doc.name,
+                        doc.file == null ? null : doc.file.toFile(), doc.mimeType,
+                        doc.metadata, doc.getDateAsString()));
+            }
         } catch (IOException x) {
             throw new RuntimeException(x);
         }

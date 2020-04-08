@@ -11,7 +11,7 @@ die() { echo "$@" 1>&2 ; exit 1; }
 
 cd $DIR/web
 export SAFFRON_HOME=$DIR
-export MONGO_URL=localhost
+export MONGO_HOST=localhost
 export MONGO_PORT=27017
 export MONGO_DB_NAME=saffron_test
 export STORE_LOCAL_COPY=false

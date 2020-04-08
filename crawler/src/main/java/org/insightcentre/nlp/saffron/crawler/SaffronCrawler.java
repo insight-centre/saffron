@@ -19,6 +19,8 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -158,7 +160,12 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write html for " + page.getWebURL().getURL() + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null)
+                LocalDateTime lastModified = null;
+                if (htmlParseData.getMetaTags().containsKey("Last-Modified")) {
+                    DateTimeFormatter format = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz");
+                    lastModified = LocalDateTime.parse(htmlParseData.getMetaTags().get("Last-Modified"), format);
+                }
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), htmlParseData.getTitle(), "text/html", Collections.EMPTY_LIST, htmlParseData.getMetaTags(), null, lastModified)
                         .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
@@ -173,8 +180,8 @@ public class SaffronCrawler extends WebCrawler {
                 } catch (IOException x) {
                     System.err.println("Could not write binary for " + url + " due to " + x);
                 }
-                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null)
-                    .withLoader(new CrawlLoader()));
+                corpus.add(new Document(SaffronPath.fromFile(file), key, pageURL(page), url, "text/html", Collections.EMPTY_LIST, Collections.EMPTY_MAP, null, null)
+                        .withLoader(new CrawlLoader()));
                 if (corpus.size() >= collectionLimit) {
                     getMyController().shutdown();
                 }

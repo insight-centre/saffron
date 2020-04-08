@@ -1,0 +1,1299 @@
+Provenance for SPARQL Queries
+
+Carlos Viegas Damasio1, Anastasia Analyti2, and Grigoris Antoniou3
+
+1 CENTRIA, Departamento de Informatica Faculdade de Ciencias e Tecnologia
+
+Universidade Nova de Lisboa, 2829-516 Caparica, Portugal
+
+2 Institute of Computer Science, FORTH-ICS, Crete, Greece
+
+cd@fct.unl.pt
+
+analyti@ics.forth.gr
+
+3 Institute of Computer Science, FORTH-ICS, and
+
+Department of Computer Science, University of Crete, Crete, Greece
+
+antoniou@ics.forth.gr
+
+Abstract. Determining trust of data available in the Semantic Web
+is fundamental for applications and users, in particular for linked open
+data obtained from SPARQL endpoints. There exist several proposals in
+the literature to annotate SPARQL query results with values from abstract models, adapting the seminal works on provenance for annotated
+relational databases. We provide an approach capable of providing provenance information for a large and significant fragment of SPARQL 1.1,
+including for the first time the major non-monotonic constructs under
+multiset semantics. The approach is based on the translation of SPARQL
+into relational queries over annotated relations with values of the most
+general m-semiring, and in this way also refuting a claim in the literature
+that the OPTIONAL construct of SPARQL cannot be captured appropriately with the known abstract models.
+
+Keywords: How-provenance, SPARQL queries, m-semirings, difference.
+
+1 Introduction
+
+A general data model for annotated relations has been introduced in [9], for positive relational algebra (i.e. excluding the difference operator). These annotations
+can be used to check derivability of a tuple, lineage, and provenance, perform
+query evaluation of incomplete database, etc. The main concept is the notion
+of K-relations where tuples are annotated with values (tags) of a commutative
+semiring K, while positive relational algebra operators semantics are extended
+and captured by corresponding compositional operations over K. The obtained
+algebra on K-relations is expressive enough to capture different kinds of annotations with set or bag semantics, and the authors show that the semiring of
+polynomials with integer coefficients is the most general semiring. This means
+that to evaluate queries for any positive algebra query on an arbitrary semiring,
+one can evaluate the query in the semiring of polynomials (factorization property
+of [9]). This work has been extended to the case of full relational algebra in [8]
+by considering the notion of semirings with a monus operation (m-semirings [2])
+
+P. Cudre-Mauroux et al. (Eds.): ISWC 2012, Part I, LNCS 7649, pp. 625640, 2012.
+ Springer-Verlag Berlin Heidelberg 2012
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+and constant annotations, and the factorization property is proved for the special
+m-semiring that we denote by Kdprovd.
+The use of these abstract models based on K-relations to express provenance
+in the Semantic Web has been advocated in [12]. However, the authors claim that
+the existing m-semirings are not capable to capture the appropriate provenance
+information for SPARQL queries. This claim is supported by the authors using
+a simple example, which we have adapted to motivate our work:
+Example 1. Consider the following RDF graph expressing information about
+users accounts and homepages, resorting to the FOAF vocabulary:
+
+@prefix people: <http://people/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+people:david foaf:account <http://bank> .
+people:felix foaf:account <http://games> .
+<http://bank> foaf:accountServiceHomepage <http://bank/yourmoney>.
+
+The SPARQL query
+
+PREFIX foaf <http://xmlns.com/foaf/0.1/>
+SELECT *
+WHERE { ?who foaf:account ?acc .
+
+OPTIONAL { ?acc foaf:accountServiceHomepage ?home }
+
+}
+
+returns the solutions (mappings of variables):
+
+?who
+<http://people/david> <http://bank> <http://bank/yourmoney>
+<http://people/felix> <http://games>
+
+?home
+
+?acc
+
+However, if the last triple is absent from the graph then the solutions are instead:
+
+?who
+<http://people/david> <http://bank>
+<http://people/felix> <http://games>
+
+?acc
+
+?home
+
+In order to track provenance of data, each tuple of data can be tagged with
+an annotation of a semiring. This annotation can be a boolean, e.g. to annotate
+that the tuple is trusted or not, a set of identifiers of tuples returning lineage of
+the tuple, or more complex annotations like the polynomials semiring to track
+full how-provenance [9,8], i.e. how a tuple is generated in the result under bag
+semantics.
+
+Returning to the introductory example, assume that we represent the 3 triples
+in the input RDF graph as the ternary Kdprovd-relation (with the obvious ab-
+breviations), where the last column contains the triple identifier (annotation):
+
+pred
+
+Triples
+sub
+t1
+< david > < account >
+< felix > < account >
+t2
+< bank > < accountServiceHomepage > < bank/yourmoney > t3
+
+obj
+< bank >
+< games >
+?
+
+?
+
+?
+The expected annotation of the first solution of the SPARQL query is t1  t3,
+meaning that the solution was obtained by joining triples identified by t1 and t3,
+while for the second solution the corresponding annotation is simply t2. How-
+ever, if we remove the last tuple we obtain a different solution for david with
+annotation just t1. The authors in [12] explain why the existing approaches to
+provenance for the Semantic Web cannot handle the situation of Example 1,
+basically because there are different bindings of variables depending on the ab-
+sence/presence of triples, and it is claimed that the m-semiring Kdprovd also
+cannot handle it. The rest of our paper shows that this last claim is wrong,
+but that requires some hard work and long definitions since the method proposed relies on the translation of SPARQL queries into relational algebra. The
+result is the first approach that provides adequate provenance information for
+OPTIONAL, MINUS and NOT EXISTS constructs under the multiset (bag) semantics
+of SPARQL.
+
+The organization of the paper is the following. We review briefly in the next
+section the basics of K-relations. The SPARQL semantics is introduced in Section 3, and its translation into relational algebra is the core of the paper and can
+be found in Section 4. Using the relational algebra translation of SPARQL, we
+use Kdprovd to annotate SPARQL queries and show in Section 5 that Example 1
+is properly handled. We finish with some comparisons and conclusions.
+
+2 Provenance for K-Relations
+A commutative semiring is an algebraic structure K = (K,,, 0, 1) where
+(K,, 0) is a commutative monoid ( is associative and commutative) with
+identity element 0, (K,, 1) is a commutative monoid with identity element 1,
+the operation  distributes over , and 0 is the annihilating element of . In
+general, a tuple is a function t : U  D where U is a finite set of attributes
+and D is the domain of values, which is assumed to be fixed. The set of all such
+tuples is U-Tup and usual relations are subsets of U-Tup. A K-relation over U is
+a function R : U-Tup  K, and its support is supp(R) = {t | R(t) = 0}.
+In order to cover the full relational operators, the authors in [8] assume that
+the K semiring is naturally ordered (i.e. binary relation x 2 y is a partial order,
+where x 2 y iff there exists z  K such that x z = y ), and require additionally
+that for every pair x and y there is a least z such that x 2 y  z, defining in
+this way x 3 y to be such smallest z. A K semiring with such a monus operator
+is designated by m-semiring. Moreover, in order to capture duplicate elimina-
+tion, the authors assume that the m-semiring is finitely generated. The query
+language1 RA+K(, ) has the following operators [8]:
+empty relation: For any set of attributes U, we have  : U-Tup  K such that
+union: If R1, R2 : U-Tup  K then R1  R2 : U-Tup  K is defined by:
+
+(t) = 0 for any t.
+(R1  R2)(t) = R1(t)  R2(t).
+
+1 The authors use instead the notation RA+K(\, ).
+?
+
+?
+
+?
+t=t on V and R(t)=0 R(t
+?
+
+?
+
+?
+).
+
+#
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+projection: If R : U-Tup  K and V  U then V (R) : V -Tup  K is defined
+selection: If R : U-Tup  K and the selection predicate P maps each U-tuple
+to either 0 or 1 depending on the (in-)equality of attribute values, then
+P (R) : U-Tup  K is defined by (P (R)) (t) = R(t)  P (t).
+natural join: If Ri : Ui-Tup  K, for i = 1, 2, then R1  R2 is the K-relation
+over U1  U2 defined by (R1  R2)(t) = R1(t)  R2(t).
+renaming: If R : U-Tup  K and  : U  U
+ is a bijection then (R) is the
+K-relation over U
+1).
+difference: If R1, R2 : U-Tup  K then R1  R2 : U-Tup  K is defined by:
+(R1  R2)(t) = R1(t) 3 R2(t).
+constant annotation: If R : U-Tup  K and ki is a generator of K then
+ki : U-Tup  K is defined by (ki (R))(t) = ki for each t  supp(R) and
+(ki (R))(t) = 0 otherwise.
+
+ defined by ((R))(t) = R(t  
+
+One major result of [8] is that the factorization property can be obtained for
+RA+K(, ) by using a special m-semiring with constant annotations that we
+designate by Kdprovd. Kdprovd is the free m-semiring over the set of source tuple
+ids X, which is a free algebra generated by the set of (tuple) identifiers in the
+equational variety of m-semirings. Elements of Kdprovd are therefore terms defined inductively as: identifiers in X, 0, and 1 are terms; if s and t are terms then
+(s + t), (s  t), (s  t), and ki (t) are terms, and nothing else is a term. In fact
+annotations of Kdprovd are elements of the quotient structure of the free terms
+with respect to the congruence relation induced by the axiomatization of the
+m-semirings, in order to guarantee the factorization property (see [8] for more
+details). In our approach, X will be the set of graph and tuple identifiers.
+
+We slightly extend the projection operator, by introducing new attributes
+whose value can be computed from the other attributes. In our approach, this is
+simply syntactic sugar since the functions we use are either constants or return
+one of the values in the arguments.
+
+3 SPARQL Semantics
+
+The current draft of SPARQL 1.1 [1] defines the semantics of SPARQL queries
+via a translation into SPARQL algebra operators, which are then evaluated with
+respect to a given RDF dataset. In this section, we overview an important fragment corresponding to an extension of the work in [10] that presents the formal
+semantics of the first version of SPARQL. The aim of our paper is on the treatment of non-monotonic constructs of SPARQL, namely OPTIONAL, MINUS
+and NOT EXISTS, and thus we focus in the SELECT query form, ignoring
+property paths, GROUP graph patterns and aggregations, as well as solution
+modifiers. The extension of our work to consider all the graph patterns is direct
+from the results presented. Regarding FILTER expressions, we analyse with detail the EXISTS and NOT EXISTS constructs, requiring special treatment. We
+assume the reader has basic knowledge of RDF and we follow closely the presentation of [1]. For more details the reader is referred to sections 17 and 18 of
+?
+
+?
+
+?
+the current SPARQL 1.1 W3C working draft. We also make some simplifying
+assumptions that do not affect the results of our paper.
+
+3.1 Basics
+
+Consider disjoint sets of IRI (absolute) references I, blank nodes B, and literals L
+including plain literals and typed literals, and an infinite set of variables V. The
+set of RDF terms is T = IBL = I B L. A triple2  = (s, p, o) is an element of
+IBL I IBL and a graph is a set of triples. Queries are evaluated with respect
+to a given RDF Dataset D = {G, (< u1 >, G1), (< u2 >, G2), . . . , (< un >, Gn)},
+where G is the default graph, and each pair (< ui >, Gi) is called a named graph,
+with each IRI ui distinct in the RDF dataset, and Gi being a graph.
+
+3.2 Graph Patterns
+
+SPARQL queries are defined by graph patterns, which are obtained by combining
+triple patterns with operators. SPARQL graph patterns are defined recursively
+as follows:
+
+ The empty graph pattern ().
+ A tuple (ILV)(IV)(ILV) is a graph pattern called triple pattern3;
+ If P1 and P2 are graph patterns then (P1 AND P2), (P1 UNION P2), as well as
+
+(P1 MINUS P2), and (P1 OPTIONAL P2) are graph patterns;
+
+ If P1 is a graph pattern and R is a filter SPARQL expression4 then the
+
+construction (P1 FILTER R) is a graph pattern;
+
+ If P1 is a graph pattern and term is a variable or an IRI then (GRAPH term P1)
+
+is a graph pattern.
+
+The SPARQL 1.1 Working Draft also defines Basic Graph Patterns (BGPs),
+which correspond to sets of triple patterns. A Basic Graph Pattern P1, . . . , Pn is
+encoded as the graph pattern (() AND (P1 AND (P2 . . . AND Pn)) . . .). We ignore
+in this presentation the semantics of FILTER expressions, whose syntax is rather
+complex. For the purposes of this paper it is enough to consider that these
+expressions after evaluation return a boolean value, and therefore we also ignore
+errors. However, we show how to treat the EXISTS and NOT EXISTS patterns
+in FILTER expressions since these require querying graph data, and therefore
+provenance information should be associated to these patterns.
+
+3.3 SPARQL Algebra
+
+Evaluation of SPARQL patterns return multisets (bags) of solution mappings.
+A solution mapping, abbreviated solution, is a partial function  : V  T. The
+2 Literals in the subject of triples are allowed, since this generalization is expected to
+
+be adopted in the near future.
+
+3 For simplicity, we do not allow blank nodes in triple patterns.
+4 For the full syntax of filter expressions, see the W3C Working Draft [1].
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+domain of  is the subset of variables of V where  is defined. Two mappings
+1 and 2 are compatible if for every variable v in dom(1)  dom(2) it is
+the case that 1(v) = 2(v). It is important to understand that any mappings
+with disjoint domain are compatible, and in particular the solution mapping
+0 with empty domain is compatible with every solution. If two solutions 1
+and 2 are compatible then their union 1  2 is also a solution mapping. We
+represent extensionally a solution mapping as a set of pairs of the form (v, t); in
+the case of a solution mapping with a singleton domain we use the abbreviation
+v  t. Additionally, if P is an arbitrary pattern we denote by (P ) the result of
+substituting the variables in P defined in  by their assigned values.
+We denote that solution mapping  satisfies the filter expression R with respect to the active graph G of dataset D by  |=D(G) R. Including the parameter D(G) in the evaluation of filter expressions is necessary in order to evaluate
+EXISTS(P ) and NOT EXISTS(P ) filter expressions, where P is an arbitrary graph
+pattern. If these constructs are removed from the language, then one only needs
+to consider the current solution mapping to evaluate expressions (as done in [10]).
+
+are compatible |}
+
+Definition 1 (SPARQL algebra operators [1]). Let 1 and 2 be multisets
+of solution mappings, and R a filter expression. Define:
+Join: 1  2 = {|1  2 | 1  1 and 2  2 such that 1 and 2
+Union: 1  2 = {| |   1 or   2|}
+Minus: 1  2 = {|1 | 1  1 such that 22 either 1 and 2 are not
+compatible or dom(1)  dom(2) = |}
+Diff: 1 \D(G)
+2 = {|1 | 1  1 such that 22 either 1 and 2 are not
+compatible, or 1 and 2 are compatible and 1  2 |=D(G) R|}
+LeftJoin: 1 D(G)
+The Diff operator is auxiliary to the definition of LeftJoin. The SPARQL 1.1
+Working Draft also introduces the notion of sequence to provide semantics to
+modifiers like ORDER BY. The semantics of the extra syntax is formalized by several more operators, namely aggregates and sequence modifiers (e.g. ordering),
+as well as property path expressions; we briefly discuss their treatment later on.
+Since lists can be seen as multisets with order and, without loss of generality
+regarding provenance information, we just consider multisets.
+
+2 = (1  2)  (1 \D(G)
+
+2)
+
+Definition 2 (SPARQL graph pattern evaluation). Let D(G) be an RDF
+dataset with active graph G, initially the default graph in D(G). Let P , P1 and
+P2 be arbitrary graph patterns, and t a triple pattern. The evaluation of a graph
+pattern over D(G), denoted by [[.]]D(G) is defined recursively as follows:
+1. [[()]]D(G) = {|0|};
+2. [[t]]D(G) = {|  | dom() = var(t) and (t)  G|}, where var(t) is the set of
+variables occurring in the triple pattern t;
+3. [[(P1 AND P2)]]D(G) = [[P1]]D(G)  [[P2]]D(G);
+ [[P2]]D(G);
+4. [[(P1 UNION P2)]]D(G) = [[P1]]D(G)
+?
+
+?
+
+?
+5. [[(P1 MINUS P2)]]D(G) = [[P1]]D(G)
+6. [[(P1 OPTIONAL P2)]]D(G) = [[P1]]D(G)
+
+ [[P2]]D(G);
+D(G)
+
+true
+
+FILTER pattern;
+
+[[P2]]D(G), where P2 is not a
+
+7. [[(P1 OPTIONAL (P2 FILTER R))]]D(G) = [[P1]]D(G)
+8. [[(P1 FILTER R)]]D(G) = {|   [[P1]]D(G)
+9. Evaluation of [[(GRAPH term P1)]]D(G) depends on the form of term:
+
+D(G)
+|  |=D(G) R |};
+
+[[P2]]D(G);
+
+ If term is an IRI corresponding to a graph name ui in D(G) then
+
+[[(GRAPH term P1)]]D(G) = [[P1]]D(Gi);
+ If term is an IRI that does not correspond to any graph in D(G) then
+[[(GRAPH term P1)]]D(G) = {||};
+ If term is a variable v then [[(GRAPH term P1)]]D(G) =
+
+= ([[P1]]D(G1)  {|v < u1 > |})  . . .  ([[P1]]D(Gn)  {|v < un > |})
+The evaluation of EXISTS and NOT EXISTS is performed in the satisfies relation
+of filter expressions.
+
+Definition 3. Given a solution mapping  and a graph pattern P over an RDF
+dataset D(G) then  |=D(G) EXISTS(P ) (resp.  |=D(G) NOT EXISTS(P )) iff
+[[(P )]]D(G) is a non-empty (resp. empty) multiset.
+Example 2. The SPARQL query of Example 1 corresponds to the following
+graph pattern :
+
+Q = ( (?who, < foaf : account>, ?acc) OPTIONAL
+
+(?acc, < foaf : accountServiceHomepage>, ?home)
+
+)
+
+The evaluation of the query result with respect to the RDF dataset D = {G},
+just containing the default graph G, specified in the example is:
+
+[[Q]]D(G) =
+[[(?who, < foaf : account >, ?acc)]]D(G) D(G)
+[[(?acc, < foaf : accountServiceHomepage >, ?home)]]D(G)
+= {|{(?who, < http : //people/david >), (?acc, < http : //bank >)},
+
+true
+
+{(?who, < http : //people/felix >), (?acc, < http : //games >)}|} D(G)
+{|{(?acc, < http : //bank >), (?home, < http : //bank/yourmoney >)} |}
+
+= {|{(?who, < http : //people/david >), (?acc, < http : //bank >),
+(?home, < http : //bank/yourmoney >)},
+{(?who, < http : //people/felix >), (?acc, < http : //games >)}
+
+true
+
+|}
+
+The evaluation of query Q returns, as expected, two solution mappings.
+
+4 Translating SPARQL Algebra into Relational Algebra
+
+The rationale for obtaining how-provenance for SPARQL is to represent each
+solution mapping as a tuple of a relational algebra query constructed from the
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+original SPARQL graph pattern. The construction is intricate and fully speci-
+fied, and is inspired from the translation of full SPARQL 1.0 queries into SQL,
+as detailed in [6], and into Datalog in [11]. Here, we follow a similar strategy but for simplicity of presentation we assume that a given RDF dataset
+D = {G0, (< u1 >, G1), (< u2 >, G2), . . . , (< un >, Gn)} is represented by the two
+relations: Graphs(gid,IRI) and Quads(gid,sub,pred,obj). The former stores
+information about the graphs in the dataset D where gid is a numeric graph
+identifier, and IRI an IRI reference. The relation Quads stores the triples of every
+graph in the RDF dataset. Different implementations may immediately adapt
+the translation provided here in this section to their own schema.
+
+Relation Graphs(gid,IRI) contains a tuple (i, < ui >) for each named graph
+(< ui >, Gi), and the tuple (0, < >) for the default graph, while relation
+Quads(gid,sub,pred,obj) stores a tuple of the form (i, s, p, o) for each triple
+(s, p, o)  Gi
+5. With this encoding, the default graph always has identifier 0, and
+all the graph identifiers are consecutive integers.
+
+It is also assumed the existence of a special value unb, distinct from the encoding of any RDF term, to represent that a particular variable is unbound in
+the solution mapping. This is required in order to be able to represent solution
+mappings as tuples with fixed and known arity. Moreover, we assume that the
+variables are totally ordered (e.g. lexicographically). The translation requires the
+full power of relational algebra, and notice that bag semantics is assumed (du-
+plicates are allowed) in order to obey to the cardinality restrictions of SPARQL
+algebra operators [1].
+Definition 4 (Translation of triple patterns). Let t = (s, p, o) be a triple
+pattern and G an attribute. Its translation [(s, p, o)]GR into relational algebra is
+constructed from relation Quads as follows:
+1. Select the tuples with the conjunction obtained from the triple pattern by
+letting Quads.sub = s (resp. Quads.pred = p, Quads.obj = o) if s (resp. p,
+o) are RDF terms; if a variable occurs more than once in t, then add an
+equality condition among the corresponding columns of Quads;
+
+2. Rename Quads.gid as G; rename as many as Quads columns as distinct
+variables that exist in t, such that there is exactly one renamed column per
+variable;
+
+3. Project in G and variables occurring in t;
+The empty graph pattern is translated as [()]GR = G
+Example 3. Consider the following triple patterns:
+
+$
+
+%
+
+Ggid(Graphs)
+
+.
+
+t1 = (?who, < http : //xmlns.com/foaf/0.1/account>, ?acc)
+t2 = (?who, < http : //xmlns.com/foaf/0.1/knows>, ?who)
+t3 = (< http : //cd >, < http : //xmlns.com/foaf/0.1/name>, "Carlos"@pt)
+5 For simplicity sub, pred, and obj are text attributes storing lexical forms of the
+triples components. We assume that datatype literals have been normalized, and
+blank nodes are distinct in each graph. The only constraint is that different RDF
+terms must be represented by different strings; this can be easily guaranteed.
+?
+
+?
+
+?
+pred=<http://xmlns.com/foaf/0.1/account>(Quads)
+
+The corresponding translations into relational algebra are:
+
+ G  gid
+ G  gid
+
+ G  gid
+
+who  sub
+
+acc  obj
+who  sub
+
+[t2]GR = G,who
+
+[t3]GR = G
+?
+
+?
+
+?
+ pred =< http : //xmlns.com/foaf/0.1/knows>
+
+
+
+sub = obj
+
+sub =< http : //cd > 
+
+pred =< http : //xmlns.com/foaf/0.1/name> 
+
+(Quads)
+
+obj = "Carlos"@pt
+
+Provenance for SPARQL Queries
+
+
+
+
+
+(Quads)
+
+
+
+
+
+The remaining pattern that requires querying base relations is GRAPH:
+
+Definition 5 (Translation of GRAPH pattern). Consider the graph pattern
+(GRAPH term P1) and let G
+
+ be a new attribute name.
+
+ If term is an IRI then [(GRAPH term P1)]GR is
+
+[()]GR  var(P1)
+
+G
+
+Ggid (term=IRI(Graphs))
+
+ If term is a variable v then [(GRAPH term P1)]GR is
+
+[()]GR  {v}var(P1)
+
+Ggid,vIRI
+
+gid>0(Graphs)
+?
+
+?
+
+?
+ [P1]G
+?
+
+?
+
+?
+ [P1]G
+
+Notice that the relational algebra query resulting from the translation of the
+pattern graph P1 renames and hides the graph attribute. The join of the empty
+pattern is included in order to guarantee that each query returns the graph
+identifier in the first column.
+
+Definition 6 (Translation of the UNION pattern). Consider the graph pattern (P1 UNION P2). The relation algebra expression [(P1 UNION P2)]GR is:
+
+G,var(P1){vunb|vvar(P2)\var(P1)}
+
+[P1]GR
+?
+
+?
+
+?
+G,var(P2){vunb|vvar(P1)\var(P2)}
+
+[P2]GR
+
+The union operator requires the use of an extended projection in order to make
+unbound variables which are present in one pattern but not in the other. The
+ordering of the variables in the projection must respect the total order imposed
+in the variables. This guarantees that the attributes are the same and by the
+same order in the resulting argument expressions of the union operator.
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+Definition 7 (Translation of the AND pattern). Consider the graph pattern
+(P1 AND P2) and let var(P1)  var(P2) = {v1, . . . , vn} (which may be empty).
+The relational algebra expression [(P1 AND P2)]GR is
+
+comp
+
+ v
+?
+
+?
+
+?
+1  v1
+?
+
+?
+
+?
+...
+ vn
+?
+
+?
+
+?
+n
+
+v
+
+[P1]GR
+
+  v
+
+1  v1
+?
+
+?
+
+?
+...
+ vn
+?
+
+?
+
+?
+n
+
+v
+
+[P2]GR
+?
+
+?
+
+?
+
+
+
+
+ G,
+
+var(P1)  var(P2),
+var(P2)  var(P1),
+v1  f irst(v
+?
+
+?
+
+?
+1 ), . . . ,
+1, v
+vn  f irst(v
+?
+
+?
+
+?
+n, v
+n )
+
+where comp is a conjunction of conditions v
+for
+each variable vi(1  i  n). The function f irst returns the first argument which
+is not unb, or unb if both arguments are unb. Note that if the set of common
+variables is empty then the relational algebra expression simplifies to:
+
+i = unb  v
+i = unb  v
+?
+
+?
+
+?
+i = v
+i
+
+G,var(P1)var(P2)
+
+[P1]GR  [P2]GR
+
+We need to rename common variables in both arguments, since an unbound
+variable is compatible with any bound or unbound value in order to be able to
+check compatibility using a selection (it is well-known that the semantics of unb
+is different from semantics of NULLs in relational algebra). The use of the f irst
+function in the extended projection is used to obtain in the solution the bound
+value of the variable, whenever it exists. This technique is the same with that
+used in [6,11]. The use of the extended projection is not essential, since it can
+be translated into a more complex relational algebra query by using an auxiliary
+relation containing a tuple for each pair of compatible pairs of variables.
+
+Definition 8 (Translation of the MINUS pattern). Consider the graph pattern (P1 MINUS P2) and let var(P1)  var(P2) = {v1, . . . , vn} (which may be
+empty). The relational algebra expression [(P1 MINUS P2)]GR is
+
+
+?
+
+?
+
+?
+[P1]GR 
+
+[P1]GR
+
+ G,var(P1)
+
+compdisj
+
+[P1]GR   v
+?
+
+?
+
+?
+
+
+
+
+?
+
+?
+
+?
+[P2]GR
+
+1  v1
+?
+
+?
+
+?
+...
+ vn
+?
+
+?
+
+?
+n
+
+v
+
+where comp is a conjunction of conditions vi = unb v
+
+i for each
+variable vi(1  i  n), and disj is the conjunction of conditions vi = unb v
+
+i =
+unb for each variable vi(1  i  n). Note that if the set of common variables is
+empty then the above expression reduces to [P1]GR since disj = true.
+
+i = unb vi = v
+?
+
+?
+
+?
+This is the first of the non-monotonic SPARQL patterns, and deserves some
+extra explanation. We need to check dynamically if the domains of variables
+are disjoint since we do not know at translation time what are the unbound
+?
+
+?
+
+?
+variables in the solution mappings, except when trivially the arguments of MINUS
+do not share any variable. The expression on the right hand side of the difference
+operator returns a tuple corresponding to a solution mapping 1 of P1 whenever
+it is possible to find a solution mapping 2 of P2 that it is compatible with
+1 (condition comp) and the mappings do not have disjoint domains (condition
+disj). By deleting these tuples (solutions) from solutions of P1 we negate the
+condition, and capture the semantics of the MINUS operator. The use of the
+duplicate elimination  ensures that only one tuple is obtained for each solution
+mapping, in order to guarantee that the cardinality of the result is as what is
+specified by SPARQL semantics: each tuple in [P1]GR joins with at most one tuple
+(itself) resulting from the difference operation.
+
+Definition 9 (Translation of FILTER pattern). Consider the graph pattern
+(P FILTER R), and let [NOT] EXISTS(P1), . . . , [NOT] EXISTS(Pm) the EXISTS or
+NOT EXISTS filter expressions occurring in R (which might not occur). The relational algebra expression [(P FILTER R)]GR is
+?
+
+?
+
+?
+3
+
+G,var(P )
+
+f ilter
+
+[P ]GR  E1  . . .  Em
+
+where f ilter is a condition obtained from R where each occurrence of EXISTS(Pi)
+(resp. NOT EXISTS(Pi)) is substituted by condition exi <> 0 (resp. exi = 0),
+where exi is a new attribute name. Expression Ei(1  i  m) is:
+?
+
+?
+
+?
+(P
+(P
+
+) 
+?
+
+?
+
+?
+G,var(P ),exi0
+
+(P
+
+G,var(P ),exi1
+
+P
+subst
+subst
+
+P
+?
+
+?
+
+?
+
+
+
+
+
+
+
+?
+
+?
+
+?
+i )
+
+(P
+
+)  G,var(P )
+?
+
+?
+
+?
+  v
+
+1  v1
+?
+
+?
+
+?
+i )
+
+(P
+
+...
+ vn
+?
+
+?
+
+?
+n
+
+v
+?
+
+?
+
+?
+)  G,var(P )
+
+  v
+
+1  v1
+?
+
+?
+
+?
+...
+ vn
+?
+
+?
+
+?
+n
+
+v
+?
+
+?
+
+?
+= [P ]GR, P
+?
+
+?
+
+?
+i = [Pi]GR, and subst is the conjunction of conditions vi =
+where P
+
+ vi = unb for each variable vi in var(P )  var(Pi) = {v1, . . . , vn}. Note
+
+v
+i
+that if there are no occurrences of EXISTS patterns, then [(P FILTER R)]GR is
+R
+
+[P ]GR
+?
+
+?
+
+?
+.
+
+The translation of FILTER expressions turns out to be very complex due to
+the EXISTS patterns. For each exists expression we need to introduce an auxiliary expression returning a unique tuple for each solution mapping of P , the
+top expression when the pattern Pi does not return any solution, and the bottom
+expression when it does. We need the double negation in order to not affect the
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+cardinality of the results of the filter operation when pattern P returns more
+than one solution. Obviously, our translation depends on the capability of expressing arbitrary SPARQL conditions as relational algebra conditions; this is
+not immediate but assumed possible due to the translation provided in [6].
+
+We can now conclude our translation by taking care of the OPTIONAL graph
+
+pattern, since it depends on the translation of filter patterns:
+Definition 10 (Translation of OPTIONAL pattern). Consider the graph pattern (P1 OPTIONAL (P2 FILTER R)).
+The relational algebra expression [(P1 OPTIONAL (P2 FILTER R))]GR is
+?
+
+?
+
+?
+[(P1 AND P2)]GR
+?
+
+?
+
+?
+
+
+[P1]GR
+
+
+[P1]GR 
+
+
+
+G,var(P1){vunb|vvar(P2)\var(P1)}
+
+
+
+
+?
+
+?
+
+?
+G,var(P1)
+
+[(P1 AND P2) FILTER R]GR
+
+The translation of (P1 OPTIONAL P2) is obtained from the translation of the graph
+pattern (P1 OPTIONAL (P2 FILTER true)).
+The translation of the OPTIONAL pattern has two parts, one corresponding to the
+JOIN operator (top expression) and one corresponding to the Diff operator. The
+translation of the Diff operator uses the same technique as the MINUS operator
+but now we remove from solutions of P1 those solution mappings of P1 that are
+compatible with a mapping of P2 and that satisfy the filter expression.
+
+Theorem 1 (Correctness of translation). Given a graph pattern P and a
+RDF dataset D(G) the process of evaluating the query is performed as follows:
+
+1. Construct the base relations Graphs and Quads from D(G);
+2. Evaluate [SP ARQL(P, D(G), V )]R = V
+
+[()]G
+spect to the base relations Graphs and Quads, where G
+name and V  var(P ).
+
+G=0
+?
+
+?
+
+?
+R  [P ]G
+with re-
+
+ is a new attribute
+?
+
+?
+
+?
+3
+
+Moreover, the tuples of relational algebra query (2) are in one-to-one correspondence with the solution mappings of [[P ]]D(G) when V = var(P ), and where an
+attribute mapped to unb represents that the corresponding variable does not belong to the domain of the solution mapping.
+
+Proof. The proof
+and can be
+at http://arxiv.org/abs/1209.0378.
+
+is by by structural
+
+found in the
+
+extended version of
+
+induction on the graph patterns
+this paper available
+
+The constructed translation will be used to extract how-provenance information
+for SPARQL queries, addressing the problems identified in [12].
+?
+
+?
+
+?
+Provenance for SPARQL Queries
+
+The crux of the method has been specified in the previous section, and relies
+on the properties of the extended provenance m-semiring Kdprovd for language
+RA+K(, ). We just need a definition before we illustrate the approach.
+Definition 11 (Provenance for SPARQL). Given a graph pattern P and a
+RDF dataset D(G) the provenance for P is obtained as follows:
+ Construct the base Kdprovd-relations by annotating each tuple in Graphs and
+
+Quads with a new identifier;
+
+ Construct an annotated query SP ARQL(P, D(G), V )Kdprovd from relational
+algebra [SP ARQL(P, D(G), V )]R expression by substituting the duplicate
+elimination operator by 1 where 1 is the identity element of Kdprovd.
+
+The provenance information for P is the annotated relation obtained from evaluating SP ARQL(P, D(G), V )Kdprovd with respect to the annotated translation of
+the dataset D(G).
+By the factorization property of Kdprovd we know that this is the most general
+m-semiring, and thus the provenance obtained according to Definition 11 is the
+most informative one. We just need to illustrate the approach with Example 1
+in order to completely justify its appropriateness.
+Example 4. First, we represent the RDF dataset by Kdprovd-relations where the
+annotation tags are shown in the last column. The IRIs have been abbreviated:
+
+Graphs
+gid IRI
+0 < > g0
+
+Quads
+gid sub
+?
+
+?
+
+?
+pred
+
+t1
+< david > < account >
+< felix > < account >
+t2
+< bank > < accountServiceHomepage > < bank/yourmoney > t3
+
+obj
+< bank >
+< games >
+
+Returning to query Q = (Q1 OPTIONAL Q2) of Example 2 with (sub)patterns
+Q1 = (?w, < account >, ?a) and Q2 = (?a, < accountServiceHomepage >, ?h),
+we obtain the following expressions for Q1 and Q2:
+
+
+
+(pred=<accountServiceHomepage>(Quads))
+
+
+
+(pred=<account>(Quads))
+
+ G  gid
+ G  gid
+
+w  sub
+a  obj
+
+a  sub
+h  obj
+
+[Q1]GR = G,w,a
+
+[Q2]GR = G,a,h
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+returning the annotated relations:
+
+[Q1]GR =
+
+a
+
+G w
+0 < david > < bank > t1
+0 < felix > < games > t2
+
+[Q2]GR =
+
+G a
+0 < bank > < bank/yourmoney > t3
+
+h
+
+The expression [(Q1 AND Q2)]GR used in the construction of the expression for
+the OPTIONAL pattern is:
+?
+
+?
+
+?
+3
+
+G,w,af irst(a,a),h
+
+a=aa=unba=unb
+
+aa
+
+[Q1]GR
+
+ aa
+
+[Q2]GR
+
+obtaining the annotated relation:
+
+[(Q1 AND Q2)]GR =
+
+G w
+0 < david > < bank > < bank/yourmoney > t1  t3
+
+h
+
+a
+
+We also need to determine the value of 1([Q1]GR) which is simply:
+
+1([Q1)]GR) =
+
+a
+
+G w
+0 < david > < bank > 1
+0 < felix > < games > 1
+
+We can now construct the expression corresponding to the Diff operator of
+SPARQL algebra, namely:
+
+[Q1]GR 
+
+
+?
+
+?
+
+?
+1
+?
+
+?
+
+?
+[Q1]GR
+
+
+
+
+?
+
+?
+
+?
+G,w,a,hunb
+
+returning the annotated tuples:
+
+G,w,a
+
+[(Q1 AND Q2)]GR
+
+a
+
+G w
+0 < david > < bank > unb t1  (1  (t1  t3))
+0 < felix > < games > unb t2  (1  0) = t2
+
+h
+
+This is the important step, since K-relations assign an annotation to every possible tuple in the domain. If it is not in the support of the relation, then it is
+tagged with 0. Therefore, the solutions for ([(Q1 AND Q2)]GR are:
+
+a
+
+G w
+0 < david > < bank > < bank/yourmoney > t1  t3
+0 < david > < bank > unb
+0 < felix > < games > unb
+
+h
+
+t1  (1  (t1  t3))
+t2
+
+and for our query, finally we get
+
+a
+
+h
+
+w
+< david > < bank > < bank/yourmoney > g0  t1  t3
+< david > < bank > unb
+< felix > < games > unb
+
+g0  t1  (1  (t1  t3))
+g0  t2
+?
+
+?
+
+?
+The interpretation of the results is the expected and intuitive one. Suppose that
+(i) we use the boolean m-semiring, with just the two values t and f, meaning
+that we trust or not trust a triple, (ii) product corresponds to conjunction, (iii)
+sum corresponds to disjunction, and (iv) difference is defined as x  y = x  y.
+So, if we trust g0 and t1, t2 and t3 we are able to conclude that we trust the
+first and third solutions (substitute 1 and the identifiers of trusted triples by
+t in the annotations, and then evaluate the resulting boolean expression). If
+we do not trust t3 but trust the other triples then we trust the second and
+third solutions. Also mark how the graph provenance is also annotated in our
+solutions. Accordingly, if we dont trust the default graph then we will not trust
+any of the solutions. Therefore, our method was capable of keeping in the same
+annotated Kdprovd-relation the several possible alternative solutions, one in each
+distinct tuple. This was claimed to not be possible in [12].
+
+6 Discussion and Conclusions
+
+The literature describes several approaches to extract data provenance/annotated
+information from RDF(S) data [7,5,4,12,3]. A first major distinction is that we extract how-provenance instead of only why-provenance6 of [7,5,4,3]. Both [7,4] address the problem of extracting data provenance for RDF(S) entailed triples, but
+do not support SPARQL. The theory developed in [5] implements the difference
+operator using a negation, but it does not handle duplicate solutions according to
+the semantics of SPARQL because of idempotence of sum; additionally, the proposed difference operator to handle why-provenance discards the information in
+the right hand argument. The most complete work is [3] which develops a framework for annotated Semantic Web data, supporting RDFS entailment and providing a query language extending many of the SPARQL features in order to deal with
+annotated data, exposing annotations at query level via annotation variables, and
+including aggregates and subqueries (but not property path patterns). However,
+the sum operator is idempotent in order to support RDFS entailment, and by design the UNION operator is not interpreted in the annotation domain. Moreover, the
+OPTIONAL graph pattern discards in some situations the information in the second
+argument, and thus cannot extract full provenance information.
+
+The capability of extracting full data how-provenance for SPARQL semantics
+as prescribed in [12] has been shown possible with our work, refuting their claim
+that existing algebras could not be used for SPARQL. Our approach, like [12],
+rests on a translation of SPARQL into annotated relational algebra contrasting
+with the abstract approach of [7,5,4,3]. The authors in [12] argue that this translation process does not affect the output provenance information for the case of
+(positive) SPARQL. In this way, the major constructs of SPARQL 1.1 are taken
+care respecting their bag semantics. However, contrary to the works of [7,3] we
+do not address the RDF schema entailment rules, and therefore our work is only
+applicable to simple entailment.
+
+6 We use the terminology how- and why-provenance in the sense of [9].
+
+C.V. Damasio, A. Analyti, and G. Antoniou
+
+We plan to address the complete semantics of SPARQL. In particular, aggregates can be handled by summing () tuples for each group, while property
+path patterns can generate annotation corresponding to products () of the
+involved triples in each solution. This extension is enough to be able to capture data provenance for RDFS entailment. We also want to explore additional
+applications in order to assess fully the potential of the proposed method.

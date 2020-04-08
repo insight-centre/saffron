@@ -1,0 +1,935 @@
+Measuring Inconsistencies in Ontologies
+
+Xi Deng, Volker Haarslev, and Nematollaah Shiri
+
+Department of Computer Science and Software Engineering
+
+Concordia University, Montreal, Canada
+
+{xi deng,haarslev,shiri}@encs.concordia.ca
+
+Abstract. In this paper, we propose a novel approach to measure inconsistencies in ontologies based on Shapley values, which are originally
+proposed for game theory. This measure can be used to identify which
+axioms in an input ontology or which parts of these axioms need to
+be removed or modified in order to make the input consistent. We also
+propose optimization techniques to improve the efficiency of computing
+Shapley values. The proposed approach is independent of a particular
+ontology language or a particular reasoning system used. Application of
+this approach can improve the quality of ontology diagnosis and repair
+in general.
+
+1 Introduction
+
+Ontologies play an important role in the Semantic Web as they provide a common shared model to represent a domain and to reason about the objects in the
+domain. As the size of the ontologies grows and applications developed become
+more complex, inconsistency becomes inevitable in the design and development
+of ontologies. According to the classical ex contradictione quodlibet (ECQ) prin-
+ciple, anything follows from an inconsistent ontology is useless. In order to help
+users to resolve the inconsistencies in ontologies, several approaches to identify
+and explain the cause of these inconsistencies have been proposed [1,2,3]. An assumption often made in these approaches is that all inconsistencies are equally
+bad. However, as shown in real world applications, it is possible for an ontology
+to contain two or more sources of inconsistencies and they may have different
+impact towards the inconsistencies. They may not necessarily contain the same
+contradiction and the same information, and may have overlapping content. The
+following are just two possible scenarios.
+
+ Non-overlapping: there are more than one set of axioms that are needed to
+produce an inconsistency in an ontology and they are independent of one
+another.
+ are two inconsistent subsets of ontology O. When we
+say O has non-overlapping sources of inconsistencies, it means that K
+ =
+. Note that inconsistency might occur at different levels: in the level of
+a single axiom, and in the level of sets of axioms. For example, consider
+ = {C  C  C  C} and K
+ = {  R.B,  R.B}.1 The
+
+ and K
+
+Suppose K
+
+K
+
+1 Please refer to Section 2 for the definition of the notations.
+
+E. Franconi, M. Kifer, and W. May (Eds.): ESWC 2007, LNCS 4519, pp. 326340, 2007.
+c Springer-Verlag Berlin Heidelberg 2007
+
+ is inherently inconsistent, while both of the two axioms in K
+
+Measuring Inconsistencies in Ontologies
+?
+
+?
+
+?
+axiom in K
+are responsible to produce a contradiction.
+
+ Overlapping: there are more than one set of axioms that are needed to produce an inconsistency in an ontology and they are interweaved with one
+another.O having overlapping sources of inconsistencies means that K
+ = .
+When two sets of inconsistent axioms are overlapping, it indicates that certain axioms contribute more to the inconsistencies and these axioms are
+possibly more problematic than others. It is most likely the case that removing one of these axioms from O will result in resolving other inconsistencies
+as well.
+
+  K
+
+In this paper we propose a quantitative measure of inconsistencies in ontologies which gives users guidelines on priorities of the axioms to be removed and
+their consequences. Our approach borrows some ideas from [4], which presents
+an approach of using the Shapley value to obtain an inconsistency measure for
+propositional logic. It can be applied to clauses instead of axioms. Since clauses
+are more fine-grained than axioms, it allows us to take a deeper look inside the
+axioms and find out which proportion of the axiom contributes to the inconsis-
+tency. We also discuss the relationship between the inconsistency measure and
+the minimal inconsistent subsets of ontologies. The computational complexity
+of calculating the Shapley value is at least Exp-time, which shows that it does
+not scale well in general [5]. Therefore we propose to optimize the calculation
+based on the structural relevance of the axioms and properties of the defined
+inconsistency measure.
+
+The main contribution of this paper is twofold: we combine previously known
+game theory strategies into ontology reasoning and present a measure to systematically evaluate the inconsistencies in ontologies. To the best of our knowledge,
+this is the first work in Description Logics towards providing a quantitative measure of inconsistencies. This approach is independent of a particular species of
+ontology languages or a particular reasoning system used. Moreover, we illustrate how the application of this method can improve the quality of ontology
+diagnosis and repair.
+
+The remainder of the paper is organized as follows: Section 2 presents a brief
+introduction of Description Logics, the underlying logics of the Web Ontology
+Language OWL. Section 3 introduces the basic concepts used in our approach.
+Section 4 describes the algorithms. The paper closes with a summary and also
+a discussion of future work.
+
+2 Preliminaries
+
+In this section, we first review some basic concepts and terms related to the
+ontology languages in the Semantic Web, and their relationships to Description
+Logics (DLs). We also define the notion of inconsistency in an ontology.
+
+X. Deng, V. Haarslev, and N. Shiri
+
+2.1 Ontologies in the Semantic Web
+
+The Web Ontology Language (OWL) has been recommended as the standard
+web ontology language by the World Wide Web Consortium (W3C) [6]. It is a
+machine-readable language for sharing and reasoning information on the Inter-
+net. OWL is an extension of the Resource Description Framework (RDF) and a
+revision of the DAML+OIL Web Ontology Language.
+
+OWL represents the domain of interest by defining hierarchies of classes and
+properties. An OWL ontology consists of axioms and facts. Axioms define intensional knowledge by building relationships between classes and properties. Facts
+describe the extensional knowledge about individuals. OWL currently has three
+flavors: OWL Lite, OWL DL, and OWL Full. OWL Full contains OWL DL,
+which in turn contains OWL Lite. OWL DL and OWL Lite correspond semantically with certain Description Logic languages. Reasoning tasks are undecidable
+in OWL Full and currently there is no reasoner that supports reasoning of every
+feature of OWL Full.
+
+2.2 Description Logics
+
+We shall not give a detailed introduction of Description Logics here, but refer the interested reader to [7]. Description logics are a family of concept-based
+knowledge representation formalisms. It represents the knowledge of a domain
+by first defining the relevant concepts of the domain. These concepts are used
+to specify properties of the objects in the domain. Typically a DL language
+has two parts: terminology (TBox) and assertion (ABox). The TBox includes
+intensional knowledge in the form of axioms whereas the ABox contains the
+extensional knowledge that is specific to elements in the domain, called individ-
+uals. The TBox together with the ABox is called a knowledge base in DL. In
+the TBox, basic descriptions are atomic concepts, designated by unary predi-
+cates, and atomic roles, designated by binary predicates to express relationships
+between individuals. Concept descriptions can be built on atomic concepts by
+iteratively applying constructors such as intersection, union, negation, value restriction and existential quantification. Axioms express how concepts and roles
+are related to each other. Generally, it is a statement of the form C  D, read as
+concept C is subsumed by concept D, or C  D, indicating that C  D and
+D  C, where C and D are concept descriptions. An ABox is a set of assertions
+that of the form C(a) and R(a, b), where R is a role, and a, b are individuals.
+An interpretation I defines the formal semantics of concepts, roles, and indi-
+I, called the domain. The interpretation
+I, and maps every
+I  
+I  
+I. In addition, I maps each
+I. An interpretation I satisfies C  D
+I  
+I and it
+I. It satisfies C(a) if a
+I = D
+
+viduals. It consists of a non-empty set 
+function I maps every atomic concept A to a subset A
+atomic role R to a binary relation R
+individual name a to an element a
+I. It satisfies C  D if C
+if C
+satisfies R(a, b) if (a
+The basic inference services in TBoxes include satisfiability, subsumption,
+equivalence, and disjointness. A concept C in a TBox T is said to be satisfiable
+
+I  D
+
+I of 
+
+I  C
+
+I)  R
+
+I.
+
+, b
+?
+
+?
+
+?
+w.r.t T if there exists a model of T (that is an interpretation I that satisfies the
+axioms of T ), such that C
+I is nonempty. The other three inference services can
+be reduced to (un)satisfiability. Another important reasoning service in TBoxes
+is to check whether a TBox T is consistent, i.e., whether there exists a model for
+T . The basic reasoning tasks in ABoxes include instance checking, realization,
+and retrieval. The instance check verifies if a given individual is an instance
+of a specified concept. The realization finds the most specific concept that an
+individual is an instance of. The retrieval finds the individuals in the knowledge
+base that are instances of a given concept. An ABox A is consistent w.r.t a
+TBox T , if there is an interpretation that is a model of both A and T (that is
+an interpretation I that both satisfies the axioms of T and the assertions of A).
+Similar to the inference services in TBoxes, the other three inference services
+in ABoxes can also be reduced to the consistency problem of ABoxes. In this
+paper, we use the term consistency to refer to consistency problems in both
+TBoxes and ABoxes. We will also discuss the measure regarding unsatisfiable
+concepts.
+
+Roughly speaking, a concept in DL is referred to as a class in OWL. A role
+in DL is a property in OWL. The terms axioms and individuals have the same
+meaning in DL and OWL. OWL DL is based in part on the DL SHOIN (D),
+which includes special constructors such as oneOf, transitive properties, inverse
+properties and datatype properties, and its subset OWL Lite which is based on
+the less expressive DL SHIF(D), is SHOIN (D) without the oneOf constructor
+and with the number restriction constructors limited to 0 and 1. Due to the close
+connection between OWL and DLs, in this paper, we will make no distinction
+between ontologies and knowledge bases in DL, and the examples are given
+mainly in DL syntax. The DL languages that we work on are those for which
+consistency checking is decidable.
+
+3 Inconsistency Measures
+
+In this section, we study methods of measuring inconsistencies in DL knowledge
+bases. The idea is to first define an inconsistency value, and then take it as the
+characteristic function to compute the Shapley value.
+
+3.1 Motivating Example
+
+The following example is adapted from [3], which we modified to be inconsis-
+tent. In the example, A, B, C, D, A1 to A6 denote concepts, and a and b are
+individuals.
+
+1. A1  A2  A  A3
+3. A3  A5  A4
+5. A5  S.B
+7. A1(a)
+9. A6  D
+
+2. A2  A  A4
+4. A4  C  S.B
+6. D  D  D  D
+8. A3(b)
+
+X. Deng, V. Haarslev, and N. Shiri
+
+A complete DL reasoner, such as FaCT++ [8], RACER [9] or Pellet [10],
+reports this knowledge base to be inconsistent. However, they can not provide
+crucial information, e.g., that there are four inconsistent subsets (3, 4, 5 and
+8; 1, 2, and 7; 1, 3, 4, 5 and 7; 6) in this knowledge base, and that one axiom
+(axiom 6) is inherently inconsistent. We will use this as our running example
+throughout the paper to show how the hidden information can be unraveled
+using our method.
+
+3.2 Definitions
+
+In this section we review some definitions of the Shapley value in game theory
+[4], which we tailor for use in DL in this work.
+Definition 1. Given a set of axioms and assertions in a knowledge base K, a
+characteristic function v : 2K  R assigns a value to each coalition K
+, where
+  K.
+
+An example of the characteristic function is the drastic inconsistency value,
+which assigns 1 to a set of axioms if it is inconsistent, and 0 to the set if it is
+consistent.
+Definition 2. For a set of axioms and assertions K
+sistency value of K
+
+  K, the drastic incon-
+
+ is defined as:
+if K
+
+otherwise
+?
+
+?
+
+?
+) =
+
+Id(K
+
+ is consistent or K
+
+ is empty
+
+(1)
+
+Example 1. Some drastic inconsistency values of the running example are as
+follows, where we only show some of those with the inconsistency value 1, as
+well as some consistent ones (with this value being 0).2
+
+Id({1}) = 0
+Id({1, 2}) = 0
+Id({3, 4, 5, 8}) = 1
+Id({1, 3, 4, 5, 7}) = 1
+
+Id({2}) = 0
+Id({3, 4, 5}) = 0
+Id({3, 4, 5, 6}) = 1
+
+Id({3}) = 0
+Id({1, 2, 6}) = 1
+
+As shown above, the coalition {1, 2, 6} has the inconsistency value 1. Axiom 6
+is often of a great value for a coalition it joins. For example, it can bring 1 to
+{2, 6} for making the coalition {1, 2, 6}. And it can also bring 1 to the coalition
+{3, 4, 5, 6}.
+
+Similarly, we can define another characteristic function which assigns 0 to a
+
+set of axioms if a concept A is satisfiable and 1 otherwise.
+Definition 3. The concept-related inconsistency value of a set of axioms K
+w.r.t. a concept A (A occurs in K) is defined as:
+?
+
+?
+
+?
+IA(K) =
+?
+
+?
+
+?
+if A is satisfiable w.r.t. K
+otherwise
+
+(2)
+
+2 For the sake of simplicity, we refer to the axioms and assertions by their numbers.
+?
+
+?
+
+?
+Example 2. Some of the concept-related inconsistency values of the working example are:
+
+IA1({1, 2}) = 1
+IA3({3, 4, 5}) = 1
+
+IA1({1, 3, 4, 5}) = 1
+IA3({3, 4, 9}) = 0
+
+An inconsistent measure is to quantify the contribution of each axiom or assertion in the knowledge base to the overall inconsistencies. The higher the measure
+is, the more weight an axiom carries in contributing to the inconsistencies. Shapley [11] proposed such a measure, known as Shapley values, in the context of
+game theory in 1953, which describes a fair allocation of gains obtained by the
+cooperation among several agents.
+
+The Shapley value is defined for a game that has n agents. In the game, the
+agents can form coalitions, which is a subset of the n agents. Each coalition
+has a gain when all its members work together as a team. A question which
+may arise here is which agent contributes the most to different coalitions?
+A solution to this problem can help determine which agent values more to the
+game than the others. The Shapley value is proposed to tackle this problem. The
+basic idea is as follows. Suppose the agents join a coalition according to a certain
+order, and the payoff of an agent in this coalition is its marginal contribution to
+the gain of the coalition. The Shapley value takes all the possible orders of the
+coalition formation into account and averages the agents marginal contribution
+over them.
+
+As the inconsistency checking can be deemed as a game, each axiom (or
+assertion) in the knowledge base can be deemed as an agent. Analogously, the
+contribution of each axiom (or assertion) to the inconsistencies can be measured
+using the Shapley value.
+Let K be a knowledge base, K be the set of all permutations on K, and
+n = |K| be the cardinality of K. Given an order   K, we use p
+ to denote
+the set of all the axioms and assertions in  that appear before an axiom (or an
+assertion) .
+
+Definition 4. The Shapley value for an axiom (or an assertion)  in an knowledge base K is defined as:
+
+S(K) =
+
+n!
+?
+
+?
+
+?
+K
+
+v(p
+
+
+ {})  v(p
+)
+
+The Shapley value can be directly computed from the possible coalitions without
+considering the permutations, with the following expression:
+
+S(K) =
+
+(c  1)!(n  c)!
+
+n!
+?
+
+?
+
+?
+CK
+
+(v(C)  v(C\{}))
+
+where C is any coalition of the axioms and assertions K, n = |K|, and c = |C|.
+
+X. Deng, V. Haarslev, and N. Shiri
+
+3.3 Inconsistency Measure Based on the Shapley Value
+
+We can take the drastic inconsistency measure defined in Definition 2 (the same
+computation can be applied to the concept-related measure defined in Definition 3) as the characteristic function, and then use the Shapley value to compute
+to what extent an axiom or an assertion is concerned with the inconsistency.
+
+For example, suppose K is a knowledge base and  is an axiom (or an asser-
+tion) in K, then the Shapley value of  based on the drastic inconsistency value
+Id is defined as:
+?
+
+?
+
+?
+(c  1)!(n  c)!
+
+n!
+
+(Id(C)  Id(C\{}))
+
+(3)
+
+S(K) =
+
+CK
+where n = |K| and c = |C|.
+
+The Shapley value of a knowledge base K is a vector with each element
+
+6, 1
+
+6, 1
+
+6, 0).
+
+denoting the Shapley value of each axiom (or assertion) in K.
+Example 3. The Shapley value of the knowledge base K = {C  C  C 
+C,  R.B,  R.B, A  D} is ( 4
+This shows that {C  C  C  C} is the most problematic.
+Example 4. The Shapley value of the working example is ( 268
+7! , 3774
+
+This shows that axiom 6 is the one that causes the most problems. 3, 4, 5 and
+8 are equally responsible for the inconsistencies, so are 1 and 7. Axiom 9 has a
+value of 0, which means it does not contribute to the inconsistency. Axiom 2 has
+a higher value than 3, 4 or 5, which shows that the inconsistency is more equally
+distributed among 3, 4 and 5.
+
+7! , 120
+7! ,
+
+7! , 120
+
+7! , 250
+
+, 268
+
+7! , 120
+
+7! , 0).
+
+7!
+
+3.4 Properties of the Inconsistency Measures
+
+We make a few observations and remarks regarding the inconsistency measures.
+Definition 5. The characteristic function v is increasing if X  Y, v(X) 
+v(Y).
+
+An increasing function indicates that adding more agents to the coalition will
+never decrease the value. In the worst case, they contribute nothing to the coali-
+tion. Due to the monotonic nature of DL reasoning, we can prove the following.
+
+Proposition 1. The drastic (concept-related) inconsistency value (see Definition 2 and 3) is increasing.
+
+A set of axioms and assertions is called convergent if its inconsistency value is
+convergent, i.e., it is the same as the inconsistency values of its super sets, and
+adding any other axioms or assertions does not change its inconsistency value.
+?
+
+?
+
+?
+ of a knowledge base K is defined as a
+
+Definition 6. The convergent subset K
+set of axioms and assertions that satisfies the following two properties:
+1. Id(K
+2. Id(K
+
+) = 1), and
+) = 0), for all K
+
+) = 1 (or IA(K
+) = 0 (or IA(K
+
+  K
+
+.
+
+ is a convergent point, in which the inconsistency value flips from
+Intuitively, K
+0 to 1. There is a direct relation between the convergent subsets and minimally
+inconsistent subsets of a knowledge base, defined as follows.
+Definition 7 (MIS). We say that T  is the minimally inconsistent subset (MIS)
+of a knowledge base T if the following two conditions hold:
+1. T  is inconsistent, and
+2. T  is consistent, for every T  such that T   T .
+Proposition 2. K
+
+ defined in Definition 6 is a minimally inconsistent subset.
+ that can be defined is based
+Another inconsistency measure of a coalition K
+on the number of minimally inconsistent subsets that would be removed if we
+ from the knowledge base. In other words, this measures the impact
+remove K
+of K
+Definition 8. The impact inconsistency measure of a subset K
+base K can be defined as follows:
+
+ on the knowledge base, formalized as follows.
+
+ in a knowledge
+?
+
+?
+
+?
+) = |MIS (K )|  |MIS (K  K
+
+Ii(K
+?
+
+?
+
+?
+)|
+
+)| denotes the number of minimally inconsistent subsets of K
+
+where |M IS(K
+.
+Example 5. There are four convergent subsets, i.e., four M ISs in the working
+example.
+
+M IS1 = {1, 2, 7}, M IS2 = {3, 4, 5, 8}, M IS3 = {1, 3, 4, 5, 7}, M IS4 = {6}
+Ii({1}) = Ii({7}) = Ii({3}) = Ii({4}) = Ii({5}) = 2
+Ii({2}) = Ii({6}) = Ii({8}) = 1
+Ii({9}) = 0
+
+Obviously, the removal of 1, 7, 3, 4, or 5 will remove the most number of incon-
+sistencies. The removal of axiom 9 will not affect the inconsistencies at all.
+
+3.5 Apply the Inconsistency Measures to Clauses
+
+The inconsistency measures discussed in this paper so far are applied to axioms
+in ontologies. It excludes the possibility of a more fine-grained inspection of the
+content of the axioms. In particular, if the inconsistency is in the level of a
+single axiom, then only two values can be obtained: consistent or inconsistent.
+In our previous work [1,12], we have developed a resolution based technique
+to explain inconsistency in ontologies. We found that clauses work on a more
+
+X. Deng, V. Haarslev, and N. Shiri
+
+fine-grained level than DL axioms, so an approach based on clauses can identify
+specific parts of axioms that are responsible for an inconsistency. Consequently,
+the inconsistency measures can also be applied to clauses and this allows us to
+look inside the axiom and identify which proportion of the axiom is contributing
+to the inconsistency.
+
+4 Computational Complexity Concerns
+
+The most important source of computational complexity in calculating the Shapley value is the difficulty to obtain the inconsistency value of an axiom. It is
+directly dependent on the complexity of consistency checking in DL reason-
+ings. One of the possible optimizations is to reduce the number of consistency
+checks. Besides, the complexity is also related to the computation process it-
+self. The computation of the Shapley value considers all the subsets of the ax-
+ioms/assertions in the knowledge base, and hence it results in Exp-time. How-
+ever, we do not really need to compute the inconsistency values of all the subsets.
+In the following sections we will discuss such optimizations.
+
+4.1 Partition Based on Structural Relevance
+
+In DLs, axioms3 can be related to each other through structure relevance. For
+example, the axiom A  B is structurally related to B   but not to C  D.
+It is clear that adding a structurally unrelated axiom to a coalition will not
+change the relative inconsistency value. Structural relevance is an equivalence
+relation, hence it can be exploited to induce a partitioning of the axioms, which
+as shown below, can be used as an optimization to speed up the computation of
+the Shapley inconsistency value.
+
+Definition 9. We say an axiom is directly structurally related to another axiom
+if the intersection of their signature (the set of all (negated) concept names and
+role names occurring in the axiom) is not empty. The structural relevance is the
+transitive closure of direct structural relevance.
+Example 6. In the motivating example, A1  A2AA3 is directly structurally
+related to A2  A  A4. It is structurally related to A4  C  S.B (because
+A3  A5  A4), but it is not related to D  D  D  D.
+Example 7. There are two partitions in the motivating example:{A1  A2A
+A3, A2  A  A4, A3  A5  A4, A4  C  S.B, A5  S.B, A1(a), A3(b)},
+{D  D  D  D, A6  D}.
+The following result suggests that partitioning according to structural relevance
+can be used to reduce the computational complexity of the Shapley value in our
+context.
+3 For the sake of simplicity, we only refer to the axioms, assertions can be considered
+
+in the same way.
+?
+
+?
+
+?
+Lemma 1. If K =
+i=1 Ki is a partitioning of a knowledge base, and all Ki
+have the same inconsistency value function I, then for any axiom (or assertion)
+  Ki,
+?
+
+?
+
+?
+(c  1)!(n  c)!
+
+n!
+
+(I(C)  I(C\{}))
+
+After the partitioning, the Shapley value of an axiom (or an assertion) can be
+
+S(Ki) =
+
+CKi
+where n = |Ki| and c = |C|.
+i=1 2|Ki|).
+
+computed in O(
+?
+
+?
+
+?
+The partitioning based on structural relevance preserves the total ordering on
+the Shapley values of the axioms (and assertions) inside the same partition. In
+other words, if an axiom has a higher Shapley value than another axiom in the
+partition, then it will also have a higher Shapley value in the knowledge base.
+Theorem 1. If K =
+i=1 Ki is a partitioning of a knowledge base, and all
+Ki have the same inconsistency value function I, then for any ,   Ki, if
+S(Ki) > S(Ki), then S(K) > S(K).
+Proof. For each partition Ki  K and ,   Ki, if S(Ki) > S(Ki), then
+(I(C)  I(C\{})).
+Let us prove S(K) > S(K) by cases: for any Ci  K, if Ci  C, as previously
+(I(Ci)
+(c1)!(nc)!
+indicated,
+I(Ci\{})). Otherwise, if I(Ci  C) = 1, then I(Ci)  I(Ci\{}) = I(Ci) 
+I(Ci\{}), if I(Ci  C) = 0, then I(Ci)  I(Ci\{}) > I(Ci)  I(Ci\{}).
+(I(Ci)  I(Ci
+So
+CiK
+n!
+\{})). So
+(I(C) 
+(c1)!(nc)!
+CK
+I(C\{})), considering all the possible cases. Hence S(K) > S(K).
+
+(I(C)  I(C\{})) >
+(c1)!(nc)!
+
+CiK
+
+(I(C)  I(C\{})) >
+
+(I(Ci)  I(Ci\{}))  
+
+(I(Ci) I(Ci\{})) >
+
+(c1)!(nc)!
+?
+
+?
+
+?
+(c1)!(nc)!
+
+(c1)!(nc)!
+?
+
+?
+
+?
+CKi
+?
+
+?
+
+?
+CKi
+
+(c1)!(nc)!
+
+n!
+CK
+
+(c1)!(nc)!
+
+n!
+
+CiK
+
+n!
+
+CiK
+
+n!
+
+n!
+?
+
+?
+
+?
+n!
+?
+
+?
+
+?
+n!
+
+4.2 Optimization Based on Properties of the Inconsistency Measure
+
+Partitioning the knowledge base according to structural relevance can work very
+well when the sizes |Ki| are small, especially when the |Ki| are bounded by a
+constant. This, however, is largely dependent on the particular knowledge base
+considered. In what follows, we propose an algorithm to calculate the Shapley
+value based on the properties of the inconsistency measure, especially the convergent property. This method aims to reduce the number of consistency checks.
+The basic idea is quite simple: according to Definition 6 in Section 3.4, a convergent subset of a knowledge base is the maximal subset whose inconsistency value
+has to be calculated. Any superset of a convergent knowledge base can have its
+inconsistency value derived to be 1 due to the monotonicity of DLs. Hence once a
+subset is convergent, there is no necessity to compute its supersets. The detailed
+algorithm is shown in Figure 1.
+
+Example 8. To see how this algorithm works, we can apply the optimization
+to one of the partitions in the motivating example: {A1  A2  A  A3, A2 
+
+X. Deng, V. Haarslev, and N. Shiri
+
+Input: an axiom (or assertion)  in K
+Output: the Shapley value of 
+
+  K, sorted by the cardinality of K
+?
+
+?
+
+?
+for all the subsets K
+
+while I(K
+
+move to the next unvisited K
+?
+
+?
+
+?
+  ) = 0
+?
+
+?
+
+?
+for all supersets K
+
+of K
+
+I(K
+tag K
+
+) = 1
+?
+
+?
+
+?
+as visited
+
+move to the next unvisited K
+
+Compute the Shapley value of 
+?
+
+?
+
+?
+Fig. 1. Computing Shapley values
+
+AA4, A3  A5A4, A4  CS.B, A5  S.B, A1(a), A3(b)}. The algorithm
+will first compute the inconsistency value of A1(a), and then the coalition of
+A1(a) and any one of the other axioms, and then the coalition of A1(a) and
+any two of the other axioms, since the coalition of A1  A2  A  A3, A2 
+A  A4 and A1(a) has an inconsistency value of 1, we will skip computing the
+inconsistency value of its supersets. It is the same case with the coalition of
+A1  A2  A  A3, A3  A5  A4, A4  C  S.B, A5  S.B and A1(a).
+We can either compute the convergent sub-terminologies on the fly during the
+computation of the Shapley value, or use algorithms for MIS in [13] to compute
+them in advance.
+
+5 Experimental Results
+
+To evaluate whether our proposed method is useful for ontologies, we have implemented the algorithm with the suggested optimizations in the previous section,
+and have performed some preliminary experiments. It was run on two ontologies:
+the University ontology with 32 concepts and 24 axioms, the Koala ontology with
+14 concepts and 19 axioms.4 Tests were performed on a Windows XP system
+with a 3.0GHz Intel Pentium 4 processor, and 2GB memory. The implementation
+was developed in Java (JDK 1.5.0). The original University and Koala ontologies
+are consistent and they have 15 and 3 unsatisfiable concepts respectively. They
+are provided as sample ontologies to test the repair service of the OWL ontology
+editor SWOOP 2.3 beta 3, which uses Pellet as the default DL reasoner. In our
+experiments, we asserted fresh individuals for these unsatisfiable concepts in order to make the ontologies inconsistent. After the modification, repair plans can
+no longer be generated for these inconsistent ontologies in SWOOP.
+
+There were four sources of inconsistencies in the University ontology. Calculating the measure took about 35 seconds. In the Koala ontology, there were
+4 The University and Koala ontologies were obtained from the website of SWOOP:
+
+http://www.mindswap.org/2005/debugging/ontologies/.
+?
+
+?
+
+?
+three sources of inconsistencies, and it took 12 seconds to calculate the inconsistency measure. If optimization techniques discussed in Section 4 are adopted,
+then the running time are 1.6 seconds and 467 ms, respectively.
+
+Lets look at part of the Koala ontology as follows:
+
+1.Koala  M arsupials
+2.Quokka  M arsupials
+3.P erson  M arsupials
+4.Koala  isHardworking{f alse}
+5.KoalaW ithP hD  hasDegree{P hD}  Koala
+6.Quokka  isHardworking{true}
+7.isHardworking.  P erson
+8.hasDegree.  P erson
+9.Koala(Suzy)
+10.KoalaW ithP hD(Lizzy)
+11.Quokka(P an)
+
+There are three sources of inconsistencies in this ontology. A koala named Suzy
+is forced be to a member of the disjoint classes marsupial and person. She is a
+marsupial because koala is a subclass of marsupial and she is a person because
+person is the domain of isHardWorking and every koala must have at least one
+isHardWorking property. A koala with a PhD named Lizzy is also forced to a
+member of the disjoint classes marsupial and person. She is a person because
+person is the domain of hasDegree and every koala with a PhD must have at
+least one hasDegree property. Similarly, a Quokka named Pan is also causing
+inconsistency problems.
+
+After the computation, axiom 3 gets the highest Shapley value, followed by
+axiom 7 and 1. In addition, axiom 3 has an impact inconsistency measure of
+3. For the naive user of these ontologies, this information can be very helpful.
+Removing Axiom 3 will render the ontology consistent, and therefore enables
+most of the reasoning services that users have expected from their ontology
+development tools.
+
+For the purpose of this paper, the implementation uses Racer as a black box
+to check the satisfiability. This black box approach comes with the advantage
+of independence of any particular reasoner or DL language. However, even with
+the optimization techniques, the worst case computational complexity is still
+exponential time. If the convergent ontologies are computed in a preprocessing
+step using algorithms presented in [14], the computational time can be further
+reduced.
+
+6 Related Work
+
+Measures of inconsistency haven been studied in [15,16,4]. These proposals for
+measuring inconsistency can be classified in two approaches. The first involves
+
+X. Deng, V. Haarslev, and N. Shiri
+
+counting the minimal number of formulae needed to produce the inconsistency.
+The more formulae needed to produce the inconsistency, the less inconsistent the
+set [16]. The second approach involves inspecting the proportion of the language
+that is affected by the inconsistency. [4] is the closest to our work. Our work is
+inspired by their proposal to use the Shapley value to obtain an inconsistency
+measure for propositional logic. However, our work differs from theirs in two as-
+pects: our approach works for a much more expressive logic and we also consider
+the optimizations of this method from a practical point of view.
+
+In the DL community, several approaches have been proposed to deal with
+diagnosis of a knowledge base. [17] provides a general theory for diagnosis of Description Logics knowledge bases, based on Reiters diagnosis theory from first
+principles. [13] uses a modified tableau algorithm for ALC to first find a minimally inconsistent subset of a knowledge base, and then use Reiters hitting set
+algorithm to find the maximally consistent subsets. They also propose to choose
+and eliminate axioms that most frequently participate in the underlying logical
+contradictions. [14] modifies the tableau rules and extends the DL language to
+SHOIN . These approaches focus on the incoherence problem, i.e., if there exists
+an unsatisfiable concept in the ontology and they cannot render a repair plan
+if the ontology contains more than one inconsistency. Our approach also differs
+from these proposals in that they assume that all inconsistencies are equally bad,
+while we present a quantitative way to differentiate these inconsistencies.
+
+7 Conclusion and Future Work
+
+With the development of more expressive ontologies in the Semantic Web com-
+munity, inconsistency has become an increasing problem that can seriously hamper the construction and application of web ontologies. In this paper, we have
+presented a technique for measuring inconsistencies which uses the Shapley value
+in game theory. Since the Shapley value aims to distribute the gains from cooperation in a fair manner, it can be used to impute the inconsistency to each
+axioms in the problematic ontology. The idea is to first define an inconsistency
+value, and then take it as the characteristic function, using the Shapley value
+to compute the contribution of each axiom or assertion to the inconsistencies in
+the ontology. This technique is conceptually flexible in the sense that although
+we focus on inconsistency problems in this paper, by choosing different inconsistency value functions, we can also address incoherence problems. It should be
+an easy extension to adopt other consistency values in the future. The measure
+associated with an axiom shows the degree of its responsibility for the inconsis-
+tency, therefore it can give guidelines for repairing the ontologies. We have also
+proposed and implemented some optimization techniques based on the structural
+relevance of the axioms and properties of the defined inconsistency measure, in
+order to reduce the computational complexity. An implementation of the proposed algorithm to be applied to clauses is underway to be incorporated as part
+of our explanation module developed earlier for DL reasoning.
+?
+
+?
+
+?
+Acknowledgements
+
+This work was supported in part by Natural Sciences and Engineering Research
+Council (NSERC) of Canada, by Genome Quebec, and by Faculty of ENCS,
+Concordia University. We also thank anonymous reviewers for their valuable
+comments.
