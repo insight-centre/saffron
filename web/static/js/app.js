@@ -396,12 +396,10 @@ angular.module('app').controller('Breadcrumbs', function($scope, $http, $locatio
         if (termName !== 'HEAD_TERM') {
             var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
             $http.get(url).then(function(response) {
-                
-               if (response.data.root !== $scope.parents[0]) {
+                if (response.data.root !== $scope.parents[0]) {
                     $scope.parents.unshift(response.data.root);
                     getParents(response.data.root);
-               }
-
+                }
             });
         }
 
@@ -449,13 +447,31 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
             console.log(response)
             console.log(response.data)
 
+            runIds = []
+
+            for (var i in response.data) {
+                value = response.data[i]
+                runIds.push(value['id'])
+            }
+
+
             for (t = 0; t < response.data.length; t++) {
                 console.log(response.data[t])
                 $scope.parents.push(response.data[t])
             }
         });
+
     }
     getRuns();
+
+    $scope.checkRun = function($event) {
+        var run_id = document.forms["formRun"]["newRunName"].value;
+        if (runIds.includes(run_id)) {
+            document.getElementById("saffronRunMessage").innerHTML = "<strong> A saffron-run with id  &quot; " + run_id + "   &quot; already exists. Please use a different name. </strong>"
+            document.getElementById('saffronRunMessage').className = "alert alert-danger";
+            $event.preventDefault();
+        }
+    };
 
     // reject one or multiple terms
     $scope.deleteRun = function($event, id) {
@@ -464,7 +480,6 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
             deleteOneRun($http, id);
         }
     };
-
 });
 
 // the child terms component
