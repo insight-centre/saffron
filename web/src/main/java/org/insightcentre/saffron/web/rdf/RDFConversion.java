@@ -305,10 +305,9 @@ public class RDFConversion {
             final OptionParser p = new OptionParser() {
                 {
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
-                    accepts("c", "The configuration to use").withRequiredArg().ofType(File.class);
-                    accepts("o", "The output file").withRequiredArg().ofType(String.class);
-                    accepts("t", "The name of the Saffron knowledge graph").withRequiredArg().ofType(String.class);
-                    accepts("d", "The home directory").withRequiredArg().ofType(String.class);
+                    accepts("o", "The output file path").withRequiredArg().ofType(String.class);
+                    accepts("t", "An identifier for the Saffron knowledge graph").withRequiredArg().ofType(String.class);
+                    accepts("d", "The directory with all files from the kg extraction run").withRequiredArg().ofType(String.class);
                 }
             };
             final OptionSet os;
@@ -323,13 +322,9 @@ public class RDFConversion {
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
             }
-            if (os.valueOf("c") == null) {
-                badOptions(p, "Configuration is required");
-                return;
-            }
             String datasetName = (String) os.valueOf("t");
             if (datasetName == null ) {
-                badOptions(p, "The data set does not exist");
+                badOptions(p, "The identifier was not provided");
                 return;
             }
             String baseUrl = (String) os.valueOf("b");
@@ -342,21 +337,13 @@ public class RDFConversion {
                 badOptions(p, "Base dir not given");
                 return;
             }
-            File datasetNameFile;
-            File kgOutFileName;
-            if(!datasetName.startsWith(baseDir)) {
-                datasetNameFile = new File(baseDir + "/" + datasetName);
-                kgOutFileName = new File(baseDir + "/" + datasetName + "/" + kgOutFile);
-            } else {
-                datasetNameFile = new File(datasetName);
-                kgOutFileName = new File(datasetName + '/' + kgOutFile);
-            }
+           
             int index=datasetName.lastIndexOf('/');
             datasetName = datasetName.substring(index+1,datasetName.length());
-            saffron.fromDirectory(datasetNameFile, datasetName);
+            saffron.fromDirectory(new File(baseDir), datasetName);
             Model kg = ModelFactory.createDefaultModel();
             kg = knowledgeGraphToRDF(saffron, datasetName, kg, baseUrl);
-            try(OutputStream out = new FileOutputStream(kgOutFileName)) {
+            try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
