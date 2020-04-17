@@ -43,7 +43,7 @@ public class ConsolidateAuthors {
             marked.add(author);
             for (Author author2 : authors) {
                 if (!marked.contains(author2)) {
-                    if (isSimilar(author, author2)) {
+                    if (author.name != null && author2.name != null && isSimilar(author, author2)) {
                         similar.add(author2);
                         marked.add(author2);
                     }
@@ -584,7 +584,7 @@ public class ConsolidateAuthors {
                 //words, rule, number = self._parse_name(name)
                 Object[] wrn = _parse_name(name);
                 if (wrn == null) {
-                    System.err.println("Invalid name: " + name);
+                    //System.err.println("Invalid name: " + name);
                     return null;
                 }
                 String[] words = (String[]) wrn[0];
@@ -593,7 +593,7 @@ public class ConsolidateAuthors {
                 double[][] probas;
 
                 if (rule == null || !(rule.contains(_u) || rule.contains(_s))) {
-                    System.err.println("Invalid name: " + name);
+                    //System.err.println("Invalid name: " + name);
                     return null;
                 }
 
@@ -609,7 +609,7 @@ public class ConsolidateAuthors {
                     for (int c = 0; c < words.length; c++) {
                         // Special rule for uppercase... c*2 is the token in the rule 
                         // corresponding to the word 
-                        if (comma || (relevant && rule.charAt(c * 2) == _u.charAt(0))) {
+                        if (comma || (relevant && c * 2 < rule.length() && rule.charAt(c * 2) == _u.charAt(0))) {
                             _probas.add(new double[]{.1, .6});
                             if (rule.length() == c * 2 && rule.charAt(c * 2 + 1) == ',') {
                                 // Stop from entering again
@@ -631,6 +631,10 @@ public class ConsolidateAuthors {
              * Convert a name string to a sequence of tokens
              */
             static String[] _tokenize_name(String name) {
+                String[] name_elems = name.split(", ");
+                if(name_elems.length == 2) {
+                    name = name_elems[1] + " " + name_elems[0];
+                }
                 Matcher m = RE_NAME.matcher(name);
                 List<String> tokens = new ArrayList<>();
                 while (m.find()) {
@@ -681,7 +685,7 @@ public class ConsolidateAuthors {
                         }
                         number = Integer.parseInt(c);
                     } else {
-                        System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
+                        //System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
                         return null;
                     }
 
