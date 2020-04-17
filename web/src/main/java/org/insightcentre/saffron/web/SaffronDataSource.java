@@ -112,6 +112,12 @@ public interface SaffronDataSource extends Closeable {
     public void addAuthors(String runId, List<Author> authors);
 
     public void addAuthor(String runId, Author authorToBeAdded) throws Exception;
+    
+    /*
+     * Author-Term relations
+     */
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId);
 
     
     /*

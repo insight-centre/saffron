@@ -79,12 +79,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     MongoClient mongoClient;
     final MongoDatabase database;
     final MongoCollection runCollection;
+    final String RUN_IDENTIFIER = "run";
+    final String RUN_DATE = "run_date";
+    
     final MongoCollection termsCollection;
     final MongoCollection termsCorrespondenceCollection;
     final MongoCollection termsExtractionCollection;
 
     final MongoCollection conceptsCollection;
-    final String RUN_IDENTIFIER = "run";
     final String CONCEPT_IDENTIFIER = "id";
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
@@ -95,6 +97,16 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     final String AUTHOR_NAME_VARIANTES = "name_variants";
     
     final MongoCollection authorTermsCollection;
+    final String AUTHOR_TERM_ID = "_id";
+    final String AUTHOR_TERM_AUTHOR_ID = "author_id";
+    final String AUTHOR_TERM_MATCHES = "matches";
+    final String AUTHOR_TERM_OCCURRENCES = "occurrences";
+    final String AUTHOR_TERM_SCORE = "score";
+    final String AUTHOR_TERM_TERM_ID = "term_id";
+    final String AUTHOR_TERM_TFIRF = "tfirf";
+    final String AUTHOR_TERM_PAPER_COUNT = "paper_count";
+    final String AUTHOR_TERM_RESEARCHER_SCORE = "researcher_score";  
+    
     final MongoCollection termsSimilarityCollection;
     final MongoCollection authorSimilarityCollection;
     final MongoCollection taxonomyCollection;
@@ -1429,44 +1441,52 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         Document document = new Document();
         int[] idx = { 0 };
         terms.forEach(name -> {
-            document.put("_id", id + "_" + name.getTermId() + "_" + idx[0]++);
-            document.put("run", id);
-            document.put("run_date", date);
-            document.put("author_id", name.getAuthorId());
-            document.put("matches", name.getMatches());
-            document.put("occurences", name.getOccurrences());
-            document.put("score", name.getScore());
-            document.put("term_id", name.getTermId());
-            document.put("tfirf", name.getTfIrf());
-            document.put("paper_count", name.getPaperCount());
-            document.put("researcher_score", name.getResearcherScore());
+            document.put(AUTHOR_TERM_ID, id + "_" + name.getTermId() + "_" + idx[0]++);
+            document.put(RUN_IDENTIFIER, id);
+            document.put(RUN_DATE, date);
+            document.put(AUTHOR_TERM_AUTHOR_ID, name.getAuthorId());
+            document.put(AUTHOR_TERM_MATCHES, name.getMatches());
+            document.put(AUTHOR_TERM_OCCURRENCES, name.getOccurrences());
+            document.put(AUTHOR_TERM_SCORE, name.getScore());
+            document.put(AUTHOR_TERM_TERM_ID, name.getTermId());
+            document.put(AUTHOR_TERM_TFIRF, name.getTfIrf());
+            document.put(AUTHOR_TERM_PAPER_COUNT, name.getPaperCount());
+            document.put(AUTHOR_TERM_RESEARCHER_SCORE, name.getResearcherScore());
             authorTermsCollection.insertOne(document);
         });
         return true;
     }
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId) {
+    	List<AuthorTerm> result = new ArrayList<AuthorTerm>();
+    	
+    	FindIterable<Document> authorTermRelations = authorTermsCollection.find(and(eq(RUN_IDENTIFIER, runId), eq(AUTHOR_TERM_TERM_ID, termId)));
+    	for(Document doc: authorTermRelations) {
+    		result.add(this.buildAuthorTerm(doc));
+    	}
+    	
+    	return result;
+    }
 
+    private AuthorTerm buildAuthorTerm(Document doc) {
+    	AuthorTerm object = new AuthorTerm();
+    	
+    	object.setAuthorId(doc.getString(AUTHOR_TERM_AUTHOR_ID));
+    	object.setMatches(doc.getInteger(AUTHOR_TERM_MATCHES));
+    	object.setOccurrences(doc.getInteger(AUTHOR_TERM_OCCURRENCES));
+    	object.setPaperCount(doc.getInteger(AUTHOR_TERM_PAPER_COUNT));
+    	object.setResearcherScore(doc.getDouble(AUTHOR_TERM_RESEARCHER_SCORE));
+    	object.setScore(doc.getDouble(AUTHOR_TERM_SCORE));
+    	object.setTermId(doc.getString(AUTHOR_TERM_TERM_ID));
+    	object.setTfIrf(doc.getDouble(AUTHOR_TERM_TFIRF));
+    	
+    	return object;
+    }
+    
     public FindIterable<Document>  getAuthorTerms(String runId) {
         Document document = new Document();
         document.put("run", runId);
         return this.authorTermsCollection.find(and(eq("run", runId)));
-
-    }
-    
-    public List<Author> getAuthorsForTerm(String runId, String termId) {
-    	List<Author> authors = new ArrayList<Author>();
-    	
-    	FindIterable<Document> authorTermRelations = authorTermsCollection.find(and(eq("run", runId), eq("term_id", termId)));
-    	for(Document doc: authorTermRelations) {
-    		authors.add(this.getAuthor(runId, doc.getString("author_id")));
-    	}
-    	
-    	return authors;
-    }
-
-    public FindIterable<Document>  getAuthorTermsForTerm(String runId, String term) {
-        Document document = new Document();
-        document.put("run", runId);
-        return authorTermsCollection.find(and(eq("run", runId), eq("term_id", term)));
 
     }
 

@@ -34,18 +34,6 @@ public class APIUtils {
         return crunchifyBuilder;
     }
 
-    protected void populateAuthorTermsResp(FindIterable<Document> docs, List<AuthorTermsResponse> termsResponse) {
-        for (Document doc : docs) {
-
-            AuthorTermsResponse entity = new AuthorTermsResponse();
-            entity.setId(doc.getString("_id"));
-            entity.setAuthor(doc.getString("author_id"));
-            entity.setTerm(doc.getString("term_id"));
-
-            termsResponse.add(entity);
-        }
-    }
-
     protected void populateAuthorSimilarityResponse(FindIterable<Document> runs, List<AuthorSimilarityResponse> termsResponse) {
         for (Document doc : runs) {
 

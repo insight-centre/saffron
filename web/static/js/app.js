@@ -587,11 +587,12 @@ angular.module('app').component('relatedauthors', {
             ctrl.title = "Major authors on this term";
             $http.get(apiUrlWithSaffron + 'authorterms/' + ctrl.term).then(function(response) {
                 ctrl.authors = [];
+                response.data.sort((a, b) => (a.tfirf < b.tfirf) ? 1 : -1);
                 for (t = 0; t < response.data.length; t++) {
                 	if(response.data[t] != null) {
 	                    ctrl.authors.push({
-	                        "id": response.data[t].id,
-	                        "name": response.data[t].name,
+	                        "id": response.data[t].author.id,
+	                        "name": response.data[t].author.name,
 	                        "pos": (t + 1),
 	                        "left": t < response.data.length / 2,
 	                        "right": t >= response.data.length / 2

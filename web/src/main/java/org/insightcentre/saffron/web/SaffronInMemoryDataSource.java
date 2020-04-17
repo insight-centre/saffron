@@ -1279,4 +1279,10 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	public void addAuthor(String runId, Author authorToBeAdded) throws Exception {
 		throw new NotImplementedException();		
 	}
+
+
+	@Override
+	public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId) {
+		throw new NotImplementedException();
+	}
 }
