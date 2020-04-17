@@ -89,6 +89,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     final String CONCEPT_PREFERRED_TERM_STRING = "preferred_term";
     final String CONCEPT_SYNONYM_LIST = "synonyms";
 
+    final MongoCollection authorsCollection;
+    final String AUTHOR_IDENTIFIER = "id";
+    final String AUTHOR_NAME = "name";
+    final String AUTHOR_NAME_VARIANTES = "name_variants";
+    
     final MongoCollection authorTermsCollection;
     final MongoCollection termsSimilarityCollection;
     final MongoCollection authorSimilarityCollection;
@@ -580,6 +585,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.termsCorrespondenceCollection = database.getCollection(collectionName + "_terms_correspondence");
         this.termsExtractionCollection = database.getCollection(collectionName + "_terms_extraction");
         this.conceptsCollection = database.getCollection(collectionName + "_concepts");
+        this.authorsCollection = database.getCollection(collectionName + "_authors");
         this.authorTermsCollection = database.getCollection(collectionName + "_author_terms");
         this.termsSimilarityCollection = database.getCollection(collectionName + "_terms_similarity");
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
@@ -1288,6 +1294,136 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
         conceptsCollection.deleteOne(eq(CONCEPT_IDENTIFIER,conceptToBeUpdated));
     }
+    
+    /**
+     * Retrieves all authors from the Database for a given runId
+     *
+     * @author Bianca Pereira
+     *
+     * @param runId - the run to be retrieved
+     * @return - An {@link ArrayList} of {@link Concept} objects
+     */
+    public Iterable<Author> getAllAuthors(String runId){
+        Bson filter = eq(RUN_IDENTIFIER, runId);
+        List<Author> authors = this.findAuthors(filter);
+
+        return authors;
+    }
+    
+    /**
+     * Retrieves an author with a given id
+     *
+     * @author Bianca Pereira
+     *
+     * @param runId - the Id of the run
+     * @param authorId - the identifier of the author to be retrieved
+     * @return An {@link Author} with the provided id or {@code null}
+     */
+    public Author getAuthor(String runId, String authorId){
+
+        Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(AUTHOR_IDENTIFIER, authorId));
+        List<Author> authors = this.findAuthors(filter);
+
+        if(authors.size() > 0)
+            return authors.get(0);
+        else
+            return null;
+    }
+    
+    /**
+     * Search for authors in the Mongo Database according to the provided filters
+     *
+     * @author Bianca Pereira
+     *
+     * @param filter - the filter for the search
+     * @return the result of the search as a {link List} with {link Author} objects
+     */
+    private List<Author> findAuthors(Bson filter) {
+        Iterable<Document> dbAuthors = authorsCollection.find(filter);
+
+        List<Author> authors = new ArrayList<Author>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        Author author;
+        for(Document dbDoc: dbAuthors) {
+            try {
+            	author = mapper.readValue(dbDoc.toJson(), Author.class);
+            	if (author!=null)
+            		authors.add(author);
+            } catch (Exception e) {
+                throw new RuntimeException("Error retrieving authors from Mongo Database", e);
+            }
+        }
+
+        return authors;
+    }
+    
+    /**
+     * Add a set of authors in the database
+     *
+     * @author Bianca Pereira
+     *
+     * @param runId - the identifier of the run
+     * @param authors - a {@link List} of {@link Author} to be saved in the database.
+     *     Each author must contain a unique id and a valid name.
+     *
+     * @throws {@link RuntimeException} if as {@link Author} with same id
+     *     already exists in the database.
+     */
+    public void addAuthors(String runId, List<Author> authors) {
+        if (authors != null) {
+            for(Author author: authors) {
+                try {
+                    this.addAuthor(runId, author);
+                } catch (Exception e) {
+                    //TODO Include logging!!!!!!
+                    // The author X could not be found in the database, Skipping concept Y
+                    continue;
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds a new author in the database.
+     *
+     * @author Bianca Pereira
+     *
+     * @param runId - the identifier of the run
+     * @param authorToBeAdded - the author to be saved in the database.
+     *     It must contain a unique id and a name
+     *
+     * @throws {@link RuntimeException} if the an {@link Author} with same id
+     *     already exists in the database or if id or name are empty or null
+     */
+    public void addAuthor(String runId, Author authorToBeAdded) throws Exception{
+    	if (authorToBeAdded.id == null || authorToBeAdded.id.equals(""))
+    		throw new RuntimeException("The author must have a non empty id");
+    	
+    	if (authorToBeAdded.name == null || authorToBeAdded.name.equals(""))
+    		throw new RuntimeException("The author must have a non empty name");
+    	
+        if (this.getAuthor(runId, authorToBeAdded.id) != null)
+            throw new RuntimeException("An author with same id already exists in the database. id: " + authorToBeAdded.id);
+
+        Bson dbObject = this.createBsonDocumentForAuthor(runId, authorToBeAdded);
+        authorsCollection.insertOne(dbObject);
+    }
+    
+    /**
+     * Create a {@link Bson} for a {@link Author}.
+     *
+     * @param author - the author to be converted
+     * @return the {@link Bson} object
+     */
+    private Document createBsonDocumentForAuthor(String runId, Author author) {
+        Document doc = new Document(AUTHOR_IDENTIFIER, author.id)
+                .append(AUTHOR_NAME, author.name)
+                .append(AUTHOR_NAME_VARIANTES, author.nameVariants)
+                .append(RUN_IDENTIFIER, runId);
+
+        return doc;
+    }
 
     public boolean addAuthorTerms(String id, Date date, Collection<AuthorTerm> terms) {
         Document document = new Document();
@@ -1296,7 +1432,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             document.put("_id", id + "_" + name.getTermId() + "_" + idx[0]++);
             document.put("run", id);
             document.put("run_date", date);
-            document.put("author_term", name.getTermId());
+            document.put("author_id", name.getAuthorId());
             document.put("matches", name.getMatches());
             document.put("occurences", name.getOccurrences());
             document.put("score", name.getScore());
@@ -1315,11 +1451,22 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return this.authorTermsCollection.find(and(eq("run", runId)));
 
     }
+    
+    public List<Author> getAuthorsForTerm(String runId, String termId) {
+    	List<Author> authors = new ArrayList<Author>();
+    	
+    	FindIterable<Document> authorTermRelations = authorTermsCollection.find(and(eq("run", runId), eq("term_id", termId)));
+    	for(Document doc: authorTermRelations) {
+    		authors.add(this.getAuthor(runId, doc.getString("author_id")));
+    	}
+    	
+    	return authors;
+    }
 
     public FindIterable<Document>  getAuthorTermsForTerm(String runId, String term) {
         Document document = new Document();
         document.put("run", runId);
-        return authorTermsCollection.find(and(eq("run", runId), eq("author_term", term)));
+        return authorTermsCollection.find(and(eq("run", runId), eq("term_id", term)));
 
     }
 
@@ -1662,15 +1809,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     @Override
-    public Author getAuthor(String runId, String authorId) {
-        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
-        if (saffron == null) {
-            throw new NoSuchElementException("Saffron run does not exist");
-        }
-        return saffron.getAuthor(authorId);
-    }
-
-    @Override
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
@@ -1837,8 +1975,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public boolean updateAuthorTermName(String id, String term, String newTerm, String status) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("author_term", term));
-        Bson update = combine(set("author_term", newTerm), set("termString", newTerm),
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term_id", term));
+        Bson update = combine(set("term_id", newTerm), set("termString", newTerm),
                 set("originalTerm", term), set("status", status));
 
         FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
@@ -1947,12 +2085,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(datasetName);
         return saffron.getDocuments();
-    }
-
-    @Override
-    public Iterable<Author> getAllAuthors(String datasetName) {
-        MongoDBHandler.SaffronDataImpl saffron = data.get(datasetName);
-        return saffron.getAuthors();
     }
 
     @Override

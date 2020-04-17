@@ -458,7 +458,7 @@ public class SaffronAPI {
         try {
             runs = saffron.getAuthorTerms(name);
             APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
+            returnEntity.setData(termsResponse);
             json = objectMapper.writeValueAsString(returnEntity);
             return Response.ok(json).build();
 
@@ -474,22 +474,17 @@ public class SaffronAPI {
     @Path("/{param}/authorterms/{term_id}")
     public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
         String json;
-        FindIterable<Document> runs;
-        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
-        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
+        List<Author> authors;
         try {
-            runs = saffron.getAuthorTermsForTerm(name, termId);
-            APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
+        	authors = saffron.getAuthorsForTerm(name, termId);
+            json = objectMapper.writeValueAsString(authors);
             return Response.ok(json).build();
 
         } catch (Exception x) {
+            System.err.println("Failed to get author for term '" + termId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author for term '" + termId + "'").build();
         }
-
-        return Response.ok("OK").build();
     }
 
     @GET

@@ -588,13 +588,15 @@ angular.module('app').component('relatedauthors', {
             $http.get(apiUrlWithSaffron + 'authorterms/' + ctrl.term).then(function(response) {
                 ctrl.authors = [];
                 for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-                    });
+                	if(response.data[t] != null) {
+	                    ctrl.authors.push({
+	                        "id": response.data[t].id,
+	                        "name": response.data[t].name,
+	                        "pos": (t + 1),
+	                        "left": t < response.data.length / 2,
+	                        "right": t >= response.data.length / 2
+	                    });
+	                }
                 }
             });
         } else if (ctrl.author) {

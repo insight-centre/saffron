@@ -8,11 +8,11 @@ import java.util.List;
 public class AuthorsTermsResponse {
     List<AuthorTermsResponse> termsList = new ArrayList<>();
 
-    public List<AuthorTermsResponse> getTerms() {
+    public List<AuthorTermsResponse> getData() {
         return this.termsList;
     }
 
-    public void setTerms(List<AuthorTermsResponse> termsList) {
+    public void setData(List<AuthorTermsResponse> termsList) {
         this.termsList = termsList;
     }
 }

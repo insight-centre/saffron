@@ -34,20 +34,13 @@ public class APIUtils {
         return crunchifyBuilder;
     }
 
-    protected void populateAuthorTermsResp(FindIterable<Document> runs, List<AuthorTermsResponse> termsResponse) {
-        for (Document doc : runs) {
+    protected void populateAuthorTermsResp(FindIterable<Document> docs, List<AuthorTermsResponse> termsResponse) {
+        for (Document doc : docs) {
 
             AuthorTermsResponse entity = new AuthorTermsResponse();
             entity.setId(doc.getString("_id"));
-            entity.setRun(doc.getString("run"));
-            entity.setRunDate(doc.getDate("run_date"));
-            entity.setAuthorTerm(doc.getString("author_term"));
-            entity.setMvList((List<String>) doc.get("mvList"));
-            entity.setTermString(doc.getString("termString"));
-            entity.setOccurrences(doc.getInteger("occurences"));
-            entity.setMatches(doc.getInteger("matches"));
-            entity.setScore(doc.getDouble("score"));
-            entity.setDbpediaUrl(doc.getString("dbpedia_url"));
+            entity.setAuthor(doc.getString("author_id"));
+            entity.setTerm(doc.getString("term_id"));
 
             termsResponse.add(entity);
         }

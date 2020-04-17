@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashSet;
@@ -13,6 +14,7 @@ import java.util.Set;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Author {
 
     public final String id;
