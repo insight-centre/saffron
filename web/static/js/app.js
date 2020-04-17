@@ -396,7 +396,7 @@ angular.module('app').controller('Breadcrumbs', function($scope, $http, $locatio
         if (termName !== 'HEAD_TERM') {
             var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
             $http.get(url).then(function(response) {
-                if (response.data.root) {
+                if (response.data.root !== $scope.parents[0]) {
                     $scope.parents.unshift(response.data.root);
                     getParents(response.data.root);
                 }
@@ -459,14 +459,7 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
                 console.log(response.data[t])
                 $scope.parents.push(response.data[t])
             }
-
-
-
-
-
         });
-
-
 
     }
     getRuns();
@@ -487,8 +480,6 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
             deleteOneRun($http, id);
         }
     };
-
-
 });
 
 // the child terms component

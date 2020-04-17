@@ -67,4 +67,24 @@ public class ConsolidateAuthorsTest {
         boolean result = ConsolidateAuthors.isSimilar(author, author2);
         assertEquals(expResult, result);
     }
+    
+    @Test
+    public void testConsolidate2() {
+                List<Author> authors = Arrays.asList(new Author("Eamon B. O'Dea"),
+                                             new Author("Xiang Li"),
+                                             new Author("Alessia Di Donfrancesco"),
+                                             new Author("Joseph T. Wu"),
+                                             new Author("Le Cai"));
+        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        assertEquals(5, result.size());
+                
+    }
+    
+    @Test
+    public void testConsolidate3() {
+        List<Author> authors = Arrays.asList(new Author("Buhimschi, Irina A"), new Author("Irina A Buhimschi"));
+        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        assertEquals(1, result.size());
+        
+    }
 }
