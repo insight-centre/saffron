@@ -34,25 +34,6 @@ public class APIUtils {
         return crunchifyBuilder;
     }
 
-    protected void populateAuthorTermsResp(FindIterable<Document> runs, List<AuthorTermsResponse> termsResponse) {
-        for (Document doc : runs) {
-
-            AuthorTermsResponse entity = new AuthorTermsResponse();
-            entity.setId(doc.getString("_id"));
-            entity.setRun(doc.getString("run"));
-            entity.setRunDate(doc.getDate("run_date"));
-            entity.setAuthorTerm(doc.getString("author_term"));
-            entity.setMvList((List<String>) doc.get("mvList"));
-            entity.setTermString(doc.getString("termString"));
-            entity.setOccurrences(doc.getInteger("occurences"));
-            entity.setMatches(doc.getInteger("matches"));
-            entity.setScore(doc.getDouble("score"));
-            entity.setDbpediaUrl(doc.getString("dbpedia_url"));
-
-            termsResponse.add(entity);
-        }
-    }
-
     protected void populateAuthorSimilarityResponse(FindIterable<Document> runs, List<AuthorSimilarityResponse> termsResponse) {
         for (Document doc : runs) {
 

@@ -1,14 +1,23 @@
 package org.insightcentre.saffron.web;
 
 import java.io.File;
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Partonomy;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+import org.insightcentre.saffron.web.api.AuthorTermDAO;
 
 /**
  * Service to connect with other Saffron components and
@@ -439,5 +448,25 @@ public class SaffronService {
 
     private Executor getExecutor() {
         return Launcher.executor;
+    }
+    
+    /**
+     * Return a list of authors and their TF-IRF score for a given term
+     * 
+     * @param runId - the identifier of the run
+     * @param termId - the identifier of the term
+     * 
+     */
+    public List<AuthorTermDAO> getAuthorsPerTermWithTfirf(String runId, String termId) {
+    	List<AuthorTermDAO> result = new ArrayList<AuthorTermDAO>();
+    	
+    	List<AuthorTerm> authorTerms = dataSource.getAuthorTermRelationsPerTerm(runId, termId);
+    	for(AuthorTerm authorTerm: authorTerms) {
+    		Author author = dataSource.getAuthor(runId, authorTerm.getAuthorId());
+    		if (author != null)
+    			result.add(new AuthorTermDAO(author, authorTerm.getTfIrf()));
+    	}  	
+    	
+    	return result;
     }
 }

@@ -4,7 +4,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -23,7 +27,12 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Partonomy;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;
@@ -448,48 +457,20 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/authorterms/")
-    public Response getAuthorTerms(@PathParam("param") String name) {
-
-        FindIterable<Document> runs;
-        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
-        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
-        String json;
-        try {
-            runs = saffron.getAuthorTerms(name);
-            APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author terms").build();
-        }
-
-    }
-
-    @GET
     @Path("/{param}/authorterms/{term_id}")
     public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
         String json;
-        FindIterable<Document> runs;
-        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
-        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
+        List<AuthorTermDAO> authors;
         try {
-            runs = saffron.getAuthorTermsForTerm(name, termId);
-            APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
+        	authors = saffronService.getAuthorsPerTermWithTfirf(name, termId);
+            json = objectMapper.writeValueAsString(authors);
             return Response.ok(json).build();
 
         } catch (Exception x) {
+            System.err.println("Failed to get authors for term '" + termId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get authors for term '" + termId + "'").build();
         }
-
-        return Response.ok("OK").build();
     }
 
     @GET

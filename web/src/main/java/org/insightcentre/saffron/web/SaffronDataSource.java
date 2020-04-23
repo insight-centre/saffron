@@ -2,7 +2,6 @@ package org.insightcentre.saffron.web;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -103,6 +102,25 @@ public interface SaffronDataSource extends Closeable {
     public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException;
 
     /*
+     * Author manipulation
+     */
+    
+    public Iterable<Author> getAllAuthors(String datasetName);
+
+    public Author getAuthor(String runId, String authorId);
+
+    public void addAuthors(String runId, List<Author> authors);
+
+    public void addAuthor(String runId, Author authorToBeAdded) throws Exception;
+    
+    /*
+     * Author-Term relations
+     */
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId);
+
+    
+    /*
      * (non-Javadoc)
      *
      * @see java.io.Closeable#close()
@@ -161,8 +179,6 @@ public interface SaffronDataSource extends Closeable {
 
     public Collection<String> getTopTerms(String runId, int from, int to);
 
-    public Author getAuthor(String runId, String authorId);
-
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId);
 
     public DocumentSearcher getSearcher(String runId);
@@ -213,8 +229,6 @@ public interface SaffronDataSource extends Closeable {
     public Taxonomy getTaxoDescendent(String runId, String termString);
 
     public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName);
-
-    public Iterable<Author> getAllAuthors(String datasetName);
 
     public Iterable<Term> getAllTerms(String datasetName);
 
