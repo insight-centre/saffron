@@ -1,5 +1,7 @@
 package org.insightcentre.nlp.saffron.config;
 
+import org.insightcentre.nlp.saffron.data.SaffronPath;
+
 /**
  * Configuration for the Knowledge Graph Extraction step
  * 
@@ -8,9 +10,9 @@ package org.insightcentre.nlp.saffron.config;
  */
 public class KnowledgeGraphExtractionConfiguration {
 
-	public String kerasModelFile = null;
+	public SaffronPath kerasModelFile = null;
 	
-	public String bertModelFile = null;
+	public SaffronPath bertModelFile = null;
 	
 	public double synonymyThreshold = 0.5;
 	

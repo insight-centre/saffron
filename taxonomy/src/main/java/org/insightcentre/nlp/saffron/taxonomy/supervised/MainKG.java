@@ -12,6 +12,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
@@ -81,7 +82,7 @@ public class MainKG {
 
             Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
             
-            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile.getResolvedPath(), config.kg.bertModelFile.getResolvedPath());
 
             KGSearch search = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
             final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
