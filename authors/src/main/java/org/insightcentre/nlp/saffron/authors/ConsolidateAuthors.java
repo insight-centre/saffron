@@ -1,5 +1,8 @@
 package org.insightcentre.nlp.saffron.authors;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Math.pow;
@@ -36,27 +39,89 @@ public class ConsolidateAuthors {
 
     public static Map<Author, Set<Author>> consolidate(Collection<Author> authors, SaffronListener log) {
         Map<Author, Set<Author>> consolidated = new HashMap<>();
-        Set<Author> marked = new HashSet<>();
-        for (Author author : authors) {
-            if (marked.contains(author)) {
-                continue;
+        if (authors.size() > 1000) {
+            LongSet marks = new LongOpenHashSet();
+            Object2IntOpenHashMap<Author> author2id = new Object2IntOpenHashMap<>();
+            int i = 0;
+            for (Author author : authors) {
+                author2id.put(author, i++);
             }
-            Set<Author> similar = new HashSet<>();
-            similar.add(author);
-            marked.add(author);
-            for (Author author2 : authors) {
-                if (!marked.contains(author2)) {
-                    if (author.name != null && author2.name != null && isSimilar(author, author2)) {
-                        similar.add(author2);
-                        marked.add(author2);
+            Map<String, List<Author>> trigrams = buildCharTrigamMap(authors);
+            for (List<Author> authorList : trigrams.values()) {
+                for (Author author : authorList) {
+                    Set<Author> similar = new HashSet<>();
+                    similar.add(author);
+                    for (Author author2 : authorList) {
+                        long m = (long)author2id.getInt(author) * authors.size() + author2id.getInt(author);
+                        if(marks.contains(m))
+                            continue;
+                        else
+                            marks.add(m);                                    
+                        if (author.name != null && author2.name != null && isSimilar(author, author2)) {
+                            similar.add(author2);
+                        }
                     }
+                    consolidated.put(_choose_author(similar), similar);
+
                 }
             }
-            consolidated.put(_choose_author(similar), similar);
+
+        } else {
+            Set<Author> marked = new HashSet<>();
+            for (Author author : authors) {
+                if (marked.contains(author)) {
+                    continue;
+                }
+                Set<Author> similar = new HashSet<>();
+                similar.add(author);
+                marked.add(author);
+                for (Author author2 : authors) {
+                    if (!marked.contains(author2)) {
+                        if (author.name != null && author2.name != null && isSimilar(author, author2)) {
+                            similar.add(author2);
+                            marked.add(author2);
+                        }
+                    }
+                }
+                consolidated.put(_choose_author(similar), similar);
+            }
         }
         PyAuthorSim.RuleMatcher.tokenizeNameCache.clear();
         PyAuthorSim.RuleMatcher.parseNameCache.clear();
         return consolidated;
+    }
+
+    private static Map<String, List<Author>> buildCharTrigamMap(Collection<Author> authors) {
+        assert (authors.size() > 10);
+        Map<String, List<Author>> trigrams = new HashMap<>();
+        Set<String> burnt = new HashSet<>();
+        for (Author a : authors) {
+            if (a.name != null) {
+                if (a.name.length() < 3) {
+                    if (trigrams.containsKey("")) {
+                        trigrams.put("", new ArrayList<>());
+                    }
+                    trigrams.get("").add(a);
+                } else {
+                    for (int i = 0; i < a.name.length() - 3; i++) {
+                        String trigram = a.name.substring(i, i + 3);
+                        if (!burnt.contains(trigram)) {
+                            if (!trigrams.containsKey(trigram)) {
+                                trigrams.put(trigram, new ArrayList<>());
+                            }
+
+                            if (trigrams.get(trigram).size() > authors.size() / 10) {
+                                trigrams.remove(trigram);
+                                burnt.add(trigram);
+                            } else {
+                                trigrams.get(trigram).add(a);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return trigrams;
     }
 
     public static boolean isSimilar(Author author, Author author2) {
@@ -72,7 +137,7 @@ public class ConsolidateAuthors {
         }
         Author best = null;
         double bestScore = 0.0;
-        
+
         for (Author author : authors) {
             PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.name);
             double score = 0.0;
