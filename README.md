@@ -29,76 +29,60 @@ graph that allows for easy browsing of the corpus and deep insights.
 Installation
 ------------
 
-Saffron requires the use of [Maven](https://maven.apache.org/) to install and
-can be built with the following command
+Saffron requires the use of [Apache Maven](https://maven.apache.org/) to run.
+If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) will also be needed to store the data.
+Both need to be installed before trying to run Saffron:
+* [Install Maven](https://maven.apache.org/install.html)
+* [Install MongoDb](https://docs.mongodb.com/manual/administration/install-community/) (use the defaults settings)
 
-    mvn install
 
-Saffron depends on some number of resources and these can be obtained with the
-following script
+1.  Run the following script to obtain the resources on which Saffron depends:
 
     ./install.sh
 
-It also integrates on Mongo DB to store the data.
 
+1.  To build the dependencies Saffron requires, use the following command:
 
-Install MongoDB with the defaults set and start up. Once started, open a Mongo
-session by typing 'mongo' on a terminal.
+    mvn clean install
 
-A database "saffron-test" will automatically be created. To rename it or to store results in different databases, edit the following file:
-
-A database "saffron-test" will automatically be created. To rename it or to store results in different databases, edit the following file:
-
-and change the following line to the name wanted
-
-    export MONGO_DB_NAME=saffron_test
-
-
-To change the Mongo HOST and PORT, simply edit the same file on the following:
-
-    export MONGO_URL=localhost
-    export MONGO_PORT=27017
-
-By default all results will be stored in the Mongo database. However, you can generate the JSON files with all the results by setting the following line to **true**:
-
-    export STORE_LOCAL_COPY=false
-
-Upgrading from version 3.3 to 3.4
-------
-
-Before starting Saffron, edit the following file:
-
-	upgrade3.3To3.4.sh
-
-and change the following configurations to reflect the database you want to upgrade:
-
-	export MONGO_URL=localhost
-    export MONGO_PORT=27017
-    export MONGO_DB_NAME=saffron_test
-
-Run the script by executing:
-
-	./upgrade3.3To3.4.sh
 
 Running
 -------
 
 
+### Using the Web Interface
 
-To start the Saffron Web server, simply choose a directory for Saffron to create
+
+1.  Start a MongoDB session by typing 'mongod' on a terminal. MongoDB has to be running for Saffron to operate.
+
+2.  The file saffron-web.sh contains some information, such as the name given to the database, the host and port it will run on.
+    If you need to change the database name (default to saffron_test) edit the file saffron-web.sh and change the line:
+        export MONGO_DB_NAME=saffron_test
+
+    To change the Mongo HOST and PORT, simply edit the same file on the following:
+    
+        export MONGO_URL=localhost
+        export MONGO_PORT=27017
+    
+    By default all results will be stored in the Mongo database, and the JSON files will be generated in /web/data/. However, you can change it to store in in the Mondo database only by setting the following line to **false**:
+    
+        export STORE_LOCAL_COPY=true
+
+
+
+1.  To start the Saffron Web server, simply choose a directory for Saffron to create
 the models and run the command as follows
 
     ./saffron-web.sh
 
-Then open the following url in a browser
+
+1.  Then open the following url in a browser
 
     http://localhost:8080/
+    
 
+### Using the Command Line
 
-
-
-Command Line Interface
-======================
 
 All steps of Saffron can be executed by running the `saffron.sh` script. This
 script takes thress arguments
@@ -130,6 +114,26 @@ If using the Web interface, the files will be stored in /web/data/
 To create a .dot file for the generated taxonomy, you can use the following command:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
+
+
+Upgrading from version 3.3 to 3.4
+------
+
+Before starting Saffron, edit the following file:
+
+	upgrade3.3To3.4.sh
+
+and change the following configurations to reflect the database you want to upgrade:
+
+	export MONGO_URL=localhost
+    export MONGO_PORT=27017
+    export MONGO_DB_NAME=saffron_test
+
+Run the script by executing:
+
+	./upgrade3.3To3.4.sh
+
+
 
 Configuration
 =============
