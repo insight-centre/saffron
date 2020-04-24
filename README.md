@@ -24,7 +24,7 @@ author
 9. *Taxonomy Extraction*: Organizes the terms into a single hierarchical
 graph that allows for easy browsing of the corpus and deep insights.
 
-![Saffron Service Workflow](https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png)
+<img src="https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
 
 Installation
 ------------
@@ -33,7 +33,7 @@ Saffron requires the use of [Apache Maven](https://maven.apache.org/) to run.
 If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) will also be needed to store the data.
 Both need to be installed before trying to run Saffron:
 * [Install Maven](https://maven.apache.org/install.html)
-* [Install MongoDb](https://docs.mongodb.com/manual/administration/install-community/) (use the defaults settings)
+* [Install MongoDb](https://docs.mongodb.com/manual/administration/install-community/) (use the default settings)
 
 
 1.  Run the following script to obtain the resources on which Saffron depends:
@@ -76,16 +76,17 @@ the models and run the command as follows
     ./saffron-web.sh
 
 
-1.  Then open the following url in a browser
+1.  Then open the following url in a browser to access the Web Interface
 
     http://localhost:8080/
     
+See the [Wiki](https://gitlab.insight-centre.org/saffron/saffron/-/wikis/WEB-INTERFACE-USER-MANUAL) for more details on how to use the Web Interface
 
 ### Using the Command Line
 
 
 All steps of Saffron can be executed by running the `saffron.sh` script. This
-script takes thress arguments
+script takes three arguments
 
 1. The corpus, which may be
     1. A folder containing files in TXT, DOC or PDF
@@ -118,6 +119,7 @@ To create a .dot file for the generated taxonomy, you can use the following comm
 
 Upgrading from version 3.3 to 3.4
 ------
+If you have results fron using Saffron version 3.3, you will need to do the following to make it compatible with the version 3.4
 
 Before starting Saffron, edit the following file:
 
