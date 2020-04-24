@@ -324,7 +324,7 @@ public class ConsolidateAuthors {
 
             int l1 = min(len(lhs.word), len(rhs.word));
             int l2 = max(len(lhs.word), len(rhs.word));
-            if (lhs.initial() || rhs.initial()) {
+            if ((lhs.initial() || rhs.initial()) && lhs.word.length > 0 && rhs.word.length > 0) {
                 if (!char_equal(lhs.word[0], rhs.word[0])
                         || (l1 > 1 && !char_equal(lhs.word[1], rhs.word[1]))) {
                     proba = .0;
