@@ -2,10 +2,12 @@ package org.insightcentre.nlp.saffron.authors;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.Math.pow;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.regex.Pattern;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.util.SimpleCache;
 
 /**
  *
@@ -51,6 +54,8 @@ public class ConsolidateAuthors {
             }
             consolidated.put(_choose_author(similar), similar);
         }
+        PyAuthorSim.RuleMatcher.tokenizeNameCache.clear();
+        PyAuthorSim.RuleMatcher.parseNameCache.clear();
         return consolidated;
     }
 
@@ -67,6 +72,7 @@ public class ConsolidateAuthors {
         }
         Author best = null;
         double bestScore = 0.0;
+        
         for (Author author : authors) {
             PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.name);
             double score = 0.0;
@@ -242,49 +248,56 @@ public class ConsolidateAuthors {
         }
 
         double _simple_assoc(Word[] selfwords) {
-            double[][] sim = new double[selfwords.length][this.words.length];
+            double res;
+            class IIP {
+
+                public final int l, r;
+                public final double p;
+
+                public IIP(int l, int r, double p) {
+                    this.l = l;
+                    this.r = r;
+                    this.p = p;
+                }
+
+            }
+            List<IIP> iips = new ArrayList<>();
             for (int l = 0; l < selfwords.length; l++) {
                 for (int r = 0; r < this.words.length; r++) {
-                    sim[l][r] = _get_proba(selfwords, l, r);
+                    iips.add(new IIP(l, r, _get_proba(selfwords, l, r)));
                 }
             }
+            iips.sort(new Comparator<IIP>() {
+                @Override
+                public int compare(IIP o1, IIP o2) {
+                    int i = Double.compare(o1.p, o2.p);
+                    if (i != 0) {
+                        return -i;
+                    }
+                    i = Integer.compare(o1.l, o2.l);
+                    if (i != 0) {
+                        return i;
+                    }
+                    return Integer.compare(o1.r, o2.r);
+                }
+            });
             int[] assign = new int[selfwords.length];
             Arrays.fill(assign, -1);
             boolean[] rmark = new boolean[this.words.length];
+            res = pow(UNASSIGNED_COST, selfwords.length);
 
-            boolean found;
-            do {
-                int lmax = -1;
-                int rmax = -1;
-                double pmax = Double.NEGATIVE_INFINITY;
-
-                for (int l = 0; l < selfwords.length; l++) {
-                    for (int r = 0; r < this.words.length; r++) {
-                        if (!rmark[r] && assign[l] < 0 && sim[l][r] > pmax && sim[l][r] > min_similarity) {
-                            lmax = l;
-                            rmax = r;
-                            pmax = sim[l][r];
-                        }
-                    }
+            for (IIP iip : iips) {
+                if (iip.p <= min_similarity) {
+                    break;
                 }
-
-                if (lmax >= 0) {
-                    found = true;
-                    assign[lmax] = rmax;
-                    rmark[rmax] = true;
-                } else {
-                    found = false;
+                if (rmark[iip.r] || assign[iip.l] >= 0) {
+                    continue;
                 }
-            } while (found);
-
-            double res = 1.0;
-            for (int l = 0; l < selfwords.length; l++) {
-                if (assign[l] >= 0) {
-                    res *= sim[l][assign[l]];
-                } else {
-                    res *= UNASSIGNED_COST;
-                }
+                assign[iip.l] = iip.r;
+                rmark[iip.r] = true;
+                res *= iip.p / UNASSIGNED_COST;
             }
+
             return Math.pow(res, 1.0 / selfwords.length);
         }
 
@@ -627,30 +640,36 @@ public class ConsolidateAuthors {
 
             static final Pattern RE_NAME = Pattern.compile("([^,\\s]+)([,\\s]+)?");
 
+            private static final SimpleCache<String, String[]> tokenizeNameCache = new SimpleCache<>(1000000);
+
             /**
              * Convert a name string to a sequence of tokens
              */
-            static String[] _tokenize_name(String name) {
-                String[] name_elems = name.split(", ");
-                if(name_elems.length == 2) {
-                    name = name_elems[1] + " " + name_elems[0];
-                }
-                Matcher m = RE_NAME.matcher(name);
-                List<String> tokens = new ArrayList<>();
-                while (m.find()) {
-                    String w = m.group(1);
-                    String delim = m.group(2);
-                    tokens.add(w);
-                    if (delim != null && delim.length() > 0) {
-                        if (delim.contains(",")) {
-                            tokens.add(",");
-                        } else {
-                            tokens.add(" ");
+            static String[] _tokenize_name(String _name) {
+                return tokenizeNameCache.get(_name, name -> {
+                    String[] name_elems = name.split(", ");
+                    if (name_elems.length == 2) {
+                        name = name_elems[1] + " " + name_elems[0];
+                    }
+                    Matcher m = RE_NAME.matcher(name);
+                    List<String> tokens = new ArrayList<>();
+                    while (m.find()) {
+                        String w = m.group(1);
+                        String delim = m.group(2);
+                        tokens.add(w);
+                        if (delim != null && delim.length() > 0) {
+                            if (delim.contains(",")) {
+                                tokens.add(",");
+                            } else {
+                                tokens.add(" ");
+                            }
                         }
                     }
-                }
-                return tokens.toArray(new String[tokens.size()]);
+                    return tokens.toArray(new String[tokens.size()]);
+                });
             }
+
+            private static final SimpleCache<String, Object[]> parseNameCache = new SimpleCache<>(1000000);
 
             /**
              * Tokenize a name and convert into a rule. Returns a tuple
@@ -659,43 +678,46 @@ public class ConsolidateAuthors {
              * None if name is invalid. number: A number that occurs in the
              * name, if any. 'rule' argument will be None if invalid name
              */
-            static Object[] _parse_name(String name) {
-                List<String> words = new ArrayList<>();
-                StringBuilder rule = new StringBuilder();
-                // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
-                // because a PDF may contain footnote/reference numbers beside the name.
-                Object number = null;
-                for (String c : _tokenize_name(name)) {
-                    final String t;
-                    if (c.equals(" ") || c.equals(".")) {
-                        t = c;
-                    } else if (c.length() == 1 || c.contains(".") || c.charAt(1) == '-') {
-                        t = _i;
-                    } else if (containsMostlyLowerCase(c) || c.contains("_")) {
-                        t = _s;
-                        c = c.toLowerCase();
-                    } else if (c.toUpperCase().endsWith(c)) {
-                        t = _u;
-                        c = c.toLowerCase();
-                    } else if (isdigit(c)) {
-                        t = _n;
-                        if (number != null) {
-                            //More than one number in name, name is invalid.
+            static Object[] _parse_name(String _name) {
+                return parseNameCache.get(_name, name -> {
+                    List<String> words = new ArrayList<>();
+                    StringBuilder rule = new StringBuilder();
+                    // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
+                    // because a PDF may contain footnote/reference numbers beside the name.
+                    Object number = null;
+                    for (String c : _tokenize_name(name)) {
+                        final String t;
+                        if (c.equals(" ") || c.equals(".")) {
+                            t = c;
+                        } else if (c.length() == 1 || c.contains(".") || c.charAt(1) == '-') {
+                            t = _i;
+                        } else if (containsMostlyLowerCase(c) || c.contains("_")) {
+                            t = _s;
+                            c = c.toLowerCase();
+                        } else if (c.toUpperCase().endsWith(c)) {
+                            t = _u;
+                            c = c.toLowerCase();
+                        } else if (isdigit(c)) {
+                            t = _n;
+                            if (number != null) {
+                                //More than one number in name, name is invalid.
+                                return null;
+                            }
+                            number = Integer.parseInt(c);
+                        } else {
+                            //System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
                             return null;
                         }
-                        number = Integer.parseInt(c);
-                    } else {
-                        //System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
-                        return null;
+
+                        rule.append(t);
+                        if (t.equals(_i) || t.equals(_u) || t.equals(_s)) {
+                            words.add(c);
+                        }
                     }
 
-                    rule.append(t);
-                    if (t.equals(_i) || t.equals(_u) || t.equals(_s)) {
-                        words.add(c);
-                    }
-                }
+                    return new Object[]{words.toArray(new String[words.size()]), rule.toString()};
 
-                return new Object[]{words.toArray(new String[words.size()]), rule.toString()};
+                });
             }
 
             static boolean isdigit(String c) {
