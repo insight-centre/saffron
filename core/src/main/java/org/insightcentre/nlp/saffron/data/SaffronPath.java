@@ -35,6 +35,10 @@ public class SaffronPath {
         return this.path;
     }
     
+    public String getResolvedPath() {
+    	return resolve(this.path);
+    }
+    
     public static SaffronPath fromFile(File file) {
         return new SaffronPath(file.getAbsolutePath());
     }
