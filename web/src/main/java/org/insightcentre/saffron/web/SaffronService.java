@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
@@ -475,7 +476,7 @@ public class SaffronService {
         return dataSource.getAuthorTermRelationsPerAuthor(runId, authorId);
     }
 
-    public Object getAuthorSimilarity(String runId, String authorId) {
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
         return dataSource.getAuthorSimilarity(runId, authorId);
     }
 }

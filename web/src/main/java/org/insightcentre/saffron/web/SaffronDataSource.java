@@ -244,7 +244,7 @@ public interface SaffronDataSource extends Closeable {
 
     public Iterable<TermTerm> getTermByTerms(String name, String term1, String term2);
 
-    public Object getAuthorSimilarity(String runId, String authorId);
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId);
 
     public static class TermAndScore {
 
