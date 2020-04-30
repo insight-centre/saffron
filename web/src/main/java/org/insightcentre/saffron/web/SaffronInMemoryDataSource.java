@@ -1290,4 +1290,11 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId) {
 		throw new NotImplementedException();
 	}
+
+    @Override
+    public Object getAuthorSimilarity(String runId, String authorId) {
+        throw new NotImplementedException();
+    }
+        
+        
 }

@@ -491,49 +491,15 @@ public class SaffronAPI {
     }
     
     @GET
-    @Path("/{param}/authorsimilarity/")
-    public Response getAuthorSimilarity(@PathParam("param") String name) {
-        String json;
-        FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
-        AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
+    @Path("/{param}/authorauthors/{author_id}")
+    public Response getAuthorAuthors(@PathParam("param") String runId, @PathParam("author_id") String authorId) {
         try {
-            runs = saffron.getAuthorSimilarity(name);
-            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
+            return Response.ok(objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId))).build();
+        } catch(Exception x) {
+            System.err.println("Failed to get terms for author '" + authorId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get terms for author '" + authorId + "'").build();
         }
-
-        return Response.ok("OK").build();
-
-    }
-
-    @GET
-    @Path("/{param}/authorsimilarity/{term1}/{term2}")
-    public Response getAuthorSimilarityForTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
-        String json;
-        FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
-        AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
-        try {
-            runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
-            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-        }
-
-        return Response.ok("OK").build();
-
     }
 
     @GET

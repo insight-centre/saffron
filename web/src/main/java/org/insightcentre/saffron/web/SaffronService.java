@@ -474,4 +474,8 @@ public class SaffronService {
     public List<AuthorTerm> getAuthorTerms(String runId, String authorId) {
         return dataSource.getAuthorTermRelationsPerAuthor(runId, authorId);
     }
+
+    public Object getAuthorSimilarity(String runId, String authorId) {
+        return dataSource.getAuthorSimilarity(runId, authorId);
+    }
 }
