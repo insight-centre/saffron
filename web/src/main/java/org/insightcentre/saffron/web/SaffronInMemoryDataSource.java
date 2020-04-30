@@ -1292,7 +1292,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	}
 
     @Override
-    public Object getAuthorSimilarity(String runId, String authorId) {
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
         throw new NotImplementedException();
     }
         
