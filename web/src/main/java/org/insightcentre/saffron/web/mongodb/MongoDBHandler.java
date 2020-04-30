@@ -1467,6 +1467,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	return result;
     }
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId) {
+    	List<AuthorTerm> result = new ArrayList<AuthorTerm>();
+    	
+    	FindIterable<Document> authorTermRelations = authorTermsCollection.find(and(eq(RUN_IDENTIFIER, runId), eq(AUTHOR_TERM_AUTHOR_ID, authorId)));
+    	for(Document doc: authorTermRelations) {
+    		result.add(this.buildAuthorTerm(doc));
+    	}
+    	
+    	return result;
+    }
 
     private AuthorTerm buildAuthorTerm(Document doc) {
     	AuthorTerm object = new AuthorTerm();

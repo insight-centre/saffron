@@ -42,6 +42,8 @@ import org.json.JSONObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.FindIterable;
+import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
 @Path("/api/v1/run")
 public class SaffronAPI {
@@ -472,7 +474,22 @@ public class SaffronAPI {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get authors for term '" + termId + "'").build();
         }
     }
-
+    
+    @GET
+    @Path("/{param}/termauthors/{author_id}")
+    public Response getTermAuthors(@PathParam("param") String name, @PathParam("author_id") String authorId) {
+        
+        try {
+            List<AuthorTerm> terms = saffronService.getAuthorTerms(name, authorId);
+            String json = objectMapper.writeValueAsString(terms);
+            return Response.ok(json).build();
+        } catch(Exception x) {
+            System.err.println("Failed to get terms for author '" + authorId + "'");
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get terms for author '" + authorId + "'").build();
+        }
+    }
+    
     @GET
     @Path("/{param}/authorsimilarity/")
     public Response getAuthorSimilarity(@PathParam("param") String name) {

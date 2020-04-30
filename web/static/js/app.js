@@ -309,16 +309,17 @@ angular.module('app').component('relatedterms', {
                         }
                         ctrl.n = ctrl.n2;
                     });
-                } else
-
-                    // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
-                    if (ctrl.author) {
-                        ctrl.title = "Main terms";
-                        $http.get('/' + saffronDatasetName + '/author-terms?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                } else {
+                    ctrl.title = "Main terms";
+                    var url = apiUrlWithSaffron + 'termauthors/' + ctrl.author;
+                    $http.get(url).then(function(response) {
+                        alert(JSON.stringify(response));
+                            response.data.sort((a, b) => (a.occurrences < b.occurrences) ? 1 : -1);
+                            response.data = response.data.slice(ctrl.n2, ctrl.n2 + 20);
                             ctrl.terms = [];
                             for (t = 0; t < response.data.length; t++) {
                                 ctrl.terms.push({
-                                    "term_string": response.data[t].term_id,
+                                    "term_string": response.data[t].termId,
                                     "pos": (t + 1 + ctrl.n2),
                                     "left": t < response.data.length / 2,
                                     "right": t >= response.data.length / 2

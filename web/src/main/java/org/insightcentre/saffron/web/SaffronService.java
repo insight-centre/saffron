@@ -14,6 +14,7 @@ import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
@@ -468,5 +469,9 @@ public class SaffronService {
     	}  	
     	
     	return result;
+    }
+
+    public List<AuthorTerm> getAuthorTerms(String runId, String authorId) {
+        return dataSource.getAuthorTermRelationsPerAuthor(runId, authorId);
     }
 }

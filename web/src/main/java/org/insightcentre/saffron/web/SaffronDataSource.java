@@ -118,6 +118,8 @@ public interface SaffronDataSource extends Closeable {
      */
     
     public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId);
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId);
 
     
     /*
