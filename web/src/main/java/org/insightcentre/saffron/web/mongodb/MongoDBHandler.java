@@ -394,6 +394,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
                     && corpus != null;
         }
 
+        //TODO: Check this
         public void setCorpus(JSONObject corpus) {
             this.corpus = new HashMap<>();
             this.corpusByAuthor = new HashMap<>();
@@ -790,6 +791,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         saffron.setTerms((List<Term>) mapper.readValue(jsonTermsArray.toString(),
                 tf.constructCollectionType(List.class, Term.class)));
 
+        //TODO: Check this
         Iterable<org.bson.Document> corpus = this.getCorpus(runId);
         for (org.bson.Document doc : corpus) {
             JSONObject jsonObj = new JSONObject(doc.toJson());
@@ -1867,21 +1869,6 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     @Override
-    public void setCorpus(String runId, Corpus corpus) {
-
-        this.addCorpus(runId, new Date(), corpus);
-        MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
-        if (saffron == null) {
-            throw new NoSuchElementException("Saffron run does not exist");
-        }
-        Iterable<org.bson.Document> corpusJson = this.getCorpus(runId);
-        for (org.bson.Document doc : corpusJson) {
-            JSONObject jsonObj = new JSONObject(doc.toJson());
-            saffron.setCorpus(jsonObj);
-        }
-    }
-
-    @Override
     public void setTerms(String runId, List<Term> _terms) {
         this.addTerms(runId, new Date(), _terms);
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
@@ -2179,65 +2166,60 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         mongoClient.close();
     }
 
+    @Override
+    public void setCorpus(String runId, Corpus corpus) {
 
-    public boolean addCorpus(String saffronDatasetName, Date date, Corpus corpus) {
-        ObjectMapper mapper = new ObjectMapper();
-
-        try{
-            Document doc = Document.parse( mapper.writeValueAsString(corpus) );
-            doc.append("id", saffronDatasetName);
-            doc.append("date", date);
-            FindOneAndUpdateOptions findOptions = new FindOneAndUpdateOptions();
-            findOptions.upsert(true);
-            findOptions.returnDocument(ReturnDocument.AFTER);
-
-            GridFS gridFs = getGridFS();
-            if (doc.get("documents") != null) {
-                ArrayList<Document> docList = (ArrayList) doc.get("documents");
-                for (Document d : docList) {
-                    if (d.getString("contents") != null) {
-                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.getString("contents").getBytes()));
-
-                        gfsFile.setFilename(d.getString("id"));
-                        gfsFile.put("documentType", "text");
-                        gfsFile.put("taxonomyId", saffronDatasetName);
-                        gfsFile.save();
-                    } else {
-                        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(d.get("metadata").toString().getBytes()));
-
-                        gfsFile.setFilename(d.getString("id"));
-                        gfsFile.put("documentType", "text");
-                        gfsFile.put("taxonomyId", saffronDatasetName);
-                        gfsFile.save();
-                    }
-                }
-            }
-            if (getCorpusCount(saffronDatasetName) > 0)
-                this.corpusCollection.findOneAndDelete(doc);
-            doc.remove("documents");
-
-
-            this.corpusCollection.insertOne(doc);
-
-            return true;
-
-        } catch (Exception e) {
-            e.printStackTrace();
+    	if (corpus == null)
+    		throw new NullPointerException("The corpus cannot be null");
+    	
+    	MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
+        if (saffron == null) {
+            throw new NoSuchElementException("Saffron run does not exist");
         }
-
-        return false;
+    	
+        Iterator itDocs = corpus.getDocuments().iterator();
+        if (!itDocs.hasNext())
+        	//Choose a better exception
+        	throw new RuntimeException("The corpus provided has no documents");
+        
+        while(itDocs.hasNext()) {
+        	this.addDocumentToCorpus(runId, (org.insightcentre.nlp.saffron.data.Document) itDocs.next());
+        }
     }
-
-    public long getCorpusCount(String saffronDatasetName) {
-        Document document = new Document();
-        document.put("id", saffronDatasetName);
-        return corpusCollection.count(and(eq("id", saffronDatasetName)));
+    
+    public void addDocumentToCorpus(String saffronDatasetName, 
+    		org.insightcentre.nlp.saffron.data.Document corpusDoc) {
+    	
+    	Document document = new Document();
+        document.put("_id", saffronDatasetName + corpusDoc.getId());
+        document.put(RUN_IDENTIFIER, saffronDatasetName);
+        document.put("id", corpusDoc.getId());
+        document.put("name", corpusDoc.getName());
+        document.put("mimetype", corpusDoc.getMimeType());
+        document.put("date", corpusDoc.getDateAsString());        
+        document.put("metadata", corpusDoc.getMetadata());
+        List<String> authorIds = new ArrayList<String>();
+        if (corpusDoc.getAuthors() != null) {
+	        for(Author docAuthor: corpusDoc.getAuthors()) {
+	        	authorIds.add(docAuthor.id);
+	        }
+        }
+        document.put("authors",authorIds);
+         
+        GridFS gridFs = getGridFS();
+        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(corpusDoc.getContents().getBytes()));
+        gfsFile.setFilename(corpusDoc.getId());
+        gfsFile.save();
+        
+        document.put("gfsFile", gfsFile.getId());
+        corpusCollection.insertOne(document);
+          	
     }
 
     public FindIterable<Document> getCorpus(String saffronDatasetName) {
         Document document = new Document();
-        document.put("id", saffronDatasetName);
-        FindIterable<Document> docs = this.corpusCollection.find(and(eq("id", saffronDatasetName)));
+        document.put(RUN_IDENTIFIER, saffronDatasetName);
+        FindIterable<Document> docs = this.corpusCollection.find(and(eq(RUN_IDENTIFIER, saffronDatasetName)));
 
         return docs;
     }
