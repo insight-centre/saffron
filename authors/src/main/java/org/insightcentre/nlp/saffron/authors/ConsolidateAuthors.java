@@ -52,11 +52,12 @@ public class ConsolidateAuthors {
                     Set<Author> similar = new HashSet<>();
                     similar.add(author);
                     for (Author author2 : authorList) {
-                        long m = (long)author2id.getInt(author) * authors.size() + author2id.getInt(author);
-                        if(marks.contains(m))
+                        long m = (long) author2id.getInt(author2) * authors.size() + author2id.getInt(author);
+                        if (marks.contains(m)) {
                             continue;
-                        else
-                            marks.add(m);                                    
+                        } else {
+                            marks.add(m);
+                        }
                         if (author.name != null && author2.name != null && isSimilar(author, author2)) {
                             similar.add(author2);
                         }
@@ -98,7 +99,7 @@ public class ConsolidateAuthors {
         for (Author a : authors) {
             if (a.name != null) {
                 if (a.name.length() < 3) {
-                    if (trigrams.containsKey("")) {
+                    if (!trigrams.containsKey("")) {
                         trigrams.put("", new ArrayList<>());
                     }
                     trigrams.get("").add(a);

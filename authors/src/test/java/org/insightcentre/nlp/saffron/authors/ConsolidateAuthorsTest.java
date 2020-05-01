@@ -88,11 +88,11 @@ public class ConsolidateAuthorsTest {
     @Test
     public void testConsolidate4() {
         List<Author> authors = new ArrayList<>();
-        for (int i = 0; i < 2000; i++) {
+        for (int i = 0; i < 1001; i++) {
             authors.add(new Author(generateName()));
         }
         Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
-        //assert (result.size() > 1500);
+        assert (result.size() > 500);
     }
 
     private static String[] firstName = {
