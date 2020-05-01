@@ -496,9 +496,9 @@ public class SaffronAPI {
         try {
             return Response.ok(objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId))).build();
         } catch(Exception x) {
-            System.err.println("Failed to get terms for author '" + authorId + "'");
+            System.err.println("Failed to get similar authors to '" + authorId + "'");
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get terms for author '" + authorId + "'").build();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get similar authors to '" + authorId + "'").build();
         }
     }
 
