@@ -313,7 +313,7 @@ angular.module('app').component('relatedterms', {
                     ctrl.title = "Main terms";
                     var url = apiUrlWithSaffron + 'termauthors/' + ctrl.author;
                     $http.get(url).then(function(response) {
-                            response.data.sort((a, b) => (a.occurrences < b.occurrences) ? 1 : -1);
+                            response.data.sort((a, b) => (a.score < b.score) ? 1 : -1);
                             response.data = response.data.slice(ctrl.n2, ctrl.n2 + 20);
                             ctrl.terms = [];
                             for (t = 0; t < response.data.length; t++) {
