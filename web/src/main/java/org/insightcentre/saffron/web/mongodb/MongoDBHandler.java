@@ -1467,6 +1467,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	return result;
     }
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId) {
+    	List<AuthorTerm> result = new ArrayList<AuthorTerm>();
+    	
+    	FindIterable<Document> authorTermRelations = authorTermsCollection.find(and(eq(RUN_IDENTIFIER, runId), eq(AUTHOR_TERM_AUTHOR_ID, authorId)));
+    	for(Document doc: authorTermRelations) {
+    		result.add(this.buildAuthorTerm(doc));
+    	}
+    	
+    	return result;
+    }
 
     private AuthorTerm buildAuthorTerm(Document doc) {
     	AuthorTerm object = new AuthorTerm();
@@ -1545,13 +1556,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return this.authorSimilarityCollection.find(and(eq("run", runId)));
     }
 
-
-    public FindIterable<Document> getAuthorSimilarityForTerm(String runId, String term1, String term2) {
-        Document document = new Document();
-        document.put("run", runId);
-        return this.authorSimilarityCollection.find(and(eq("run", runId), eq("term1_id", term1), eq("term2_id", term2)));
+    @Override
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
+        Iterable<Document> docs = this.authorSimilarityCollection.find(and(eq("run", runId), eq("author1_id", authorId)));
+        List<AuthorAuthor> aas = new ArrayList<>();
+        for(Document d : docs) {
+            aas.add(new AuthorAuthor(d.getString("author1_id"), d.getString("author2_id"), 
+                    d.getDouble("similarity"), d.getString("run"), null, d.getString("_id")));            
+        }
+        return aas;
     }
-
+    
     public boolean addTaxonomy(String id, Date date, Taxonomy graph) {
 
         ObjectMapper mapper = new ObjectMapper();

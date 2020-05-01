@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
@@ -14,6 +15,7 @@ import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
+import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
@@ -468,5 +470,13 @@ public class SaffronService {
     	}  	
     	
     	return result;
+    }
+
+    public List<AuthorTerm> getAuthorTerms(String runId, String authorId) {
+        return dataSource.getAuthorTermRelationsPerAuthor(runId, authorId);
+    }
+
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
+        return dataSource.getAuthorSimilarity(runId, authorId);
     }
 }

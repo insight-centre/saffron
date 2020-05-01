@@ -309,16 +309,16 @@ angular.module('app').component('relatedterms', {
                         }
                         ctrl.n = ctrl.n2;
                     });
-                } else
-
-                    // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
-                    if (ctrl.author) {
-                        ctrl.title = "Main terms";
-                        $http.get('/' + saffronDatasetName + '/author-terms?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                } else {
+                    ctrl.title = "Main terms";
+                    var url = apiUrlWithSaffron + 'termauthors/' + ctrl.author;
+                    $http.get(url).then(function(response) {
+                            response.data.sort((a, b) => (a.score < b.score) ? 1 : -1);
+                            response.data = response.data.slice(ctrl.n2, ctrl.n2 + 20);
                             ctrl.terms = [];
                             for (t = 0; t < response.data.length; t++) {
                                 ctrl.terms.push({
-                                    "term_string": response.data[t].term_id,
+                                    "term_string": response.data[t].termId,
                                     "pos": (t + 1 + ctrl.n2),
                                     "left": t < response.data.length / 2,
                                     "right": t >= response.data.length / 2
@@ -617,17 +617,19 @@ angular.module('app').component('relatedauthors', {
             });
         } else if (ctrl.author) {
             ctrl.title = "Similar authors";
-            $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function(response) {
+            $http.get(apiUrlWithSaffron + 'authorauthors/' + ctrl.author).then(function(response) {
                 ctrl.authors = [];
+                response.data.sort((a, b) => (a.similarity < b.similarity) ? 1 : -1);
                 for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-
-                    });
+                	if(response.data[t] != null) {
+	                    ctrl.authors.push({
+	                        "id": response.data[t].author2_id,
+	                        "name": response.data[t].author2_id,
+	                        "pos": (t + 1),
+	                        "left": t < response.data.length / 2,
+	                        "right": t >= response.data.length / 2
+	                    });
+	                }
                 }
             });
         }
