@@ -496,4 +496,23 @@ public class SaffronService {
 		List<Document> result = dataSource.getDocsByTerm(runId, termId);
 		return result;
 	}
+	
+	/**
+     * Return a list of documents with a given term, returns only a snippet of each document
+     * 
+     * @param runId - the identifier of the run
+     * @param termId - the identifier of the term
+     * @param contextSize - the size of the snippet around the term of interest
+     * 
+     * @return a list of {@link Document} for the specified term
+     */
+	public List<Document> getDocumentsForTermWithReducedContext(String runId, String termId, int contextSize) {
+		List<Document> result = new ArrayList<Document>();
+		
+		for(Document doc: dataSource.getDocsByTerm(runId, termId)) {
+			result.add(doc.reduceContext(termId, contextSize));
+		}
+		
+		return result;
+	}
 }

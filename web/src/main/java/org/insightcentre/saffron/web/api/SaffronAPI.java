@@ -842,7 +842,7 @@ public class SaffronAPI {
     	String json;
         List<org.insightcentre.nlp.saffron.data.Document> documents;
         try {
-        	documents = saffronService.getDocumentsForTerm(runId, termId);
+        	documents = saffronService.getDocumentsForTermWithReducedContext(runId, termId, 20);
         	if (offsetStart > -1) {
 	        	if (offsetStart <= documents.size()-1) {
 	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
