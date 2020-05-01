@@ -13,6 +13,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,9 +32,11 @@ import java.util.Set;
 
 import javax.servlet.http.HttpServlet;
 
+import org.apache.commons.io.IOUtils;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.crawler.CrawledCorpus;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
@@ -281,7 +285,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             if (dts == null) {
                 return Collections.EMPTY_LIST;
             } else {
-                final List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<>();
+                final List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
                 for (DocumentTerm dt : dts) {
                     org.insightcentre.nlp.saffron.data.Document d = corpus.get(dt.getDocumentId());
                     if (d != null) {
@@ -394,49 +398,26 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
                     && corpus != null;
         }
 
-        //TODO: Check this
-        public void setCorpus(JSONObject corpus) {
-            this.corpus = new HashMap<>();
-            this.corpusByAuthor = new HashMap<>();
-            this.authors = new HashMap<>();
-
-
-            JSONArray documentArray = null;
-            try {
-                documentArray = (JSONArray) corpus.get("documents");
-            } catch (Exception e) {
-                documentArray = new JSONArray();
-            }
-
-            ArrayList<org.insightcentre.nlp.saffron.data.Document> docData = new ArrayList<>();
-            if (documentArray != null) {
-                for (int i=0;i<documentArray.length();i++){
-                    JSONObject obj = documentArray.getJSONObject(i);
-                    String contents = "";
-                    if (obj.has("contents"))
-                        contents = obj.getString("contents");
-                    SaffronPath path = new SaffronPath();
-                    path.setPath(obj.getString("id"));
-                    org.insightcentre.nlp.saffron.data.Document doc = new org.insightcentre.nlp.saffron.data.Document(
-                            path, obj.getString("id"), null, obj.getString("name"), obj.getString("mime_type"),
-                            Collections.EMPTY_LIST, Collections.EMPTY_MAP, contents,
-                            obj.has("date") ? org.insightcentre.nlp.saffron.data.Document.parseDate(obj.getString("date")) : null);
-
-                    docData.add(doc);
-                }
-            }
-            for (org.insightcentre.nlp.saffron.data.Document d : docData) {
-                this.corpus.put(d.id, d);
-                for (Author a : d.getAuthors()) {
-                    if (!corpusByAuthor.containsKey(a.id)) {
-                        corpusByAuthor.put(a.id, new ArrayList<>());
-                    }
-                    corpusByAuthor.get(a.id).add(d);
-                    if (!authors.containsKey(a.id)) {
-                        authors.put(a.id, a);
-                    }
-                }
-            }
+        public void setCorpus(Corpus corpus) {
+        	this.corpus = new HashMap<String, org.insightcentre.nlp.saffron.data.Document>();
+        	this.corpusByAuthor = new HashMap<String,List<org.insightcentre.nlp.saffron.data.Document>>();
+        	this.authors = new HashMap<String,Author>();
+        	
+        	for(org.insightcentre.nlp.saffron.data.Document doc: corpus.getDocuments()) {
+        		this.corpus.put(doc.getId(), doc);
+        		if(doc.getAuthors() != null && !doc.getAuthors().isEmpty()) {
+        			for(Author author: doc.getAuthors()) {
+        				if(!this.corpusByAuthor.containsKey(author.id)) {
+        					this.corpusByAuthor.put(author.id, new ArrayList<org.insightcentre.nlp.saffron.data.Document>());
+        				}
+        				this.corpusByAuthor.get(author.id).add(doc);
+        				
+        				if(!this.authors.containsKey(author.id)) {
+        					this.authors.put(author.id,author);
+        				}
+        			}
+        		}
+        	}
         }
 
         public void setSearcher(DocumentSearcher searcher) {
@@ -791,12 +772,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         saffron.setTerms((List<Term>) mapper.readValue(jsonTermsArray.toString(),
                 tf.constructCollectionType(List.class, Term.class)));
 
-        //TODO: Check this
-        Iterable<org.bson.Document> corpus = this.getCorpus(runId);
-        for (org.bson.Document doc : corpus) {
-            JSONObject jsonObj = new JSONObject(doc.toJson());
-            saffron.setCorpus(jsonObj);
-        }
+
+        saffron.setCorpus(this.getCorpus(runId));
 
         this.data.put(runId, saffron);
     }
@@ -2183,12 +2160,25 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         	throw new RuntimeException("The corpus provided has no documents");
         
         while(itDocs.hasNext()) {
-        	this.addDocumentToCorpus(runId, (org.insightcentre.nlp.saffron.data.Document) itDocs.next());
+        	try {
+				this.addDocumentToCorpus(runId, (org.insightcentre.nlp.saffron.data.Document) itDocs.next());
+			} catch (Exception e) {
+				//Choose a better exception
+				throw new RuntimeException("Error while adding document to corpus", e);
+			}
         }
+        
+        try {
+			saffron.setCorpus(this.getCorpus(runId));
+		} catch (IOException e) {
+			//Choose a better exception
+			throw new RuntimeException("Error while loading corpus", e);
+			
+		}
     }
     
     public void addDocumentToCorpus(String saffronDatasetName, 
-    		org.insightcentre.nlp.saffron.data.Document corpusDoc) {
+    		org.insightcentre.nlp.saffron.data.Document corpusDoc) throws Exception {
     	
     	Document document = new Document();
         document.put("_id", saffronDatasetName + corpusDoc.getId());
@@ -2196,11 +2186,15 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         document.put("id", corpusDoc.getId());
         document.put("name", corpusDoc.getName());
         document.put("mimetype", corpusDoc.getMimeType());
-        document.put("date", corpusDoc.getDateAsString());        
+        if (corpusDoc.getDate() != null)
+        	document.put("date", Date.from(corpusDoc.getDate().atZone(ZoneId.systemDefault()).toInstant()));        
         document.put("metadata", corpusDoc.getMetadata());
+        
         List<String> authorIds = new ArrayList<String>();
         if (corpusDoc.getAuthors() != null) {
 	        for(Author docAuthor: corpusDoc.getAuthors()) {
+	        	if (this.getAuthor(saffronDatasetName, docAuthor.id) == null) 
+	        		this.addAuthor(saffronDatasetName, docAuthor);
 	        	authorIds.add(docAuthor.id);
 	        }
         }
@@ -2216,71 +2210,63 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
           	
     }
 
-    public FindIterable<Document> getCorpus(String saffronDatasetName) {
-        Document document = new Document();
-        document.put(RUN_IDENTIFIER, saffronDatasetName);
-        FindIterable<Document> docs = this.corpusCollection.find(and(eq(RUN_IDENTIFIER, saffronDatasetName)));
-
-        return docs;
+    public Corpus getCorpus(String runId) throws IOException {
+    	
+    	List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+    	
+        FindIterable<Document> dbDocs = this.corpusCollection.find(and(eq(RUN_IDENTIFIER, runId)));
+    	for(Document dbDoc: dbDocs) {
+    		String docContent = this.getDocumentContent(runId, dbDoc.getString("id"));
+    		org.insightcentre.nlp.saffron.data.Document doc = this.buildCorpusDoc(runId, dbDoc, docContent);
+    		docs.add(doc);
+    	}    	
+    	
+    	//What is the correct Corpus implementation to use here!?
+    	Corpus corpus = new CrawledCorpus(docs);
+        return corpus;
     }
-
-    public HashMap<String, String> getCorpusFiles(String saffronDatasetName) {
-        Document document = new Document();
-        document.put("id", saffronDatasetName);
-        GridFS gridFs = this.getGridFS();
-        BasicDBObject whereQuery = new BasicDBObject();
-        whereQuery.put("taxonomyId", saffronDatasetName);
-        HashMap<String, String> map = new HashMap<>();
-        List<GridFSDBFile> fs = gridFs.find(whereQuery);
-        if (fs.size() > 0) {
-            for (GridFSDBFile f : fs) {
-                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
-                //Creating a BufferedReader object
-                BufferedReader reader = new BufferedReader(isReader);
-                StringBuffer sb = new StringBuffer();
-                String str;
-                try {
-                    while((str = reader.readLine())!= null){
-                        sb.append(str);
-                    }
-                    map.put(f.getFilename(), sb.toString());
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return map;
+    
+    private org.insightcentre.nlp.saffron.data.Document buildCorpusDoc(String runId, Document doc, String content) {
+    	
+    	List<Author> authors = new ArrayList<Author>();
+    	
+    	List<String> dbAuthorsList = (List<String>) doc.get("authors");
+    	for(String authorId: dbAuthorsList) {
+    		authors.add(this.getAuthor(runId, authorId));
+    	}
+    	
+    	LocalDateTime docDate = null;
+    	Date dbDocDate = doc.getDate("date");
+    	if (dbDocDate != null)
+    		docDate = doc.getDate("date").toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+    	
+    	org.insightcentre.nlp.saffron.data.Document object = 
+    			new org.insightcentre.nlp.saffron.data.Document(
+    					null,
+    					doc.getString("id"),
+    					null,
+    					doc.getString("name"),
+    					doc.getString("mimetype"),
+    					authors,
+    					(Map<String,String>) doc.get("metadata"),
+    					content,
+    					docDate
+    			);
+    	
+    	return object;
     }
-
-    public String getCorpusFile(String saffronDatasetName, String fileName) {
-        Document document = new Document();
-        document.put("id", saffronDatasetName);
-        GridFS gridFs = this.getGridFS();
-        BasicDBObject whereQuery = new BasicDBObject();
-        whereQuery.put("taxonomyId", saffronDatasetName);
-        String map = "";
-        List<GridFSDBFile> fs = gridFs.find(whereQuery);
-        if (fs.size() > 0) {
-            for (GridFSDBFile f : fs) {
-                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
-                //Creating a BufferedReader object
-                BufferedReader reader = new BufferedReader(isReader);
-                StringBuffer sb = new StringBuffer();
-                String str;
-                try {
-                    while((str = reader.readLine())!= null){
-                        sb.append(str);
-                    }
-                    if (f.getFilename().equals(fileName))
-                        map = sb.toString();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return map;
+    
+    private String getDocumentContent(String runId, String docId) throws IOException {
+		BasicDBObject docContentQuery = new BasicDBObject();
+		docContentQuery.put(RUN_IDENTIFIER,runId);
+		docContentQuery.put("filename",docId);
+		
+		GridFS gridFs = this.getGridFS();
+		GridFSDBFile fs = gridFs.findOne(docId);
+		String content = IOUtils.toString(fs.getInputStream(), "UTF-8");
+		
+		return content;
     }
-
 
     public GridFS getGridFS() {
         DB db = mongoClient.getDB(this.dbName);

@@ -7,6 +7,7 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
@@ -469,4 +470,17 @@ public class SaffronService {
     	
     	return result;
     }
+
+    /**
+     * Return a list of documents by a given author
+     * 
+     * @param runId - the identifier of the run
+     * @param authorId - the identifier of the author
+     * 
+     * @return a list of {@link Document} for the specified author
+     */
+	public List<Document> getDocumentsForAuthor(String runId, String authorId) {
+		List<Document> result = dataSource.getDocsByAuthor(runId, authorId);
+		return result;
+	}
 }

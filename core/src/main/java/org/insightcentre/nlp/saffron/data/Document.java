@@ -370,6 +370,10 @@ public class Document {
         }
     }
 
+    public LocalDateTime getDate() {
+    	return this.date;
+    }
+    
     @JsonIgnore
     public String getDateAsString() {
         if (date == null) {

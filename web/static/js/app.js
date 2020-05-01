@@ -658,7 +658,7 @@ angular.module('app').component('relateddocuments', {
                     ctrl.n = ctrl.n2;
                 });
             } else if (ctrl.author) {
-                $http.get('/' + saffronDatasetName + '/author-docs?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                $http.get(apiUrlWithSaffron + 'docs/author/' + ctrl.author + '?n=20&offset=' + ctrl.n2).then(function(response) {
                     ctrl.docs = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.docs.push({

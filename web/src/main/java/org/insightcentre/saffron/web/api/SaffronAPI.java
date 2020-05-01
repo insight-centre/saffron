@@ -795,34 +795,38 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/docs/doc/{document_id}")
-    public Response getOriginalDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
-
-        FindIterable<Document> runs;
-        String file = "";
-        
+    @Path("/{run_id}/docs/author/{author_id}")
+    public Response getDocumentsForAuthor(
+    		@PathParam("run_id") String runId, 
+    		@PathParam("author_id") String authorId,
+    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
+    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
+    	
+    	// Bad implementation of working with offset. Ideally it should work with offsets directly in the 
+    	// connection with the database
+    	String json;
+        List<org.insightcentre.nlp.saffron.data.Document> documents;
         try {
-            runs = saffron.getCorpus(name);
-
-            for (Document doc : runs) {
-                List documents = (ArrayList)doc.get("documents");
-                for (Object text : documents) {
-                    String json = objectMapper.writeValueAsString(text);
-                    JSONObject jsonObj = new JSONObject(json);
-                    if (jsonObj.get("id").equals(documentId)) {
-                        file = jsonObj.get("contents").toString();
-                    }
-                }
-            }
-            return Response.ok(file).build();
+        	documents = saffronService.getDocumentsForAuthor(runId, authorId);
+        	if (offsetStart > -1) {
+	        	if (offsetStart <= documents.size()-1) {
+	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
+	        			documents = documents.subList(offsetStart, offsetStart+numberOfDocuments);
+	        		} else {
+	        			documents = documents.subList(offsetStart, documents.size() - 1); 
+	        		}
+	        	} else {
+	        		documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+	        	}
+        	}
+            json = objectMapper.writeValueAsString(documents);
+            return Response.ok(json).build();
 
         } catch (Exception x) {
+            System.err.println("Failed to get documents for author '" + authorId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for author '" + authorId + "'").build();
         }
-
-        return Response.ok(file).build();
-
     }
 
     @GET
