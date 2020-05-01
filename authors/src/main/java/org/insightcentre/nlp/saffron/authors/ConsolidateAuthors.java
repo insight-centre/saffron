@@ -335,6 +335,8 @@ public class ConsolidateAuthors {
             List<Align> iips = new ArrayList<>();
             for (int l = 0; l < selfwords.length; l++) {
                 for (int r = 0; r < this.words.length; r++) {
+                    // Initialize all candidates for A with all possible combinations
+                    // of l,r and p set by `_get_proba`
                     iips.add(new Align(l, r, _get_proba(selfwords, l, r)));
                 }
             }
