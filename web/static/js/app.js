@@ -647,7 +647,8 @@ angular.module('app').component('relateddocuments', {
         ctrl.n2 = 0;
         this.loadterms = function() {
             if (ctrl.term) {
-                $http.get('/' + saffronDatasetName + '/doc-terms?n=20&offset=' + ctrl.n2 + '&term=' + ctrl.term).then(function(response) {
+                $http.get(apiUrlWithSaffron + 'docs/term/' + ctrl.term + '?n=20&offset=' + ctrl.n2).then(function(response) {
+                	ctrl.docs = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.docs.push({
                             "doc": response.data[t],

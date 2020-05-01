@@ -483,4 +483,17 @@ public class SaffronService {
 		List<Document> result = dataSource.getDocsByAuthor(runId, authorId);
 		return result;
 	}
+	
+	/**
+     * Return a list of documents with a given term
+     * 
+     * @param runId - the identifier of the run
+     * @param termId - the identifier of the term
+     * 
+     * @return a list of {@link Document} for the specified term
+     */
+	public List<Document> getDocumentsForTerm(String runId, String termId) {
+		List<Document> result = dataSource.getDocsByTerm(runId, termId);
+		return result;
+	}
 }

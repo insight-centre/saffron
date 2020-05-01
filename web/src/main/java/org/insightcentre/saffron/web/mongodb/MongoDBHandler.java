@@ -1772,12 +1772,27 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     @Override
-    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String runId, String term) {
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocsByTerm(String runId, String term) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
-        if (saffron == null) {
+        
+        if (!runExists(runId)) {
             throw new NoSuchElementException("Saffron run does not exist");
         }
-        return saffron.getDocByTerm(term);
+       
+
+        List<org.insightcentre.nlp.saffron.data.Document> documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+        
+        Bson condition = Filters.and(Filters.eq(RUN_IDENTIFIER, runId), Filters.eq("term_string", term));
+        FindIterable<Document> dbTermDocCorrespondences = this.termsCorrespondenceCollection.find(condition);
+        for(Document dbTermDoc: dbTermDocCorrespondences) {
+        	String docId = dbTermDoc.getString("document_id");
+        	org.insightcentre.nlp.saffron.data.Document document = this.getDoc(runId, docId);
+        	if (document != null)
+        		documents.add(document);
+        }
+        
+        return documents;
+        
     }
 
     @Override
@@ -2325,6 +2340,15 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         return map;
     }
 
+    public boolean runExists(String runId) {
+    
+    	Bson condition = Filters.and(Filters.eq("id", runId));
+    	if(this.runCollection.find(condition) != null)
+    		return true;
+    	
+    	return false;
+    }
+    
     public GridFS getGridFS() {
         DB db = mongoClient.getDB(this.dbName);
         return new GridFS(db, "corpusCollection");

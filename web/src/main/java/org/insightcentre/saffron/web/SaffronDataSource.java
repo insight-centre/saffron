@@ -171,7 +171,7 @@ public interface SaffronDataSource extends Closeable {
 
     public List<DocumentTerm> getTermByDoc(String runId, String doc);
 
-    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String runId, String term);
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocsByTerm(String runId, String term);
 
     public Term getTerm(String runId, String term);
 

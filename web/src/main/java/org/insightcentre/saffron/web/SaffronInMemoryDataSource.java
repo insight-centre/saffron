@@ -877,7 +877,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<Document> getDocByTerm(String runId, String term) {
+    public List<Document> getDocsByTerm(String runId, String term) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

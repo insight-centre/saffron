@@ -828,6 +828,41 @@ public class SaffronAPI {
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for author '" + authorId + "'").build();
         }
     }
+    
+    @GET
+    @Path("/{run_id}/docs/term/{term_id}")
+    public Response getDocumentsForTerm(
+    		@PathParam("run_id") String runId, 
+    		@PathParam("term_id") String termId,
+    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
+    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
+    	
+    	// Bad implementation of working with offset. Ideally it should work with offsets directly in the 
+    	// connection with the database
+    	String json;
+        List<org.insightcentre.nlp.saffron.data.Document> documents;
+        try {
+        	documents = saffronService.getDocumentsForTerm(runId, termId);
+        	if (offsetStart > -1) {
+	        	if (offsetStart <= documents.size()-1) {
+	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
+	        			documents = documents.subList(offsetStart, offsetStart+numberOfDocuments);
+	        		} else {
+	        			documents = documents.subList(offsetStart, documents.size() - 1); 
+	        		}
+	        	} else {
+	        		documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+	        	}
+        	}
+            json = objectMapper.writeValueAsString(documents);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            System.err.println("Failed to get documents for term '" + termId + "'");
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for term '" + termId + "'").build();
+        }
+    }
 
     @GET
     @Path("/new/crawl/{saffronDatasetName}")
