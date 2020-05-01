@@ -2267,6 +2267,63 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 		
 		return content;
     }
+    
+    public HashMap<String, String> getCorpusFiles(String saffronDatasetName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        HashMap<String, String> map = new HashMap<>();
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    map.put(f.getFilename(), sb.toString());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
+    }
+        
+    public String getCorpusFile(String saffronDatasetName, String fileName) {
+        Document document = new Document();
+        document.put("id", saffronDatasetName);
+        GridFS gridFs = this.getGridFS();
+        BasicDBObject whereQuery = new BasicDBObject();
+        whereQuery.put("taxonomyId", saffronDatasetName);
+        String map = "";
+        List<GridFSDBFile> fs = gridFs.find(whereQuery);
+        if (fs.size() > 0) {
+            for (GridFSDBFile f : fs) {
+                InputStreamReader isReader = new InputStreamReader(f.getInputStream());
+                //Creating a BufferedReader object
+                BufferedReader reader = new BufferedReader(isReader);
+                StringBuffer sb = new StringBuffer();
+                String str;
+                try {
+                    while((str = reader.readLine())!= null){
+                        sb.append(str);
+                    }
+                    if (f.getFilename().equals(fileName))
+                        map = sb.toString();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return map;
+    }
 
     public GridFS getGridFS() {
         DB db = mongoClient.getDB(this.dbName);
