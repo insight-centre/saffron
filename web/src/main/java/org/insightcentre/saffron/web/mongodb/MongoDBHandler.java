@@ -87,7 +87,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     final String RUN_DATE = "run_date";
     
     final MongoCollection termsCollection;
-    final MongoCollection termsCorrespondenceCollection;
+    final MongoCollection termDocumentCorrespondenceCollection;
+    final String TERM_DOCUMENT_TERM_ID = "term_string";
+    final String TERM_DOCUMENT_TERM_ACRONYM = "acronym";
+    final String TERM_DOCUMENT_TERM_OCCURRENCES = "occurrences";
+    final String TERM_DOCUMENT_PATTERN = "pattern";
+    final String TERM_DOCUMENT_TFIDF = "tfidf";
+    final String TERM_DOCUMENT_DOCUMENT_ID = "document_id";
+    
     final MongoCollection termsExtractionCollection;
 
     final MongoCollection conceptsCollection;
@@ -115,7 +122,15 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     final MongoCollection authorSimilarityCollection;
     final MongoCollection taxonomyCollection;
     final MongoCollection knowledgeGraphCollection;
+    
     final MongoCollection corpusCollection;
+    final String CORPUS_DOC_ID = "id";
+    final String CORPUS_DOC_NAME = "name";
+    final String CORPUS_DOC_MIME_TYPE = "mimetype";
+    final String CORPUS_DOC_DATE = "date";
+    final String CORPUS_DOC_METADATA = "metadata";
+    final String CORPUS_DOC_AUTHORS = "authors";
+    final String CORPUS_DOC_FILE_ID = "gfsFile";
 
     private final Map<String, MongoDBHandler.SaffronDataImpl> data = new HashMap<>();
 
@@ -576,7 +591,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.database = mongoClient.getDatabase(dbName);
         this.runCollection = database.getCollection(collectionName);
         this.termsCollection = database.getCollection(collectionName + "_terms");
-        this.termsCorrespondenceCollection = database.getCollection(collectionName + "_terms_correspondence");
+        this.termDocumentCorrespondenceCollection = database.getCollection(collectionName + "_terms_correspondence");
         this.termsExtractionCollection = database.getCollection(collectionName + "_terms_extraction");
         this.conceptsCollection = database.getCollection(collectionName + "_concepts");
         this.authorsCollection = database.getCollection(collectionName + "_authors");
@@ -952,7 +967,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             document.put("pattern", name.getPattern());
             document.put("tfidf", name.getTfIdf());
             document.put("document_id", name.getDocumentId());
-            termsCorrespondenceCollection.insertOne(document);
+            termDocumentCorrespondenceCollection.insertOne(document);
         });
         return true;
     }
@@ -962,17 +977,17 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public FindIterable<Document> getDocumentTermCorrespondence(String runId) {
         Document document = new Document();
         document.put("run", runId);
-        return this.termsCorrespondenceCollection.find(and(eq("run", runId)));
+        return this.termDocumentCorrespondenceCollection.find(and(eq("run", runId)));
     }
 
     public FindIterable<Document> getDocumentTermCorrespondenceForTerm(String runId, String termId) {
 
-        return termsCorrespondenceCollection.find(and(eq("run", runId), eq("term", termId)));
+        return termDocumentCorrespondenceCollection.find(and(eq("run", runId), eq("term", termId)));
     }
 
 
     public FindIterable<Document> getDocumentTermCorrespondenceForDocument(String runId, String docId) {
-        return termsCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
+        return termDocumentCorrespondenceCollection.find(and(eq("run", runId), eq("document_id", docId)));
     }
 
     public boolean addTerms(String id, Date date, List<Term> terms) {
@@ -1782,10 +1797,10 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
         List<org.insightcentre.nlp.saffron.data.Document> documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
         
-        Bson condition = Filters.and(Filters.eq(RUN_IDENTIFIER, runId), Filters.eq("term_string", term));
-        FindIterable<Document> dbTermDocCorrespondences = this.termsCorrespondenceCollection.find(condition);
+        Bson condition = Filters.and(Filters.eq(RUN_IDENTIFIER, runId), Filters.eq(TERM_DOCUMENT_TERM_ID, term));
+        FindIterable<Document> dbTermDocCorrespondences = this.termDocumentCorrespondenceCollection.find(condition);
         for(Document dbTermDoc: dbTermDocCorrespondences) {
-        	String docId = dbTermDoc.getString("document_id");
+        	String docId = dbTermDoc.getString(TERM_DOCUMENT_DOCUMENT_ID);
         	org.insightcentre.nlp.saffron.data.Document document = this.getDoc(runId, docId);
         	if (document != null)
         		documents.add(document);
@@ -2003,7 +2018,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         findOptions.upsert(true);
         findOptions.returnDocument(ReturnDocument.AFTER);
         try {
-            termsCorrespondenceCollection.updateMany(condition, update);
+            termDocumentCorrespondenceCollection.updateMany(condition, update);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -2145,7 +2160,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
         Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
 
-        return termsCorrespondenceCollection.find(condition);
+        return termDocumentCorrespondenceCollection.find(condition);
     }
 
     /*
@@ -2198,12 +2213,12 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	Document document = new Document();
         document.put("_id", saffronDatasetName + corpusDoc.getId());
         document.put(RUN_IDENTIFIER, saffronDatasetName);
-        document.put("id", corpusDoc.getId());
-        document.put("name", corpusDoc.getName());
-        document.put("mimetype", corpusDoc.getMimeType());
+        document.put(CORPUS_DOC_ID, corpusDoc.getId());
+        document.put(CORPUS_DOC_NAME, corpusDoc.getName());
+        document.put(CORPUS_DOC_MIME_TYPE, corpusDoc.getMimeType());
         if (corpusDoc.getDate() != null)
-        	document.put("date", Date.from(corpusDoc.getDate().atZone(ZoneId.systemDefault()).toInstant()));        
-        document.put("metadata", corpusDoc.getMetadata());
+        	document.put(CORPUS_DOC_DATE, Date.from(corpusDoc.getDate().atZone(ZoneId.systemDefault()).toInstant()));        
+        document.put(CORPUS_DOC_METADATA, corpusDoc.getMetadata());
         
         List<String> authorIds = new ArrayList<String>();
         if (corpusDoc.getAuthors() != null) {
@@ -2213,14 +2228,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 	        	authorIds.add(docAuthor.id);
 	        }
         }
-        document.put("authors",authorIds);
+        document.put(CORPUS_DOC_AUTHORS,authorIds);
          
         GridFS gridFs = getGridFS();
         GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(corpusDoc.getContents().getBytes()));
         gfsFile.setFilename(corpusDoc.getId());
         gfsFile.save();
         
-        document.put("gfsFile", gfsFile.getId());
+        document.put(CORPUS_DOC_FILE_ID, gfsFile.getId());
         corpusCollection.insertOne(document);
           	
     }
@@ -2231,7 +2246,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
         FindIterable<Document> dbDocs = this.corpusCollection.find(and(eq(RUN_IDENTIFIER, runId)));
     	for(Document dbDoc: dbDocs) {
-    		String docContent = this.getDocumentContent(runId, dbDoc.getString("id"));
+    		String docContent = this.getDocumentContent(runId, dbDoc.getString(CORPUS_DOC_ID));
     		org.insightcentre.nlp.saffron.data.Document doc = this.buildCorpusDoc(runId, dbDoc, docContent);
     		docs.add(doc);
     	}    	
@@ -2245,25 +2260,25 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	
     	List<Author> authors = new ArrayList<Author>();
     	
-    	List<String> dbAuthorsList = (List<String>) doc.get("authors");
+    	List<String> dbAuthorsList = (List<String>) doc.get(CORPUS_DOC_AUTHORS);
     	for(String authorId: dbAuthorsList) {
     		authors.add(this.getAuthor(runId, authorId));
     	}
     	
     	LocalDateTime docDate = null;
-    	Date dbDocDate = doc.getDate("date");
+    	Date dbDocDate = doc.getDate(CORPUS_DOC_DATE);
     	if (dbDocDate != null)
-    		docDate = doc.getDate("date").toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+    		docDate = doc.getDate(CORPUS_DOC_DATE).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
     	
     	org.insightcentre.nlp.saffron.data.Document object = 
     			new org.insightcentre.nlp.saffron.data.Document(
     					null,
-    					doc.getString("id"),
+    					doc.getString(CORPUS_DOC_ID),
     					null,
-    					doc.getString("name"),
-    					doc.getString("mimetype"),
+    					doc.getString(CORPUS_DOC_NAME),
+    					doc.getString(CORPUS_DOC_MIME_TYPE),
     					authors,
-    					(Map<String,String>) doc.get("metadata"),
+    					(Map<String,String>) doc.get(CORPUS_DOC_METADATA),
     					content,
     					docDate
     			);
