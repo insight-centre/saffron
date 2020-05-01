@@ -314,28 +314,33 @@ public class ConsolidateAuthors {
         }
 
         double _simple_assoc(Word[] selfwords) {
+            // The goal of this algorithm is to find an alignment A = {(l,r,p)}
+            // subject to the requirement that no l or r appears twice in A
+            // and maximising the product of p (subject to a penalty for each
+            // missing r). The function returns this product and solves this
+            // greedily (ergo suboptimally).
             double res;
-            class IIP {
+            class Align {
 
                 public final int l, r;
                 public final double p;
 
-                public IIP(int l, int r, double p) {
+                public Align(int l, int r, double p) {
                     this.l = l;
                     this.r = r;
                     this.p = p;
                 }
 
             }
-            List<IIP> iips = new ArrayList<>();
+            List<Align> iips = new ArrayList<>();
             for (int l = 0; l < selfwords.length; l++) {
                 for (int r = 0; r < this.words.length; r++) {
-                    iips.add(new IIP(l, r, _get_proba(selfwords, l, r)));
+                    iips.add(new Align(l, r, _get_proba(selfwords, l, r)));
                 }
             }
-            iips.sort(new Comparator<IIP>() {
+            iips.sort(new Comparator<Align>() {
                 @Override
-                public int compare(IIP o1, IIP o2) {
+                public int compare(Align o1, Align o2) {
                     int i = Double.compare(o1.p, o2.p);
                     if (i != 0) {
                         return -i;
@@ -352,7 +357,7 @@ public class ConsolidateAuthors {
             boolean[] rmark = new boolean[this.words.length];
             res = pow(UNASSIGNED_COST, selfwords.length);
 
-            for (IIP iip : iips) {
+            for (Align iip : iips) {
                 if (iip.p <= min_similarity) {
                     break;
                 }
