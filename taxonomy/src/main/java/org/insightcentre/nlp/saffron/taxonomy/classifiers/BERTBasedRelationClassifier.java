@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.taxonomy.classifiers;
 
+import org.insightcentre.nlp.saffron.util.SimpleCache;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;

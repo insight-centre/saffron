@@ -1,4 +1,4 @@
-package org.insightcentre.nlp.saffron.taxonomy.classifiers;
+package org.insightcentre.nlp.saffron.util;
 
 
 import java.util.HashMap;

@@ -1,11 +1,16 @@
 package org.insightcentre.nlp.saffron.authors;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
+import static java.lang.Math.pow;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,6 +21,7 @@ import java.util.regex.Pattern;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.util.SimpleCache;
 
 /**
  *
@@ -33,25 +39,90 @@ public class ConsolidateAuthors {
 
     public static Map<Author, Set<Author>> consolidate(Collection<Author> authors, SaffronListener log) {
         Map<Author, Set<Author>> consolidated = new HashMap<>();
-        Set<Author> marked = new HashSet<>();
-        for (Author author : authors) {
-            if (marked.contains(author)) {
-                continue;
+        if (authors.size() > 1000) {
+            LongSet marks = new LongOpenHashSet();
+            Object2IntOpenHashMap<Author> author2id = new Object2IntOpenHashMap<>();
+            int i = 0;
+            for (Author author : authors) {
+                author2id.put(author, i++);
             }
-            Set<Author> similar = new HashSet<>();
-            similar.add(author);
-            marked.add(author);
-            for (Author author2 : authors) {
-                if (!marked.contains(author2)) {
-                    if (author.name != null && author2.name != null && isSimilar(author, author2)) {
-                        similar.add(author2);
-                        marked.add(author2);
+            Map<String, List<Author>> trigrams = buildCharTrigamMap(authors);
+            for (List<Author> authorList : trigrams.values()) {
+                for (Author author : authorList) {
+                    Set<Author> similar = new HashSet<>();
+                    similar.add(author);
+                    for (Author author2 : authorList) {
+                        long m = (long) author2id.getInt(author2) * authors.size() + author2id.getInt(author);
+                        if (marks.contains(m)) {
+                            continue;
+                        } else {
+                            marks.add(m);
+                        }
+                        if (author.name != null && author2.name != null && isSimilar(author, author2)) {
+                            similar.add(author2);
+                        }
+                    }
+                    consolidated.put(_choose_author(similar), similar);
+
+                }
+            }
+
+        } else {
+            Set<Author> marked = new HashSet<>();
+            for (Author author : authors) {
+                if (marked.contains(author)) {
+                    continue;
+                }
+                Set<Author> similar = new HashSet<>();
+                similar.add(author);
+                marked.add(author);
+                for (Author author2 : authors) {
+                    if (!marked.contains(author2)) {
+                        if (author.name != null && author2.name != null && isSimilar(author, author2)) {
+                            similar.add(author2);
+                            marked.add(author2);
+                        }
+                    }
+                }
+                consolidated.put(_choose_author(similar), similar);
+            }
+        }
+        PyAuthorSim.RuleMatcher.tokenizeNameCache.clear();
+        PyAuthorSim.RuleMatcher.parseNameCache.clear();
+        return consolidated;
+    }
+
+    private static Map<String, List<Author>> buildCharTrigamMap(Collection<Author> authors) {
+        assert (authors.size() > 10);
+        Map<String, List<Author>> trigrams = new HashMap<>();
+        Set<String> burnt = new HashSet<>();
+        for (Author a : authors) {
+            if (a.name != null) {
+                if (a.name.length() < 3) {
+                    if (!trigrams.containsKey("")) {
+                        trigrams.put("", new ArrayList<>());
+                    }
+                    trigrams.get("").add(a);
+                } else {
+                    for (int i = 0; i < a.name.length() - 3; i++) {
+                        String trigram = a.name.substring(i, i + 3);
+                        if (!burnt.contains(trigram)) {
+                            if (!trigrams.containsKey(trigram)) {
+                                trigrams.put(trigram, new ArrayList<>());
+                            }
+
+                            if (trigrams.get(trigram).size() > authors.size() / 10) {
+                                trigrams.remove(trigram);
+                                burnt.add(trigram);
+                            } else {
+                                trigrams.get(trigram).add(a);
+                            }
+                        }
                     }
                 }
             }
-            consolidated.put(_choose_author(similar), similar);
         }
-        return consolidated;
+        return trigrams;
     }
 
     public static boolean isSimilar(Author author, Author author2) {
@@ -67,6 +138,7 @@ public class ConsolidateAuthors {
         }
         Author best = null;
         double bestScore = 0.0;
+
         for (Author author : authors) {
             PyAuthorSim.RuleMatcher.probas_for pa = PyAuthorSim.RuleMatcher.get_probas_for(author.name);
             double score = 0.0;
@@ -242,49 +314,63 @@ public class ConsolidateAuthors {
         }
 
         double _simple_assoc(Word[] selfwords) {
-            double[][] sim = new double[selfwords.length][this.words.length];
+            // The goal of this algorithm is to find an alignment A = {(l,r,p)}
+            // subject to the requirement that no l or r appears twice in A
+            // and maximising the product of p (subject to a penalty for each
+            // missing r). The function returns this product and solves this
+            // greedily (ergo suboptimally).
+            double res;
+            class Align {
+
+                public final int l, r;
+                public final double p;
+
+                public Align(int l, int r, double p) {
+                    this.l = l;
+                    this.r = r;
+                    this.p = p;
+                }
+
+            }
+            List<Align> iips = new ArrayList<>();
             for (int l = 0; l < selfwords.length; l++) {
                 for (int r = 0; r < this.words.length; r++) {
-                    sim[l][r] = _get_proba(selfwords, l, r);
+                    // Initialize all candidates for A with all possible combinations
+                    // of l,r and p set by `_get_proba`
+                    iips.add(new Align(l, r, _get_proba(selfwords, l, r)));
                 }
             }
+            iips.sort(new Comparator<Align>() {
+                @Override
+                public int compare(Align o1, Align o2) {
+                    int i = Double.compare(o1.p, o2.p);
+                    if (i != 0) {
+                        return -i;
+                    }
+                    i = Integer.compare(o1.l, o2.l);
+                    if (i != 0) {
+                        return i;
+                    }
+                    return Integer.compare(o1.r, o2.r);
+                }
+            });
             int[] assign = new int[selfwords.length];
             Arrays.fill(assign, -1);
             boolean[] rmark = new boolean[this.words.length];
+            res = pow(UNASSIGNED_COST, selfwords.length);
 
-            boolean found;
-            do {
-                int lmax = -1;
-                int rmax = -1;
-                double pmax = Double.NEGATIVE_INFINITY;
-
-                for (int l = 0; l < selfwords.length; l++) {
-                    for (int r = 0; r < this.words.length; r++) {
-                        if (!rmark[r] && assign[l] < 0 && sim[l][r] > pmax && sim[l][r] > min_similarity) {
-                            lmax = l;
-                            rmax = r;
-                            pmax = sim[l][r];
-                        }
-                    }
+            for (Align iip : iips) {
+                if (iip.p <= min_similarity) {
+                    break;
                 }
-
-                if (lmax >= 0) {
-                    found = true;
-                    assign[lmax] = rmax;
-                    rmark[rmax] = true;
-                } else {
-                    found = false;
+                if (rmark[iip.r] || assign[iip.l] >= 0) {
+                    continue;
                 }
-            } while (found);
-
-            double res = 1.0;
-            for (int l = 0; l < selfwords.length; l++) {
-                if (assign[l] >= 0) {
-                    res *= sim[l][assign[l]];
-                } else {
-                    res *= UNASSIGNED_COST;
-                }
+                assign[iip.l] = iip.r;
+                rmark[iip.r] = true;
+                res *= iip.p / UNASSIGNED_COST;
             }
+
             return Math.pow(res, 1.0 / selfwords.length);
         }
 
@@ -311,7 +397,7 @@ public class ConsolidateAuthors {
 
             int l1 = min(len(lhs.word), len(rhs.word));
             int l2 = max(len(lhs.word), len(rhs.word));
-            if (lhs.initial() || rhs.initial()) {
+            if ((lhs.initial() || rhs.initial()) && lhs.word.length > 0 && rhs.word.length > 0) {
                 if (!char_equal(lhs.word[0], rhs.word[0])
                         || (l1 > 1 && !char_equal(lhs.word[1], rhs.word[1]))) {
                     proba = .0;
@@ -627,30 +713,36 @@ public class ConsolidateAuthors {
 
             static final Pattern RE_NAME = Pattern.compile("([^,\\s]+)([,\\s]+)?");
 
+            private static final SimpleCache<String, String[]> tokenizeNameCache = new SimpleCache<>(1000000);
+
             /**
              * Convert a name string to a sequence of tokens
              */
-            static String[] _tokenize_name(String name) {
-                String[] name_elems = name.split(", ");
-                if(name_elems.length == 2) {
-                    name = name_elems[1] + " " + name_elems[0];
-                }
-                Matcher m = RE_NAME.matcher(name);
-                List<String> tokens = new ArrayList<>();
-                while (m.find()) {
-                    String w = m.group(1);
-                    String delim = m.group(2);
-                    tokens.add(w);
-                    if (delim != null && delim.length() > 0) {
-                        if (delim.contains(",")) {
-                            tokens.add(",");
-                        } else {
-                            tokens.add(" ");
+            static String[] _tokenize_name(String _name) {
+                return tokenizeNameCache.get(_name, name -> {
+                    String[] name_elems = name.split(", ");
+                    if (name_elems.length == 2) {
+                        name = name_elems[1] + " " + name_elems[0];
+                    }
+                    Matcher m = RE_NAME.matcher(name);
+                    List<String> tokens = new ArrayList<>();
+                    while (m.find()) {
+                        String w = m.group(1);
+                        String delim = m.group(2);
+                        tokens.add(w);
+                        if (delim != null && delim.length() > 0) {
+                            if (delim.contains(",")) {
+                                tokens.add(",");
+                            } else {
+                                tokens.add(" ");
+                            }
                         }
                     }
-                }
-                return tokens.toArray(new String[tokens.size()]);
+                    return tokens.toArray(new String[tokens.size()]);
+                });
             }
+
+            private static final SimpleCache<String, Object[]> parseNameCache = new SimpleCache<>(1000000);
 
             /**
              * Tokenize a name and convert into a rule. Returns a tuple
@@ -659,43 +751,46 @@ public class ConsolidateAuthors {
              * None if name is invalid. number: A number that occurs in the
              * name, if any. 'rule' argument will be None if invalid name
              */
-            static Object[] _parse_name(String name) {
-                List<String> words = new ArrayList<>();
-                StringBuilder rule = new StringBuilder();
-                // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
-                // because a PDF may contain footnote/reference numbers beside the name.
-                Object number = null;
-                for (String c : _tokenize_name(name)) {
-                    final String t;
-                    if (c.equals(" ") || c.equals(".")) {
-                        t = c;
-                    } else if (c.length() == 1 || c.contains(".") || c.charAt(1) == '-') {
-                        t = _i;
-                    } else if (containsMostlyLowerCase(c) || c.contains("_")) {
-                        t = _s;
-                        c = c.toLowerCase();
-                    } else if (c.toUpperCase().endsWith(c)) {
-                        t = _u;
-                        c = c.toLowerCase();
-                    } else if (isdigit(c)) {
-                        t = _n;
-                        if (number != null) {
-                            //More than one number in name, name is invalid.
+            static Object[] _parse_name(String _name) {
+                return parseNameCache.get(_name, name -> {
+                    List<String> words = new ArrayList<>();
+                    StringBuilder rule = new StringBuilder();
+                    // e.g. with name 'Barry Coughlan 1', 'num' will be 1, this occurs
+                    // because a PDF may contain footnote/reference numbers beside the name.
+                    Object number = null;
+                    for (String c : _tokenize_name(name)) {
+                        final String t;
+                        if (c.equals(" ") || c.equals(".")) {
+                            t = c;
+                        } else if (c.length() == 1 || c.contains(".") || c.charAt(1) == '-') {
+                            t = _i;
+                        } else if (containsMostlyLowerCase(c) || c.contains("_")) {
+                            t = _s;
+                            c = c.toLowerCase();
+                        } else if (c.toUpperCase().endsWith(c)) {
+                            t = _u;
+                            c = c.toLowerCase();
+                        } else if (isdigit(c)) {
+                            t = _n;
+                            if (number != null) {
+                                //More than one number in name, name is invalid.
+                                return null;
+                            }
+                            number = Integer.parseInt(c);
+                        } else {
+                            //System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
                             return null;
                         }
-                        number = Integer.parseInt(c);
-                    } else {
-                        //System.err.printf("Unexpected token in name \"%s\": %s\n", name, c);
-                        return null;
+
+                        rule.append(t);
+                        if (t.equals(_i) || t.equals(_u) || t.equals(_s)) {
+                            words.add(c);
+                        }
                     }
 
-                    rule.append(t);
-                    if (t.equals(_i) || t.equals(_u) || t.equals(_s)) {
-                        words.add(c);
-                    }
-                }
+                    return new Object[]{words.toArray(new String[words.size()]), rule.toString()};
 
-                return new Object[]{words.toArray(new String[words.size()]), rule.toString()};
+                });
             }
 
             static boolean isdigit(String c) {
