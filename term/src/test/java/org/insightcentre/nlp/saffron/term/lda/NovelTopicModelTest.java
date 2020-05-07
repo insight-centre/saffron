@@ -173,7 +173,7 @@ public class NovelTopicModelTest {
         FrequencyStats stats = stats();
         double expResult = 4.0;
         double result = instance.novelTopicModel(term, stats);
-        assertEquals(expResult, result, 2.0);
+        assertEquals(expResult, result, 3.0);
     }
 
 }
