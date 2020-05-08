@@ -76,7 +76,7 @@ public class ConsolidateAuthors {
 
         if ((name2.tag[j] == NameTag.initial || name2.tag[j] == NameTag.maybe_initial)
                 && name1.normalized[i].startsWith(name2.normalized[j].substring(0, 1))) {
-            return name1.tag[j] != NameTag.surname;
+            return name1.tag[i] != NameTag.surname;
         }
 
         Set<String> n1 = new HashSet<>();
