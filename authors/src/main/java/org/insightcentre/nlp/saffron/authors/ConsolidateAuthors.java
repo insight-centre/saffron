@@ -52,6 +52,10 @@ public class ConsolidateAuthors {
         }
     };
 
+    /**
+     * Create a consolidate authors object
+     * @throws IOException If resources could not be loaded. They should be available in the JAR, so this will not happen if compiled normally.
+     */
     public ConsolidateAuthors() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         this.asianNames = mapper.readValue(ConsolidateAuthors.class.getResource("/asian-surnames.json"), mapper.getTypeFactory().constructCollectionType(HashSet.class, String.class));
@@ -68,6 +72,14 @@ public class ConsolidateAuthors {
         }
     }
 
+    /**
+     * Is there are match between the ith and jth words in the name
+     * @param name1 The first name
+     * @param name2 The second name
+     * @param i Index in the first name
+     * @param j Index in the second name
+     * @return true if they match, e.g., "James", "Jimmy" and "J." all match
+     */
     private boolean matchAt(TaggedName name1, TaggedName name2, int i, int j) {
         if ((name1.tag[i] == NameTag.initial || name1.tag[i] == NameTag.maybe_initial)
                 && name2.normalized[j].startsWith(name1.normalized[i].substring(0, 1))) {
@@ -109,6 +121,9 @@ public class ConsolidateAuthors {
         }
     }
 
+    /**
+     * The tags for words in a name
+     */
     private enum NameTag {
         given,
         surname,
@@ -117,6 +132,9 @@ public class ConsolidateAuthors {
         maybe_initial // 'a' and 'o', because J O Neill may be John Oliver Neill
     }
 
+    /**
+     * A name with its tags and a reference to the original author object
+     */
     private class TaggedName {
 
         String[] normalized;
@@ -124,10 +142,23 @@ public class ConsolidateAuthors {
         Author author;
     }
 
+    /**
+     * Consolidate a list of authors into a (smaller) set of authors
+     * @param authors The list of authors
+     * @return A maps whose keys are the list of consolidated authors and values
+     *  are all the other author objects mapped to this author
+     */
     public Map<Author, Set<Author>> consolidate(Collection<Author> authors) {
         return consolidate(authors, new DefaultSaffronListener());
     }
 
+    /**
+     * Consolidate a list of authors into a (smaller) set of authors
+     * @param authors The list of authors
+     * @param log An object for giving log messages
+     * @return A maps whose keys are the list of consolidated authors and values
+     *  are all the other author objects mapped to this author
+     */
     public Map<Author, Set<Author>> consolidate(Collection<Author> authors, SaffronListener log) {
         Map<String, List<TaggedName>> bySurname = new HashMap<>();
         for (Author author : authors) {
@@ -186,6 +217,12 @@ public class ConsolidateAuthors {
         return consolidated;
     }
 
+    /**
+     * Check if two authors could have the same name
+     * @param author The first author
+     * @param author2 The second author
+     * @return True if they have the same name
+     */
     public boolean isSimilar(Author author, Author author2) {
         return isSimilar(tag(author), tag(author2)) != 0;
     }
@@ -196,6 +233,7 @@ public class ConsolidateAuthors {
         Arrays.fill(match1, -1);
         Arrays.fill(match2, -1);
 
+        // First match each element in the names
         boolean givenMatch = false, surnameMatch = false;
         for (int i = 0; i < name1.normalized.length; i++) {
             for (int j = 0; j < name2.normalized.length; j++) {
@@ -228,16 +266,19 @@ public class ConsolidateAuthors {
             }
         }
 
+        // If no given name or no surname matches, then they are not similar
         if (!givenMatch || !surnameMatch) {
             return 0;
         }
 
+        // We allow some names to be dropped and the name to still match
         boolean givenDropLeft1 = false, givenDropLeft2 = false,
                 givenDropRight1 = false, givenDropRight2 = false,
                 surnameDropLeft1 = false, surnameDropLeft2 = false,
                 surnameDropRight1 = false, surnameDropRight2 = false;
 
-        int state = 0;
+        // Check how many unaligned elements of name 1 we are matching
+        int state = 0; // 0 = before first matching given name, 1 = after first matching given name, 2 = before first matching surname, 3 = after first matching surname
         for (int i = 0; i < name1.normalized.length; i++) {
             if (match1[i] < 0) {
                 switch (state) {
@@ -265,6 +306,8 @@ public class ConsolidateAuthors {
                         if (name1.tag[i] == NameTag.surname) {
                             state = 3;
                         } else if(givenDropRight1)
+                            // We fail here as we do not allow unaligned names in
+                            // between aligned given names
                             return 0;
                         break;
                     case 2:
@@ -278,6 +321,7 @@ public class ConsolidateAuthors {
             }
         }
 
+        // Repeat for name2
         state = 0;
         for (int j = 0; j < name2.normalized.length; j++) {
             if (match2[j] < 0) {
@@ -319,6 +363,7 @@ public class ConsolidateAuthors {
             }
         }
 
+        // Don't allow contradicting drops, e.g., John Peter != John Paul
         if (givenDropLeft1 && givenDropLeft2) {
             return 0;
         }
@@ -351,6 +396,7 @@ public class ConsolidateAuthors {
             return 0;
         }
 
+        // If we are only dropping from 2 then we prefer the longer name
         if (givenDropLeft2 || givenDropRight2 || surnameDropLeft2 || surnameDropRight2) {
             return 1;
         }
@@ -358,6 +404,11 @@ public class ConsolidateAuthors {
         return -1;
     }
 
+    /**
+     * Tag a name
+     * @param author The author
+     * @return The name, with the words normalized and tagged as given/surname
+     */
     private TaggedName tag(Author author) {
         // Step 1. Normalize the name by lowercasing and removing accents
         // Gómez => gomez
