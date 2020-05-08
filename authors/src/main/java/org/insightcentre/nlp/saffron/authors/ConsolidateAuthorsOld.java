@@ -28,7 +28,7 @@ import org.insightcentre.nlp.saffron.util.SimpleCache;
  * @author Hugues Lerebours Pigeonnière &lt;hugues@lereboursp.net&gt;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-public class ConsolidateAuthors {
+public class ConsolidateAuthorsOld {
 
     public static final double min_similarity = 0.3;
     public static final double UNASSIGNED_COST = 0.1;

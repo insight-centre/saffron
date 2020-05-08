@@ -539,7 +539,7 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
         Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
-        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
+        Map<Author, Set<Author>> consolidation = new ConsolidateAuthors().consolidate(authors, _status);
         applyConsolidation(searcher, consolidation, _status);
         data.setCorpus(saffronDatasetName, corpus);
         data.addAuthors(saffronDatasetName, new ArrayList<Author>(consolidation.keySet()));

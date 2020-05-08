@@ -56,7 +56,7 @@ public class Consolidate {
 
             Set<Author> authors = extractAuthors(corpus);
             
-            Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors);
+            Map<Author, Set<Author>> consolidation = new ConsolidateAuthors().consolidate(authors);
 
             applyConsolidation(corpus, consolidation, new DefaultSaffronListener());
 
