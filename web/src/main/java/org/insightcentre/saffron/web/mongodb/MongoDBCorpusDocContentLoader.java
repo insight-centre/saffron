@@ -10,12 +10,12 @@ import org.insightcentre.nlp.saffron.data.Document;
  * @author Bianca Pereira
  *
  */
-public class MondoDBDocContentLoader implements Document.Loader {
+public class MongoDBCorpusDocContentLoader implements Document.Loader {
 	
 	private MongoDBHandler dbConnector = null;
 	private String runId;
 	
-	public MondoDBDocContentLoader(MongoDBHandler dbConnector, String runId) {
+	public MongoDBCorpusDocContentLoader(MongoDBHandler dbConnector, String runId) {
 		this.dbConnector = dbConnector;
 		this.runId = runId;
 	}

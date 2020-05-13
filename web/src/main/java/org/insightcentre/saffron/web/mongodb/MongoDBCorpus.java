@@ -45,7 +45,7 @@ public class MongoDBCorpus implements Corpus{
     	
     	public DocList() {
     		this.dbDocs = dbHandler.corpusCollection.find(and(eq(dbHandler.RUN_IDENTIFIER, runId)));
-    		this.contentLoader = new MondoDBDocContentLoader(dbHandler,runId);
+    		this.contentLoader = new MongoDBCorpusDocContentLoader(dbHandler,runId);
     	}
     	
 		@Override
