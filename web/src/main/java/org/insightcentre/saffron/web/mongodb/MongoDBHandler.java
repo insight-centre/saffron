@@ -36,16 +36,22 @@ import org.apache.commons.io.IOUtils;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.crawler.CrawledCorpus;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.Concept;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Partonomy;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
-import org.insightcentre.saffron.web.Executor;
-import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
@@ -56,7 +62,6 @@ import org.json.JSONObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.type.TypeFactory;
-import com.google.gson.Gson;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
@@ -2215,7 +2220,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         
         try {
 			saffron.setCorpus(this.getCorpus(runId));
-		} catch (IOException e) {
+		} catch (Exception e) {
 			//Choose a better exception
 			throw new RuntimeException("Error while loading corpus", e);
 			
@@ -2255,23 +2260,13 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
           	
     }
 
-    public Corpus getCorpus(String runId) throws IOException {
+    public Corpus getCorpus(String runId) {
     	
-    	List<org.insightcentre.nlp.saffron.data.Document> docs = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
-    	
-        FindIterable<Document> dbDocs = this.corpusCollection.find(and(eq(RUN_IDENTIFIER, runId)));
-    	for(Document dbDoc: dbDocs) {
-    		String docContent = this.getDocumentContent(runId, dbDoc.getString(CORPUS_DOC_ID));
-    		org.insightcentre.nlp.saffron.data.Document doc = this.buildCorpusDoc(runId, dbDoc, docContent);
-    		docs.add(doc);
-    	}    	
-    	
-    	//What is the correct Corpus implementation to use here!?
-    	Corpus corpus = new CrawledCorpus(docs);
-        return corpus;
+    	return new MongoDBCorpus(this, runId);
     }
     
-    private org.insightcentre.nlp.saffron.data.Document buildCorpusDoc(String runId, Document doc, String content) {
+    protected org.insightcentre.nlp.saffron.data.Document buildCorpusDoc(
+    		String runId, Document doc, org.insightcentre.nlp.saffron.data.Document.Loader contentLoader) {
     	
     	List<Author> authors = new ArrayList<Author>();
     	
@@ -2294,14 +2289,14 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     					doc.getString(CORPUS_DOC_MIME_TYPE),
     					authors,
     					(Map<String,String>) doc.get(CORPUS_DOC_METADATA),
-    					content,
+    					null,
     					docDate
-    			);
+    			).withLoader(contentLoader);
     	
     	return object;
     }
     
-    private String getDocumentContent(String runId, String docId) throws IOException {
+    protected String getDocumentContent(String runId, String docId) throws IOException {
 		BasicDBObject docContentQuery = new BasicDBObject();
 		docContentQuery.put(RUN_IDENTIFIER,runId);
 		docContentQuery.put("filename",docId);
