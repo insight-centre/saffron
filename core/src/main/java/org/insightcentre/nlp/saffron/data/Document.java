@@ -84,7 +84,7 @@ public class Document {
         } else if (url != null) {
             this.contents = new Remote();
         } else {
-            throw new IllegalArgumentException("Please give either document contents or link to file");
+            this.contents = null;
         }
     }
 
