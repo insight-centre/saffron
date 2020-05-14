@@ -32,12 +32,17 @@ public class AuthorSimilarity {
     public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName, SaffronListener log) {
         List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
+        Map<String, Set<String>> authorByTopic = new HashMap<>();
         //System.err.printf("%d author terms\n", ats.size());
         for (AuthorTerm at : ats) {
             if (!vectors.containsKey(at.getAuthorId())) {
                 vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
             vectors.get(at.getAuthorId()).put(at.getTermId(), at.getScore());
+            if(!authorByTopic.containsKey(at.getTermId())) {
+                authorByTopic.put(at.getTermId(), new HashSet<>());
+            }
+            authorByTopic.get(at.getTermId()).add(at.getAuthorId());
         }
         //System.err.printf("\n%d vectors\n", vectors.size());
         for (String t1 : vectors.keySet()) {
@@ -56,8 +61,12 @@ public class AuthorSimilarity {
                     return i1;
                 }
             });
+            HashSet<String> authors2 = new HashSet<>();
+            for(String term : vectors.get(t1).keySet()) {
+                authors2.addAll(authorByTopic.get(term));
+            }
             //System.err.print(".");
-            for (String t2 : vectors.keySet()) {
+            for (String t2 : authors2) {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
