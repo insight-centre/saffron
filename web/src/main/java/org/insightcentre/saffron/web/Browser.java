@@ -221,7 +221,7 @@ public class Browser extends AbstractHandler {
                         mapper.writeValue(response.getWriter(), getTopNDocTerms(dts, n, offset));
 
                     } else if (term != null) {
-                        final List<Document> _docs = saffronHandler.getDocByTerm(saffronDatasetName, term);
+                        final List<Document> _docs = saffronHandler.getDocsByTerm(saffronDatasetName, term);
                         final List<Document> docs = new ArrayList<>();
                         int i = 0;
                         for (Document d : _docs) {
