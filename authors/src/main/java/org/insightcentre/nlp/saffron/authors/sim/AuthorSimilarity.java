@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.authors.sim;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.util.*;
 
@@ -61,12 +62,28 @@ public class AuthorSimilarity {
                     return i1;
                 }
             });
-            HashSet<String> authors2 = new HashSet<>();
+            Object2IntOpenHashMap<String> authors2 = new Object2IntOpenHashMap<>();
             for(String term : vectors.get(t1).keySet()) {
-                authors2.addAll(authorByTopic.get(term));
+                for(String a2 : authorByTopic.get(term)) {
+                    authors2.put(a2, authors2.getInt(a2) + 1);
+                }
             }
+            List<String> authors3 = new ArrayList<>();
+            authors3.addAll(authors2.keySet());
+            authors3.sort(new Comparator<String>() {
+                @Override
+                public int compare(String o1, String o2) {
+                    int i = Integer.compare(authors2.getInt(o1), authors2.getInt(o2));
+                    if(i == 0) {
+                        return o1.compareTo(o2);
+                    } else {
+                        return -i;
+                    }
+                }
+            });
+            authors3 = authors3.subList(0, Math.min(top_n*2, authors3.size()));
             //System.err.print(".");
-            for (String t2 : authors2) {
+            for (String t2 : authors3) {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
