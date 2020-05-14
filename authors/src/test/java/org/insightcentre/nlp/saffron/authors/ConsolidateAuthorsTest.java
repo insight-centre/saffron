@@ -32,23 +32,26 @@ public class ConsolidateAuthorsTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
+        consolidateAuthors = new ConsolidateAuthors();
     }
 
     @After
     public void tearDown() {
     }
+    
+    private ConsolidateAuthors consolidateAuthors;
 
     /**
      * Test of consolidate method, of class ConsolidateAuthors.
      */
     @Test
-    public void testConsolidate() {
+    public void testConsolidate() throws Exception {
         System.out.println("consolidate");
         List<Author> authors = Arrays.asList(new Author("John P. McCrae"),
                 new Author("John McCrae"),
                 new Author("Paul Buitelaar"));
-        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        Map<Author, Set<Author>> result = consolidateAuthors.consolidate(authors);
         assertEquals(2, result.size());
     }
 
@@ -56,42 +59,42 @@ public class ConsolidateAuthorsTest {
      * Test of isSimilar method, of class ConsolidateAuthors.
      */
     @Test
-    public void testIsSimilar() {
+    public void testIsSimilar() throws Exception {
         System.out.println("isSimilar");
         Author author = new Author("John McCrae");
         Author author2 = new Author("John P. McCrae");
         boolean expResult = true;
-        boolean result = ConsolidateAuthors.isSimilar(author, author2);
+        boolean result = consolidateAuthors.isSimilar(author, author2);
         assertEquals(expResult, result);
     }
 
     @Test
-    public void testConsolidate2() {
+    public void testConsolidate2() throws Exception {
         List<Author> authors = Arrays.asList(new Author("Eamon B. O'Dea"),
                 new Author("Xiang Li"),
                 new Author("Alessia Di Donfrancesco"),
                 new Author("Joseph T. Wu"),
                 new Author("Le Cai"));
-        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        Map<Author, Set<Author>> result = consolidateAuthors.consolidate(authors);
         assertEquals(5, result.size());
 
     }
 
     @Test
-    public void testConsolidate3() {
+    public void testConsolidate3() throws Exception {
         List<Author> authors = Arrays.asList(new Author("Buhimschi, Irina A"), new Author("Irina A Buhimschi"));
-        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        Map<Author, Set<Author>> result = consolidateAuthors.consolidate(authors);
         assertEquals(1, result.size());
 
     }
 
     @Test
-    public void testConsolidate4() {
+    public void testConsolidate4() throws Exception {
         List<Author> authors = new ArrayList<>();
         for (int i = 0; i < 1001; i++) {
             authors.add(new Author(generateName()));
         }
-        Map<Author, Set<Author>> result = ConsolidateAuthors.consolidate(authors);
+        Map<Author, Set<Author>> result = consolidateAuthors.consolidate(authors);
         assert (result.size() > 500);
     }
 
@@ -310,5 +313,25 @@ public class ConsolidateAuthorsTest {
         }
         name.append(lastName[r.nextInt(98)]);
         return name.toString();
+    }
+    
+    @Test
+    public void testSimilar() {
+        assert(consolidateAuthors.isSimilar(new Author("John McCrae"), new Author("John McCrae")));
+        assert(!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("John McCrae")));
+        assert(!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("James MacRae")));
+        assert(consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("Jim McCrae")));
+        assert(consolidateAuthors.isSimilar(new Author("John Philip McCrae"), new Author("John P. McCrae")));
+        assert(consolidateAuthors.isSimilar(new Author("McCrae, J."), new Author("John P. McCrae")));
+        assert(consolidateAuthors.isSimilar(new Author("John Paul Bon Jovi"), new Author("Paul Bon Jovi")));
+        assert(consolidateAuthors.isSimilar(new Author("Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
+        assert(!consolidateAuthors.isSimilar(new Author("Mark Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
+        assert(consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez")));
+        assert(consolidateAuthors.isSimilar(new Author("Tanaka Tarō"), new Author("T. Tanaka")));
+        assert(consolidateAuthors.isSimilar(new Author("k.d. lang"), new Author("Katherine Dawn Lang")));
+        assert(consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez Perez")));
+        assert(consolidateAuthors.isSimilar(new Author("Felipe Silva Santos"), new Author("Felipe Santos")));
+        assert(!consolidateAuthors.isSimilar(new Author("George W. Bush"), new Author("George H. W. Bush")));
+        
     }
 }
