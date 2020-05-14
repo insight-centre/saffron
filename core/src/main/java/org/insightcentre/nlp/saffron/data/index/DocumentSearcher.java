@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.data.index;
 
 import java.io.Closeable;
+import java.util.Collection;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 
@@ -19,4 +20,10 @@ public interface DocumentSearcher extends Corpus, Closeable {
      * @param doc The document to update
      */
     public void updateDocument(String id, Document doc);
+    
+    /**
+     * Replace a set of Documents in the corpus
+     * @param docs List of documents to update
+     */
+    public void updateDocuments(Collection<Document> docs);
 }

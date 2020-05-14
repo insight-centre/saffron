@@ -7,6 +7,7 @@ package org.insightcentre.nlp.saffron.term.lda;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.WhitespaceTokenizer;
@@ -102,6 +103,11 @@ public class NovelTopicModelTest {
             public void updateDocument(String id, Document doc) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
+
+            @Override
+            public void updateDocuments(Collection<Document> docs) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
            
             
         };
@@ -152,6 +158,11 @@ public class NovelTopicModelTest {
 
             @Override
             public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void updateDocuments(Collection<Document> docs) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
             

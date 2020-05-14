@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.term.domain;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
@@ -131,6 +132,11 @@ public class DomainStatsTest {
             public void updateDocument(String id, Document doc) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
+
+            @Override
+            public void updateDocuments(Collection<Document> docs) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
             
             
         };
@@ -187,6 +193,11 @@ public class DomainStatsTest {
 
             @Override
             public void updateDocument(String id, Document doc) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public void updateDocuments(Collection<Document> docs) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
             
