@@ -70,6 +70,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.FindOneAndReplaceOptions;
 import com.mongodb.client.model.FindOneAndUpdateOptions;
 import com.mongodb.client.model.ReturnDocument;
 import com.mongodb.gridfs.GridFS;
@@ -78,6 +79,9 @@ import com.mongodb.gridfs.GridFSInputFile;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.bson.BsonDocument;
+import org.insightcentre.nlp.saffron.util.SimpleCache;
 
 public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
@@ -600,6 +604,10 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         this.termsExtractionCollection = database.getCollection(collectionName + "_terms_extraction");
         this.conceptsCollection = database.getCollection(collectionName + "_concepts");
         this.authorsCollection = database.getCollection(collectionName + "_authors");
+        Document authorCollectionIndex = new Document();
+        authorCollectionIndex.put(RUN_IDENTIFIER, 1);
+        authorCollectionIndex.put(AUTHOR_IDENTIFIER, 1);
+        this.authorsCollection.createIndex(authorCollectionIndex);
         this.authorTermsCollection = database.getCollection(collectionName + "_author_terms");
         this.termsSimilarityCollection = database.getCollection(collectionName + "_terms_similarity");
         this.authorSimilarityCollection = database.getCollection(collectionName + "_author_similarity");
@@ -1333,13 +1341,23 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     public Author getAuthor(String runId, String authorId){
 
         Bson filter = and(eq(RUN_IDENTIFIER, runId),eq(AUTHOR_IDENTIFIER, authorId));
-        List<Author> authors = this.findAuthors(filter);
+        Iterable<Document> dbAuthors = authorsCollection.find(filter);
 
-        if(authors.size() > 0)
-            return authors.get(0);
-        else
-            return null;
-    }
+        ObjectMapper mapper = new ObjectMapper();
+
+        Author author;
+        for(Document dbDoc: dbAuthors) {
+            try {
+            	author = mapper.readValue(dbDoc.toJson(), Author.class);
+            	if (author!=null)
+            		return author;
+            } catch (Exception e) {
+                throw new RuntimeException("Error retrieving authors from Mongo Database", e);
+            }
+        }
+
+        return null;
+            }
     
     /**
      * Search for authors in the Mongo Database according to the provided filters
@@ -1414,11 +1432,12 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	if (authorToBeAdded.name == null || authorToBeAdded.name.equals(""))
     		throw new RuntimeException("The author must have a non empty name");
     	
-        if (this.getAuthor(runId, authorToBeAdded.id) != null)
-            throw new RuntimeException("An author with same id already exists in the database. id: " + authorToBeAdded.id);
+        //if (this.getAuthor(runId, authorToBeAdded.id) != null)
+        //    throw new RuntimeException("An author with same id already exists in the database. id: " + authorToBeAdded.id);
 
         Bson dbObject = this.createBsonDocumentForAuthor(runId, authorToBeAdded);
-        authorsCollection.insertOne(dbObject);
+        authorsCollection.findOneAndReplace(and(eq(RUN_IDENTIFIER, runId), eq(AUTHOR_IDENTIFIER, authorToBeAdded.id)), dbObject, new FindOneAndReplaceOptions().upsert(true));
+        //authorsCollection.insertOne(dbObject);
     }
     
     /**
@@ -2243,11 +2262,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         List<String> authorIds = new ArrayList<String>();
         if (corpusDoc.getAuthors() != null) {
 	        for(Author docAuthor: corpusDoc.getAuthors()) {
-	        	if (this.getAuthor(saffronDatasetName, docAuthor.id) == null) 
+	        	//if (this.getAuthor(saffronDatasetName, docAuthor.id) == null) 
 	        		this.addAuthor(saffronDatasetName, docAuthor);
 	        	authorIds.add(docAuthor.id);
+                    }
 	        }
-        }
         document.put(CORPUS_DOC_AUTHORS,authorIds);
          
         GridFS gridFs = getGridFS();
@@ -2256,7 +2275,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         gfsFile.save();
         
         document.put(CORPUS_DOC_FILE_ID, gfsFile.getId());
-        corpusCollection.insertOne(document);
+        corpusCollection.findOneAndReplace(eq("_id",saffronDatasetName + corpusDoc.getId()), document, new FindOneAndReplaceOptions().upsert(true));
           	
     }
 
