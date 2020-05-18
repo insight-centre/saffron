@@ -1414,7 +1414,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     /**
-     * Adds a new author in the database.
+     * Adds a new author in the database, or updates the existing record if the 
+     * author already exists
      *
      * @author Bianca Pereira
      *
@@ -1432,12 +1433,9 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     	if (authorToBeAdded.name == null || authorToBeAdded.name.equals(""))
     		throw new RuntimeException("The author must have a non empty name");
     	
-        //if (this.getAuthor(runId, authorToBeAdded.id) != null)
-        //    throw new RuntimeException("An author with same id already exists in the database. id: " + authorToBeAdded.id);
-
+        
         Bson dbObject = this.createBsonDocumentForAuthor(runId, authorToBeAdded);
         authorsCollection.findOneAndReplace(and(eq(RUN_IDENTIFIER, runId), eq(AUTHOR_IDENTIFIER, authorToBeAdded.id)), dbObject, new FindOneAndReplaceOptions().upsert(true));
-        //authorsCollection.insertOne(dbObject);
     }
     
     /**
