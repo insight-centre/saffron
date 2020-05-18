@@ -210,7 +210,11 @@ public class ConsolidateAuthors {
         
         for(Author a : authors) {
             if(!marked.contains(a)) {
-                consolidated.put(a, Collections.singleton(a));
+                if(consolidated.containsKey(a)) {
+                    consolidated.get(a).add(a);
+                } else {
+                    consolidated.put(a, Collections.singleton(a));
+                }
             }
         }
                 

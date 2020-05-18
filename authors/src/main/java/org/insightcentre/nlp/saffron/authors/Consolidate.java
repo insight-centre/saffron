@@ -95,6 +95,8 @@ public class Consolidate {
                 continue;
             List<Author> authors2 = new ArrayList<>();
             for(Author a : document.authors) {
+                if(!rmap.containsKey(a))
+                    throw new RuntimeException("Author not found in consolidation");
                 authors2.add(rmap.get(a));
             }
             Document doc2 = new Document(document.file, document.id, document.url,
