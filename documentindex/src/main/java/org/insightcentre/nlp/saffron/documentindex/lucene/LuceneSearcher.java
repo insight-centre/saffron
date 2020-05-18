@@ -181,22 +181,6 @@ public class LuceneSearcher implements DocumentSearcher, org.insightcentre.nlp.s
     }
 
     @Override
-    public void updateDocument(String id, org.insightcentre.nlp.saffron.data.Document doc) {
-        try {
-            IndexWriterConfig conf = new IndexWriterConfig(DocumentSearcherFactory.LUCENE_VERSION, analyzer);
-            try (IndexWriter writer = new IndexWriter(directory, conf)) {
-                Term t = new Term(LuceneDocument.UID_NAME, id);
-                writer.updateDocument(t, LuceneDocument.makeDocument(doc.id,
-                        doc.contents(), doc.url, doc.authors, doc.name,
-                        doc.file == null ? null : doc.file.toFile(), doc.mimeType,
-                        doc.metadata, doc.getDateAsString()));
-            }
-        } catch (IOException x) {
-            throw new RuntimeException(x);
-        }
-    }
-
-    @Override
     public void updateDocuments(Collection<org.insightcentre.nlp.saffron.data.Document> docs) {
         try {
             IndexWriterConfig conf = new IndexWriterConfig(DocumentSearcherFactory.LUCENE_VERSION, analyzer);

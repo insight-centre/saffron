@@ -100,11 +100,6 @@ public class NovelTopicModelTest {
             }
 
             @Override
-            public void updateDocument(String id, Document doc) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
             public void updateDocuments(Collection<Document> docs) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
@@ -153,11 +148,6 @@ public class NovelTopicModelTest {
 
             @Override
             public int size() {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public void updateDocument(String id, Document doc) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
 
