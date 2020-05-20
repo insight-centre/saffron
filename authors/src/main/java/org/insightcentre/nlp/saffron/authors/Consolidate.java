@@ -64,7 +64,7 @@ public class Consolidate {
             applyConsolidation(corpus, consolidation, new DefaultSaffronListener());
 
             //mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus);
-            
+
         } catch(Throwable t) {
             t.printStackTrace();
             System.exit(-1);
@@ -92,7 +92,7 @@ public class Consolidate {
                 rmap.put(a1, e1.getKey());
             }
         }
-
+                
         Collection<Document> updateDocuments = new AbstractCollection<Document>() {
             final Iterator<Document> iter = corpus.getDocuments().iterator();
 
@@ -104,6 +104,8 @@ public class Consolidate {
                         Document document = iter.next();
                         List<Author> authors2 = new ArrayList<>();
                         for (Author a : document.authors) {
+                            if(!rmap.containsKey(a))
+                                throw new RuntimeException("Author not found in consolidation");
                             authors2.add(rmap.get(a));
                         }
                         Document doc2 = new Document(document.file, document.id, document.url,

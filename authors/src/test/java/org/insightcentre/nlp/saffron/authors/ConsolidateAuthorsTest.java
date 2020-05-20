@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.authors;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +40,7 @@ public class ConsolidateAuthorsTest {
     @After
     public void tearDown() {
     }
-    
+
     private ConsolidateAuthors consolidateAuthors;
 
     /**
@@ -314,24 +315,49 @@ public class ConsolidateAuthorsTest {
         name.append(lastName[r.nextInt(98)]);
         return name.toString();
     }
-    
+
     @Test
     public void testSimilar() {
-        assert(consolidateAuthors.isSimilar(new Author("John McCrae"), new Author("John McCrae")));
-        assert(!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("John McCrae")));
-        assert(!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("James MacRae")));
-        assert(consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("Jim McCrae")));
-        assert(consolidateAuthors.isSimilar(new Author("John Philip McCrae"), new Author("John P. McCrae")));
-        assert(consolidateAuthors.isSimilar(new Author("McCrae, J."), new Author("John P. McCrae")));
-        assert(consolidateAuthors.isSimilar(new Author("John Paul Bon Jovi"), new Author("Paul Bon Jovi")));
-        assert(consolidateAuthors.isSimilar(new Author("Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
-        assert(!consolidateAuthors.isSimilar(new Author("Mark Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
-        assert(consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez")));
-        assert(consolidateAuthors.isSimilar(new Author("Tanaka Tarō"), new Author("T. Tanaka")));
-        assert(consolidateAuthors.isSimilar(new Author("k.d. lang"), new Author("Katherine Dawn Lang")));
-        assert(consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez Perez")));
-        assert(consolidateAuthors.isSimilar(new Author("Felipe Silva Santos"), new Author("Felipe Santos")));
-        assert(!consolidateAuthors.isSimilar(new Author("George W. Bush"), new Author("George H. W. Bush")));
-        
+        assert (consolidateAuthors.isSimilar(new Author("John McCrae"), new Author("John McCrae")));
+        assert (!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("John McCrae")));
+        assert (!consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("James MacRae")));
+        assert (consolidateAuthors.isSimilar(new Author("James McCrae"), new Author("Jim McCrae")));
+        assert (consolidateAuthors.isSimilar(new Author("John Philip McCrae"), new Author("John P. McCrae")));
+        assert (consolidateAuthors.isSimilar(new Author("McCrae, J."), new Author("John P. McCrae")));
+        assert (consolidateAuthors.isSimilar(new Author("John Paul Bon Jovi"), new Author("Paul Bon Jovi")));
+        assert (consolidateAuthors.isSimilar(new Author("Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
+        assert (!consolidateAuthors.isSimilar(new Author("Mark Jon Paul Bon Jovi"), new Author("Jon Bon Jovi")));
+        assert (consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez")));
+        assert (consolidateAuthors.isSimilar(new Author("Tanaka Tarō"), new Author("T. Tanaka")));
+        assert (consolidateAuthors.isSimilar(new Author("k.d. lang"), new Author("Katherine Dawn Lang")));
+        assert (consolidateAuthors.isSimilar(new Author("María Gómez"), new Author("Maria Gomez Perez")));
+        assert (consolidateAuthors.isSimilar(new Author("Felipe Silva Santos"), new Author("Felipe Santos")));
+        assert (!consolidateAuthors.isSimilar(new Author("George W. Bush"), new Author("George H. W. Bush")));
+
+    }
+
+    @Test
+    public void test319() throws IOException {
+        ConsolidateAuthors c = new ConsolidateAuthors();
+        List<Author> authors = new ArrayList<>();
+        authors.add(new Author("Kruiningen, H.J.Van"));
+        authors.add(new Author("Colombel, J.F."));
+        authors.add(new Author("Cartun, R.W."));
+        authors.add(new Author("Whitlock, R.H."));
+        authors.add(new Author("Koopmans, M."));
+        authors.add(new Author("Kangro, H.O."));
+        authors.add(new Author("Hoogkamp-Korstanje, J.A.A."));
+        authors.add(new Author("Lecomte-Houcke, M."));
+        authors.add(new Author("Devred, M."));
+        authors.add(new Author("Paris, J.C."));
+        authors.add(new Author("Cortot, A."));
+        Map<Author, Set<Author>> result = c.consolidate(authors);
+        for(Map.Entry<Author, Set<Author>> e : result.entrySet()) {
+            assertNotNull(e.getKey());
+            for(Author a2 : e.getValue()) {
+                assertNotNull(a2);
+            }
+            assertFalse(e.getValue().isEmpty());
+        }
     }
 }
