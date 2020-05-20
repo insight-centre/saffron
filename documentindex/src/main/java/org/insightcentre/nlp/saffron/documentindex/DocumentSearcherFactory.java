@@ -4,6 +4,7 @@ import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -69,7 +70,7 @@ public class DocumentSearcherFactory {
         } else{
         	searcher = luceneSearcher(dir, LOWERCASE_ONLY);
         	for (Document doc : corpus.getDocuments()) {
-        		searcher.updateDocument(doc.id, doc);
+        		searcher.updateDocuments(Collections.singleton(doc));
         	}
         }
         return searcher;
