@@ -66,9 +66,9 @@ public class Document {
             @JsonProperty("metadata") Map<String, String> metadata,
             @JsonProperty("contents") String contents,
             @JsonProperty("date") LocalDateTime date) {
-        if (file == null && contents == null && url == null) {
-            System.err.println("id=" + id);
-        }
+        //if (file == null && contents == null && url == null) {
+        //    System.err.println("id=" + id);
+        //}
         this.file = file;
         this.url = url;
         this.id = id;
