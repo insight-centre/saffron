@@ -75,7 +75,10 @@ public class MainKG {
             Configuration config = mapper.readValue(configuration, Configuration.class);
             if (config.taxonomy == null || config.taxonomy.modelFile == null
                     || config.taxonomy.search == null) {
-                badOptions(p, "Configuration does not have a model file");
+                badOptions(p, "Configuration does not have a taxonomy model file");
+            } else if (config.kg == null || config.kg.kerasModelFile == null
+                    || config.kg.bertModelFile == null) {
+            	badOptions(p, "Configuration does not have all KG model files (keras and bert)");
             }
             List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             List<Term> terms = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
