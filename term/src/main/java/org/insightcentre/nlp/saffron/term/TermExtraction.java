@@ -408,7 +408,7 @@ public class TermExtraction {
                         }
                     }
                     return new Result(convertToTerms(terms, freqs, voting, casing, whiteList, stopWords),
-                            filterTerms(terms, dts, casing, stopWords));
+                            addTfIdf(filterTerms(terms, dts, casing, stopWords)));
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
@@ -430,6 +430,17 @@ public class TermExtraction {
             }
         }
         return new ArrayList<DocumentTerm>(rval);
+    }
+    
+    private static List<DocumentTerm> addTfIdf(List<DocumentTerm> dts) {
+        Object2DoubleMap<String> df = new Object2DoubleOpenHashMap<>();
+        for(DocumentTerm dt : dts) {
+            df.put(dt.getDocumentId(), df.getDouble(dt.getDocumentId()) + 1);
+        }
+        for(DocumentTerm dt : dts) {
+            dt.setTfIdf((double)dt.getOccurrences() * Math.log((double)df.size() / df.getDouble(dt.getDocumentId())));
+        }
+        return dts;
     }
 
     private static boolean isProperTerm(String rootSequence, Set<String> stopWords) {
