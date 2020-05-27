@@ -291,7 +291,7 @@ public class Browser extends AbstractHandler {
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), saffronHandler.getTopTerms(saffronDatasetName, n, offset + n));
                 } else if (target.startsWith("/term/")) {
-                    final String termString = decode(target.substring(7));
+                    final String termString = decode(target.substring(6));
                     final Term term = saffronHandler.getTerm(saffronDatasetName, termString);
 
                         response.setContentType("text/html;charset=utf-8");
