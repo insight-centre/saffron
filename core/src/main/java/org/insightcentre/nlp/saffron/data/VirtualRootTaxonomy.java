@@ -3,7 +3,6 @@ package org.insightcentre.nlp.saffron.data;
 import java.util.Collection;
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -25,14 +24,23 @@ public class VirtualRootTaxonomy extends Taxonomy{
 	public VirtualRootTaxonomy(Taxonomy taxonomy) {
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		this.addChild(taxonomy);
+		
+		if(taxonomy.getRoot().equals(VIRTUAL_ROOT)) {
+			for(Taxonomy child: taxonomy.getChildren()) {
+				this.addChild(child);
+			}
+		} else {
+			this.addChild(taxonomy);			
+		}
 	}
 	
 	public VirtualRootTaxonomy(Collection<Taxonomy> taxonomies) {
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		for (Taxonomy taxonomy: taxonomies) {
-			this.addChild(taxonomy);
+		if (taxonomies != null) {
+			for (Taxonomy taxonomy: taxonomies) {
+				this.addChild(taxonomy);
+			}
 		}
 	}
 	
@@ -46,6 +54,14 @@ public class VirtualRootTaxonomy extends Taxonomy{
 		
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		this.addChild(new Taxonomy(root, score, linkScore, children, status));
+		
+		if (root.equals(VIRTUAL_ROOT)) {
+			for(Taxonomy child: children) {
+				this.addChild(child);
+			}
+		} else {
+			this.addChild(new Taxonomy(root, score, linkScore, children, status));
+		}
 	}
+
 }

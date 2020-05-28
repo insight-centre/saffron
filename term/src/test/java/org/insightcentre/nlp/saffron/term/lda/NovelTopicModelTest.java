@@ -7,6 +7,7 @@ package org.insightcentre.nlp.saffron.term.lda;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.WhitespaceTokenizer;
@@ -99,7 +100,7 @@ public class NovelTopicModelTest {
             }
 
             @Override
-            public void updateDocument(String id, Document doc) {
+            public void updateDocuments(Collection<Document> docs) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
            
@@ -151,7 +152,7 @@ public class NovelTopicModelTest {
             }
 
             @Override
-            public void updateDocument(String id, Document doc) {
+            public void updateDocuments(Collection<Document> docs) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
             
@@ -173,7 +174,7 @@ public class NovelTopicModelTest {
         FrequencyStats stats = stats();
         double expResult = 4.0;
         double result = instance.novelTopicModel(term, stats);
-        assertEquals(expResult, result, 2.0);
+        assertEquals(expResult, result, 3.0);
     }
 
 }

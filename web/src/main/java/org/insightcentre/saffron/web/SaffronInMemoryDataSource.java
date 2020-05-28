@@ -877,7 +877,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public List<Document> getDocByTerm(String runId, String term) {
+    public List<Document> getDocsByTerm(String runId, String term) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1267,4 +1267,34 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             }
         }
     }
+
+
+	@Override
+	public void addAuthors(String runId, List<Author> authors) {
+		throw new NotImplementedException();		
+	}
+
+
+	@Override
+	public void addAuthor(String runId, Author authorToBeAdded) throws Exception {
+		throw new NotImplementedException();		
+	}
+
+
+	@Override
+	public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId) {
+		throw new NotImplementedException();
+	}
+        
+        @Override
+	public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId) {
+		throw new NotImplementedException();
+	}
+
+    @Override
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
+        throw new NotImplementedException();
+    }
+        
+        
 }

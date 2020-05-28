@@ -135,4 +135,11 @@ public class AuthorTerm {
         }
         return true;
     }
+
+	@Override
+	public String toString() {
+		return "AuthorTerm [authorId=" + authorId + ", termId=" + termId + ", matches=" + matches + ", occurrences="
+				+ occurrences + ", paperCount=" + paperCount + ", tfIrf=" + tfIrf + ", score=" + score
+				+ ", researcherScore=" + researcherScore + "]";
+	}
 }

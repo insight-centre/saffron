@@ -44,14 +44,14 @@ else
 fi
 
 echo "########################################"
-echo "## Step 2: Term Extraction           ##"
+echo "## Step 2: Term Extraction            ##"
 echo "########################################"
 $DIR/extract-terms -c $CONFIG \
     -x $CORPUS -t $OUTPUT/terms-extracted.json \
     -o $OUTPUT/doc-terms.json
 
 echo "########################################"
-echo "## Step 3: Concept Consolidation       ##"
+echo "## Step 3: Concept Consolidation      ##"
 echo "########################################"
 #$DIR/consolidate-concepts -c $CONFIG \
 #	-t $OUTPUT/terms-extracted.json \
@@ -80,7 +80,7 @@ echo "########################################"
 $DIR/connect-authors -t $CORPUS -p $OUTPUT/terms.json -d $OUTPUT/doc-terms.json -o $OUTPUT/author-terms.json
 
 echo "########################################"
-echo "## Step 7: Term Similarity           ##"
+echo "## Step 7: Term Similarity            ##"
 echo "########################################"
 $DIR/term-sim -d $OUTPUT/doc-terms.json -o $OUTPUT/term-sim.json
 
@@ -90,15 +90,15 @@ echo "########################################"
 $DIR/author-sim -d $OUTPUT/author-terms.json -o $OUTPUT/author-sim.json
 
 echo "########################################"
-echo "## Step 9: Taxonomy Extraction       ##"
+echo "## Step 9: Taxonomy Extraction        ##"
 echo "########################################"
 #$DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
 $DIR/kg-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/kg.json -c $CONFIG
 
 echo "########################################"
-echo "## Step 10: RDF Extraction       ##"
+echo "## Step 10: RDF Extraction            ##"
 echo "########################################"
-$DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/kg.rdf -t $OUTPUT -c $CONFIG -d $DIR
+$DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/kg.rdf -t kg -d $OUTPUT
 
 #echo "Creating taxonomy at" $OUTPUT/taxonomy.html
 #python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-terms.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

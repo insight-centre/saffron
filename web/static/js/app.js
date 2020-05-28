@@ -626,6 +626,7 @@ angular.module('app').component('relatedterms', {
                         }
                         ctrl.n = ctrl.n2;
                     });
+<<<<<<< HEAD
                 } else
 
             // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
@@ -639,6 +640,24 @@ angular.module('app').component('relatedterms', {
                             "pos": (t + 1 + ctrl.n2),
                             "left": t < response.data.length / 2,
                             "right": t >= response.data.length / 2
+=======
+                } else {
+                    ctrl.title = "Main terms";
+                    var url = apiUrlWithSaffron + 'termauthors/' + ctrl.author;
+                    $http.get(url).then(function(response) {
+                            response.data.sort((a, b) => (a.score < b.score) ? 1 : -1);
+                            response.data = response.data.slice(ctrl.n2, ctrl.n2 + 20);
+                            ctrl.terms = [];
+                            for (t = 0; t < response.data.length; t++) {
+                                ctrl.terms.push({
+                                    "term_string": response.data[t].termId,
+                                    "pos": (t + 1 + ctrl.n2),
+                                    "left": t < response.data.length / 2,
+                                    "right": t >= response.data.length / 2
+                                });
+                            }
+                            ctrl.n = ctrl.n2;
+>>>>>>> saffron_development
                         });
                     }
                     ctrl.n = ctrl.n2;
@@ -713,12 +732,10 @@ angular.module('app').controller('Breadcrumbs', function($scope, $http, $locatio
         if (termName !== 'HEAD_TERM') {
             var url = apiUrlWithSaffron + 'terms/' + termName + '/parent';
             $http.get(url).then(function(response) {
-                
-               if (response.data.root !== $scope.parents[0]) {
+                if (response.data.root !== $scope.parents[0]) {
                     $scope.parents.unshift(response.data.root);
                     getParents(response.data.root);
-               }
-
+                }
             });
         }
 
@@ -766,13 +783,31 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
             console.log(response)
             console.log(response.data)
 
+            runIds = []
+
+            for (var i in response.data) {
+                value = response.data[i]
+                runIds.push(value['id'])
+            }
+
+
             for (t = 0; t < response.data.length; t++) {
                 console.log(response.data[t])
                 $scope.parents.push(response.data[t])
             }
         });
+
     }
     getRuns();
+
+    $scope.checkRun = function($event) {
+        var run_id = document.forms["formRun"]["newRunName"].value;
+        if (runIds.includes(run_id)) {
+            document.getElementById("saffronRunMessage").innerHTML = "<strong> A saffron-run with id  &quot; " + run_id + "   &quot; already exists. Please use a different name. </strong>"
+            document.getElementById('saffronRunMessage').className = "alert alert-danger";
+            $event.preventDefault();
+        }
+    };
 
     // reject one or multiple terms
     $scope.deleteRun = function($event, id) {
@@ -781,7 +816,6 @@ angular.module('app').controller('runs', function($scope, $http, $location, shar
             deleteOneRun($http, id);
         }
     };
-
 });
 
 // the child terms component
@@ -904,29 +938,34 @@ angular.module('app').component('relatedauthors', {
             ctrl.title = "Major authors on this term";
             $http.get(apiUrlWithSaffron + 'authorterms/' + ctrl.term).then(function(response) {
                 ctrl.authors = [];
+                response.data.sort((a, b) => (a.tfirf < b.tfirf) ? 1 : -1);
                 for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-                    });
+                	if(response.data[t] != null) {
+	                    ctrl.authors.push({
+	                        "id": response.data[t].author.id,
+	                        "name": response.data[t].author.name,
+	                        "pos": (t + 1),
+	                        "left": t < response.data.length / 2,
+	                        "right": t >= response.data.length / 2
+	                    });
+	                }
                 }
             });
         } else if (ctrl.author) {
             ctrl.title = "Similar authors";
-            $http.get('/' + saffronDatasetName + '/author-sim?author1=' + ctrl.author).then(function(response) {
+            $http.get(apiUrlWithSaffron + 'authorauthors/' + ctrl.author).then(function(response) {
                 ctrl.authors = [];
+                response.data.sort((a, b) => (a.similarity < b.similarity) ? 1 : -1);
                 for (t = 0; t < response.data.length; t++) {
-                    ctrl.authors.push({
-                        "id": response.data[t].id,
-                        "name": response.data[t].name,
-                        "pos": (t + 1),
-                        "left": t < response.data.length / 2,
-                        "right": t >= response.data.length / 2
-
-                    });
+                	if(response.data[t] != null) {
+	                    ctrl.authors.push({
+	                        "id": response.data[t].author2_id,
+	                        "name": response.data[t].author2_id,
+	                        "pos": (t + 1),
+	                        "left": t < response.data.length / 2,
+	                        "right": t >= response.data.length / 2
+	                    });
+	                }
                 }
             });
         }
@@ -946,7 +985,8 @@ angular.module('app').component('relateddocuments', {
         ctrl.n2 = 0;
         this.loadTerms = function() {
             if (ctrl.term) {
-                $http.get('/' + saffronDatasetName + '/doc-terms?n=20&offset=' + ctrl.n2 + '&term=' + ctrl.term).then(function(response) {
+                $http.get(apiUrlWithSaffron + 'docs/term/' + ctrl.term + '?n=20&offset=' + ctrl.n2).then(function(response) {
+                	ctrl.docs = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.docs.push({
                             "doc": response.data[t],
@@ -957,7 +997,7 @@ angular.module('app').component('relateddocuments', {
                     ctrl.n = ctrl.n2;
                 });
             } else if (ctrl.author) {
-                $http.get('/' + saffronDatasetName + '/author-docs?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function(response) {
+                $http.get(apiUrlWithSaffron + 'docs/author/' + ctrl.author + '?n=20&offset=' + ctrl.n2).then(function(response) {
                     ctrl.docs = [];
                     for (t = 0; t < response.data.length; t++) {
                         ctrl.docs.push({

@@ -221,7 +221,7 @@ public class Browser extends AbstractHandler {
                         mapper.writeValue(response.getWriter(), getTopNDocTerms(dts, n, offset));
 
                     } else if (term != null) {
-                        final List<Document> _docs = saffronHandler.getDocByTerm(saffronDatasetName, term);
+                        final List<Document> _docs = saffronHandler.getDocsByTerm(saffronDatasetName, term);
                         final List<Document> docs = new ArrayList<>();
                         int i = 0;
                         for (Document d : _docs) {
@@ -291,7 +291,7 @@ public class Browser extends AbstractHandler {
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), saffronHandler.getTopTerms(saffronDatasetName, n, offset + n));
                 } else if (target.startsWith("/term/")) {
-                    final String termString = decode(target.substring(7));
+                    final String termString = decode(target.substring(6));
                     final Term term = saffronHandler.getTerm(saffronDatasetName, termString);
 
                         response.setContentType("text/html;charset=utf-8");

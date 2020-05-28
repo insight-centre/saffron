@@ -2,6 +2,7 @@ package org.insightcentre.nlp.saffron.authors.sim;
 
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 import java.util.*;
 
@@ -32,14 +33,25 @@ public class AuthorSimilarity {
     public List<AuthorAuthor> authorSimilarity(Collection<AuthorTerm> ats, String saffronDatasetName, SaffronListener log) {
         List<AuthorAuthor> termAuthors = new ArrayList<>();
         Map<String, Object2DoubleMap<String>> vectors = new HashMap<>();
-        //System.err.printf("%d author terms\n", ats.size());
+        Object2DoubleMap<String> authorNorms = new Object2DoubleOpenHashMap<>();
         for (AuthorTerm at : ats) {
             if (!vectors.containsKey(at.getAuthorId())) {
                 vectors.put(at.getAuthorId(), new Object2DoubleOpenHashMap<String>());
             }
             vectors.get(at.getAuthorId()).put(at.getTermId(), at.getScore());
+            authorNorms.put(at.getAuthorId(), at.getScore()*at.getScore() + authorNorms.getDouble(at.getAuthorId()));
         }
-        //System.err.printf("\n%d vectors\n", vectors.size());
+        for(Object2DoubleMap.Entry<String> e : authorNorms.object2DoubleEntrySet()) {
+            e.setValue(Math.sqrt(e.getDoubleValue()));
+        }
+        Map<String, TopNList<String>> authorByTopic = new HashMap<>();
+        for(AuthorTerm at : ats) {
+            if(!authorByTopic.containsKey(at.getTermId())) {
+                authorByTopic.put(at.getTermId(), new TopNList<>(top_n * 2));
+            }
+            authorByTopic.get(at.getTermId()).offer(at.getAuthorId(), Math.abs(at.getScore()) / authorNorms.getDouble(at.getAuthorId()));
+        }
+        int i = 0;
         for (String t1 : vectors.keySet()) {
             TreeSet<AuthorAuthor> topN = new TreeSet<>(new Comparator<AuthorAuthor>() {
 
@@ -56,8 +68,12 @@ public class AuthorSimilarity {
                     return i1;
                 }
             });
+            TreeSet<String> authors2 = new TreeSet<>();
+            for(String term : vectors.get(t1).keySet()) {
+                authors2.addAll(authorByTopic.getOrDefault(term, new TopNList<>(0)));
+            }
             //System.err.print(".");
-            for (String t2 : vectors.keySet()) {
+            for (String t2 : authors2) {
                 if (!t1.equals(t2)) {
                     double s = sim(vectors.get(t1), vectors.get(t2));
                     if (s > threshold) {
@@ -69,6 +85,9 @@ public class AuthorSimilarity {
                 topN.pollFirst();
             }
             termAuthors.addAll(topN);
+            //if(++i % 1000 == 0) {
+            //    log.tick();
+            //}
         }
 
         return termAuthors;
