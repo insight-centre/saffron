@@ -166,7 +166,7 @@ angular.module('app').component('editterms', {
                             "term_id": response.data[t].id,
                             "status": response.data[t].status
                         });
-                    }             
+                    }
                 }
             },
 
@@ -297,7 +297,7 @@ angular.module('app').component('editterms', {
                 $scope.saveTerms();
             }, function() {
                 // Saving cancelled
-            });            
+            });
           };
 
         // send all modifications to the API
@@ -314,7 +314,7 @@ angular.module('app').component('editterms', {
             let requestData = {
                 "terms": requestTerms
             };
-            
+
             $http.post(apiUrlWithSaffron + 'terms/update', requestData).then(
                 function (response) {
                     console.log(response);
@@ -336,7 +336,7 @@ angular.module('app').component('editparents', {
     controller: function ($http, $scope) {
         var ctrl = this;
         ctrl.message = null;
-       
+
         $scope.loadTerms = function() {
              ctrl.terms = [];
             $http.get(apiUrlWithSaffron).then(
@@ -347,9 +347,9 @@ angular.module('app').component('editparents', {
                     console.log(error);
                     console.log("Failed to get taxonomy structure");
                 }
-            );          
+            );
         }
-        
+
         $scope.getChildren = function(term, parent_branch, parent, depth) {
             var current_term = {
                 "term_string": term.root,
@@ -372,7 +372,7 @@ angular.module('app').component('editparents', {
 
         $scope.changeParentStatus = function(term, status) {
             ctrl.activeTerm = null;
-            
+
             var requestData = {
              "terms": [
                 {
@@ -431,7 +431,7 @@ angular.module('app').component('editparents', {
                         "term": requestData.terms[0].id
                     }
                     ctrl.activeTerm = null;
-                    $scope.loadTerms();             
+                    $scope.loadTerms();
                 },
                 function (response) {
                     if (response.data === "The selected move parent target is a member of a child term and cannot be moved") {
@@ -604,7 +604,7 @@ angular.module('app').component('relatedterms', {
                     ctrl.n = ctrl.n2;
                 });
 
-            } else
+            } else {
 
                 // if on a document page, show top terms from the document
                 if (ctrl.doc) {
@@ -626,21 +626,6 @@ angular.module('app').component('relatedterms', {
                         }
                         ctrl.n = ctrl.n2;
                     });
-<<<<<<< HEAD
-                } else
-
-            // if on an author page, show top terms from that author <!-- not API ready, still from the JSON files -->
-            if (ctrl.author) {
-                ctrl.title = "Main terms";
-                $http.get('/' + saffronDatasetName + '/author-terms?n=20&offset=' + ctrl.n2 + '&author=' + ctrl.author).then(function (response) {
-                    ctrl.terms = [];
-                    for (t = 0; t < response.data.length; t++) {
-                        ctrl.terms.push({
-                            "term_string": response.data[t].term_id,
-                            "pos": (t + 1 + ctrl.n2),
-                            "left": t < response.data.length / 2,
-                            "right": t >= response.data.length / 2
-=======
                 } else {
                     ctrl.title = "Main terms";
                     var url = apiUrlWithSaffron + 'termauthors/' + ctrl.author;
@@ -657,13 +642,10 @@ angular.module('app').component('relatedterms', {
                                 });
                             }
                             ctrl.n = ctrl.n2;
->>>>>>> saffron_development
-                        });
-                    }
-                    ctrl.n = ctrl.n2;
-                });
+                      });
+                }
             }
-        };
+        }
 
         this.termForward = function() {
             ctrl.n2 += 20;
