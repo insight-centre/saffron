@@ -112,9 +112,9 @@ public class TaxonomyTest {
 			+ "}"
 		+ "]"
 	+ "}";
-	
+
 	private Taxonomy inputTaxonomy;
-	
+
     public TaxonomyTest() {
     }
 
@@ -160,47 +160,47 @@ public class TaxonomyTest {
         final String json = mapper.writeValueAsString(taxonomy);
         assertEquals(taxonomy, mapper.readValue(json, Taxonomy.class));
     }
-    
+
     @Test
     public void testMinDepth() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The minimum depth is incorrect", 1,taxonomy.minDepth());
     }
-    
+
     @Test
     public void testMinDepth2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
     	taxonomy.children.get(0).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
-    	
+
     	assertEquals("The minimum depth is incorrect", 2,taxonomy.minDepth());
     }
-    
+
     @Test
     public void testMedianDepth() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals(2.0, taxonomy.medianDepth(), 0.000001);
     }
-    
+
     @Test
     public void testMedianDepth2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
     	taxonomy.children.remove(2);
     	taxonomy.children.remove(2);
-    	
+
     	assertEquals(1.5, taxonomy.medianDepth(), 0.000001);
     }
-    
+
     @Test
     public void testLeavesDepths() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	Map<String, Integer> expected = new HashMap<String, Integer>();
     	expected.put("node 10", 1);
     	expected.put("node 11-1", 2);
@@ -210,9 +210,9 @@ public class TaxonomyTest {
     	expected.put("node 13-1-2-1", 4);
     	expected.put("node 13-2", 2);
     	expected.put("node 13-3", 2);
-    	
+
     	Map<String, Integer> actual = taxonomy.leavesDepths(0);
-    	
+
     	assertEquals("The number of leaves returned is incorrect", expected.size(), actual.size());
     	for(Entry<String, Integer> entry: actual.entrySet()) {
     		if(!expected.containsKey(entry.getKey())) {
@@ -220,48 +220,48 @@ public class TaxonomyTest {
     		} else {
     			assertEquals("The depth of the node '" + entry.getKey() + "' is incorrect",expected.get(entry.getKey()),entry.getValue());
     		}
-    	}    	
+    	}
     }
-    
+
     @Test
     public void testMaxDegree() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The maximum node degree is different from expected", 4,taxonomy.maxDegree());
     }
-    
+
     @Test
     public void testMaxDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
     	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234,null, Status.none));
-    	
+
     	assertEquals("The maximum node degree is different from expected", 5,taxonomy.maxDegree());
     }
-    
+
     @Test
     public void testAvgDegree() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The average node degree is different from expected", 26.0/14, taxonomy.avgDegree(), 0.00001);
     }
-    
+
     @Test
     public void testAvgDegree2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
     	taxonomy.children.get(3).children.add(new Taxonomy("new node", 1.23456, 0.1234, null, Status.none));
-    	
+
     	assertEquals("The average node degree is different from expected", 28.0/15, taxonomy.avgDegree(), 0.00001);
     }
-    
+
     @Test
     public void testMedianDegree() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The median node degree is different from expected", 1.0, taxonomy.medianDegree(), 0.00001);
     }
 
@@ -269,7 +269,7 @@ public class TaxonomyTest {
     public void testNodeDegrees() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	Map<String, Integer> expected = new HashMap<String, Integer>();
     	expected.put("root node", 4);
     	expected.put("node 10", 1);
@@ -285,9 +285,9 @@ public class TaxonomyTest {
     	expected.put("node 13-1-2-1", 1);
     	expected.put("node 13-2", 1);
     	expected.put("node 13-3", 1);
-    	
+
     	Map<String, Integer> actual = taxonomy.nodeDegrees(true);
-    	
+
     	assertEquals("The number of nodes returned is incorrect", expected.size(), actual.size());
     	for(Entry<String, Integer> entry: actual.entrySet()) {
     		if(!expected.containsKey(entry.getKey())) {
@@ -295,17 +295,17 @@ public class TaxonomyTest {
     		} else {
     			assertEquals("The degree of the node '" + entry.getKey() + "' is incorrect",expected.get(entry.getKey()),entry.getValue());
     		}
-    	}    	
+    	}
     }
-    
+
     @Test
     public void testNumberOfLeafNodes() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The number of leaves is different from expected", 8,taxonomy.numberOfLeafNodes());
     }
-    
+
     @Test
     public void testNumberOfLeafNodes2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
@@ -314,18 +314,18 @@ public class TaxonomyTest {
     			+ "\"score\": 210.12345,"
     			+ "\"linkScore\": 0.98765,"
     			+ "\"children\": []}", Taxonomy.class);
-    	
+
     	assertEquals("The number of leaves is different from expected", 0,taxonomy.numberOfLeafNodes());
     }
-    
+
     @Test
     public void testNumberOfBranchNodes() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
     	final Taxonomy taxonomy = mapper.readValue(SAMPLE_TAXONOMY, Taxonomy.class);
-    	
+
     	assertEquals("The number of branch nodes is different from expected", 5,taxonomy.numberOfBranchNodes());
     }
-    
+
     @Test
     public void testNumberOfBranchNodes2() throws JsonParseException, JsonMappingException, IOException {
     	ObjectMapper mapper = new ObjectMapper();
@@ -334,18 +334,18 @@ public class TaxonomyTest {
     			+ "\"score\": 210.12345,"
     			+ "\"linkScore\": 0.98765,"
     			+ "\"children\": []}", Taxonomy.class);
-    	
+
     	assertEquals("The number of branch nodes is different from expected", 0,taxonomy.numberOfBranchNodes());
     }
-    
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   removeDescendent(String termString)
-     * 
+     *
      */
-    
+
     /**
      * The removeDescendent command should never remove the root node
      */
@@ -366,15 +366,15 @@ public class TaxonomyTest {
 					.addChild(new Taxonomy.Builder().root("kid2").build())
 					.build()
 				)
-			.build(); 
-    	
+			.build();
+
     	//call
     	inputTaxonomy.removeDescendent("greatgrandmother");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveRootChild() {
     	//prepare
@@ -388,15 +388,15 @@ public class TaxonomyTest {
 						.build()
 				)
 				.addChild(new Taxonomy.Builder().root("kid2").build())
-			.build();   
-    	
+			.build();
+
     	//call
     	inputTaxonomy.removeDescendent("mother");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveRootChildLeafNode() {
     	//prepare
@@ -415,16 +415,16 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	inputTaxonomy.children.add(new Taxonomy.Builder().root("childless").build());
-    	
+
     	//call
     	inputTaxonomy.removeDescendent("childless");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveRootGrandchildBranchNode() {
     	//prepare
@@ -432,21 +432,21 @@ public class TaxonomyTest {
 				.root("greatgrandmother")
 				.addChild(
 					new Taxonomy.Builder().root("mother")
-					.addChild(new Taxonomy.Builder().root("kid1").build())						
+					.addChild(new Taxonomy.Builder().root("kid1").build())
 					.addChild(new Taxonomy.Builder().root("kid2").build())
 					.addChild(new Taxonomy.Builder().root("aunt").build())
-					.addChild(new Taxonomy.Builder().root("uncle").build())	
+					.addChild(new Taxonomy.Builder().root("uncle").build())
 					.build()
 				)
 			.build();
-  
+
     	//call
     	inputTaxonomy.removeDescendent("grandmother");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveRootGrandchildLeafNode() {
     	//prepare
@@ -464,14 +464,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.removeDescendent("kid2");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveLeafNode() {
     	//prepare
@@ -489,14 +489,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.removeDescendent("uncle");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveInexistentNode() {
     	//prepare
@@ -514,24 +514,24 @@ public class TaxonomyTest {
 					.addChild(new Taxonomy.Builder().root("kid2").build())
 					.build()
 				)
-			.build(); 
-    	
+			.build();
+
     	//call
     	inputTaxonomy.removeDescendent("random");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
-    
+
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   setParentChildStatus(String childTerm, Status status)
-     * 
+     *
      */
-    
+
     @Test
     public void testSetParentChildStatusBranchNodeAccepted() {
     	//prepare
@@ -550,14 +550,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.setParentChildStatus("grandmother", Status.accepted);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testSetParentChildStatusBranchNodeNone() {
     	//prepare
@@ -576,14 +576,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.setParentChildStatus("grandmother", Status.none);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test(expected = InvalidOperationException.class)
     public void testSetParentChildStatusBranchNodeRejected() {
     	//prepare
@@ -602,7 +602,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
     		//call
     		inputTaxonomy.setParentChildStatus("grandmother", Status.rejected);
@@ -612,7 +612,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test
     public void testSetParentChildStatusLeafNodeAccepted() {
     	//prepare
@@ -631,14 +631,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.setParentChildStatus("kid2", Status.accepted);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testSetParentChildStatusLeafNodeNone() {
     	//prepare
@@ -657,14 +657,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.setParentChildStatus("kid2", Status.none);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test(expected = InvalidOperationException.class)
     public void testSetParentChildStatusLeafNodeRejected() {
     	//prepare
@@ -683,7 +683,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
     		//call
     		inputTaxonomy.setParentChildStatus("kid2", Status.rejected);
@@ -693,7 +693,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test
     public void testSetParentChildStatusNonexistentChild() {
     	//prepare
@@ -712,14 +712,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.setParentChildStatus("nonexistent", Status.accepted);
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testSetParentChildStatusNull() {
     	//prepare
@@ -738,7 +738,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
     		//call
     		inputTaxonomy.setParentChildStatus("kid2", null);
@@ -748,7 +748,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testSetParentChildStatusChildEmpty() {
     	//prepare
@@ -767,7 +767,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
 			//call
 			inputTaxonomy.setParentChildStatus("", Status.accepted);
@@ -776,9 +776,9 @@ public class TaxonomyTest {
 			assertEquals(expected,inputTaxonomy);
 			throw e;
     	}
-    		
+
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testSetParentChildStatusChildNull() {
     	//prepare
@@ -797,7 +797,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
     		//call
     		inputTaxonomy.setParentChildStatus(null, Status.accepted);
@@ -807,11 +807,11 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     /*
      * It is currently impossible to perform such check from within the Taxonomy object.
      * The reason is that there is no way to identify the primary root from within the object.
-     * 
+     *
     @Test(expected = InvalidOperationException.class)
     public void testSetParentChildStatusRootAsChild() {
     	//prepare
@@ -830,7 +830,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    		
+
     	try {
     		//call
     		inputTaxonomy.setParentChildStatus("greatgrandmother", Status.accepted);
@@ -841,7 +841,7 @@ public class TaxonomyTest {
     	}
     }
     */
-    
+
     /*
      * It is currently impossible to perform such check from within the Taxonomy object.
      * The reason is that there is no way to identify the primary root from within the object.
@@ -849,33 +849,33 @@ public class TaxonomyTest {
     /*@Test
     public void getParentRoot() {
     	//prepare
-    	
+
     	//call
-    	
+
     	//evaluate
     }*/
-    
-    
+
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   getParent(String termChild)
-     * 
+     *
      */
-    
+
     @Test
     public void getParentRootChildBranchNode() {
     	//prepare
     	String expected = "greatgrandmother";
-    	
+
     	//call
     	String actual = inputTaxonomy.getParent("mother").getRoot();
-    	
+
     	//evaluate
     	assertEquals(expected, actual);
     }
-    
+
     @Test
     public void getParentRootChildLeafNode() {
     	//prepare
@@ -883,77 +883,77 @@ public class TaxonomyTest {
     				new Taxonomy.Builder().root("grandfather").build()
     			).build();
     	String expected = "greatgrandmother";
-    	
+
     	//call
     	String actual = inputTaxonomy.getParent("grandfather").getRoot();
-    	
+
     	//evaluate
     	assertEquals(expected, actual);
     }
-    
+
     @Test
     public void getParentNonRootChildBranchNode() {
     	//prepare
     	String expected = "mother";
-    	
+
     	//call
     	String actual = inputTaxonomy.getParent("grandmother").getRoot();
-    	
+
     	//evaluate
     	assertEquals(expected, actual);
     }
-    
+
     @Test
     public void getParentNonRootChildLeafNode() {
     	//prepare
     	String expected = "mother";
-    	
+
     	//call
     	String actual = inputTaxonomy.getParent("kid2").getRoot();
-    	
+
     	//evaluate
     	assertEquals(expected, actual);
     }
-    
+
     @Test
     public void getParentInexistentChild() {
     	//prepare
-    	
+
     	//call
     	Taxonomy actual = inputTaxonomy.getParent("inexistent");
-    	
+
     	//evaluate
     	assertNull(actual);
     }
-    
+
     @Test(expected=InvalidValueException.class)
     public void getParentNullParameter() {
     	//prepare
-    	
+
     	//call
     	inputTaxonomy.getParent(null);
-    	
+
     	//evaluate
     }
-    
+
     @Test(expected=InvalidValueException.class)
     public void getParentEmptyParameter() {
     	//prepare
-    	
+
     	//call
     	inputTaxonomy.getParent("");
-    	
+
     	//evaluate
     }
-    
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   removeChildBranch(String termString)
-     * 
+     *
      */
-    
+
     @Test
     public void testRemoveChildBranchBranchNode() {
     	//prepare
@@ -966,14 +966,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.children.get(0).removeChildBranch("grandmother");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveChildBranchLeafNode() {
     	//prepare
@@ -991,14 +991,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.children.get(0).removeChildBranch("kid1");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testRemoveChildBranchInexistentChild() {
     	//prepare
@@ -1017,14 +1017,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.children.get(0).removeChildBranch("inexistent_child");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testRemoveChildBranchNullChild() {
     	//prepare
@@ -1043,7 +1043,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
     		inputTaxonomy.children.get(0).removeChildBranch(null);
@@ -1053,7 +1053,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testRemoveChildBranchEmptyChild() {
     	//prepare
@@ -1072,7 +1072,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
     		inputTaxonomy.children.get(0).removeChildBranch("");
@@ -1082,15 +1082,15 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   addChild(Taxonomy child)
-     * 
+     *
      */
-    
+
     @Test
     public void testAddChildBranchNode() {
     	//prepare
@@ -1098,7 +1098,7 @@ public class TaxonomyTest {
     			.addChild(new Taxonomy.Builder().root("aunt2").build())
 				.addChild(new Taxonomy.Builder().root("uncle2").build())
 			.build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1115,19 +1115,19 @@ public class TaxonomyTest {
 				)
 				.addChild(toAdd)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.addChild(toAdd);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testAddChildLeafNode() {
     	//prepare
     	Taxonomy toAdd = new Taxonomy.Builder().root("grandfather").build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1144,10 +1144,10 @@ public class TaxonomyTest {
 				)
 				.addChild(toAdd)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.addChild(toAdd);
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
@@ -1159,7 +1159,7 @@ public class TaxonomyTest {
 				.addChild(new Taxonomy.Builder().root("aunt").build())
 				.addChild(new Taxonomy.Builder().root("uncle").build())
 			.build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1175,22 +1175,22 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.children.get(0).addChild(toAdd);
-    	} catch (InvalidOperationException e) {    	
+    	} catch (InvalidOperationException e) {
 	    	//evaluate
 	    	assertEquals(expected,inputTaxonomy);
 	    	throw e;
     	}
     }
-    
+
     @Test(expected = InvalidOperationException.class)
     public void testAddChildExistentLeafNode() {
     	//prepare
     	Taxonomy toAdd = new Taxonomy.Builder().root("kid1").build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1206,7 +1206,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try{
 	    	//call
 	    	inputTaxonomy.children.get(0).addChild(toAdd);
@@ -1216,12 +1216,12 @@ public class TaxonomyTest {
 	    	throw e;
 		}
     }
-    
+
     @Test(expected = InvalidOperationException.class)
     public void testAddChildSameChildName() {
     	//prepare
     	Taxonomy toAdd = new Taxonomy.Builder().root("mother").build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1237,38 +1237,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
-    	try {
-	    	//call
-	    	inputTaxonomy.addChild(toAdd);
-    	} catch (InvalidOperationException e) {    	
-	    	//evaluate
-	    	assertEquals(expected,inputTaxonomy);
-	    	throw e;
-    	}
-    }
-    
-    @Test(expected = InvalidOperationException.class)
-    public void testAddChildSameDescendentName() {
-    	//prepare
-    	Taxonomy toAdd = new Taxonomy.Builder().root("kid1").build();
-    	
-    	Taxonomy expected = new Taxonomy.Builder()
-				.root("greatgrandmother")
-				.addChild(
-					new Taxonomy.Builder().root("mother")
-					.addChild(new Taxonomy.Builder().root("kid1").build())
-					.addChild(
-							new Taxonomy.Builder().root("grandmother")
-								.addChild(new Taxonomy.Builder().root("aunt").build())
-								.addChild(new Taxonomy.Builder().root("uncle").build())
-							.build()
-					)
-					.addChild(new Taxonomy.Builder().root("kid2").build())
-					.build()
-				)
-			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.addChild(toAdd);
@@ -1278,12 +1247,12 @@ public class TaxonomyTest {
 	    	throw e;
     	}
     }
-    
-    @Test(expected = InvalidValueException.class)
-    public void testAddChildNull() {
+
+    @Test(expected = InvalidOperationException.class)
+    public void testAddChildSameDescendentName() {
     	//prepare
-    	Taxonomy toAdd = null;
-    	
+    	Taxonomy toAdd = new Taxonomy.Builder().root("kid1").build();
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1299,22 +1268,22 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.addChild(toAdd);
-    	} catch (InvalidValueException e) {    	
+    	} catch (InvalidOperationException e) {
 	    	//evaluate
 	    	assertEquals(expected,inputTaxonomy);
 	    	throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
-    public void testAddChildEmpty() {
+    public void testAddChildNull() {
     	//prepare
-    	Taxonomy toAdd = new Taxonomy.Builder().root("").build();
-    	
+    	Taxonomy toAdd = null;
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1330,7 +1299,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.addChild(toAdd);
@@ -1340,20 +1309,51 @@ public class TaxonomyTest {
 	    	throw e;
     	}
     }
-    
+
+    @Test(expected = InvalidValueException.class)
+    public void testAddChildEmpty() {
+    	//prepare
+    	Taxonomy toAdd = new Taxonomy.Builder().root("").build();
+
+    	Taxonomy expected = new Taxonomy.Builder()
+				.root("greatgrandmother")
+				.addChild(
+					new Taxonomy.Builder().root("mother")
+					.addChild(new Taxonomy.Builder().root("kid1").build())
+					.addChild(
+							new Taxonomy.Builder().root("grandmother")
+								.addChild(new Taxonomy.Builder().root("aunt").build())
+								.addChild(new Taxonomy.Builder().root("uncle").build())
+							.build()
+					)
+					.addChild(new Taxonomy.Builder().root("kid2").build())
+					.build()
+				)
+			.build();
+
+    	try {
+	    	//call
+	    	inputTaxonomy.addChild(toAdd);
+    	} catch (InvalidValueException e) {
+	    	//evaluate
+	    	assertEquals(expected,inputTaxonomy);
+	    	throw e;
+    	}
+    }
+
     /**
-     * 
-     * Testing method 
-     *   
+     *
+     * Testing method
+     *
      *   updateParent(String termChild, String termNewParent)
-     * 
+     *
      */
-    
+
     @Test
     public void testUpdateParentUncleBranchChild() {
     	//prepare
     	inputTaxonomy.children.add(new Taxonomy.Builder().root("father").build());
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1368,18 +1368,18 @@ public class TaxonomyTest {
 								.addChild(new Taxonomy.Builder().root("aunt").build())
 								.addChild(new Taxonomy.Builder().root("uncle").build())
 							.build()
-					)		
+					)
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("grandmother", "father");
-    	
+
     	//evaluate
     	assertEquals(expected,inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentUncleLeafChild() {
     	//prepare
@@ -1400,14 +1400,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("uncle", "kid2");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentSiblingBranchChild() {
     	//prepare
@@ -1428,14 +1428,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("grandmother", "kid1");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentSiblingLeafChild() {
     	//prepare
@@ -1448,27 +1448,27 @@ public class TaxonomyTest {
 							new Taxonomy.Builder().root("grandmother")
 								.addChild(
 									new Taxonomy.Builder().root("aunt")
-									.addChild(new Taxonomy.Builder().root("uncle").build())	
+									.addChild(new Taxonomy.Builder().root("uncle").build())
 									.build())
-								
+
 							.build()
 					)
 					.addChild(new Taxonomy.Builder().root("kid2").build())
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("uncle", "aunt");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentGrandparentBranchChild() {
     	//prepare
-    	
+
     	inputTaxonomy = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1487,7 +1487,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	Taxonomy expected = new Taxonomy.Builder()
 				.root("greatgrandmother")
 				.addChild(
@@ -1507,14 +1507,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("uncle", "mother");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentGrandparentLeafChild() {
     	//prepare
@@ -1533,14 +1533,14 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("uncle", "mother");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentRootBranchChild() {
     	//prepare
@@ -1559,14 +1559,14 @@ public class TaxonomyTest {
 						.build()
 				)
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("grandmother", "greatgrandmother");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-    
+
     @Test
     public void testUpdateParentRootLeafChild() {
     	//prepare
@@ -1585,14 +1585,14 @@ public class TaxonomyTest {
 				)
 				.addChild(new Taxonomy.Builder().root("kid1").build())
 			.build();
-    	
+
     	//call
     	inputTaxonomy.updateParent("kid1", "greatgrandmother");
-    	
+
     	//evaluate
     	assertEquals(expected, inputTaxonomy);
     }
-   
+
     @Test(expected = InvalidOperationException.class)
     public void testUpdateParentIsAChildBranchChild() {
     	//prepare
@@ -1611,7 +1611,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("grandmother", "aunt");
@@ -1621,7 +1621,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidOperationException.class)
     public void testUpdateParentIsADescendantBranchChild() {
     	//prepare
@@ -1640,7 +1640,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("greatgrandmother", "aunt");
@@ -1650,7 +1650,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = RuntimeException.class)
     public void testUpdateParentInexistentParent() {
     	//prepare
@@ -1669,7 +1669,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("grandmother", "inexistent");
@@ -1679,7 +1679,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = RuntimeException.class)
     public void testUpdateParentInexistentChild() {
     	//prepare
@@ -1698,7 +1698,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("inexistent", "aunt");
@@ -1708,7 +1708,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected=InvalidValueException.class)
     public void testUpdateParentNullChild() {
     	//prepare
@@ -1727,7 +1727,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent(null, "aunt");
@@ -1737,7 +1737,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testUpdateParentEmptyChild() {
     	//prepare
@@ -1756,7 +1756,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("", "aunt");
@@ -1766,7 +1766,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testUpdateParentNullParent() {
     	//prepare
@@ -1785,7 +1785,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("mother", null);
@@ -1795,7 +1795,7 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
+
     @Test(expected = InvalidValueException.class)
     public void testUpdateParentEmptyParent() {
     	//prepare
@@ -1814,7 +1814,7 @@ public class TaxonomyTest {
 					.build()
 				)
 			.build();
-    	
+
     	try {
 	    	//call
 	    	inputTaxonomy.updateParent("mother", "");
@@ -1824,6 +1824,6 @@ public class TaxonomyTest {
     		throw e;
     	}
     }
-    
-    
+
+
 }

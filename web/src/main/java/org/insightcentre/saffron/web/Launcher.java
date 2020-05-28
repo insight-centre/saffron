@@ -71,7 +71,7 @@ public class Launcher {
             Server server = new Server(port);
             ResourceHandler resourceHandler = new ResourceHandler();
             // This is the path on the server
-            // This is the local directory that is used to 
+            // This is the local directory that is used to
             resourceHandler.setResourceBase("static");
             if (!new File("static/index.html").exists()) {
                 System.err.println("No static folder, please run the command in the right folder.");
@@ -110,7 +110,7 @@ public class Launcher {
                         break;
                     } catch(BindException x2) {
                     }
-                    
+
                 }
             }
             // Get current size of heap in bytes
@@ -122,7 +122,6 @@ public class Launcher {
             System.exit(-1);
         }
     }
-
 
 
 }

@@ -9,31 +9,31 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * A taxonomy of terms where the root node is a virtual node rather than an existing term
- * 
+ *
  * @author Bianca Pereira
  */
 public class VirtualRootTaxonomy extends Taxonomy{
 
 	public static final String VIRTUAL_ROOT = "HEAD_TERM";
-	
+
 	public VirtualRootTaxonomy() {
 		super();
 		this.setRoot(VIRTUAL_ROOT);
 	}
-	
+
 	public VirtualRootTaxonomy(Taxonomy taxonomy) {
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		
+
 		if(taxonomy.getRoot().equals(VIRTUAL_ROOT)) {
 			for(Taxonomy child: taxonomy.getChildren()) {
 				this.addChild(child);
 			}
 		} else {
-			this.addChild(taxonomy);			
+			this.addChild(taxonomy);
 		}
 	}
-	
+
 	public VirtualRootTaxonomy(Collection<Taxonomy> taxonomies) {
 		super();
 		this.setRoot(VIRTUAL_ROOT);
@@ -43,7 +43,7 @@ public class VirtualRootTaxonomy extends Taxonomy{
 			}
 		}
 	}
-	
+
 	@JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
     public VirtualRootTaxonomy(@JsonProperty("root") String root,
@@ -51,10 +51,10 @@ public class VirtualRootTaxonomy extends Taxonomy{
                     @JsonProperty("linkScore") double linkScore,
                     @JsonProperty("children") List<Taxonomy> children,
                     @JsonProperty("status") Status status) {
-		
+
 		super();
 		this.setRoot(VIRTUAL_ROOT);
-		
+
 		if (root.equals(VIRTUAL_ROOT)) {
 			for(Taxonomy child: children) {
 				this.addChild(child);

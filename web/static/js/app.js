@@ -87,6 +87,10 @@ angular.module('app').component('header', {
             "href": "/" + saffronDatasetName + "/",
             "text": "Home"
         });
+      ctrl.menuList.push({
+        "href": "/" + saffronDatasetName + "/edit",
+        "text": "Review Mode"
+      });
 
         ctrl.searchAction = "/" + saffronDatasetName + "/search/";
     },
@@ -104,7 +108,7 @@ angular.module('app').component('topterms', {
         let ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
             $http.get(apiUrlWithSaffron + "terms").then(
                 function(response) {
                     response = response.data;
@@ -129,13 +133,326 @@ angular.module('app').component('topterms', {
         };
         this.termForward = function() {
             ctrl.n2 += 30;
-            this.loadterms();
+            this.loadTerms();
         };
         this.termBack = function() {
             ctrl.n2 -= 30;
-            this.loadterms();
+            this.loadTerms();
         };
-        this.loadterms();
+        this.loadTerms();
+    }
+});
+
+angular.module('app').component('editterms', {
+    templateUrl: '/edit-terms-component.html',
+    controller: function ($http, $scope, $modal, $window, $location, sharedProperties) {
+        var ctrl = this;
+        ctrl.errorMessage = "";
+
+        $http.get(apiUrlWithSaffron + 'terms').then(
+            function (response) {
+                ctrl.terms =  [];
+                ctrl.rejected = [];
+                for (let t = 0; t < response.data.length; t++) {
+                    if (response.data[t].status !== "rejected") {
+                        ctrl.terms.push({
+                            "term_string": response.data[t].termString,
+                            "term_id": response.data[t].id,
+                            "status": response.data[t].status
+                        });
+                    } else {
+                        ctrl.rejected.push({
+                            "term_string": response.data[t].termString,
+                            "term_id": response.data[t].id,
+                            "status": response.data[t].status
+                        });
+                    }
+                }
+            },
+
+            function (response) {
+                console.log(response);
+                console.log("Failed to get terms");
+            }
+        );
+
+        // enabling multiple selections
+        $scope.checkAll = function() {
+            $scope.checkedAll = (!$scope.checkedAll);
+            ctrl.checkedStatus = ($scope.checkedAll);
+
+            if($scope.checkedAll){
+                angular.forEach(ctrl.terms,function(item){
+                    item.checked = true;
+                });
+            } else {
+                angular.forEach(ctrl.terms,function(item){
+                    item.checked = false;
+                });
+            }
+        };
+
+        // adding selected status to item
+        ctrl.checkedStatus = false;
+        $scope.checkStatus = function(termId,checkedValue){
+            ctrl.checkedStatus = false;
+            angular.forEach(ctrl.terms,function(item) {
+                if (item.term_id === termId){
+                    item.checked = checkedValue;
+                }
+                if (item.checked === true) {
+                    ctrl.checkedStatus = true;
+                }
+            }, termId, checkedValue);
+        };
+
+        // accept one or multiple terms only in the UI
+        $scope.acceptTerms = function($event, term){
+            $event.preventDefault();
+            if (term == null) {
+                angular.forEach(ctrl.terms,function(element){
+                    if (element.checked === true) {
+                        element.status = "accepted";
+                        element.checked = false;
+                    }
+                });
+                ctrl.checkedStatus = false;
+                $scope.checkedAll = false;
+            } else {
+                ctrl.terms.forEach(function(element) {
+                    if (element.term_string === term.term_string) {
+                        element.status = "accepted";
+                        element.checked = false;
+                        $scope.checkStatus(element.term_id,false);
+                    }
+                }, term);
+            }
+        };
+
+        // reject one or multiple terms only in the UI
+        $scope.rejectTerms = function($event, term){
+            $event.preventDefault();
+            if (term == null) {
+                angular.forEach(ctrl.terms,function(element){
+                    if (element.checked === true) {
+                        element.status = "rejected";
+                        element.checked = false;
+                    }
+                });
+                ctrl.checkedStatus = false;
+                $scope.checkedAll = false;
+            } else {
+                ctrl.terms.forEach(function(element) {
+                    if (element.term_string === term.term_string) {
+                        element.status = "rejected";
+                        element.checked = false;
+                        $scope.checkStatus(element.term_id,false);
+                    }
+                }, term);
+            }
+        };
+
+        // reject one or multiple terms only in the UI
+        $scope.revertTermDecision = function($event, term){
+            $event.preventDefault();
+            if (term == null) {
+                angular.forEach(ctrl.terms,function(element){
+                    if (element.checked === true) {
+                        element.status = "none";
+                        element.checked = false;
+                    }
+                });
+                ctrl.checkedStatus = false;
+                $scope.checkedAll = false;
+            } else {
+                ctrl.terms.forEach(function(element) {
+                    if (element.term_string === term.term_string) {
+                        element.status = "none";
+                        element.checked = false;
+                        $scope.checkStatus(element.term_id,false);
+                    }
+                }, term);
+            }
+        };
+
+        $scope.showConfirm = function() {
+
+            var modalInstance = $modal.open({
+              animation: $scope.animationsEnabled,
+              templateUrl: 'modal.html',
+              controller: function($scope, $modalInstance) {
+                $scope.ok = function() {
+                    $modalInstance.close();
+                };
+
+                $scope.cancel = function() {
+                    $modalInstance.dismiss('cancel');
+                };
+              },
+              resolve: {
+              }
+            });
+
+            modalInstance.result.then(function(selectedItem) {
+                $scope.saveTerms();
+            }, function() {
+                // Saving cancelled
+            });
+          };
+
+        // send all modifications to the API
+        $scope.saveTerms = function() {
+            var requestTerms = []
+            ctrl.terms.forEach(function(term) {
+                if (term.status !== undefined) {
+                    requestTerms.push({
+                        "term": term.term_string,
+                        "status": term.status
+                    });
+                }
+            });
+            let requestData = {
+                "terms": requestTerms
+            };
+
+            $http.post(apiUrlWithSaffron + 'terms/update', requestData).then(
+                function (response) {
+                    console.log(response);
+                    console.log("Terms' status update successfully");
+                    $window.location.href = '/' + saffronDatasetName + '/edit';
+                },
+                function (response) {
+                    console.log(response);
+                    ctrl.errorMessage = "An error has occurred while updating the term status. Please try again later or contact the administration.";
+                    console.log("Failed to update terms' status");
+                }
+            );
+        }
+    }
+});
+
+angular.module('app').component('editparents', {
+    templateUrl: '/edit-parents-component.html',
+    controller: function ($http, $scope) {
+        var ctrl = this;
+        ctrl.message = null;
+
+        $scope.loadTerms = function() {
+             ctrl.terms = [];
+            $http.get(apiUrlWithSaffron).then(
+                function (response) {
+                    $scope.getChildren(response.data, "", null, 0);
+                },
+                function (error) {
+                    console.log(error);
+                    console.log("Failed to get taxonomy structure");
+                }
+            );
+        }
+
+        $scope.getChildren = function(term, parent_branch, parent, depth) {
+            var current_term = {
+                "term_string": term.root,
+                "branch": parent_branch,
+                "term_id": term.root,
+                "parent": parent,
+                "status": term.status,
+                "collapsed_branch" : "-".repeat(depth) + term.root
+            }
+            if (current_term["term_id"] === "HEAD_TERM") {
+                current_term["term_string"] = "Root";
+                current_term["collapsed_branch"] = "Root";
+            }
+            ctrl.terms.push(current_term);
+
+            for (let i = 0; i < term.children.length; i++) {
+                $scope.getChildren(term.children[i], parent_branch == "" ? current_term["term_string"] : parent_branch + " > " + current_term["term_string"], current_term, depth+1);
+            }
+        };
+
+        $scope.changeParentStatus = function(term, status) {
+            ctrl.activeTerm = null;
+
+            var requestData = {
+             "terms": [
+                {
+                  "term_child": term.term_id,
+                  "term_parent": term.parent.term_id,
+                  "status": status
+                }
+              ]
+            };
+
+
+
+            $http.post(apiUrlWithSaffron + "terms/updaterelationship", requestData).then(
+                function (response) {
+                    term.status = status;
+                },
+                function (error) {
+                    ctrl.message = {
+                    "text": "An error has ocurred while changing the status of '" + term.term_string + "' parent relationship. Try again later or contact the administration.",
+                    "type": "danger",
+                    "term": requestData.terms[0].id
+                    }
+                }
+            )
+        }
+
+        $scope.changeParent = function(term, new_parent) {
+
+            if (term.parent == new_parent) {
+                ctrl.message = {
+                    "text": "'" + term.term_string + "' parent kept the same.",
+                    "type": "warning",
+                    "term": requestData.terms[0].id
+                }
+                ctrl.activeTerm = null;
+                return;
+            }
+            var requestData = {
+                    "terms" : [{
+                        "id": term.term_id,
+                        "new_id": term.term_id,
+                        "current_parent": term.parent.term_id,
+                        "new_parent": new_parent.term_id
+                    }]
+                };
+
+            $http.post(apiUrlWithSaffron + 'terms/changeroot', requestData).then(
+                function (response) {
+                    console.log(response);
+                    console.log("Parent term update successfully");
+
+                    //Reload terms
+                    ctrl.message = {
+                        "text": "'" + term.term_string + "' parent successfuly changed from '" + term.parent.term_string + "' to '" + new_parent.term_string +"'",
+                        "type": "success",
+                        "term": requestData.terms[0].id
+                    }
+                    ctrl.activeTerm = null;
+                    $scope.loadTerms();
+                },
+                function (response) {
+                    if (response.data === "The selected move parent target is a member of a child term and cannot be moved") {
+                        ctrl.message = {
+                            "text": "It is not possible to change the parent of a term to one of its children: circular inheritance problem. Choose an antecedent parent or a term in a parallel branch instead.",
+                            "type": "error",
+                            "term": requestData.terms[0].id
+                        };
+                    } else {
+                        ctrl.message = {
+                            "text": "An error has occurred. Please try again later or contact the administration.",
+                            "type": "error",
+                            "term": requestData.terms[0].id
+                        }
+                    }
+                    ctrl.activeTerm = null;
+                }
+            );
+
+        };
+        $scope.loadTerms();
     }
 });
 
@@ -263,7 +580,7 @@ angular.module('app').component('relatedterms', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
 
             // if on term page, show related terms
             if (ctrl.term) {
@@ -287,7 +604,7 @@ angular.module('app').component('relatedterms', {
                     ctrl.n = ctrl.n2;
                 });
 
-            } else
+            } else {
 
                 // if on a document page, show top terms from the document
                 if (ctrl.doc) {
@@ -325,19 +642,20 @@ angular.module('app').component('relatedterms', {
                                 });
                             }
                             ctrl.n = ctrl.n2;
-                        });
-                    }
-        };
+                      });
+                }
+            }
+        }
 
         this.termForward = function() {
             ctrl.n2 += 20;
-            this.loadterms();
+            this.loadTerms();
         }
         this.termBack = function() {
             ctrl.n2 -= 20;
-            this.loadterms();
+            this.loadTerms();
         }
-        this.loadterms();
+        this.loadTerms();
 
         // Functionality for the new Saffron
         // editing abilities
@@ -647,7 +965,7 @@ angular.module('app').component('relateddocuments', {
         var ctrl = this;
         ctrl.n = 0;
         ctrl.n2 = 0;
-        this.loadterms = function() {
+        this.loadTerms = function() {
             if (ctrl.term) {
                 $http.get(apiUrlWithSaffron + 'docs/term/' + ctrl.term + '?n=20&offset=' + ctrl.n2).then(function(response) {
                 	ctrl.docs = [];
@@ -675,13 +993,13 @@ angular.module('app').component('relateddocuments', {
         };
         this.docForward = function() {
             ctrl.n2 += 20;
-            this.loadterms();
+            this.loadTerms();
         };
         this.docBackward = function() {
             ctrl.n2 -= 20;
-            this.loadterms();
+            this.loadTerms();
         };
-        this.loadterms();
+        this.loadTerms();
     }
 });
 

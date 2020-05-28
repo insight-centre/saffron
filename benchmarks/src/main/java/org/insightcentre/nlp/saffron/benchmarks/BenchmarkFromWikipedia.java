@@ -109,7 +109,7 @@ public class BenchmarkFromWikipedia {
                 try (PrintWriter out = new PrintWriter(f)) {
                     out.println(d.contents());
                 }
-                corpus.add(new Document(SaffronPath.fromFile(f), d.id, d.url, d.name, d.mimeType, d.authors, d.metadata, null, d.date));
+                corpus.add(new Document(SaffronPath.fromFile(f), d.id, d.url, d.name, d.mimeType, d.authors, d.metadata, null, null));
             }
             mapper.writeValue(new File(outputFile, "corpus.json"),
                     new SimpleCorpus(corpus));

@@ -54,7 +54,7 @@ public class DocumentSearcherFactory {
     public static DocumentSearcher index(Corpus corpus, File index, Boolean isInitialRun) throws IOException {
         return index(corpus, index, new DefaultSaffronListener(), isInitialRun);
     }
-    
+
     public static DocumentSearcher index(Corpus corpus, File index, SaffronListener log, Boolean isInitialRun) throws IOException {
         final Directory dir = luceneFileDirectory(index, isInitialRun);
         DocumentSearcher searcher = null;

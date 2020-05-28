@@ -1,3 +1,0 @@
-**Semantic Web Journal**
-
-Since its launch in 2009 the Semantic Web journal (SWJ) has been a firm supporter of so called **'green' Open Access (OA)**. For SWJ that means that all journal issues are published in accepted manuscript format on the semantic-web-journal.net webpage and are available to anyone, for free. The official published version of the issues are available only to licensed users at the IOS Press website. Some articles are available also in the form of Open Access (OA) through IOS Press as authors could opt-in to publish with full OA. In this case authors were asked to cover an 'Article Publishing Charge' (APC) to cover the cost of publication.

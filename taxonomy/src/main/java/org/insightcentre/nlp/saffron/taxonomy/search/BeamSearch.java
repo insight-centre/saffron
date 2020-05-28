@@ -46,7 +46,7 @@ public class BeamSearch implements TaxonomySearch {
         }
         previous.push(new Soln(soln, score, s2, false), s2);
         for (String t1 : termMap.keySet()) {
-            if(whiteHeads.contains(t1)) 
+            if(whiteHeads.contains(t1))
                 continue;
             Beam<Soln> next = new Beam<>(beamSize);
             // We are looking for t1's parent

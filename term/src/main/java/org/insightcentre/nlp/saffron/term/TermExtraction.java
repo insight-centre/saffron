@@ -212,9 +212,9 @@ public class TermExtraction {
             this.frequencyStats = frequencyStats;
             this.temporalFrequencyStats = temporalFrequencyStats;
         }
-        
+
     }
-    
+
     public ExtractStatsResult extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing, Set<String> blackList)
@@ -431,7 +431,7 @@ public class TermExtraction {
         }
         return new ArrayList<DocumentTerm>(rval);
     }
-    
+
     private static List<DocumentTerm> addTfIdf(List<DocumentTerm> dts) {
         Object2DoubleMap<String> df = new Object2DoubleOpenHashMap<>();
         Set<String> docs = new HashSet<>();

@@ -79,20 +79,20 @@ public class TermExtractionConfiguration {
      */
     @JsonAlias("oneTopicPerDoc") //Enable compatibility with 3.3
     public boolean oneTermPerDoc;
-    
+
     /** The Weighting method to use */
     public enum WeightingMethod {
         one, voting, puatr
     };
-    
+
     /** The features for term extraction */
     public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic, 
-        postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/ 
+        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic,
+        postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/
         novelTopicModel, /*linkProbability, keyConceptRelatedness*/
         futureBasic, futureComboBasic
     };
-    
+
     /** The default English list of stopwords */
     public static final String[] ENGLISH_STOPWORDS = new String[]{
         "i",

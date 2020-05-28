@@ -1271,13 +1271,13 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
 	@Override
 	public void addAuthors(String runId, List<Author> authors) {
-		throw new NotImplementedException();		
+		throw new NotImplementedException();
 	}
 
 
 	@Override
 	public void addAuthor(String runId, Author authorToBeAdded) throws Exception {
-		throw new NotImplementedException();		
+		throw new NotImplementedException();
 	}
 
 
@@ -1285,7 +1285,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 	public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId) {
 		throw new NotImplementedException();
 	}
-        
+
         @Override
 	public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId) {
 		throw new NotImplementedException();
@@ -1295,6 +1295,6 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId) {
         throw new NotImplementedException();
     }
-        
-        
+
+
 }

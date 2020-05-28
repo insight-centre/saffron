@@ -305,6 +305,27 @@ public class Browser extends AbstractHandler {
                     }
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
+                } else if (target.startsWith("/edit/terms")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-terms-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                } else if (target.startsWith("/edit/parents")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-parents-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                } else if (target.startsWith("/edit")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
                 }else if (target.startsWith("/author/")) {
                     final String authorString = decode(target.substring(8));
                     final Author author = saffronHandler.getAuthor(saffronDatasetName, authorString);
@@ -510,7 +531,7 @@ public class Browser extends AbstractHandler {
         sb.delete(sb.length() - path.length(), sb.length());
         return sb.toString();
     }
-    
+
     private String decode(String id) {
         try {
             return URLDecoder.decode(id, "UTF-8");
@@ -519,7 +540,7 @@ public class Browser extends AbstractHandler {
             return id;
         }
     }
-    
+
     private List<TermTerm> getTopN(final List<TermTerm> tts, final int n, final int offset) {
         tts.sort(new Comparator<TermTerm>() {
             @Override

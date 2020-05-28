@@ -299,7 +299,7 @@ public class EnrichTerms {
             Object2DoubleMap<String> termDf = new Object2DoubleOpenHashMap<>();
             HashSet<String> docNames = new HashSet<>();
             for (DocumentTerm dt : docTerms) {
-                // We assume there are no duplicates in the DT list 
+                // We assume there are no duplicates in the DT list
                 termDf.put(dt.getTermString(), termDf.getDouble(dt.getTermString()) + 1.0);
                 docNames.add(dt.getDocumentId());
             }
