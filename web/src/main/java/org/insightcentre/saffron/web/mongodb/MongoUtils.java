@@ -31,7 +31,7 @@ public class MongoUtils {
     public static void deleteRunFromMongo(String name, MongoDBHandler handler) {
         handler.runCollection.findOneAndDelete(and(eq("id", name)));
         handler.termsCollection.deleteMany(and(eq("run", name)));
-        handler.termsCorrespondenceCollection.deleteMany(and(eq("run", name)));
+        handler.termDocumentCorrespondenceCollection.deleteMany(and(eq("run", name)));
         handler.termsExtractionCollection.deleteMany(and(eq("run", name)));
         handler.authorTermsCollection.deleteMany(and(eq("run", name)));
         handler.termsSimilarityCollection.deleteMany(and(eq("run", name)));

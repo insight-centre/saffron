@@ -19,9 +19,6 @@ import java.util.List;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Response;
-
-import com.mongodb.client.FindIterable;
 import org.apache.jena.rdf.model.Model;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
@@ -36,7 +33,6 @@ import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
 import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.insightcentre.saffron.web.rdf.RDFConversion;
-import org.json.JSONObject;
 
 /**
  * Handles the interface if there is a corpus loaded
@@ -225,7 +221,7 @@ public class Browser extends AbstractHandler {
                         mapper.writeValue(response.getWriter(), getTopNDocTerms(dts, n, offset));
 
                     } else if (term != null) {
-                        final List<Document> _docs = saffronHandler.getDocByTerm(saffronDatasetName, term);
+                        final List<Document> _docs = saffronHandler.getDocsByTerm(saffronDatasetName, term);
                         final List<Document> docs = new ArrayList<>();
                         int i = 0;
                         for (Document d : _docs) {
@@ -295,7 +291,7 @@ public class Browser extends AbstractHandler {
                     baseRequest.setHandled(true);
                     mapper.writeValue(response.getWriter(), saffronHandler.getTopTerms(saffronDatasetName, n, offset + n));
                 } else if (target.startsWith("/term/")) {
-                    final String termString = decode(target.substring(7));
+                    final String termString = decode(target.substring(6));
                     final Term term = saffronHandler.getTerm(saffronDatasetName, termString);
 
                         response.setContentType("text/html;charset=utf-8");
@@ -307,6 +303,27 @@ public class Browser extends AbstractHandler {
                     } else {
                         data = data.replaceAll("\\{\\{term\\}\\}", "{}");
                     }
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                } else if (target.startsWith("/edit/terms")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-terms-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                } else if (target.startsWith("/edit/parents")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-parents-page.html")));
+                        data = data.replace("{{name}}", saffronDatasetName);
+                        response.getWriter().write(data);
+                } else if (target.startsWith("/edit")) {
+                        response.setContentType("text/html;charset=utf-8");
+                        response.setStatus(HttpServletResponse.SC_OK);
+                        baseRequest.setHandled(true);
+                        String data = new String(Files.readAllBytes(Paths.get("static/edit-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 }else if (target.startsWith("/author/")) {

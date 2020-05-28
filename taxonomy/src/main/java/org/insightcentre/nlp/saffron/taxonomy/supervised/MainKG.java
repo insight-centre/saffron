@@ -12,6 +12,7 @@ import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
@@ -74,14 +75,17 @@ public class MainKG {
             Configuration config = mapper.readValue(configuration, Configuration.class);
             if (config.taxonomy == null || config.taxonomy.modelFile == null
                     || config.taxonomy.search == null) {
-                badOptions(p, "Configuration does not have a model file");
+                badOptions(p, "Configuration does not have a taxonomy model file");
+            } else if (config.kg == null || config.kg.kerasModelFile == null
+                    || config.kg.bertModelFile == null) {
+            	badOptions(p, "Configuration does not have all KG model files (keras and bert)");
             }
             List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             List<Term> terms = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 
             Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
             
-            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile.getResolvedPath(), config.kg.bertModelFile.getResolvedPath());
 
             KGSearch search = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
             final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);

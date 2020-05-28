@@ -4,7 +4,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -23,7 +27,12 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.glassfish.jersey.server.JSONP;
-import org.insightcentre.nlp.saffron.data.*;
+import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Partonomy;
+import org.insightcentre.nlp.saffron.data.SaffronRun;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Taxonomy;
+import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.saffron.web.Executor;
 import org.insightcentre.saffron.web.Launcher;
 import org.insightcentre.saffron.web.SaffronService;
@@ -33,6 +42,8 @@ import org.json.JSONObject;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.FindIterable;
+import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
+import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
 @Path("/api/v1/run")
 public class SaffronAPI {
@@ -125,7 +136,7 @@ public class SaffronAPI {
         List<TermResponse> termsResponse = new ArrayList<>();
         String json;
         Iterable<Term> terms;
-        
+
         try {
             terms = saffronService.getAllTerms(runId);
 
@@ -157,7 +168,7 @@ public class SaffronAPI {
         List<SearchResponse> searchResponses = new ArrayList<>();
         String json = null;
         FindIterable<Document> terms;
-        
+
         try {
             terms = saffron.searchTaxonomy(runId, term);
 
@@ -244,7 +255,7 @@ public class SaffronAPI {
             @PathParam("term_id") String termId2,
             @PathParam("status") String status) {
 
-        
+
         Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), Status.none);
         Taxonomy originalTaxo = saffronService.getTaxonomy(name);
 
@@ -276,7 +287,7 @@ public class SaffronAPI {
     @Produces(MediaType.TEXT_PLAIN)
     public Response postDeleteManyTerms(@PathParam("param") String name, InputStream incomingData) {
 
-        
+
         StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         FindIterable<Document> terms;
         JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
@@ -299,7 +310,7 @@ public class SaffronAPI {
     public Response postChangeTermRoot(@PathParam("param") String runId, InputStream incomingData) {
 
     	List<Pair<String,String>> childNewParentList = new ArrayList<Pair<String,String>>();
-        
+
     	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
         JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
 
@@ -448,94 +459,47 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/authorterms/")
-    public Response getAuthorTerms(@PathParam("param") String name) {
-
-        FindIterable<Document> runs;
-        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
-        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
-        String json;
-        try {
-            runs = saffron.getAuthorTerms(name);
-            APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
-            x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get author terms").build();
-        }
-
-    }
-
-    @GET
     @Path("/{param}/authorterms/{term_id}")
     public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
         String json;
-        FindIterable<Document> runs;
-        List<AuthorTermsResponse> termsResponse = new ArrayList<>();
-        AuthorsTermsResponse returnEntity = new AuthorsTermsResponse();
+        List<AuthorTermDAO> authors;
         try {
-            runs = saffron.getAuthorTermsForTerm(name, termId);
-            APIUtils.populateAuthorTermsResp(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
+        	authors = saffronService.getAuthorsPerTermWithTfirf(name, termId);
+            json = objectMapper.writeValueAsString(authors);
             return Response.ok(json).build();
 
         } catch (Exception x) {
+            System.err.println("Failed to get authors for term '" + termId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get authors for term '" + termId + "'").build();
         }
-
-        return Response.ok("OK").build();
     }
 
     @GET
-    @Path("/{param}/authorsimilarity/")
-    public Response getAuthorSimilarity(@PathParam("param") String name) {
-        String json;
-        FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
-        AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
+    @Path("/{param}/termauthors/{author_id}")
+    public Response getTermAuthors(@PathParam("param") String name, @PathParam("author_id") String authorId) {
+
         try {
-            runs = saffron.getAuthorSimilarity(name);
-            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
+            List<AuthorTerm> terms = saffronService.getAuthorTerms(name, authorId);
+            String json = objectMapper.writeValueAsString(terms);
             return Response.ok(json).build();
-
-        } catch (Exception x) {
+        } catch(Exception x) {
+            System.err.println("Failed to get terms for author '" + authorId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get terms for author '" + authorId + "'").build();
         }
-
-        return Response.ok("OK").build();
-
     }
 
     @GET
-    @Path("/{param}/authorsimilarity/{term1}/{term2}")
-    public Response getAuthorSimilarityForTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
-        String json;
-        FindIterable<Document> runs;
-        List<AuthorSimilarityResponse> termsResponse = new ArrayList<>();
-        AuthorsSimilarityResponse returnEntity = new AuthorsSimilarityResponse();
+    @Path("/{param}/authorauthors/{author_id}")
+    public Response getAuthorAuthors(@PathParam("param") String runId, @PathParam("author_id") String authorId) {
         try {
-            runs = saffron.getAuthorSimilarityForTerm(name, term1, term2);
-            APIUtils.populateAuthorSimilarityResponse(runs, termsResponse);
-            returnEntity.setTerms(termsResponse);
-            json = objectMapper.writeValueAsString(returnEntity);
-            return Response.ok(json).build();
-
-        } catch (Exception x) {
+            return Response.ok(objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId))).build();
+        } catch(Exception x) {
+            System.err.println("Failed to get similar authors to '" + authorId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get similar authors to '" + authorId + "'").build();
         }
-
-        return Response.ok("OK").build();
-
     }
 
     @GET
@@ -591,7 +555,7 @@ public class SaffronAPI {
         FindIterable<Document> runs;
         List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
         TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
-        
+
         try {
             runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
             APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
@@ -814,34 +778,73 @@ public class SaffronAPI {
     }
 
     @GET
-    @Path("/{param}/docs/doc/{document_id}")
-    public Response getOriginalDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
+    @Path("/{run_id}/docs/author/{author_id}")
+    public Response getDocumentsForAuthor(
+    		@PathParam("run_id") String runId,
+    		@PathParam("author_id") String authorId,
+    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
+    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
 
-        FindIterable<Document> runs;
-        String file = "";
-        
+    	// Bad implementation of working with offset. Ideally it should work with offsets directly in the
+    	// connection with the database
+    	String json;
+        List<org.insightcentre.nlp.saffron.data.Document> documents;
         try {
-            runs = saffron.getCorpus(name);
-
-            for (Document doc : runs) {
-                List documents = (ArrayList)doc.get("documents");
-                for (Object text : documents) {
-                    String json = objectMapper.writeValueAsString(text);
-                    JSONObject jsonObj = new JSONObject(json);
-                    if (jsonObj.get("id").equals(documentId)) {
-                        file = jsonObj.get("contents").toString();
-                    }
-                }
-            }
-            return Response.ok(file).build();
+        	documents = saffronService.getDocumentsForAuthor(runId, authorId);
+        	if (offsetStart > -1) {
+	        	if (offsetStart <= documents.size()-1) {
+	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
+	        			documents = documents.subList(offsetStart, offsetStart+numberOfDocuments);
+	        		} else {
+	        			documents = documents.subList(offsetStart, documents.size() - 1);
+	        		}
+	        	} else {
+	        		documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+	        	}
+        	}
+            json = objectMapper.writeValueAsString(documents);
+            return Response.ok(json).build();
 
         } catch (Exception x) {
+            System.err.println("Failed to get documents for author '" + authorId + "'");
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for author '" + authorId + "'").build();
         }
+    }
 
-        return Response.ok(file).build();
+    @GET
+    @Path("/{run_id}/docs/term/{term_id}")
+    public Response getDocumentsForTerm(
+    		@PathParam("run_id") String runId,
+    		@PathParam("term_id") String termId,
+    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
+    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
 
+    	// Bad implementation of working with offset. Ideally it should work with offsets directly in the
+    	// connection with the database
+    	String json;
+        List<org.insightcentre.nlp.saffron.data.Document> documents;
+        try {
+        	documents = saffronService.getDocumentsForTermWithReducedContext(runId, termId, 20);
+        	if (offsetStart > -1) {
+	        	if (offsetStart <= documents.size()-1) {
+	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
+	        			documents = documents.subList(offsetStart, offsetStart+numberOfDocuments);
+	        		} else {
+	        			documents = documents.subList(offsetStart, documents.size() - 1);
+	        		}
+	        	} else {
+	        		documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
+	        	}
+        	}
+            json = objectMapper.writeValueAsString(documents);
+            return Response.ok(json).build();
+
+        } catch (Exception x) {
+            System.err.println("Failed to get documents for term '" + termId + "'");
+            x.printStackTrace();
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for term '" + termId + "'").build();
+        }
     }
 
     @GET

@@ -16,6 +16,7 @@ import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.term.TermExtraction.Result;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -607,4 +608,98 @@ public class TermExtractionTest {
         assert(!res.terms.stream().anyMatch((Term t) -> t.getString().equals("401k plan")));
 
     }
+
+
+    /**
+     * Test of extractTerms method, of class TermExtraction.
+     */
+    @Test
+    public void testTfIdf() throws Exception {
+        System.out.println("tfIdf");
+        final POSTagger tagger = new POSTagger() {
+            @Override
+            public String[] tag(String[] strings) {
+                String[] x = new String[strings.length];
+                for (int i = 0; i < strings.length; i++) {
+                    if ("test".equals(strings[i])) {
+                        x[i] = "NN";
+                    } else if ("good".equals(strings[i])) {
+                        x[i] = "JJ";
+                    } else {
+                        x[i] = "DT";
+                    }
+                }
+                return x;
+            }
+
+            @Override
+            public String[] tag(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] strings) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public Sequence[] topKSequences(String[] strings, Object[] os) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+        Tokenizer _tokenizer = new Tokenizer() {
+            @Override
+            public String[] tokenize(String string) {
+                return string.split(" ");
+            }
+
+            @Override
+            public Span[] tokenizePos(String string) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+        };
+
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+        Corpus searcher = new Corpus() {
+            @Override
+            public Iterable<Document> getDocuments() {
+                return Arrays.asList(new Document[]{
+                    mkDoc("this is a test"),
+                    mkDoc("this is also a test"),
+                    mkDoc("this is a good test"),
+                    mkDoc("a good test is also a test")
+                });
+            }
+
+            @Override
+            public int size() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+        };
+        TermExtraction instance = new TermExtraction(10, new ThreadLocal<POSTagger>() {
+            @Override
+            protected POSTagger initialValue() {
+                return tagger;
+            }
+
+        }, tokenizer);
+        Result res = instance.extractTerms(searcher);
+        for(DocumentTerm dt : res.docTerms) {
+            if(dt.getTermString().equals("good test")) {
+                assertEquals(1.0 * Math.log(4.0 / 2.0), dt.getTfIdf(), 0.001);
+            } else if(dt.getTermString().equals("test")) {
+                assertEquals(0.0, dt.getTfIdf(), 0.0001);
+            } else {
+                assert(false);
+            }
+        }
+    }
+
 }

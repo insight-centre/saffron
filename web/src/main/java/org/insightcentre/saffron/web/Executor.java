@@ -194,7 +194,6 @@ public class Executor extends AbstractHandler {
         }
 
         MongoDBHandler mongo = new MongoDBHandler();
-        FindIterable<org.bson.Document> docs = mongo.getCorpus(saffronDatasetName);
         String run = mongo.getRun(saffronDatasetName);
         JSONObject configObj = new JSONObject(run);
         String confJson = (String) configObj.get("config");
@@ -225,41 +224,7 @@ public class Executor extends AbstractHandler {
         newConfig.termSim = termSimilarityConfiguration;
         //newConfig.conceptConsolidation = conceptConsolidationConfiguration;
 
-        List<org.insightcentre.nlp.saffron.data.Document> finalList = new ArrayList<>();
-        final IndexedCorpus other = new IndexedCorpus(finalList, new SaffronPath(""));
-        for (Document doc : docs) {
-            JSONObject jsonObj = new JSONObject(doc.toJson());
-            JSONArray docList;
-            try {
-                docList = (JSONArray) jsonObj.get("documents");
-            } catch (Exception e) {
-                docList = new JSONArray();
-            }
-
-            for (int i = 0; i < docList.length(); i++) {
-                JSONObject obj = (JSONObject) docList.get(i);
-
-                JSONArray authorList = (JSONArray) obj.get("authors");
-                HashMap<String, String> result
-                        = new ObjectMapper().readValue(obj.get("metadata").toString(), HashMap.class);
-                List<Author> authors = Arrays.asList(
-                        new ObjectMapper().readValue(obj.get("authors").toString(), Author[].class));
-
-                org.insightcentre.nlp.saffron.data.Document docCorp
-                        = new org.insightcentre.nlp.saffron.data.Document(
-                        new SaffronPath(""),
-                        obj.getString("id"),
-                        new URL("http://" + mongoUrl + "/" + mongoPort),
-                        obj.getString("name"),
-                        obj.getString("mime_type"),
-                        authors,
-                        result,
-                        obj.get("metadata").toString(),
-                        obj.has("date") ? org.insightcentre.nlp.saffron.data.Document.parseDate(obj.get("date").toString()) : null);
-                other.addDocument(docCorp);
-            }
-        }
-        corpus = other;
+        corpus = mongo.getCorpus(saffronDatasetName);
 
         new Thread(new Runnable() {
 
@@ -539,9 +504,9 @@ public class Executor extends AbstractHandler {
 
         _status.setStageStart("Extracting authors from corpus", saffronDatasetName);
         Set<Author> authors = Consolidate.extractAuthors(searcher, _status);
-        Map<Author, Set<Author>> consolidation = ConsolidateAuthors.consolidate(authors, _status);
+        Map<Author, Set<Author>> consolidation = new ConsolidateAuthors().consolidate(authors, _status);
         applyConsolidation(searcher, consolidation, _status);
-        data.setCorpus(saffronDatasetName, corpus);
+        data.setCorpus(saffronDatasetName, searcher);
         _status.setStageComplete("Extracting authors from corpus", saffronDatasetName);
 
         _status.stage++;
@@ -598,17 +563,15 @@ public class Executor extends AbstractHandler {
         data.setTaxonomy(saffronDatasetName, graph);
         _status.setStageComplete("Building term map and taxonomy", saffronDatasetName);
 
-//        _status.stage++;
-//
-//        _status.setStageStart("Building knowledge graph", saffronDatasetName);
-//        BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
-//        KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
-//        final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
-//                allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
-//        if (storeCopy.equals("true"))
-//            ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
-//        data.setKnowledgeGraph(saffronDatasetName, kGraph);
-//        _status.setStageComplete("Building knowledge graph", saffronDatasetName);
+//      _status.setStageStart("Building knowledge graph", saffronDatasetName);
+//      BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile, config.kg.bertModelFile);
+//      KGSearch kgSearch = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
+//      final KnowledgeGraph kGraph = kgSearch.extractKnowledgeGraphWithDenialAndAllowanceList(termMap,
+//              allowDenyList.getRelationAllowanceList(), allowDenyList.getRelationDenialList());
+//      if (storeCopy.equals("true"))
+//          ow.writeValue(new File(new File(parentDirectory, saffronDatasetName), "knowledge_graph.json"), kGraph);
+//      data.setKnowledgeGraph(saffronDatasetName, kGraph);
+//      _status.setStageComplete("Building knowledge graph", saffronDatasetName);
 
         _status.completed = true;
     }

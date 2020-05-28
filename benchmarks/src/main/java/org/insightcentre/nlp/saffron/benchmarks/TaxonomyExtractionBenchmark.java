@@ -179,7 +179,7 @@ public class TaxonomyExtractionBenchmark {
                 child = new Taxonomy(sp._2, 0, 0, new ArrayList<>(), Status.none);
             }
             children.add(child);
-            taxos.put(sp._1, new Taxonomy(sp._1, 0, 0, children, Status.none));
+            taxos.put(sp._1, new Taxonomy(sp._1, 0, 0,  children, Status.none));
             nonRoots.add(sp._2);
         }
         Set<String> roots = new HashSet<>(taxos.keySet());

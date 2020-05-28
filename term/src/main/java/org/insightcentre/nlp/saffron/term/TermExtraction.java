@@ -387,7 +387,7 @@ public class TermExtraction {
                         }
                     }
                     return new Result(convertToTerms(terms, freqs, scores, casing, whiteList, stopWords),
-                            filterTerms(terms, dts, casing, stopWords));
+                            addTfIdf(filterTerms(terms, dts, casing, stopWords)));
                 case voting:
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
@@ -408,7 +408,7 @@ public class TermExtraction {
                         }
                     }
                     return new Result(convertToTerms(terms, freqs, voting, casing, whiteList, stopWords),
-                            filterTerms(terms, dts, casing, stopWords));
+                            addTfIdf(filterTerms(terms, dts, casing, stopWords)));
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
@@ -430,6 +430,19 @@ public class TermExtraction {
             }
         }
         return new ArrayList<DocumentTerm>(rval);
+    }
+
+    private static List<DocumentTerm> addTfIdf(List<DocumentTerm> dts) {
+        Object2DoubleMap<String> df = new Object2DoubleOpenHashMap<>();
+        Set<String> docs = new HashSet<>();
+        for(DocumentTerm dt : dts) {
+            docs.add(dt.getDocumentId());
+            df.put(dt.getTermString(), df.getDouble(dt.getTermString()) + 1);
+        }
+        for(DocumentTerm dt : dts) {
+            dt.setTfIdf((double)dt.getOccurrences() * Math.log((double)docs.size() / df.getDouble(dt.getTermString())));
+        }
+        return dts;
     }
 
     private static boolean isProperTerm(String rootSequence, Set<String> stopWords) {

@@ -2,7 +2,6 @@ package org.insightcentre.saffron.web;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -103,6 +102,27 @@ public interface SaffronDataSource extends Closeable {
     public void removeConcept(String runId, String conceptId) throws ConceptNotFoundException;
 
     /*
+     * Author manipulation
+     */
+    
+    public Iterable<Author> getAllAuthors(String datasetName);
+
+    public Author getAuthor(String runId, String authorId);
+
+    public void addAuthors(String runId, List<Author> authors);
+
+    public void addAuthor(String runId, Author authorToBeAdded) throws Exception;
+    
+    /*
+     * Author-Term relations
+     */
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId);
+    
+    public List<AuthorTerm> getAuthorTermRelationsPerAuthor(String runId, String authorId);
+
+    
+    /*
      * (non-Javadoc)
      *
      * @see java.io.Closeable#close()
@@ -153,15 +173,13 @@ public interface SaffronDataSource extends Closeable {
 
     public List<DocumentTerm> getTermByDoc(String runId, String doc);
 
-    public List<org.insightcentre.nlp.saffron.data.Document> getDocByTerm(String runId, String term);
+    public List<org.insightcentre.nlp.saffron.data.Document> getDocsByTerm(String runId, String term);
 
     public Term getTerm(String runId, String term);
 
     public List<org.insightcentre.nlp.saffron.data.Document> getDocsByAuthor(String runId, String authorId);
 
     public Collection<String> getTopTerms(String runId, int from, int to);
-
-    public Author getAuthor(String runId, String authorId);
 
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId);
 
@@ -214,8 +232,6 @@ public interface SaffronDataSource extends Closeable {
 
     public Iterable<org.insightcentre.nlp.saffron.data.Document> getAllDocuments(String datasetName);
 
-    public Iterable<Author> getAllAuthors(String datasetName);
-
     public Iterable<Term> getAllTerms(String datasetName);
 
     public Date getDate(String doc);
@@ -227,6 +243,8 @@ public interface SaffronDataSource extends Closeable {
     public Iterable<TermTerm> getAllTermSimilarities(String name);
 
     public Iterable<TermTerm> getTermByTerms(String name, String term1, String term2);
+
+    public List<AuthorAuthor> getAuthorSimilarity(String runId, String authorId);
 
     public static class TermAndScore {
 
