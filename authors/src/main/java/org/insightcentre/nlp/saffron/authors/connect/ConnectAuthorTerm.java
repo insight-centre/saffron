@@ -63,9 +63,11 @@ public class ConnectAuthorTerm {
         
     }
     private final int top_n;
+    private final int minDocs;
 
     public ConnectAuthorTerm(AuthorTermConfiguration config) {
         this.top_n = config.topN;
+        this.minDocs = config.minDocs;
     }
     
     public Collection<AuthorTerm> connectResearchers(List<Term> terms, List<DocumentTerm> documentTerms,
@@ -76,7 +78,9 @@ public class ConnectAuthorTerm {
     public Collection<AuthorTerm> connectResearchers(List<Term> terms, List<DocumentTerm> documentTerms,
         Iterable<Document> documents, SaffronListener log) {
 
-        Map<String, Document>     docById      = buildDocById(documents);
+        DocById docByIdReturnValue = buildDocById(documents);
+        Map<String, Document>     docById      = docByIdReturnValue.docById;
+        Object2IntMap<Author> authorFreq = docByIdReturnValue.authorFreq;
         Map<Author, List<String>> author2Term = buildAuthor2Term(documentTerms, docById, log);
         //Map<Author, List<String>> author2Doc   = buildAuthor2Doc(documentTerms, docById);
         Map<String, Term>        termById    = buildTermById(terms);
@@ -90,6 +94,8 @@ public class ConnectAuthorTerm {
 
         List<AuthorTerm> ats = new ArrayList<>();
         for(Map.Entry<Author, List<String>> e : author2Term.entrySet()) {
+            if(authorFreq.getInt(e.getKey()) < minDocs)
+                continue;
             TreeSet<AuthorTerm> topN = new TreeSet<>(new Comparator<AuthorTerm>() {
 
                 @Override
@@ -158,11 +164,28 @@ public class ConnectAuthorTerm {
         return termById;
     }
 
-    private Map<String, Document> buildDocById(Iterable<Document> documents) {
+    private class DocById {
+        Map<String, Document> docById;
+        Object2IntMap<Author> authorFreq;
+
+        public DocById(Map<String, Document> docById, Object2IntMap<Author> authorFreq) {
+            this.docById = docById;
+            this.authorFreq = authorFreq;
+        }
+        
+        
+    }
+    
+    private DocById buildDocById(Iterable<Document> documents) {
         Map<String, Document> docById = new HashMap<>();
-        for(Document document : documents)
+        Object2IntMap<Author> authorFreq = new Object2IntOpenHashMap<>();
+        for(Document document : documents) {
             docById.put(document.id, document);
-        return docById;
+            for(Author a : document.getAuthors()) {
+                authorFreq.put(a, authorFreq.getInt(a) + 1);
+            }
+        }
+        return new DocById(docById, authorFreq);
     }
 
     private void countOccurrence(Map<Author, List<String>> author2Term, Map<String, Term> terms, Object2IntMap<AT> occurrences, 

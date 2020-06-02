@@ -77,7 +77,7 @@ fi
 echo "########################################"
 echo "## Step 6: Connect Authors            ##"
 echo "########################################"
-$DIR/connect-authors -t $CORPUS -p $OUTPUT/terms.json -d $OUTPUT/doc-terms.json -o $OUTPUT/author-terms.json
+$DIR/connect-authors -c $CONFIG -t $CORPUS -p $OUTPUT/terms.json -d $OUTPUT/doc-terms.json -o $OUTPUT/author-terms.json
 
 echo "########################################"
 echo "## Step 7: Term Similarity            ##"
