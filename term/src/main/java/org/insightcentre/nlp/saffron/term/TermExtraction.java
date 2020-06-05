@@ -252,7 +252,7 @@ public class TermExtraction {
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
             final Lazy<DomainStats> domain, final Set<String> whiteList,
             final TemporalFrequencyStats tempStats,
-            SaffronListener log) {
+            SaffronListener log) throws IntervalTooLong {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String term : terms) {
             if (whiteList.contains(term)) {
@@ -413,6 +413,8 @@ public class TermExtraction {
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
+        } catch (IntervalTooLong x) {
+            throw new RuntimeException("The intervalDays parameter is too big, please reduce it to allow future term frequency predictions.", x);
         } catch (SearchException | ExecutionException | InterruptedException x) {
             throw new RuntimeException(x);
         }

@@ -61,7 +61,7 @@ public class FeaturesTest {
      * Test of calcFeature method, of class Features.
      */
     @Test
-    public void testCalcFeature() {
+    public void testCalcFeature() throws Exception {
         System.out.println("calcFeature");
         TermExtractionConfiguration.Feature feat = TermExtractionConfiguration.Feature.weirdness;
         String term = "this test";

@@ -125,8 +125,8 @@ public class TemporalFrequencyStatsTest {
         assertEquals(0.6, prediction, 0.01);
     }
     
-    @Test(expected = TimePeriodTooLong.class)
-    public void testTimePeriodTooLong() throws TimePeriodTooLong {
+    @Test(expected = IntervalTooLong.class)
+    public void testTimePeriodTooLong() throws IntervalTooLong {
         TemporalFrequencyStats tfs = new TemporalFrequencyStats(Duration.ofDays(1000000));
         Random rand = new Random();
         for(int i = 0; i < 50; i++) {

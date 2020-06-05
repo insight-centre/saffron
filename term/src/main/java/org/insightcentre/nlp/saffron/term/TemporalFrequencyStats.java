@@ -69,13 +69,13 @@ public class TemporalFrequencyStats {
      * @param degree The degree of the approximation (2 is a good value)
      * @return The prediction (a double between 0 and 1)
      */
-    public double predict(String word, int intervalsAfterEnd, int degree) throws TimePeriodTooLong {
+    public double predict(String word, int intervalsAfterEnd, int degree) throws IntervalTooLong {
         if(freqs.isEmpty()) 
             throw new RuntimeException("Cannot predict future term frequency (likely no dates provided in corpus)");
         if(degree <= 0)
             throw new IllegalArgumentException("Degree must be greater than one");
         if(freqs.size() < degree + 1)
-            throw new TimePeriodTooLong(String.format("Only %d time periods were created, which is not sufficient to make a degree %d prediction", freqs.size(), degree));
+            throw new IntervalTooLong(String.format("Only %d time periods were created, which is not sufficient to make a degree %d prediction", freqs.size(), degree));
         RealMatrix x = new Array2DRowRealMatrix(freqs.size(), degree + 1);
         RealVector y = new ArrayRealVector(freqs.size());
         for(int i = 0; i < freqs.size(); i++) {
