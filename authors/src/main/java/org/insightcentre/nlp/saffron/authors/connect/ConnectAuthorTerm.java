@@ -120,6 +120,7 @@ public class ConnectAuthorTerm {
                 at.setOccurrences(occurrences.getInt(atKey));
                 at.setPaperCount(paper_count.getInt(atKey));
                 at.setScore(at.getTfIrf() * at.getPaperCount());
+                at.setResearcherScore((double)at.getPaperCount() * Math.log(1 + at.getMatches()));
                 if(topN.size() < top_n) {
                     topN.add(at);
                 } else if(topN.size() >= top_n && at.getScore() > topN.first().getScore()) {
