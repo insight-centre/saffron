@@ -2,8 +2,10 @@ package org.insightcentre.nlp.saffron.term;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.Random;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -84,7 +86,7 @@ public class TemporalFrequencyStatsTest {
     }
 
     @Test
-    public void testPredict() {
+    public void testPredict() throws Exception {
         Duration d = Duration.ofDays(7);
                 
         TemporalFrequencyStats instance = new TemporalFrequencyStats(d);
@@ -121,5 +123,26 @@ public class TemporalFrequencyStatsTest {
         }
         double prediction = instance.predict("cat", 2, 2);
         assertEquals(0.6, prediction, 0.01);
+    }
+    
+    @Test(expected = IntervalTooLong.class)
+    public void testTimePeriodTooLong() throws IntervalTooLong {
+        TemporalFrequencyStats tfs = new TemporalFrequencyStats(Duration.ofDays(1000000));
+        Random rand = new Random();
+        for(int i = 0; i < 50; i++) {
+            FrequencyStats fs = new FrequencyStats();
+            int r0 = rand.nextInt(1000);
+            fs.termFrequency.put("a", r0);
+            int r1 = rand.nextInt(1000);
+            fs.termFrequency.put("b", r1);
+            int r2 = rand.nextInt(1000);
+            fs.termFrequency.put("c", r2);
+            int r3 = rand.nextInt(1000);
+            fs.termFrequency.put("d", r3);
+            fs.tokens = r0 + r1 + r2 + r3;
+            tfs.add(fs, LocalDateTime.now());
+        }
+        tfs.predict("c", 5, 2);
+        
     }
 }

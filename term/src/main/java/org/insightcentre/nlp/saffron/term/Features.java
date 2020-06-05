@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.term;
 
 import java.util.Set;
+import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.term.domain.DomainStats;
 import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
@@ -15,7 +16,8 @@ public class Features {
             TermExtractionConfiguration.Feature feat,
             String term, FrequencyStats stats, Lazy<FrequencyStats> ref,
             Lazy<InclusionStats> incl, Lazy<NovelTopicModel> topicModel,
-            Lazy<DomainStats> domain, TemporalFrequencyStats tempStats) {
+            Lazy<DomainStats> domain, TemporalFrequencyStats tempStats,
+            SaffronListener log) throws IntervalTooLong {
         switch (feat) {
             case weirdness:
                 return weirdness(term, stats, ref.get());
@@ -39,10 +41,10 @@ public class Features {
                 return domain.get().score(term);
             case futureBasic:
                 if(tempStats == null) throw new IllegalArgumentException("Cannot calculate future statistics without an interval");
-                return futureBasic(term, 0.75, tempStats, incl.get(), 0.2);
+                return futureBasic(term, 0.75, tempStats, incl.get(), 0.2, log);
             case futureComboBasic:
                 if(tempStats == null) throw new IllegalArgumentException("Cannot calculate future statistics without an interval");
-                return futureBasicCombo(term, 0.75, 0.1, tempStats, incl.get(), 0.2);
+                return futureBasicCombo(term, 0.75, 0.1, tempStats, incl.get(), 0.2, log);
             default:
                 throw new UnsupportedOperationException("Feature not supported: " + feat);
         }
@@ -107,7 +109,7 @@ public class Features {
         return t * log2(tf) + alpha * et;
     }
     
-    public static double futureBasic(String term, double alpha, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount) {
+    public static double futureBasic(String term, double alpha, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount, SaffronListener log) throws IntervalTooLong {
         double tf = freq.predict(term, (int)(freq.freqs.size() * futureAmount), 2);
         double t = term.split(" ").length;
         double et = incl.superTerms.containsKey(term) ? incl.superTerms.get(term).size() : 0.0;
@@ -123,7 +125,7 @@ public class Features {
     }
 
     
-    public static double futureBasicCombo(String term, double alpha, double beta, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount) {
+    public static double futureBasicCombo(String term, double alpha, double beta, TemporalFrequencyStats freq, InclusionStats incl, double futureAmount, SaffronListener log) throws IntervalTooLong {
         double tf = freq.predict(term, (int)(freq.freqs.size() * futureAmount), 2);
         double t = term.split(" ").length;
         double et = incl.superTerms.containsKey(term) ? incl.superTerms.get(term).size() : 0.0;
