@@ -37,4 +37,4 @@ If you are aware of tests that need to be written or adjusted apart from unit te
 please list them here.
 -->
 
-/label ~improvement
+/label ~Improvement
