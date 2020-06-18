@@ -56,7 +56,6 @@ public class GreedyKG implements KGSearch{
         SOLN_LOOP:
         while(!candidates.isEmpty()) {//TODO: Ideally this loop should stop as soon as a "complete" solution is found
         	
-        	log.log(LocalDateTime.now().toString() + " - GreedyKG - Reranking candidates");
         	//5 - Calculate how much each link contributes to improving the score of the current Knowledge Graph
             final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
             for (TypedLink candidate : candidates) {
@@ -86,7 +85,6 @@ public class GreedyKG implements KGSearch{
             //7 - Choose which candidate will enter in the current Knowledge Graph
             while (!candidates.isEmpty()) {
             	
-            	log.log(LocalDateTime.now().toString() + " - GreedyKG  - Building a solution");
             	//8 - Create a single solution with the highest ranked candidate
             	TypedLink candidate = candidates.remove(0);
                 KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
