@@ -95,6 +95,10 @@ public class GreedyKG implements KGSearch{
                 if (soln2 != null) {
                 	Score<TypedLink> newScore = result.getValue().next(candidate, soln2);
                     result = new MutablePair<KnowledgeGraphSolution, Score<TypedLink>>(soln2,newScore);
+                    
+                    //Prune the list of candidates by removing those that will never be considered by a new 
+                    // partial solution
+                    soln2.pruneCandidateList(candidates, candidate);
                     continue SOLN_LOOP;
                 }
             }

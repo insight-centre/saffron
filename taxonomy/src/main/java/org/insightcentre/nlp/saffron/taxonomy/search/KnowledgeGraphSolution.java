@@ -177,6 +177,27 @@ public class KnowledgeGraphSolution extends Solution{
     }
     
     /**
+	 * Remove candidates that will not be considered for a new partial solution due to logical constraints
+	 * 
+	 * @param candidates - the list of candidates to be pruned
+	 * @param link - the link being included in the partial solution 
+	 */
+	public void pruneCandidateList(ArrayList<TypedLink> candidates, TypedLink link) {		
+		candidates.remove(new TypedLink(link.getTarget(), link.getSource(), link.getType()));
+		
+		switch(link.getType()) {
+			case hypernymy:
+				candidates.remove(new TypedLink(link.getSource(), link.getTarget(), TypedLink.Type.hyponymy));
+				candidates.remove(new TypedLink(link.getTarget(), link.getSource(), TypedLink.Type.hyponymy));
+				break;
+			case hyponymy:
+				candidates.remove(new TypedLink(link.getSource(), link.getTarget(), TypedLink.Type.hypernymy));
+				candidates.remove(new TypedLink(link.getTarget(), link.getSource(), TypedLink.Type.hypernymy));
+				break;			
+		}		
+	}
+        
+    /**
      * Resolve the link by providing a common synonym for its source and target,
      * while keeping the same relation
      * 
