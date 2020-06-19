@@ -60,7 +60,7 @@ public class APIUtils {
             entity.setAcronym(doc.getString("acronym"));
             entity.setOccurrences(doc.getInteger("occurences"));
             entity.setPattern(doc.getString("pattern"));
-            entity.setTfidf(doc.getString("tfidf"));
+            entity.setTfidf(doc.getDouble("tfidf"));
 
             entity.setDocumentId(doc.getString("document_id"));
 
