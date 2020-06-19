@@ -13,7 +13,7 @@ public class TermCorrespondenceResponse {
     private String pattern;
     private Integer occurences;
     private String documentId;
-    private String tfidf;
+    private Double tfidf;
     private Date runDate;
     private String run;
 
@@ -87,11 +87,11 @@ public class TermCorrespondenceResponse {
         return pattern;
     }
 
-    public void setTfidf(String tfidf) {
+    public void setTfidf(Double tfidf) {
         this.tfidf = tfidf;
     }
 
-    public String getTfidf() {
+    public Double getTfidf() {
         return tfidf;
     }
 }
