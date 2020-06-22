@@ -45,7 +45,7 @@ public class GreedyKG implements KGSearch{
 
         log.log(LocalDateTime.now().toString() + " - GreedyKG - Generating candidate pairs");
         //2 - Build candidate list of possible links
-        ArrayList<TypedLink> candidates = createCandidateLinks(termMap, allowanceList, denialList);
+        GreedyKGList candidates = new GreedyKGList(createCandidateLinks(termMap, allowanceList, denialList));
 
         log.log(LocalDateTime.now().toString() + " - GreedyKG  - Generating Initial Solution");
         //3 - Create solution based on links on allowance list
@@ -57,40 +57,19 @@ public class GreedyKG implements KGSearch{
         while(!candidates.isEmpty()) {//TODO: Ideally this loop should stop as soon as a "complete" solution is found
         	
         	//5 - Calculate how much each link contributes to improving the score of the current Knowledge Graph
-            final Object2DoubleMap<TypedLink> scores = new Object2DoubleOpenHashMap<>();
-            for (TypedLink candidate : candidates) {
-                scores.put(candidate, result.getValue().deltaScore(candidate));
-            }
-            
-            //6 - Rank all links according to how much they contribute to the current Knowledge Graph
-            candidates.sort(new Comparator<TypedLink>() {
-                @Override
-                public int compare(TypedLink o1, TypedLink o2) {
-                	//Consider synonyms as the most important links
-                	
-                	if(o1.getType().equals(TypedLink.Type.synonymy) &&
-                			!o2.getType().equals(TypedLink.Type.synonymy)) {
-                		return Integer.MIN_VALUE;
-                	} else if (!o1.getType().equals(TypedLink.Type.synonymy) &&
-                			o2.getType().equals(TypedLink.Type.synonymy)) {
-                		return Integer.MAX_VALUE;
-                	}
-                    double d1 = scores.getOrDefault(o1, Double.MIN_VALUE);
-                    double d2 = scores.getOrDefault(o2, Double.MIN_VALUE);
-                    int c = Double.compare(d1, d2);
-                    return c == 0 ? o1.compareTo(o2) : -c;
-                }
-            });
+                final Pair<KnowledgeGraphSolution, Score<TypedLink>> result0 = result;
+            candidates.scoreAndSort(tl -> result0.getValue().deltaScore(tl));
             
             //7 - Choose which candidate will enter in the current Knowledge Graph
             while (!candidates.isEmpty()) {
             	
             	//8 - Create a single solution with the highest ranked candidate
+                double score = candidates.getScore(0);
             	TypedLink candidate = candidates.remove(0);
                 KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
                         termMap.get(candidate.getSource()).getScore(),
                         termMap.get(candidate.getTarget()).getScore(),
-                        scores.getDouble(candidate), false);
+                        score, false);
                 //9 - If such solution is feasible, then update the current Knowledge Graph and go back to step 5 
                 if (soln2 != null) {
                 	Score<TypedLink> newScore = result.getValue().next(candidate, soln2);

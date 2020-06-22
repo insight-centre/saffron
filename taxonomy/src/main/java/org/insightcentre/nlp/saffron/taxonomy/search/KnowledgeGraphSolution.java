@@ -182,7 +182,7 @@ public class KnowledgeGraphSolution extends Solution{
 	 * @param candidates - the list of candidates to be pruned
 	 * @param link - the link being included in the partial solution 
 	 */
-	public void pruneCandidateList(ArrayList<TypedLink> candidates, TypedLink link) {		
+	public void pruneCandidateList(Collection<TypedLink> candidates, TypedLink link) {		
 		candidates.remove(new TypedLink(link.getTarget(), link.getSource(), link.getType()));
 		
 		switch(link.getType()) {
