@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.concurrent.TimeUnit;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.apache.commons.lang.StringUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -337,13 +338,14 @@ public class RDFConversion {
                 badOptions(p, "Base dir not given");
                 return;
             }
-           
-            int index=datasetName.lastIndexOf('/');
-            datasetName = datasetName.substring(index+1,datasetName.length());
+
             saffron.fromDirectory(new File(baseDir), datasetName);
             Model kg = ModelFactory.createDefaultModel();
             kg = knowledgeGraphToRDF(saffron, datasetName, kg, baseUrl);
-            try(OutputStream out = new FileOutputStream(kgOutFile)) {
+            String workingDir = System.getProperty("user.dir");
+            System.setProperty("user.dir", workingDir);
+            String saffonPath = new File(kgOutFile).getAbsolutePath();
+            try(OutputStream out = new FileOutputStream(saffonPath)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
