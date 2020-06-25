@@ -1,43 +1,26 @@
 package org.insightcentre.saffron.web.rdf;
 
 import java.io.*;
-import java.net.URL;
 import java.net.URLEncoder;
 import java.util.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.concurrent.TimeUnit;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
-import org.apache.commons.lang.StringUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.riot.Lang;
-import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
-import org.deeplearning4j.nn.modelimport.keras.exceptions.InvalidKerasConfigurationException;
-import org.deeplearning4j.nn.modelimport.keras.exceptions.UnsupportedKerasConfigurationException;
-import org.insightcentre.nlp.saffron.SaffronListener;
-import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
-import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
-import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
-import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.SaffronInMemoryDataSource;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
-
-import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 
 
 /**
@@ -342,8 +325,6 @@ public class RDFConversion {
             saffron.fromDirectory(new File(baseDir), datasetName);
             Model kg = ModelFactory.createDefaultModel();
             kg = knowledgeGraphToRDF(saffron, datasetName, kg, baseUrl);
-            String workingDir = System.getProperty("user.dir");
-            System.setProperty("user.dir", workingDir);
             String saffonPath = new File(kgOutFile).getAbsolutePath();
             try(OutputStream out = new FileOutputStream(saffonPath)) {
                 kg.write( out, "RDF/XML" );
