@@ -10,19 +10,21 @@ distinct analysis of text. These modules are as follows
 them for later components
 2. *Term Extraction*: Extracts keyphrases that are the terms of each single
 document in a collection
-3. *Author Consolidation*: Detects and removes name variations from the list
+3. *Concept Consolidation*: Detects and removes variations from the list
+of terms of each document
+4. *Author Consolidation*: Detects and removes name variations from the list
 of authors of each document
-4. *DBpedia Lookup*: Links terms extracted from a document to URLs on the
+5. *DBpedia Lookup*: Links terms extracted from a document to URLs on the
 Semantic Web
-5. *Document-term Analysis*: Analyses the terms of a document and finds the relative
-importance of these terms
-6. *Author-Term Analysis*: Associates authors with particular documents and
-identifies the importance of the document to each author
+6. *Author Connection*: Associates authors with terms from the documents and
+identifies the importance of the term to each author
 7. *Term Similarity*: Measures the relevance of each term to each other term
 8. *Author Similarity*: Measures the relevance of each author to each other
 author
 9. *Taxonomy Extraction*: Organizes the terms into a single hierarchical
 graph that allows for easy browsing of the corpus and deep insights.
+10. *RDF Extraction*: Creates a knowledge graph
+
 
 <img src="https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
 
