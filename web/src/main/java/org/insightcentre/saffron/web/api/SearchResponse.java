@@ -32,7 +32,7 @@ public class SearchResponse {
     }
 
     public String getId() {
-        return snippet;
+        return id;
     }
 
     public void setSnippet(String snippet) {

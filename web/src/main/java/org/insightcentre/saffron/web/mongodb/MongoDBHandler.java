@@ -2195,7 +2195,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
     public FindIterable<Document> searchTaxonomy(String id, String term) {
 
-        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term", term));
+        Bson condition = Filters.and(Filters.eq("run", id), Filters.eq("term_string", term));
 
         return termDocumentCorrespondenceCollection.find(condition);
     }
