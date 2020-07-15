@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.StringUtils;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
@@ -520,8 +521,16 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     public void fromDirectory(File directory, String name) throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
-
-        File taxonomyFile = new File(directory, "kg.json");
+        String workingDir = System.getProperty("user.dir");
+        workingDir = workingDir.substring(0, workingDir.length() - 4);
+        System.setProperty("user.dir", workingDir);
+        String saffonPath;
+        if (directory.getAbsolutePath().equals(directory.getPath())) {
+            saffonPath = directory.getAbsolutePath();
+        } else {
+            saffonPath = workingDir + "/" + directory;
+        }
+        File taxonomyFile = new File(saffonPath, "kg.json");
         if (!taxonomyFile.exists()) {
             throw new FileNotFoundException("Could not find kg.json");
         }
@@ -530,7 +539,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
         saffron.setKnowledgeGraph(mapper.readValue(taxonomyFile, KnowledgeGraph.class));
 
-        File authorSimFile = new File(directory, "author-sim.json");
+        File authorSimFile = new File(saffonPath, "author-sim.json");
         if (!authorSimFile.exists()) {
             throw new FileNotFoundException("Could not find author-sim.json");
         }
@@ -538,7 +547,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setAuthorSim((List<AuthorAuthor>) mapper.readValue(authorSimFile,
                 tf.constructCollectionType(List.class, AuthorAuthor.class)));
 
-        File termSimFile = new File(directory, "term-sim.json");
+        File termSimFile = new File(saffonPath, "term-sim.json");
         if (!termSimFile.exists()) {
             throw new FileNotFoundException("Could not find term-sim.json");
         }
@@ -546,7 +555,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setTermSim((List<TermTerm>) mapper.readValue(termSimFile,
                 tf.constructCollectionType(List.class, TermTerm.class)));
 
-        File authorTermFile = new File(directory, "author-terms.json");
+        File authorTermFile = new File(saffonPath, "author-terms.json");
         if (!authorTermFile.exists()) {
             throw new FileNotFoundException("Could not find author-terms.json");
         }
@@ -554,7 +563,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setAuthorTerms((List<AuthorTerm>) mapper.readValue(authorTermFile,
                 tf.constructCollectionType(List.class, AuthorTerm.class)));
 
-        File docTermsFile = new File(directory, "doc-terms.json");
+        File docTermsFile = new File(saffonPath, "doc-terms.json");
         if (!docTermsFile.exists()) {
             throw new FileNotFoundException("Could not find doc-terms.json");
         }
@@ -562,7 +571,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setDocTerms((List<DocumentTerm>) mapper.readValue(docTermsFile,
                 tf.constructCollectionType(List.class, DocumentTerm.class)));
 
-        File termsFile = new File(directory, "terms.json");
+        File termsFile = new File(saffonPath, "terms.json");
         if (!termsFile.exists()) {
             throw new FileNotFoundException("Could not find terms.json");
         }
@@ -570,7 +579,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setTerms((List<Term>) mapper.readValue(termsFile,
                 tf.constructCollectionType(List.class, Term.class)));
 
-        File indexFile = new File(directory, "index");
+        File indexFile = new File(saffonPath, "index");
         if (!indexFile.exists()) {
             throw new FileNotFoundException("Could not find index");
         }
