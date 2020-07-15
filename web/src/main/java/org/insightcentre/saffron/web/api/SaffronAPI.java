@@ -174,9 +174,9 @@ public class SaffronAPI {
 
             for (Document doc : terms) {
                 SearchResponse entity = new SearchResponse();
-                entity.setId(doc.getString("_id"));
+                entity.setId(doc.getString("document_id"));
                 entity.setLocation(doc.getString("document_id"));
-                entity.setTermString(doc.getString("term"));
+                entity.setTermString(doc.getString("term_string"));
 
                 searchResponses.add(entity);
 

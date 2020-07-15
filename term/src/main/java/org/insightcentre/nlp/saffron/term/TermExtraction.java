@@ -251,14 +251,15 @@ public class TermExtraction {
             final FrequencyStats stats, final Lazy<FrequencyStats> ref,
             final Lazy<InclusionStats> incl, final Lazy<NovelTopicModel> ntm,
             final Lazy<DomainStats> domain, final Set<String> whiteList,
-            final TemporalFrequencyStats tempStats) {
+            final TemporalFrequencyStats tempStats,
+            SaffronListener log) throws IntervalTooLong {
         final Object2DoubleMap<String> scores = new Object2DoubleOpenHashMap<>();
         for (String term : terms) {
             if (whiteList.contains(term)) {
                 scores.put(term, Double.POSITIVE_INFINITY);
             } else {
                 scores.put(term,
-                        Features.calcFeature(feature, term, stats, ref, incl, ntm, domain, tempStats));
+                        Features.calcFeature(feature, term, stats, ref, incl, ntm, domain, tempStats, log));
             }
         }
         return scores;
@@ -377,7 +378,7 @@ public class TermExtraction {
             switch (method) {
                 case one:
                     Object2DoubleMap<String> scores = scoreByFeat(terms, keyFeature,
-                            freqs, ref, incl, ntm, domain, whiteList, tfs);
+                            freqs, ref, incl, ntm, domain, whiteList, tfs, log);
                     rankTermsByFeat(terms, scores, whiteList, blackList);
                     if (terms.size() > maxTerms) {
                         if (oneTermPerDoc) {
@@ -392,7 +393,7 @@ public class TermExtraction {
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
                         Object2DoubleMap<String> scores2 = scoreByFeat(terms, feat,
-                                freqs, ref, incl, ntm, domain, whiteList, tfs);
+                                freqs, ref, incl, ntm, domain, whiteList, tfs, log);
                         rankTermsByFeat(terms, scores2, whiteList, blackList);
                         int i = 1;
                         for (String term : terms) {
@@ -412,6 +413,8 @@ public class TermExtraction {
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
+        } catch (IntervalTooLong x) {
+            throw new RuntimeException("The intervalDays parameter is too big, please reduce it to allow future term frequency predictions.", x);
         } catch (SearchException | ExecutionException | InterruptedException x) {
             throw new RuntimeException(x);
         }

@@ -15,6 +15,7 @@ import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.MatrixUtils;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.linear.SingularMatrixException;
 
 /**
  *
@@ -68,11 +69,13 @@ public class TemporalFrequencyStats {
      * @param degree The degree of the approximation (2 is a good value)
      * @return The prediction (a double between 0 and 1)
      */
-    public double predict(String word, int intervalsAfterEnd, int degree) {
+    public double predict(String word, int intervalsAfterEnd, int degree) throws IntervalTooLong {
         if(freqs.isEmpty()) 
             throw new RuntimeException("Cannot predict future term frequency (likely no dates provided in corpus)");
         if(degree <= 0)
             throw new IllegalArgumentException("Degree must be greater than one");
+        if(freqs.size() < degree + 1)
+            throw new IntervalTooLong(String.format("Only %d time periods were created, which is not sufficient to make a degree %d prediction", freqs.size(), degree));
         RealMatrix x = new Array2DRowRealMatrix(freqs.size(), degree + 1);
         RealVector y = new ArrayRealVector(freqs.size());
         for(int i = 0; i < freqs.size(); i++) {
@@ -81,7 +84,14 @@ public class TemporalFrequencyStats {
             }
             y.setEntry(i, (double)freqs.get(i).termFrequency.getInt(word) / freqs.get(i).tokens);
         }
-        RealMatrix xtx_inv = MatrixUtils.inverse(x.transpose().multiply(x));
+        final RealMatrix xtx_inv;
+        try {
+            xtx_inv = MatrixUtils.inverse(x.transpose().multiply(x));
+        } catch(SingularMatrixException x2) {
+            System.err.println("Matrix is singular");
+            System.err.println(x);
+            throw new RuntimeException("Could not predict future scores", x2);
+        }
         RealVector a = xtx_inv.operate(x.preMultiply(y));
         
         double prediction = 0.0;
