@@ -172,10 +172,14 @@ public class RDFConversion {
 
 
     public static Model knowledgeGraphToRDF(SaffronDataSource data, String datasetName, Model model, String base) {
-        for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getTaxonomy().children) {
+        if(data.getKnowledgeGraph(datasetName) == null)
+            return model;
+        Taxonomy taxo = data.getKnowledgeGraph(datasetName).getTaxonomy();
+        if(taxo == null)
+            return model;
+        for(Taxonomy taxonomy : taxo.children) {
             getPartonomies(data, datasetName, model, base, taxonomy);
         }
-        Taxonomy taxo = data.getKnowledgeGraph(datasetName).getTaxonomy();
         for(Term term : data.getAllTerms(datasetName)) {
             getSynonyms(data, datasetName, model, base, term);
             getHyponyms(data, datasetName, model, base, taxo, term);
