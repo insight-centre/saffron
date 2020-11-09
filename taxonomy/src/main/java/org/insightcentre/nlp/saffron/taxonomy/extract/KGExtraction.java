@@ -171,7 +171,6 @@ public class KGExtraction {
                 {
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
                     accepts("o", "The output file path").withRequiredArg().ofType(String.class);
-                    accepts("t", "An identifier for the Saffron knowledge graph").withRequiredArg().ofType(String.class);
                     accepts("d", "The directory with all files from the kg extraction run").withRequiredArg().ofType(String.class);
                 }
             };
@@ -186,11 +185,6 @@ public class KGExtraction {
             String kgOutFile = (String) os.valueOf("o");
             if (kgOutFile == null) {
                 badOptions(p, "Output file not given");
-            }
-            String datasetName = (String) os.valueOf("t");
-            if (datasetName == null ) {
-                badOptions(p, "The identifier was not provided");
-                return;
             }
             String baseUrl = (String) os.valueOf("b");
             if (baseUrl == null) {
