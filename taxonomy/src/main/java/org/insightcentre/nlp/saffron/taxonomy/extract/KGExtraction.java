@@ -14,6 +14,7 @@ import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sparql.vocabulary.FOAF;
 import org.apache.jena.vocabulary.DCTerms;
+import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 
 public class KGExtraction {
@@ -23,15 +24,15 @@ public class KGExtraction {
 
     /** <p>The namespace of the vocabulary as a string</p> */
     public static final String NS = "http://saffron.insight-centre.org/ontology#";
+    public static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
 
-    public static final Property partonomy = m_model.createProperty( NS + "partonomy" );
-    public static final Property taxonomy = m_model.createProperty( NS + "taxonomy" );
-    public static final Property synonymy = m_model.createProperty( NS + "synonymy" );
-    public static final Property synonym = m_model.createProperty( NS + "synonym" );
-    public static final Property partOf = m_model.createProperty( NS + "partOf" );
-    public static final Property wholeOf = m_model.createProperty( NS + "wholeOf" );
-    public static final Property isA = m_model.createProperty( NS + "isA" );
-
+    public static final Property PARTONOMY = m_model.createProperty( NS + "partonomy" );
+    public static final Property TAXONOMY = m_model.createProperty( NS + "taxonomy" );
+    public static final Property SYNONYMY = m_model.createProperty( NS + "synonymy" );
+    public static final Property PART_OF = m_model.createProperty( NS + "partOf" );
+    public static final Property WHOLE_OF = m_model.createProperty( NS + "wholeOf" );
+    public static final Property IS_A = m_model.createProperty( SKOS + "broader" );
+    
 
     private static String encode(String s) {
         try {
@@ -70,14 +71,15 @@ public class KGExtraction {
                 if (taxonomy.hasDescendent(child.root)) {
                     res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(child.root))
                             .addProperty(RDFS.label, child.root);
-                    res.addProperty(partOf,
+                    res.addProperty(RDF.type, model.createResource(SKOS + "Concept"));
+                    res.addProperty(PART_OF,
                             model.createResource(
                                     base == null ? encode(partonomy.root)
                                             : base + "/rdf/term/" + encode(partonomy.root)));
                     if (taxonomy.hasDescendent(child.root)) {
                         Taxonomy parent = taxonomy.getParent(child.root);
                         if (parent != null)
-                            res.addProperty(isA,
+                            res.addProperty(IS_A,
                                     model.createResource(
                                             base == null ? encode(parent.root)
                                                     : base + "/rdf/term/" + encode(parent.root)));
@@ -90,7 +92,7 @@ public class KGExtraction {
                             synonm.iterator().forEachRemaining(synonymList::add);
                             for (String text : synonymList) {
                                 if (!text.equals(child.root))
-                                    res.addProperty(synonym,
+                                    res.addProperty(SYNONYMY,
                                             model.createResource(base == null ? encode(text)
                                                     : base + "/rdf/term/" + encode(text)));
                             }
@@ -99,7 +101,7 @@ public class KGExtraction {
                 }
                 res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(partonomy.root))
                         .addProperty(RDFS.label, partonomy.root);
-                res.addProperty(wholeOf, model.createResource(base == null ? encode(child.root)
+                res.addProperty(WHOLE_OF, model.createResource(base == null ? encode(child.root)
                         : base + "/rdf/term/" + encode(child.root)));
             }
         }
@@ -114,13 +116,14 @@ public class KGExtraction {
                 for (Taxonomy taxonomy : taxo.descendent(term.getString()).children) {
                     if (!model.contains(synonym, prop) ) {
                         res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root));
-                        res.addProperty(isA,
+                        res.addProperty(RDF.type, model.createResource(SKOS + "Concept"));
+                        res.addProperty(IS_A,
                                 model.createResource(
                                         base == null ? encode(term.getString())
                                                 : base + "/rdf/term/" + encode(term.getString())));
                     } else {
                         res = model.getResource(base + "/rdf/term/" + encode(taxonomy.root));
-                        res.addProperty(isA,
+                        res.addProperty(IS_A,
                                 model.createResource(
                                         base == null ? encode(term.getString())
                                                 : base + "/rdf/term/" + encode(term.getString())));
@@ -146,7 +149,7 @@ public class KGExtraction {
                                 res = model.createResource(base == null ? "" : base + "/rdf/term/" +
                                         encode(term.getString()))
                                         .addProperty(RDFS.label, term.getString());
-                                res.addProperty(synonym,
+                                res.addProperty(SYNONYMY,
                                         model.createResource(base == null ? encode(text)
                                                 : base + "/rdf/term/" + encode(text)));
                             }
@@ -203,8 +206,8 @@ public class KGExtraction {
             KGExtractionUtils kgExtractionUtils = KGExtractionUtils.fromDirectory(new File(baseDir));
             org.apache.jena.rdf.model.Model kg = ModelFactory.createDefaultModel();
             kg = knowledgeGraphToRDF(kg, baseUrl, kgExtractionUtils);
-            String saffonPath = new File(kgOutFile).getAbsolutePath();
-            try(OutputStream out = new FileOutputStream(saffonPath)) {
+            kg.setNsPrefix("skos", SKOS);
+            try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );
             } catch (FileNotFoundException e) {
                 e.printStackTrace();

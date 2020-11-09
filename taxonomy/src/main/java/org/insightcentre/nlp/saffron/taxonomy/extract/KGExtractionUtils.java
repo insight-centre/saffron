@@ -101,15 +101,16 @@ public class KGExtractionUtils {
 
         File indexFile = new File(directory, "corpus.json");
         if (!indexFile.exists()) {
-            throw new FileNotFoundException("Could not find index");
-        }
+            System.err.println("Corpus does not exist... skipping");
+        } else {
 
-        // Temporary fix until more changes from other branch can be merged
-        //utils.setCorpus(CorpusTools.readFile(indexFile));
-        try{
-            utils.setCorpus((Corpus)Class.forName("org.insightcentre.nlp.saffron.documentindex.CorpusTools").getMethod("readFile", File.class).invoke(null, indexFile));
-        } catch(Exception x) {
-            throw new RuntimeException(x);
+            // Temporary fix until more changes from other branch can be merged
+            //utils.setCorpus(CorpusTools.readFile(indexFile));
+            try{
+                utils.setCorpus((Corpus)Class.forName("org.insightcentre.nlp.saffron.documentindex.CorpusTools").getMethod("readFile", File.class).invoke(null, indexFile));
+            } catch(Exception x) {
+                throw new RuntimeException(x);
+            }
         }
         return utils;
     }
