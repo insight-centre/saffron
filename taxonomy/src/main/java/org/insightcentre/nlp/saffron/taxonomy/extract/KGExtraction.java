@@ -46,8 +46,12 @@ public class KGExtraction {
 
     public static org.apache.jena.rdf.model.Model knowledgeGraphToRDF(org.apache.jena.rdf.model.Model model, String base, KGExtractionUtils kgExtractionUtils) {
         KnowledgeGraph kg = kgExtractionUtils.getKnowledgeGraph();
-        for(Taxonomy taxonomy : kg.getTaxonomy().children) {
-            getPartonomies(model, base, taxonomy, kgExtractionUtils);
+        if(kg.getTaxonomy() != null) {
+            for(Taxonomy taxonomy : kg.getTaxonomy().children) {
+                getPartonomies(model, base, taxonomy, kgExtractionUtils);
+            }
+        } else {
+            System.err.println("No taxonomy to extract");
         }
         Taxonomy taxo = kgExtractionUtils.getKnowledgeGraph().getTaxonomy();
         for(Term term : kgExtractionUtils.getTerms()) {
