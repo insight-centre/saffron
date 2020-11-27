@@ -119,7 +119,8 @@ public class KGExtraction {
             if (taxo.descendent(term.getString()) != null) {
                 for (Taxonomy taxonomy : taxo.descendent(term.getString()).children) {
                     if (!model.contains(synonym, prop) ) {
-                        res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root));
+                        res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root))
+                            .addProperty(RDFS.label, taxonomy.root);
                         res.addProperty(RDF.type, model.createResource(SKOS + "Concept"));
                         res.addProperty(IS_A,
                                 model.createResource(
