@@ -92,7 +92,7 @@ $DIR/author-sim -d $OUTPUT/author-terms.json -o $OUTPUT/author-sim.json
 echo "########################################"
 echo "## Step 9: Taxonomy Extraction        ##"
 echo "########################################"
-#$DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
+$DIR/taxonomy-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/taxonomy.json -c $CONFIG
 $DIR/kg-extract -d $OUTPUT/doc-terms.json -t $OUTPUT/terms.json -o $OUTPUT/kg.json -c $CONFIG
 
 echo "########################################"
