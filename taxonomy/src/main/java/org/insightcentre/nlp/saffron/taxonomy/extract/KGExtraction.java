@@ -55,7 +55,6 @@ public class KGExtraction {
         }
         Taxonomy taxo = kgExtractionUtils.getKnowledgeGraph().getTaxonomy();
         for(Term term : kgExtractionUtils.getTerms()) {
-
             getSynonyms(model, base, term, kgExtractionUtils);
             getHyponyms(model, base, taxo, term, kgExtractionUtils);
         }
@@ -112,6 +111,11 @@ public class KGExtraction {
     }
 
     private static void getHyponyms(org.apache.jena.rdf.model.Model model, String base, Taxonomy taxo, Term term, KGExtractionUtils kgExtractionUtils) {
+        if(taxo.getRoot().equals(term.getString())) {
+            model.createResource(base == null ? "" : base + "/rdf/term/" + encode(term.getString()))
+                    .addProperty(RDFS.label, term.getString())
+                    .addProperty(RDF.type, model.createResource(SKOS + "Concept"));
+        }
         Resource res;
         for (TermTerm tt : kgExtractionUtils.getTermByTerm1(term.getString(), null)) {
             Property prop = model.getProperty(term.toString(), tt.getTerm2());
@@ -119,7 +123,8 @@ public class KGExtraction {
             if (taxo.descendent(term.getString()) != null) {
                 for (Taxonomy taxonomy : taxo.descendent(term.getString()).children) {
                     if (!model.contains(synonym, prop) ) {
-                        res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root));
+                        res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root))
+                            .addProperty(RDFS.label, taxonomy.root);
                         res.addProperty(RDF.type, model.createResource(SKOS + "Concept"));
                         res.addProperty(IS_A,
                                 model.createResource(
