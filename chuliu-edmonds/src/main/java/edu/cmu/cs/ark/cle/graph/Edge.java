@@ -1,5 +1,6 @@
 package edu.cmu.cs.ark.cle.graph;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
@@ -38,7 +39,7 @@ public class Edge<V> {
 	}
 
 	@Override public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("source", source)
 				.add("destination", destination).toString();
 	}

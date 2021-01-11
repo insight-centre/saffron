@@ -1,5 +1,6 @@
 package edu.cmu.cs.ark.cle.util;
 
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 
 /**
@@ -32,7 +33,7 @@ public class Pair<T,V> {
 	}
 
 	@Override public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("first", first)
 				.add("second", second).toString();
 	}

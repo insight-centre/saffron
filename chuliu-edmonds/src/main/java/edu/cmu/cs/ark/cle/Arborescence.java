@@ -1,6 +1,7 @@
 package edu.cmu.cs.ark.cle;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -43,7 +44,7 @@ public class Arborescence<V> {
 		for (Map.Entry<V, V> entry : parents.entrySet()) {
 			lines.add(entry.getValue() +  " -> " + entry.getKey());
 		}
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.addValue(Joiner.on(", ").join(lines))
 				.toString();
 	}
