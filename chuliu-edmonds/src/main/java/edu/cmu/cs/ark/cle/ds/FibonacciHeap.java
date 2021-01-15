@@ -3,7 +3,6 @@ package edu.cmu.cs.ark.cle.ds;
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Ordering;
 
@@ -13,6 +12,7 @@ import java.util.LinkedList;
 
 import static com.google.common.collect.Iterators.*;
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * A Fibonacci heap (due to Fredman and Tarjan).
@@ -215,7 +215,7 @@ public class FibonacciHeap<V,P> implements Iterable<FibonacciHeap<V,P>.Entry> {
         }
 	/** Depth-first iteration */
 	private Iterator<Entry> siblingsAndBelow(Optional<Entry> oEntry) {
-		if (!oEntry.isPresent()) return Iterators.emptyIterator();
+		if (!oEntry.isPresent()) return Collections.emptyIterator();
 		return concat(transform(getCycle(oEntry.get()).iterator(), new Function<Entry, Iterator<Entry>>() {
 			@Override public Iterator<Entry> apply(Entry entry) {
 				return concat(singletonIterator(entry), siblingsAndBelow(entry.oFirstChild));
