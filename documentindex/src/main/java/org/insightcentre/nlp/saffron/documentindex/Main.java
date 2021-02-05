@@ -40,7 +40,7 @@ public class Main {
  
             final File corpusFile = (File)os.valueOf("c");
             if(corpusFile == null || !corpusFile.exists()) {
-                badOptions(p, "Configuration does not exist");
+                badOptions(p, "Corpus does not exist");
                 return;
             }
             final File indexFile = (File)os.valueOf("i");
