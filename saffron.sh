@@ -99,6 +99,7 @@ echo "########################################"
 echo "## Step 10: RDF Extraction            ##"
 echo "########################################"
 $DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/kg.rdf -d $OUTPUT
+$DIR/export-kg.sh -b http://saffron.insight-centre.org -o $OUTPUT/taxonomy.rdf -d $OUTPUT --taxonomy
 
 #echo "Creating taxonomy at" $OUTPUT/taxonomy.html
 #python3 $DIR/taxonomy-to-html.py $OUTPUT/taxonomy.json $OUTPUT/doc-terms.json $OUTPUT/corpus.json > $OUTPUT/taxonomy.html Taxonomy

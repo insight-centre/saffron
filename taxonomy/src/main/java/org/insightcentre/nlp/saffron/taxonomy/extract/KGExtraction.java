@@ -181,6 +181,7 @@ public class KGExtraction {
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
                     accepts("o", "The output file path").withRequiredArg().ofType(String.class);
                     accepts("d", "The directory with all files from the kg extraction run").withRequiredArg().ofType(String.class);
+                    accepts("taxonomy", "Extract only the taxonomy");
                 }
             };
             final OptionSet os;
@@ -205,10 +206,17 @@ public class KGExtraction {
                 badOptions(p, "Base dir not given");
                 return;
             }
+                KGExtractionUtils kgExtractionUtils = KGExtractionUtils.fromDirectory(new File(baseDir));
 
-            KGExtractionUtils kgExtractionUtils = KGExtractionUtils.fromDirectory(new File(baseDir));
             org.apache.jena.rdf.model.Model kg = ModelFactory.createDefaultModel();
-            kg = knowledgeGraphToRDF(kg, baseUrl, kgExtractionUtils);
+            if(os.has("taxonomy")) {
+                Taxonomy taxonomy = KGExtractionUtils.loadTaxonomy(new File(baseDir));
+                for(Term term : kgExtractionUtils.getTerms()) {
+                    getHyponyms(kg, baseUrl, taxonomy, term, kgExtractionUtils);
+                }
+            } else {
+                kg = knowledgeGraphToRDF(kg, baseUrl, kgExtractionUtils);
+            }
             kg.setNsPrefix("skos", SKOS);
             try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );
