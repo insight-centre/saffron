@@ -38,7 +38,19 @@ public class KGExtractionUtils {
     }
     
     
-
+    public static Taxonomy loadTaxonomy(File directory) throws IOException {
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        String workingDir = System.getProperty("user.dir");
+        workingDir = workingDir.substring(0, workingDir.length() - 8);
+        System.setProperty("user.dir", workingDir);
+        File taxonomyFile = new File(directory, "taxonomy.json");
+        if(!taxonomyFile.exists()) {
+            throw new FileNotFoundException("Could not find taxonomy.json");
+        }
+        return mapper.readValue(taxonomyFile, Taxonomy.class);
+    }
+    
     /**
      * Load the Saffron data from disk
      *
