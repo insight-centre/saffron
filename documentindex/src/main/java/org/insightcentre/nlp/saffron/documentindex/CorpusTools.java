@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import org.insightcentre.nlp.saffron.data.CollectionCorpus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
@@ -499,5 +500,14 @@ public class CorpusTools {
         }
         
         
+    }
+
+    /**
+     * Create a corpus from a collection
+     * @param documents The document collection
+     * @return A corpus object over the documents
+     */
+    public static Corpus fromCollection(Collection<Document> documents) {
+        return new CollectionCorpus(documents);
     }
 }

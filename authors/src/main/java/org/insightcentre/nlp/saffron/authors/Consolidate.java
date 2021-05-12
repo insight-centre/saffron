@@ -12,15 +12,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.data.Author;
+import org.insightcentre.nlp.saffron.data.CollectionCorpus;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 
 /**
  *
@@ -36,8 +37,11 @@ public class Consolidate {
     public static void main(String[] args) {
         try {
             // Parse command line arguments
+
+
             final OptionParser p = new OptionParser() {{
                     accepts("t", "The input text corpus").withRequiredArg().ofType(File.class);
+                    accepts("o", "The new output corpus").withRequiredArg().ofType(File.class);
             }};
             final OptionSet os;
 
@@ -52,18 +56,22 @@ public class Consolidate {
             if(corpusFile == null || !corpusFile.exists()) {
                 badOptions(p, "Corpus does not exist");
             }
+            File output = (File)os.valueOf("o");
+            if(output == null) {
+                output = corpusFile;
+            }
 
             ObjectMapper mapper = new ObjectMapper();
 
-            DocumentSearcher corpus        = DocumentSearcherFactory.load(corpusFile);
+            Corpus corpus        = mapper.readValue(corpusFile, CollectionCorpus.class);
 
             Set<Author> authors = extractAuthors(corpus);
 
             Map<Author, Set<Author>> consolidation = new ConsolidateAuthors().consolidate(authors);
 
-            applyConsolidation(corpus, consolidation, new DefaultSaffronListener());
+            Corpus newCorpus = applyConsolidation(corpus, consolidation, new DefaultSaffronListener());
 
-            //mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus);
+            mapper.writerWithDefaultPrettyPrinter().writeValue(output, corpus);
 
         } catch(Throwable t) {
             t.printStackTrace();
@@ -85,7 +93,14 @@ public class Consolidate {
         return authors;
     }
 
-    public static void applyConsolidation(DocumentSearcher corpus, Map<Author, Set<Author>> consolidation, SaffronListener log) {
+    /**
+     * Apply the consolidation
+     * @param corpus The corpus to consolidate over
+     * @param consolidation The author consolidation map (i.e., a map from a canonical author to all the variants in the corpus)
+     * @param log The logger
+     * @return The consolidated corpus
+     */
+    public static Corpus applyConsolidation(Corpus corpus, Map<Author, Set<Author>> consolidation, SaffronListener log) {
         Map<Author, Author> rmap = new HashMap<>();
         for(Map.Entry<Author, Set<Author>> e1 : consolidation.entrySet()) {
             for(Author a1 : e1.getValue()) {
@@ -124,10 +139,10 @@ public class Consolidate {
             @Override
 
             public int size() {
-                throw new UnsupportedOperationException("Size not known");
+                return corpus.size();
             }
         };
-        corpus.updateDocuments(updateDocuments);
+        return new CollectionCorpus(new ArrayList<>(updateDocuments));
     }
 
 }
