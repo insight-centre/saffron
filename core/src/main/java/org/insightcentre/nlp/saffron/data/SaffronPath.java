@@ -83,7 +83,7 @@ public class SaffronPath {
             byte[] buffer = new byte[1024];
             if (!file.exists()) {
                 final String url = "https://server1.nlp.insight-centre.org/saffron-datasets/models/"
-                        + fileName;
+                        + fileName + ".zip";
                 try (ZipInputStream zis = new ZipInputStream(new URL(url).openStream())) {
 
                     ZipEntry zipEntry = zis.getNextEntry();
