@@ -14,7 +14,7 @@ fi
 
 if [ -z $3 ]
 then
-    CONFIG=models/config.json
+    CONFIG=configs/config.json
 else
     CONFIG=$3
 fi
