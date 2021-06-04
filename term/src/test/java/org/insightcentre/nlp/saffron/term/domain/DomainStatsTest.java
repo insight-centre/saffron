@@ -9,8 +9,7 @@ import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.WhitespaceTokenizer;
 import opennlp.tools.util.Sequence;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.InclusionStats;
 import org.junit.After;
@@ -103,7 +102,7 @@ public class DomainStatsTest {
     public void testInitialize() throws Exception {
         System.out.println("initialize");
         
-        DocumentSearcher searcher = new DocumentSearcher() {
+        Corpus searcher = new Corpus() {
             @Override
             public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
@@ -118,22 +117,6 @@ public class DomainStatsTest {
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-
-            @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public void close() throws IOException {
-            }
-
-            @Override
-            public void updateDocuments(Collection<Document> docs) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-            
-            
         };
         int nThreads = 2;
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
@@ -157,11 +140,11 @@ public class DomainStatsTest {
      * Test of score method, of class DomainStats.
      */
     @Test
-    public void testScore() throws SearchException {
+    public void testScore() {
         System.out.println("score");
         String term = "this test";
         
-        DocumentSearcher searcher = new DocumentSearcher() {
+        Corpus searcher = new Corpus() {
             @Override
             public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
@@ -173,26 +156,11 @@ public class DomainStatsTest {
             }
 
             @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public void close() throws IOException {
-            }
-
-            @Override
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
 
 
-            @Override
-            public void updateDocuments(Collection<Document> docs) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-            
-            
             
         };
         int nThreads = 2;

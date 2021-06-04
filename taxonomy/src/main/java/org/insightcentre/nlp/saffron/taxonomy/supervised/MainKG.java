@@ -85,10 +85,11 @@ public class MainKG {
 
             Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
             
-            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(config.kg.kerasModelFile.getResolvedPath(), config.kg.bertModelFile.getResolvedPath());
+            BERTBasedRelationClassifier relationClassifier = BERTBasedRelationClassifier.getInstance(
+            		config.kg.kerasModelFile.getResolvedPath(), config.kg.bertModelFile.getResolvedPath(), config.kg.numberOfRelations);
 
             KGSearch search = KGSearch.create(config.taxonomy.search, config.kg, relationClassifier, termMap.keySet());
-            final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
+            final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap, relationClassifier.typeMap.keySet());
 
             mapper.writerWithDefaultPrettyPrinter().writeValue(output, graph);
 

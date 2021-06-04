@@ -445,7 +445,7 @@ public class SaffronServiceTest {
 		
 		when(mongo.getTaxonomy(taxonomyId)).thenReturn(taxonomy);
 		
-		doThrow(InvalidOperationException.class).when(taxonomy).setParentChildStatus(termChild, Status.valueOf(status));
+		doThrow(new InvalidOperationException("")).when(taxonomy).setParentChildStatus(termChild, Status.valueOf(status));
 		when(mongo.updateTaxonomy(taxonomyId, taxonomy)).thenReturn(true);
 		
 		when(termParent.getRoot()).thenReturn(termParentString);

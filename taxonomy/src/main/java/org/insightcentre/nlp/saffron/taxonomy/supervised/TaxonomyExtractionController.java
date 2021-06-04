@@ -49,7 +49,7 @@ public class TaxonomyExtractionController {
             SupervisedTaxo supTaxo = new SupervisedTaxo(docTerms, termMap, model);
             TaxonomySearch search = TaxonomySearch.create(config.search, supTaxo, termMap.keySet());
             final Taxonomy graph = search.extractTaxonomy(termMap);
-            return ResponseEntity.ok(mapper.writeValueAsString(graph));
+            return ResponseEntity.ok(graph.toString());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -76,11 +76,11 @@ public class TaxonomyExtractionController {
             List<Term> terms = input.getInput().termsMapping;
 
             Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
-            BERTBasedRelationClassifier relationClassifier = new BERTBasedRelationClassifier(
-                    kgConfig.kerasModelFile.getResolvedPath(), kgConfig.bertModelFile.getResolvedPath());
+            BERTBasedRelationClassifier relationClassifier = BERTBasedRelationClassifier.getInstance(
+                    kgConfig.kerasModelFile.getResolvedPath(), kgConfig.bertModelFile.getResolvedPath(), kgConfig.numberOfRelations);
 
             KGSearch search = KGSearch.create(taxonomyExtractionConfiguration.search, kgConfig, relationClassifier, termMap.keySet());
-            final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap);
+            final KnowledgeGraph graph = search.extractKnowledgeGraph(termMap, relationClassifier.typeMap.keySet());
             return ResponseEntity.ok(graph.toString());
 
         } catch (Exception e) {

@@ -330,6 +330,18 @@ public class EnrichTerms {
             this.word = word;
         }
 
+        public String getWord() {
+			return word;
+		}
+
+		public boolean isPresent() {
+        	return this.present;
+        }
+
+        public boolean isPrefix() {
+        	return trie != null && trie.size() > 0;
+        }
+
         @Override
         public boolean containsKey(Object key) {
             return trie.containsKey(key);

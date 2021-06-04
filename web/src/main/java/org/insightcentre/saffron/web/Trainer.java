@@ -28,8 +28,6 @@ import org.insightcentre.nlp.saffron.data.Model;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Features;
 import static org.insightcentre.nlp.saffron.taxonomy.supervised.Main.loadMap;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.Train;
@@ -108,10 +106,7 @@ public class Trainer extends AbstractHandler {
             status.setStatusMessage("Analyzing Taxonomy");
             List<StringPair> taxo = analyzeTaxononomy(taxonomy);
 
-            status.stage++;
-            status.setStatusMessage("Indexing Corpus");
-            final File indexFile = new File(directory, "index");
-            DocumentSearcher searcher = DocumentSearcherFactory.index(corpus, indexFile, status, true);
+            Corpus searcher = corpus;
 
             status.stage++;
             status.setStatusMessage("Enriching terms from corpus");
@@ -250,6 +245,11 @@ public class Trainer extends AbstractHandler {
         @Override
         public void warning(String message, Throwable cause) {
             //TODO: Is this used anywhere?
+        }
+
+        @Override
+        public void start(String taxonomyId, Configuration config) {
+            // Ignored
         }
 
     }

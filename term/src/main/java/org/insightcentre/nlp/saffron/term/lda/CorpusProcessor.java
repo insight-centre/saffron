@@ -10,7 +10,6 @@ import java.io.RandomAccessFile;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
 
 /**
  * Converts a Saffron Corpus into an assignment buffer for the LDA algorithm
@@ -19,7 +18,7 @@ import org.insightcentre.nlp.saffron.data.index.SearchException;
  */
 public class CorpusProcessor {
 
-    public static Result convert(Corpus searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException, SearchException {
+    public static Result convert(Corpus searcher, ThreadLocal<Tokenizer> tokenizer) throws IOException {
         final Object2IntMap<String> dictionary = new Object2IntOpenHashMap<>();
         final File tmpFile = File.createTempFile("assign", ".buf");
         tmpFile.deleteOnExit();

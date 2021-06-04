@@ -36,7 +36,7 @@ public class FrequencyStats {
      * Remove all term (and document) frequencies below the count
      * @param frequency The minimal frequency to retain
      */
-    public void filter(int frequency) {
+    public void filterByTermFrequency(int frequency) {
         final ObjectIterator<Object2IntMap.Entry<String>> i = termFrequency.object2IntEntrySet().iterator();
         while(i.hasNext()) {
             Object2IntMap.Entry<String> e = i.next();
@@ -44,6 +44,22 @@ public class FrequencyStats {
             if(e.getIntValue() < frequency) {
                i.remove();
                docFrequency.remove(key);
+            }
+        }
+    }
+
+    /**
+     * Remove all term (and document) frequencies below the count
+     * @param percentage The minimal percentage to retain
+     */
+    public void filterByDocFrequency(double percentage) {
+        final ObjectIterator<Object2IntMap.Entry<String>> i = docFrequency.object2IntEntrySet().iterator();
+        while(i.hasNext()) {
+            Object2IntMap.Entry<String> e = i.next();
+            String key = e.getKey();
+            if(((double) e.getIntValue()/documents) < percentage) {
+               i.remove();
+               termFrequency.remove(key);
             }
         }
     }

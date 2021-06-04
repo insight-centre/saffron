@@ -1,7 +1,10 @@
 package org.insightcentre.nlp.saffron.data;
 
-import com.fasterxml.jackson.annotation.*;
-
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.net.URL;
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +49,7 @@ public class Term implements Comparable<Term> {
      */
     public final static String JSON_MORPHOLOGICAL_VARIATION_LIST = "mv_list";
     @JsonProperty(JSON_MORPHOLOGICAL_VARIATION_LIST)
-    private List<MorphologicalVariation> mvList;
+    private final List<MorphologicalVariation> mvList;
     
     /**
      * The link to DBpedia (may be null)
@@ -68,7 +71,7 @@ public class Term implements Comparable<Term> {
     public final static String JSON_ORIGINAL_TERM = "original_term";
     @JsonAlias("original_topic")
     @JsonProperty(JSON_ORIGINAL_TERM)
-    private String originalTerm;
+    private final String originalTerm;
 
     private Term(String termString) {
     	this.termString = termString;
@@ -104,14 +107,6 @@ public class Term implements Comparable<Term> {
     public String getString() {
 		return termString;
 	}
-
-    public String getTermString() {
-        return termString;
-    }
-
-    public void setTermString(String termString) {
-        this.termString = termString;
-    }
 
 	public void setString(String string) {
 		this.termString = string;
@@ -149,14 +144,6 @@ public class Term implements Comparable<Term> {
         mvList.add(mv);
     }
 
-    public List<MorphologicalVariation> getMvList() {
-        return mvList;
-    }
-
-    public void setMvList(List<MorphologicalVariation> mvList) {
-        this.mvList = mvList;
-    }
-
 	public URL getDbpediaUrl() {
 		return dbpediaUrl;
 	}
@@ -172,10 +159,6 @@ public class Term implements Comparable<Term> {
 	public void setStatus(Status status) {
 		this.status = status;
 	}
-
-    public void setOriginalTerm(String originalTerm) {
-        this.originalTerm = originalTerm;
-    }
 
 	public String getOriginalTerm() {
 		return originalTerm;
