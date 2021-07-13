@@ -9,6 +9,7 @@ import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.springframework.boot.context.config.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,7 +38,10 @@ public class TermExtractionController {
             final TermExtraction te = new TermExtraction(c.termExtraction);
             final TermExtraction.Result r = te.extractTerms(searcher);
             r.normalize();
-            return ResponseEntity.ok(r.terms);
+            JSONObject returnJson = new JSONObject();
+            returnJson.put("terms", r.terms);
+            returnJson.put("docTerms", r.docTerms);
+            return ResponseEntity.ok(returnJson.toString());
 
         } catch (Exception e) {
             e.printStackTrace();
