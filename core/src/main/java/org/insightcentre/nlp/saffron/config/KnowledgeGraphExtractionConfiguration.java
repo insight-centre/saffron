@@ -26,4 +26,6 @@ public class KnowledgeGraphExtractionConfiguration {
 	public double genericThreshold = DEFAULT_GENERIC_THRESHOLD;
 
 	public boolean enableSynonymyNormalisation = false;
+
+	public boolean returnRDF = false;
 }
