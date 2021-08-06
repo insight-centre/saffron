@@ -3,6 +3,7 @@ package org.insightcentre.nlp.saffron.data;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,9 +22,12 @@ public class SaffronData {
     @JsonAlias("authorTerms")
     public List<AuthorTerm> authorTerms = new ArrayList<>();
 
+    @JsonAlias("termSimilarities")
+    public List<TermTerm> termTerms = new ArrayList<>();
+
     @Override
     public String toString() {
-        return String.format("{ %s }", documentTermMapping.toString(), termsMapping.toString(), documents.toString(), authorTerms.toString());
+        return String.format("{ %s }", documentTermMapping.toString(), termsMapping.toString(), documents.toString(), authorTerms.toString(), termTerms.toString());
     }
 
 }

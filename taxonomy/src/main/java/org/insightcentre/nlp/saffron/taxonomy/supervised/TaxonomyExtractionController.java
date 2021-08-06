@@ -1,6 +1,7 @@
 package org.insightcentre.nlp.saffron.taxonomy.supervised;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.SaffronListener;
 import org.insightcentre.nlp.saffron.SaffronModel;
@@ -8,7 +9,10 @@ import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguratio
 import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.classifiers.BERTBasedRelationClassifier;
+import org.insightcentre.nlp.saffron.taxonomy.extract.KGExtraction;
+import org.insightcentre.nlp.saffron.taxonomy.extract.KGExtractionUtils;
 import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.extract.ConvertKGToRDF;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
@@ -30,6 +34,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1")
 public class TaxonomyExtractionController {
+    public static final String SKOS = "http://www.w3.org/2004/02/skos/core#";
 
     /**
      * Term Extraction endpoint for extracting terms from a given corpus.
@@ -46,6 +51,7 @@ public class TaxonomyExtractionController {
             ObjectMapper mapper = new ObjectMapper();
             List<DocumentTerm> docTerms = input.getInput().documentTermMapping;
             List<Term> terms = input.getInput().termsMapping;
+            List<TermTerm> termsSimilarity = input.getInput().termTerms;
             Map<String, Term> termMap = loadMap(terms, mapper, new DefaultSaffronListener());
             TaxonomyExtractionConfiguration config = input.getConfiguration().taxonomy;
             System.out.println(config);
@@ -54,17 +60,21 @@ public class TaxonomyExtractionController {
             TaxonomySearch search = TaxonomySearch.create(config.search, supTaxo, termMap.keySet());
             final Taxonomy graph = search.extractTaxonomy(termMap);
             if (config.returnRDF) {
+                KGExtraction kgExtraction = new KGExtraction();
                 KnowledgeGraph kgTaxo = new KnowledgeGraph();
                 kgTaxo.setTaxonomy(graph);
-                org.apache.jena.rdf.model.Model jenaModel = ConvertKGToRDF.convertToRDF("http://saffron.insight-centre.org", kgTaxo);
+                KGExtractionUtils kgExtractionUtils = KGExtractionUtils.fromMemory(kgTaxo, docTerms, terms, termsSimilarity);
+                org.apache.jena.rdf.model.Model kg = ModelFactory.createDefaultModel();
+                for(Term term : terms) {
+                    kgExtraction.getHyponyms(kg, "http://saffron.insight-centre.org", graph, term, kgExtractionUtils);
+                }
+                kg.setNsPrefix("skos", SKOS);
                 StringWriter stringWriter = new StringWriter();
-                jenaModel.write(stringWriter);
+                kg.write(stringWriter);
                 return ResponseEntity.ok(stringWriter.toString());
             } else {
                 return ResponseEntity.ok(graph.toString());
             }
-
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(404).body(e);
