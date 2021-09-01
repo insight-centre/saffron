@@ -1,3 +1,7 @@
+Developer Guide
+==========================================
+Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) how you can contribute to Saffron
+
 Saffron 3 - Text Analysis and Insight Tool
 ==========================================
 
