@@ -6,6 +6,7 @@ RUN java -version
 
 FROM openjdk:14
 WORKDIR /usr/local/app
+COPY ./models /usr/local/app/models
 COPY --from=builder /usr/local/saffron/taxonomy/target/taxonomy-exec.jar ./taxonomy.jar
 
 ENTRYPOINT ["java", "-jar","/usr/local/app/taxonomy.jar", "org.insightcentre.nlp.saffron.taxonomy.supervised.TaxonomyExtractionApplication"]
