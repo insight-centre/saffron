@@ -25,18 +25,25 @@ public class SumKGScore implements Score<TypedLink>{
 	public double deltaScore(final TypedLink tl) {
 	    if (!scores.containsKey(tl)) {
 	    	Map<TypedLink.Type, Double> prediction = classifier.predict(tl.getSource(), tl.getTarget());
+
+	    	// If the classifier does not predict this type of relation, the relation should just be ignored
+	    	if (!prediction.containsKey(tl.getType())) {
+	    		scores.put(tl, -1.0);
+	    		return -1.0;
+	    	}
+
 	    	for(TypedLink.Type relationType : prediction.keySet()) {
-				TypedLink deepCopy = new TypedLink(tl);
+				TypedLink deepCopy;
 
 				if (this.enableSynonymyNormalisation &&
 						relationType.equals(TypedLink.Type.synonymy)) {
-					deepCopy.setType(relationType);
+					deepCopy = new TypedLink(tl.getSource(), tl.getTarget(), relationType);
 					double synonymyScore = normaliseSynonymyScores(deepCopy, prediction.get(TypedLink.Type.synonymy));
 					scores.put(deepCopy, synonymyScore);
 				} else {
 
-					deepCopy.setType(relationType);
-					scores.put(deepCopy,prediction.get(relationType));
+					deepCopy = new TypedLink(tl.getSource(), tl.getTarget(), relationType);
+					scores.put(deepCopy, prediction.get(relationType));
 				}
 	    	}
 	    }

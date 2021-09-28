@@ -11,7 +11,7 @@ ENV CORPUS=corpus.json
 ENV CONFIG=config.json
 ENV TERM_OUTPUT=terms-extracted.json
 ENV DOC_TERM_OUTPUT=doc-terms.json
-
+COPY ./models /usr/local/app/models
 COPY --from=builder /usr/local/saffron/term/target/term-exec.jar ./term.jar
 
 ENTRYPOINT ["java", "-jar","/usr/local/app/term.jar", "org.insightcentre.nlp.saffron.term.TermExtractionApplication"]

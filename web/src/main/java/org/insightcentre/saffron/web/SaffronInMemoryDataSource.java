@@ -18,15 +18,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.NotImplementedException;
-import org.apache.commons.lang.StringUtils;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
 import org.insightcentre.saffron.web.exception.TermNotFoundException;
@@ -36,6 +33,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.json.JSONObject;
 
 /**
@@ -71,7 +69,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         private HashMap<String, List<Document>> corpusByAuthor;
         private HashMap<String, Author> authors;
         private HashMap<String, IntList> taxoMap;
-        private DocumentSearcher searcher;
+        private Corpus searcher;
         private final String id;
 
         public SaffronDataImpl(String id) {
@@ -371,7 +369,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             //this.searcher = corpus;
         }
 
-        public DocumentSearcher getSearcher() {
+        public Corpus getSearcher() {
             return searcher;
         }
 
@@ -505,7 +503,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             }
         }
 
-        public void setSearcher(DocumentSearcher searcher) {
+        public void setSearcher(Corpus searcher) {
             this.searcher = searcher;
         }
     }
@@ -579,12 +577,12 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         saffron.setTerms((List<Term>) mapper.readValue(termsFile,
                 tf.constructCollectionType(List.class, Term.class)));
 
-        File indexFile = new File(saffonPath, "index");
+        File indexFile = new File(saffonPath, "corpus.json");
         if (!indexFile.exists()) {
             throw new FileNotFoundException("Could not find index");
         }
 
-        saffron.setCorpus(DocumentSearcherFactory.load(indexFile));
+        saffron.setCorpus(CorpusTools.readFile(indexFile));
 
         this.data.put(name, saffron);
     }
@@ -940,7 +938,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public DocumentSearcher getSearcher(String runId) {
+    public Corpus getSearcher(String runId) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -958,7 +956,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public void setIndex(String runId, DocumentSearcher index) {
+    public void setIndex(String runId, Corpus index) {
         SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");

@@ -31,6 +31,12 @@ public class TaxonomyExtractionConfiguration {
      */
     public int maxChildren = Integer.MAX_VALUE;
 
+
+    /**
+     * The format of the response returned via the API call
+     */
+    public boolean returnRDF = false;
+
     /**
      * Verify this model
      *

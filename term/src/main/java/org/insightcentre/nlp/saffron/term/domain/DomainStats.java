@@ -22,8 +22,6 @@ import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.term.Features;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.InclusionStats;
@@ -54,7 +52,7 @@ public class DomainStats {
     public static DomainStats initialize(Corpus searcher, int nThreads,
             ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, Set<String> stopWords,
-            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
+            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) {
         Map<String, Object2IntMap<String>> totalFreqs = totalFreqs(searcher, nThreads, tokenizer, maxLength, maxDocs, stats, incl, tagger, preceedingTokens, middleTokens, endTokens, headTokenFinal);
         Set<String> words = topWords(stats, totalFreqs, stopWords);
         filterByWords(words, totalFreqs);
@@ -89,7 +87,7 @@ public class DomainStats {
     private static Map<String, Object2IntMap<String>> totalFreqs(Corpus searcher, int nThreads,
             ThreadLocal<Tokenizer> tokenizer, int maxLength, int maxDocs,
             FrequencyStats stats, InclusionStats incl, 
-            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) throws SearchException {
+            ThreadLocal<POSTagger> tagger, Set<String> preceedingTokens, Set<String> middleTokens, Set<String> endTokens, boolean headTokenFinal) {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());

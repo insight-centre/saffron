@@ -1,5 +1,7 @@
 package org.insightcentre.nlp.saffron;
 
+import org.insightcentre.nlp.saffron.config.Configuration;
+
 /**
  * The default listener, which prints to STDERR.
  * @author John McCrae
@@ -42,6 +44,10 @@ public class DefaultSaffronListener implements SaffronListener {
     @Override
     public void setStageStart(String statusMessage, String taxonomyId) {
         System.err.println(statusMessage);
+    }
+
+    @Override
+    public void start(String taxonomyId, Configuration config) {
     }
 
 }

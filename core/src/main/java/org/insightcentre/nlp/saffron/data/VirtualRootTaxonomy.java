@@ -14,54 +14,54 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public class VirtualRootTaxonomy extends Taxonomy{
 
-	public static final String VIRTUAL_ROOT = "HEAD_TERM";
+    public static final String VIRTUAL_ROOT = "HEAD_TERM";
 
-	public VirtualRootTaxonomy() {
-		super();
-		this.setRoot(VIRTUAL_ROOT);
-	}
+    public VirtualRootTaxonomy() {
+        super();
+        this.setRoot(VIRTUAL_ROOT);
+    }
 
-	public VirtualRootTaxonomy(Taxonomy taxonomy) {
-		super();
-		this.setRoot(VIRTUAL_ROOT);
+    public VirtualRootTaxonomy(Taxonomy taxonomy) {
+        super();
+        this.setRoot(VIRTUAL_ROOT);
 
-		if(taxonomy.getRoot().equals(VIRTUAL_ROOT)) {
-			for(Taxonomy child: taxonomy.getChildren()) {
-				this.addChild(child);
-			}
-		} else {
-			this.addChild(taxonomy);
-		}
-	}
+        if(taxonomy.getRoot().equals(VIRTUAL_ROOT)) {
+            for(Taxonomy child: taxonomy.getChildren()) {
+                this.addChild(child);
+            }
+        } else {
+            this.addChild(taxonomy);
+        }
+    }
 
-	public VirtualRootTaxonomy(Collection<Taxonomy> taxonomies) {
-		super();
-		this.setRoot(VIRTUAL_ROOT);
-		if (taxonomies != null) {
-			for (Taxonomy taxonomy: taxonomies) {
-				this.addChild(taxonomy);
-			}
-		}
-	}
+    public VirtualRootTaxonomy(Collection<Taxonomy> taxonomies) {
+        super();
+        this.setRoot(VIRTUAL_ROOT);
+        if (taxonomies != null) {
+            for (Taxonomy taxonomy: taxonomies) {
+                this.addChild(taxonomy);
+            }
+        }
+    }
 
-	@JsonCreator
+    @JsonCreator
     @JsonIgnoreProperties(ignoreUnknown = true)
     public VirtualRootTaxonomy(@JsonProperty("root") String root,
-                    @JsonProperty("score") double score,
-                    @JsonProperty("linkScore") double linkScore,
-                    @JsonProperty("children") List<Taxonomy> children,
-                    @JsonProperty("status") Status status) {
+                               @JsonProperty("score") double score,
+                               @JsonProperty("linkScore") double linkScore,
+                               @JsonProperty("children") List<Taxonomy> children,
+                               @JsonProperty("status") Status status) {
 
-		super();
-		this.setRoot(VIRTUAL_ROOT);
+        super();
+        this.setRoot(VIRTUAL_ROOT);
 
-		if (root.equals(VIRTUAL_ROOT)) {
-			for(Taxonomy child: children) {
-				this.addChild(child);
-			}
-		} else {
-			this.addChild(new Taxonomy(root, score, linkScore, children, status));
-		}
-	}
+        if (root.equals(VIRTUAL_ROOT)) {
+            for(Taxonomy child: children) {
+                this.addChild(child);
+            }
+        } else {
+            this.addChild(new Taxonomy(root, score, linkScore, children, status));
+        }
+    }
 
 }

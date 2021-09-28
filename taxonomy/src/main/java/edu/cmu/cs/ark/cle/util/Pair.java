@@ -1,6 +1,7 @@
 package edu.cmu.cs.ark.cle.util;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
+import java.util.Objects;
 
 /**
  * 2-tuple of anything!
@@ -24,15 +25,15 @@ public class Pair<T,V> {
 	@Override public boolean equals(Object other) {
 		if (!(other instanceof Pair)) return false;
 		final Pair wOther = (Pair) other;
-		return Objects.equal(first, wOther.first) && Objects.equal(second, wOther.second);
+                return Objects.equals(first, wOther.first) && Objects.equals(second, wOther.second);
 	}
 
 	@Override public int hashCode() {
-		return Objects.hashCode(first, second);
+		return Objects.hash(first, second);
 	}
 
 	@Override public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("first", first)
 				.add("second", second).toString();
 	}

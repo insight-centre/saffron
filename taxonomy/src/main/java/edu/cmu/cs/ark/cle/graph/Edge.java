@@ -1,10 +1,11 @@
 package edu.cmu.cs.ark.cle.graph;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** An edge in a directed graph. */
@@ -34,11 +35,11 @@ public class Edge<V> {
 	}
 
 	@Override public int hashCode() {
-		return Objects.hashCode(source, destination);
+		return Objects.hash(source, destination);
 	}
 
 	@Override public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("source", source)
 				.add("destination", destination).toString();
 	}

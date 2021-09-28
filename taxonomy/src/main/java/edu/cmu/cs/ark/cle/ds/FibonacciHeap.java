@@ -215,7 +215,7 @@ public class FibonacciHeap<V,P> implements Iterable<FibonacciHeap<V,P>.Entry> {
         }
 	/** Depth-first iteration */
 	private Iterator<Entry> siblingsAndBelow(Optional<Entry> oEntry) {
-		if (!oEntry.isPresent()) return Iterators.emptyIterator();
+		if (!oEntry.isPresent()) return Iterators.forArray();
 		return concat(transform(getCycle(oEntry.get()).iterator(), new Function<Entry, Iterator<Entry>>() {
 			@Override public Iterator<Entry> apply(Entry entry) {
 				return concat(singletonIterator(entry), siblingsAndBelow(entry.oFirstChild));

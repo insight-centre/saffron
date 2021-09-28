@@ -1,22 +1,25 @@
 package org.insightcentre.nlp.saffron.term;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.insightcentre.nlp.saffron.SaffronModel;
 import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
+import org.json.JSONArray;
 import org.springframework.boot.context.config.ResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.json.JSONObject;
 
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.*;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping(value = "/api/v1", method = RequestMethod.POST, produces = "application/json")
 public class TermExtractionController {
     /**
      * Term Extraction endpoint for extracting terms from a given corpus.
@@ -38,21 +41,24 @@ public class TermExtractionController {
             final TermExtraction te = new TermExtraction(c.termExtraction);
             final TermExtraction.Result r = te.extractTerms(searcher);
             r.normalize();
-            ArrayList<Term> termList = new ArrayList<Term>();
+            JSONObject returnJson = new JSONObject();
+            ObjectMapper mapper = new ObjectMapper();
+            JSONArray termsArray = new JSONArray();
+            JSONArray documentTermsArray = new JSONArray();
             for (Term term : r.terms) {
-                Term newTerm = new Term(term.getString(), term.getOccurrences(),
-                        term.getMatches(), term.getScore(), null, null);
-
-                termList.add(newTerm);
+                JSONObject t = new JSONObject(mapper.writeValueAsString(term));
+                t.remove("morphologicalVariationList");
+                termsArray.put(t);
             }
-            ObjectMapper objectMapper = new ObjectMapper();
-            String jsonString = objectMapper.writeValueAsString(termList);
-            String docString = objectMapper.writeValueAsString(r.docTerms);
-            String returnString = "{ \"data\": {\"termsMapping\": " + jsonString + ", \"documentTermMapping\": " + docString + "} }";
-            returnString=returnString.replace("\"documentId\":","\"document_id\":");
-            returnString=returnString.replace("\"termString\":","\"term_string\":");
-            returnString=returnString.replaceAll("\\{\\}", "\"none\"");
-            return ResponseEntity.ok(returnString);
+            for (DocumentTerm document : r.docTerms) {
+                JSONObject d = new JSONObject(mapper.writeValueAsString(document));
+                documentTermsArray.put(d);
+            }
+
+            returnJson.put("termsMapping", termsArray);
+            returnJson.put("documentTermMapping", documentTermsArray);
+
+            return ResponseEntity.ok(returnJson.toString());
 
         } catch (Exception e) {
             e.printStackTrace();

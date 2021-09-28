@@ -11,7 +11,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
+import org.insightcentre.nlp.saffron.data.Ontonomy;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.TypedLink;
@@ -20,31 +22,37 @@ public class KnowledgeGraphSolution extends Solution{
 
 	protected TaxonomySolution taxonomy;
 	private TaxonomySolution partonomy;
+	private OntonomySolution ontonomy;
     public Set<String> terms;
     protected Map<String,String> synonymyPairs;//change to SynonymySolution
-    
+
     private double synonymyThreshold;
     private double meronomyThreshold;
-	
+    private double genericThreshold;
+
     protected KnowledgeGraphSolution(Set<String> terms) {
-        this(terms, 0.5, 0.25);
+        this(terms,
+        		KnowledgeGraphExtractionConfiguration.DEFAULT_SYNONYMY_THRESHOLD,
+        		KnowledgeGraphExtractionConfiguration.DEFAULT_MERONYMY_THRESHOLD,
+        		KnowledgeGraphExtractionConfiguration.DEFAULT_GENERIC_THRESHOLD);
     }
     
-    protected KnowledgeGraphSolution(Set<String> terms, double synonymyThreshold, double meronomyThreshold) {
+    protected KnowledgeGraphSolution(Set<String> terms, double synonymyThreshold, double meronomyThreshold, double genericThreshold) {
     	this.taxonomy = TaxonomySolution.empty(terms);
         this.partonomy = TaxonomySolution.empty(terms);
-        this.taxonomy = TaxonomySolution.empty(terms);
+        this.ontonomy = OntonomySolution.empty();
         this.synonymyPairs = new HashMap<String,String>();
         this.terms = terms;
         this.synonymyThreshold = synonymyThreshold;
         this.meronomyThreshold = meronomyThreshold;
+        this.genericThreshold = 0;
     }
-    
-    
+
     public KnowledgeGraph getKnowledgeGraph() {
     	KnowledgeGraph kg = new KnowledgeGraph();
     	kg.setTaxonomy(this.getTaxonomy());
     	kg.setPartonomy(this.getPartonomy());
+    	kg.setOntonomy(this.getOntonomy());
     	kg.setSynonymyClusters(generateSynonymyClusters());
     	return kg;
     }
@@ -62,7 +70,11 @@ public class KnowledgeGraphSolution extends Solution{
 		return new Partonomy(components); 
     	
     }
-    
+
+     private Ontonomy getOntonomy() {
+    	 return this.ontonomy.toOntonomy();
+     }
+
     //TODO: Needs testing
     private Collection<Set<String>> generateSynonymyClusters() {
     	Map<String,Set<String>> clusters = new HashMap<String, Set<String>>();
@@ -85,12 +97,12 @@ public class KnowledgeGraphSolution extends Solution{
 	 * @param meronomyThreshold The minimum probability threshold for part/whole pairs
      * @return An empty solution
 	 */
-    public static KnowledgeGraphSolution empty(Set<String> terms, double synonymyThreshold, double meronomyThreshold) {
-        return new KnowledgeGraphSolution(terms, synonymyThreshold, meronomyThreshold);
+    public static KnowledgeGraphSolution empty(Set<String> terms, double synonymyThreshold, double meronomyThreshold, double genericThreshold) {
+        return new KnowledgeGraphSolution(terms, synonymyThreshold, meronomyThreshold, genericThreshold);
     }
     
     public KnowledgeGraphSolution clone() {
-    	KnowledgeGraphSolution copy = new KnowledgeGraphSolution(new HashSet<String>(this.terms), this.synonymyThreshold, this.meronomyThreshold);
+    	KnowledgeGraphSolution copy = new KnowledgeGraphSolution(new HashSet<String>(this.terms), this.synonymyThreshold, this.meronomyThreshold, this.genericThreshold);
     	if (this.taxonomy != null) 
     		copy.taxonomy = new TaxonomySolution(new HashMap<String, Taxonomy>(this.taxonomy.heads), new HashSet<String>(this.terms));
     	else
@@ -101,6 +113,11 @@ public class KnowledgeGraphSolution extends Solution{
     	else
     		copy.partonomy = null;
     	
+    	if (this.ontonomy != null)
+    		copy.ontonomy = new OntonomySolution();
+    	else
+    		copy.ontonomy = null;
+
     	if (this.synonymyPairs != null)
     		copy.synonymyPairs = this.synonymyPairs.entrySet() 
                     .stream() 
@@ -119,14 +136,14 @@ public class KnowledgeGraphSolution extends Solution{
      *
      * @param top The top (broader) term
      * @param bottom The bottom (narrower) term
-     * @param topScore The score of the top term
-     * @param bottomScore The score of the bottom term
+     * @param sourceScore The score of the source term
+     * @param targetScore The score of the target term
      * @param linkScore The link score
      * @param required Is this a mandatory link?
      * @return
      */
     public KnowledgeGraphSolution add(final TypedLink linkToBeAdded,
-                        final double topScore, final double bottomScore, 
+                        final double sourceScore, final double targetScore,
                         final double linkScore,
                         final boolean required) {
     	
@@ -136,7 +153,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    	case hypernymy:
 	    		if (!this.taxonomy.isComplete()) {
 		    		link = resolveSynonyms(linkToBeAdded);
-		    		kgs.taxonomy = kgs.taxonomy.add(link.getSource(), link.getTarget(), topScore, bottomScore, linkScore, required);
+		    		kgs.taxonomy = kgs.taxonomy.add(link.getSource(), link.getTarget(), sourceScore, targetScore, linkScore, required);
 		    		if (kgs.taxonomy == null)
 		    			return null;
 	    		}
@@ -144,7 +161,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    	case hyponymy:
 	    		if (!this.taxonomy.isComplete()) {
 		    		link = resolveSynonyms(linkToBeAdded);
-		    		kgs.taxonomy = kgs.taxonomy.add(link.getTarget(), link.getSource(), bottomScore, topScore, linkScore, required);
+		    		kgs.taxonomy = kgs.taxonomy.add(link.getTarget(), link.getSource(), targetScore, sourceScore, linkScore, required);
 		    		if (kgs.taxonomy == null)
 		    			return null;
 	    		}
@@ -152,7 +169,7 @@ public class KnowledgeGraphSolution extends Solution{
 	    	case meronymy:
 	    		if (linkScore > this.meronomyThreshold) {
 		    		link = resolveSynonyms(linkToBeAdded);
-		    		kgs.partonomy = kgs.partonomy.add(link.getTarget(), link.getSource(), topScore, bottomScore, linkScore, required);
+		    		kgs.partonomy = kgs.partonomy.add(link.getTarget(), link.getSource(), targetScore, sourceScore, linkScore, required);
 		    		if (kgs.partonomy == null)
 		    			return null;
 	    		}
@@ -171,7 +188,12 @@ public class KnowledgeGraphSolution extends Solution{
 		    		kgs.synonymyPairs.put(link.getSource(), currentTarget);
 		    		kgs.terms.remove(link.getSource());
 	    		}
+	    		break;
 	    	default:
+	    		link = linkToBeAdded;
+	    		if (linkScore > this.genericThreshold) {
+	    			kgs.ontonomy = kgs.ontonomy.add(link, sourceScore, targetScore, linkScore, required);
+	    		}
     	}
 		return kgs;
     }

@@ -1,9 +1,10 @@
 package edu.cmu.cs.ark.cle.util;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ComparisonChain;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import java.util.Objects;
 
 /**
  * Add a weight to anything!
@@ -37,15 +38,15 @@ public class Weighted<T> implements Comparable<Weighted<T>> {
 	@Override public boolean equals(Object other) {
 		if (!(other instanceof Weighted)) return false;
 		final Weighted wOther = (Weighted) other;
-		return Objects.equal(val, wOther.val) && Objects.equal(weight, wOther.weight);
+		return Objects.equals(val, wOther.val) && Objects.equals(weight, wOther.weight);
 	}
 
 	@Override public int hashCode() {
-		return Objects.hashCode(val, weight);
+		return Objects.hash(val, weight);
 	}
 
 	@Override public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("val", val)
 				.add("weight", weight).toString();
 	}
