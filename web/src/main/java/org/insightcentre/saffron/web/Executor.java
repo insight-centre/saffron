@@ -69,7 +69,7 @@ public class Executor extends AbstractHandler {
         this.parentDirectory = directory;
         this.statuses = new HashMap<>();
         try {
-            this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/models/config.json").toFile(), Configuration.class);
+            this.defaultConfig = new ObjectMapper().readValue(new SaffronPath("${saffron.home}/configs/config.json").toFile(), Configuration.class);
         } catch (IOException x) {
             this.defaultConfig = new Configuration();
             logger.atInfo().log("Could not load config.json in models folder... using default configuration (" + x.getMessage() + ")");

@@ -5,5 +5,3 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 mvn -q exec:java -f $DIR/run/pom.xml -Dexec.mainClass="org.insightcentre.nlp.saffron.run.SaffronPipeline" -Dexec.args="$*"
-
-
