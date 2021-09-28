@@ -19,8 +19,6 @@ import org.insightcentre.nlp.saffron.config.Configuration;
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
 import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.wikiclean.WikiClean;

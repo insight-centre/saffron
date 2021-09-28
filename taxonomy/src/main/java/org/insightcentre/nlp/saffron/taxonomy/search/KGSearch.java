@@ -16,12 +16,12 @@ import org.insightcentre.nlp.saffron.taxonomy.metrics.ScoreFactory;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.MulticlassRelationClassifier;
 
 public interface KGSearch {
-	public default KnowledgeGraph extractKnowledgeGraph(Map<String, Term> termMap) {
-        return extractKnowledgeGraphWithDenialAndAllowanceList(termMap, Collections.EMPTY_SET, Collections.EMPTY_SET);
+	public default KnowledgeGraph extractKnowledgeGraph(Map<String, Term> termMap, Set<TypedLink.Type> relationTypes) {
+        return extractKnowledgeGraphWithDenialAndAllowanceList(termMap, Collections.EMPTY_SET, Collections.EMPTY_SET, relationTypes);
     }
     
     public KnowledgeGraph extractKnowledgeGraphWithDenialAndAllowanceList(Map<String, Term> termMap, 
-            Set<TypedLink> allowanceList, Set<TypedLink> denialList);
+            Set<TypedLink> allowanceList, Set<TypedLink> denialList, final Set<TypedLink.Type> relationTypes);
     
     
     

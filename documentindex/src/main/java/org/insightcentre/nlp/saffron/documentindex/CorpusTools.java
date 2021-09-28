@@ -1,5 +1,6 @@
 package org.insightcentre.nlp.saffron.documentindex;
 
+import org.insightcentre.nlp.saffron.data.CollectionCorpus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.FileInputStream;
@@ -49,7 +50,7 @@ public class CorpusTools {
         } else if (file.getName().endsWith(".json.gz")) {
             return new ObjectMapper().readValue(
                     new GZIPInputStream(new FileInputStream(file)),
-                    IndexedCorpus.class);
+                    CollectionCorpus.class);
         } else if (file.getName().endsWith(".tar.gz") || file.getName().endsWith(".tgz")) {
             return fromTarball(file);
         } else if (file.getName().endsWith(".zip")) {
@@ -57,7 +58,7 @@ public class CorpusTools {
         } else if (file.isDirectory()) {
             File indexFile = new File(file, "segments.gen");
             if(indexFile.exists()) {
-                return DocumentSearcherFactory.load(file);
+                throw new RuntimeException("Since 4.0 we don't support Lucene indexes");
             } else {
                 return fromFolder(file);
             }
@@ -74,7 +75,7 @@ public class CorpusTools {
      * @throws IOException If the file could not be read
      */
     public static Corpus fromJson(File jsonFile) throws IOException {
-        return new ObjectMapper().readValue(jsonFile, IndexedCorpus.class);
+        return new ObjectMapper().readValue(jsonFile, CollectionCorpus.class);
     }
 
 
@@ -227,7 +228,7 @@ public class CorpusTools {
             List<File> jsonFileList = new ArrayList<>();
             Corpus corpus = null;
             try {
-                corpus = new ObjectMapper().readValue(jsonFile, IndexedCorpus.class);
+                corpus = new ObjectMapper().readValue(jsonFile, CollectionCorpus.class);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -499,5 +500,14 @@ public class CorpusTools {
         }
         
         
+    }
+
+    /**
+     * Create a corpus from a collection
+     * @param documents The document collection
+     * @return A corpus object over the documents
+     */
+    public static Corpus fromCollection(Collection<Document> documents) {
+        return new CollectionCorpus(documents);
     }
 }

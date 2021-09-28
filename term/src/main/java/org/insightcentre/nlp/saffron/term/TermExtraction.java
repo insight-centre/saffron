@@ -1,8 +1,5 @@
 package org.insightcentre.nlp.saffron.term;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,7 +14,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -26,6 +22,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
+
+import org.insightcentre.nlp.saffron.DefaultSaffronListener;
+import org.insightcentre.nlp.saffron.SaffronListener;
+import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
+import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
+import org.insightcentre.nlp.saffron.data.CollectionCorpus;
+import org.insightcentre.nlp.saffron.data.Corpus;
+import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.SaffronPath;
+import org.insightcentre.nlp.saffron.data.Status;
+import org.insightcentre.nlp.saffron.data.Term;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.term.domain.DomainModelTermRelation;
+import org.insightcentre.nlp.saffron.term.domain.DomainStats;
+import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
+import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import opennlp.tools.lemmatizer.DictionaryLemmatizer;
@@ -37,17 +54,7 @@ import opennlp.tools.tokenize.SimpleTokenizer;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.TokenizerME;
 import opennlp.tools.tokenize.TokenizerModel;
-import org.insightcentre.nlp.saffron.DefaultSaffronListener;
-import org.insightcentre.nlp.saffron.SaffronListener;
-import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
-import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration.Feature;
-import org.insightcentre.nlp.saffron.data.*;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
-import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
-import org.insightcentre.nlp.saffron.term.domain.DomainStats;
-import org.insightcentre.nlp.saffron.term.lda.NovelTopicModel;
+
 
 /**
  *
@@ -60,6 +67,7 @@ public class TermExtraction {
     private final ThreadLocal<Tokenizer> tokenizer;
     private final int maxDocs;
     private final int minTermFreq;
+    private final double minDocFreq;
     private final ThreadLocal<Lemmatizer> lemmatizer;
     private final Set<String> stopWords, preceedingsTokens, endTokens, middleTokens;
     private final int ngramMin, ngramMax;
@@ -73,6 +81,8 @@ public class TermExtraction {
     private final boolean oneTermPerDoc;
     private final Duration interval;
 
+    private final List<String> domainModel;
+
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger, ThreadLocal<Tokenizer> tokenizer) {
         this.nThreads = nThreads;
         this.tagger = tagger;
@@ -81,6 +91,7 @@ public class TermExtraction {
         this.stopWords = new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS));
         this.maxDocs = config.maxDocs;
         this.minTermFreq = config.minTermFreq;
+        this.minDocFreq = config.minDocFreq;
         this.lemmatizer = null;
         this.preceedingsTokens = config.preceedingTokens;
         this.middleTokens = config.middleTokens;
@@ -96,21 +107,23 @@ public class TermExtraction {
         this.configBlacklist = Collections.EMPTY_SET;
         this.oneTermPerDoc = false;
         this.interval = null;
+        this.domainModel = Collections.EMPTY_LIST;
     }
 
     public TermExtraction(int nThreads, ThreadLocal<POSTagger> tagger,
-            ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq,
+            ThreadLocal<Tokenizer> tokenizer, int maxDocs, int minTermFreq, double minDocFreq,
             ThreadLocal<Lemmatizer> lemmatizer, Set<String> stopWords,
             Set<String> preceedingsTokens, Set<String> endTokens, Set<String> middleTokens,
             int ngramMin, int ngramMax, boolean headTokenFinal,
             TermExtractionConfiguration.WeightingMethod method, List<Feature> features,
             File refFile, int maxTerms, Feature keyFeature, Set<String> blacklist,
-            boolean oneTermPerDoc, int intervalDays) {
+            boolean oneTermPerDoc, int intervalDays, List<String> domainModel) {
         this.nThreads = nThreads;
         this.tagger = tagger;
         this.tokenizer = tokenizer;
         this.maxDocs = maxDocs;
         this.minTermFreq = minTermFreq;
+        this.minDocFreq = minDocFreq;
         this.lemmatizer = lemmatizer;
         this.stopWords = stopWords;
         this.preceedingsTokens = preceedingsTokens;
@@ -127,9 +140,14 @@ public class TermExtraction {
         this.configBlacklist = blacklist;
         this.oneTermPerDoc = oneTermPerDoc;
         this.interval = intervalDays > 0 ? Duration.ofDays(intervalDays) : null;
+        this.domainModel = domainModel == null ? new ArrayList<String>() : domainModel;
     }
 
     public TermExtraction(final TermExtractionConfiguration config) throws IOException {
+    	this(config, null);
+    }
+
+    public TermExtraction(final TermExtractionConfiguration config, List<String> domainModel) throws IOException {
         this.nThreads = config.numThreads <= 0 ? 10 : config.numThreads;
         if (config.posModel == null) {
             throw new RuntimeException("Tagger must be set");
@@ -160,6 +178,7 @@ public class TermExtraction {
         };
         this.maxDocs = config.maxDocs;
         this.minTermFreq = config.minTermFreq;
+        this.minDocFreq = config.minDocFreq;
         if (config.lemmatizerModel == null) {
             this.lemmatizer = null;
         } else {
@@ -192,6 +211,7 @@ public class TermExtraction {
         }
         this.oneTermPerDoc = config.oneTermPerDoc;
         this.interval = config.intervalDays > 0 ? Duration.ofDays(config.intervalDays) : null;
+        this.domainModel = domainModel == null ? new ArrayList<String>() : domainModel;
     }
 
     private static HashSet<String> readLineByLine(SaffronPath p) throws IOException {
@@ -207,10 +227,13 @@ public class TermExtraction {
     public static class ExtractStatsResult {
         public final FrequencyStats frequencyStats;
         public final TemporalFrequencyStats temporalFrequencyStats;
+        public final RelationshipStats relationshipStats;
 
-        public ExtractStatsResult(FrequencyStats frequencyStats, TemporalFrequencyStats temporalFrequencyStats) {
+        public ExtractStatsResult(FrequencyStats frequencyStats, TemporalFrequencyStats temporalFrequencyStats,
+        		RelationshipStats relationshipStats) {
             this.frequencyStats = frequencyStats;
             this.temporalFrequencyStats = temporalFrequencyStats;
+            this.relationshipStats = relationshipStats;
         }
 
     }
@@ -218,7 +241,7 @@ public class TermExtraction {
     public ExtractStatsResult extractStats(Corpus searcher,
             ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing, Set<String> blackList)
-            throws SearchException, InterruptedException, ExecutionException {
+            throws InterruptedException, ExecutionException {
         ExecutorService service = new ThreadPoolExecutor(nThreads, nThreads, 0,
                 TimeUnit.MILLISECONDS, new ArrayBlockingQueue<Runnable>(1000),
                 new ThreadPoolExecutor.CallerRunsPolicy());
@@ -229,13 +252,14 @@ public class TermExtraction {
         } else {
             temporalFrequencyStats = null;
         }
+        final RelationshipStats relationshipStats = new RelationshipStats();
 
         int docCount = 0;
         for (Document doc : searcher.getDocuments()) {
             service.submit(new TermExtractionTask(doc, tagger, lemmatizer, tokenizer,
                     stopWords, ngramMin, ngramMax, preceedingsTokens, middleTokens, endTokens,
                     headTokenFinal,
-                    summary, docTerms, casing, lowercaseAll(blackList), temporalFrequencyStats));
+                    summary, docTerms, casing, lowercaseAll(blackList), temporalFrequencyStats, this.domainModel, relationshipStats));
             if (docCount++ > maxDocs) {
                 break;
             }
@@ -243,8 +267,9 @@ public class TermExtraction {
 
         service.shutdown();
         service.awaitTermination(2, TimeUnit.DAYS);
-        summary.filter(minTermFreq);
-        return new ExtractStatsResult(summary, temporalFrequencyStats);
+        summary.filterByTermFrequency(minTermFreq);
+       	summary.filterByDocFrequency(minDocFreq);
+        return new ExtractStatsResult(summary, temporalFrequencyStats, relationshipStats);
     }
 
     private Object2DoubleMap<String> scoreByFeat(List<String> terms, final TermExtractionConfiguration.Feature feature,
@@ -315,6 +340,7 @@ public class TermExtraction {
             final ExtractStatsResult esr = extractStats(searcher, dts, casing, blackList);
             final FrequencyStats freqs = esr.frequencyStats;
             final TemporalFrequencyStats tfs = esr.temporalFrequencyStats;
+            final RelationshipStats relStats = esr.relationshipStats;
             Lazy<FrequencyStats> ref = new Lazy<FrequencyStats>() {
                 @Override
                 protected FrequencyStats init() {
@@ -327,13 +353,13 @@ public class TermExtraction {
                         } else if (refFile.getName().endsWith(".json")) {
                             return mapper.readValue(refFile, FrequencyStats.class);
                         } else if (refFile.getName().endsWith(".zip")) {
-                            return extractStats(CorpusTools.fromZIP(refFile), null, null, blackList).frequencyStats;
+                            throw new RuntimeException("Since 4.0, background corpora must be in Saffron format. Please preprocess with `./generate-reference-corpus`");
                         } else if (refFile.getName().endsWith(".tar.gz")) {
-                            return extractStats(CorpusTools.fromTarball(refFile), null, null, blackList).frequencyStats;
+                            throw new RuntimeException("Since 4.0, background corpora must be in Saffron format. Please preprocess with `./generate-reference-corpus`");
                         } else {
                             throw new IllegalArgumentException("Could not deduce type of background corpus");
                         }
-                    } catch (IOException | SearchException | InterruptedException | ExecutionException x) {
+                    } catch (IOException x) {
                         x.printStackTrace();
                         return null;
                     }
@@ -351,7 +377,7 @@ public class TermExtraction {
                 protected NovelTopicModel init() {
                     try {
                         return NovelTopicModel.initialize(searcher, tokenizer);
-                    } catch (IOException | SearchException x) {
+                    } catch (IOException x) {
                         x.printStackTrace();
                         return null;
                     }
@@ -361,12 +387,7 @@ public class TermExtraction {
 
                 @Override
                 protected DomainStats init() {
-                    try {
-                        return DomainStats.initialize(searcher, nThreads, tokenizer, ngramMax, maxDocs, freqs, incl.get(), stopWords, tagger, preceedingsTokens, middleTokens, endTokens, headTokenFinal);
-                    } catch (SearchException x) {
-                        x.printStackTrace();
-                        return null;
-                    }
+                    return DomainStats.initialize(searcher, nThreads, tokenizer, ngramMax, maxDocs, freqs, incl.get(), stopWords, tagger, preceedingsTokens, middleTokens, endTokens, headTokenFinal);
                 }
             };
             List<String> terms = new ArrayList<>(freqs.docFrequency.keySet());
@@ -388,7 +409,7 @@ public class TermExtraction {
                         }
                     }
                     return new Result(convertToTerms(terms, freqs, scores, casing, whiteList, stopWords),
-                            addTfIdf(filterTerms(terms, dts, casing, stopWords)));
+                            addTfIdf(filterTerms(terms, dts, casing, stopWords)), filterToTerms(relStats, terms));
                 case voting:
                     Object2DoubleMap<String> voting = new Object2DoubleOpenHashMap<>();
                     for (Feature feat : features) {
@@ -409,18 +430,18 @@ public class TermExtraction {
                         }
                     }
                     return new Result(convertToTerms(terms, freqs, voting, casing, whiteList, stopWords),
-                            addTfIdf(filterTerms(terms, dts, casing, stopWords)));
+                            addTfIdf(filterTerms(terms, dts, casing, stopWords)), filterToTerms(relStats, terms));
                 default:
                     throw new UnsupportedOperationException("TODO");
             }
         } catch (IntervalTooLong x) {
             throw new RuntimeException("The intervalDays parameter is too big, please reduce it to allow future term frequency predictions.", x);
-        } catch (SearchException | ExecutionException | InterruptedException x) {
+        } catch (ExecutionException | InterruptedException x) {
             throw new RuntimeException(x);
         }
     }
 
-    private static List<DocumentTerm> filterTerms(List<String> ts,
+	private static List<DocumentTerm> filterTerms(List<String> ts,
             ConcurrentLinkedQueue<DocumentTerm> dts,
             CasingStats casing, Set<String> stopWords) {
         Set<String> ts2 = new HashSet<>(ts);
@@ -541,6 +562,18 @@ public class TermExtraction {
         return terms;
     }
 
+    /**
+     * Filter the correspondence between domain model terms and terms to consider only those
+     * related to a list of term strings.
+     *
+     * @param relationStats - the domain model-term correspondences
+     * @param terms - the terms used to filter the domain model-term correspondences
+     * @return a list of domain model-term relations only for terms given as input
+     */
+    private static List<DomainModelTermRelation> filterToTerms(RelationshipStats relationStats, List<String> terms) {
+		return relationStats.getRelationsToTerms(terms);
+	}
+
     private static Set<String> lowercaseAll(Set<String> blacklist) {
         Set<String> ss = new HashSet<>();
         for (String s : blacklist) {
@@ -598,10 +631,12 @@ public class TermExtraction {
 
         public Set<Term> terms;
         public List<DocumentTerm> docTerms;
+        public List<DomainModelTermRelation> dmRelations;
 
-        public Result(Set<Term> terms, List<DocumentTerm> docTerms) {
+        public Result(Set<Term> terms, List<DocumentTerm> docTerms, List<DomainModelTermRelation> dmRelations) {
             this.terms = terms;
             this.docTerms = docTerms;
+            this.dmRelations = dmRelations;
         }
 
         /**
@@ -619,41 +654,49 @@ public class TermExtraction {
             }
         }
 
-        @Override
-        public String toString() {
-            return "Result{" + "terms=" + terms + ", docTerms=" + docTerms + '}';
-        }
+		@Override
+		public String toString() {
+			return "Result [terms=" + terms + ", docTerms=" + docTerms + ", dmRelations=" + dmRelations + "]";
+		}
 
-        @Override
-        public int hashCode() {
-            int hash = 7;
-            hash = 53 * hash + Objects.hashCode(this.terms);
-            hash = 53 * hash + Objects.hashCode(this.docTerms);
-            return hash;
-        }
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((dmRelations == null) ? 0 : dmRelations.hashCode());
+			result = prime * result + ((docTerms == null) ? 0 : docTerms.hashCode());
+			result = prime * result + ((terms == null) ? 0 : terms.hashCode());
+			return result;
+		}
 
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final Result other = (Result) obj;
-            if (!Objects.equals(this.terms, other.terms)) {
-                return false;
-            }
-            if (!Objects.equals(this.docTerms, other.docTerms)) {
-                return false;
-            }
-            return true;
-        }
-
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			Result other = (Result) obj;
+			if (dmRelations == null) {
+				if (other.dmRelations != null)
+					return false;
+			} else if (!dmRelations.equals(other.dmRelations))
+				return false;
+			if (docTerms == null) {
+				if (other.docTerms != null)
+					return false;
+			} else if (!docTerms.equals(other.docTerms))
+				return false;
+			if (terms == null) {
+				if (other.terms != null)
+					return false;
+			} else if (!terms.equals(other.terms))
+				return false;
+			return true;
+		}
     }
+
 
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
@@ -670,6 +713,8 @@ public class TermExtraction {
                     accepts("x", "The corpus index to read").withRequiredArg().ofType(File.class);
                     accepts("t", "The terms to write").withRequiredArg().ofType(File.class);
                     accepts("o", "The doc-term corespondences to write").withRequiredArg().ofType(File.class);
+                    accepts("d", "The domain model terms to use").withRequiredArg().ofType(File.class);
+                    accepts("domain-correspondence", "The domain model-term correspondence to write").withRequiredArg().ofType(File.class);
                 }
             };
             final OptionSet os;
@@ -699,17 +744,44 @@ public class TermExtraction {
                 badOptions(p, "Output for Doc-Terms is required");
                 return;
             }
+
+            List<String> domainModel = null;
+            if (os.valueOf("d") != null) {
+	            final File domainModelFile = (File) os.valueOf("d");
+	           	if (!domainModelFile.exists()) {
+		            badOptions(p, "Domain model file does not exist");
+		            return;
+            	} else {
+            		List<Term> domainModelTerms = mapper.readValue(domainModelFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
+            		domainModel = new ArrayList<String>();
+            		for(Term term: domainModelTerms) {
+            			domainModel.add(term.getString());
+            		}
+            	}
+            }
+
+            if(os.valueOf("domain-correspondence") != null) {
+            	if(os.valueOf("d")== null) {
+            		badOptions(p, "The -d option must be set when using --domain-correspondence");
+            		return;
+            	}
+            }
+
+
             Configuration c = mapper.readValue((File) os.valueOf("c"), Configuration.class);
             File corpusFile = (File) os.valueOf("x");
-            final Corpus searcher = CorpusTools.readFile(corpusFile);
+            final Corpus searcher = mapper.readValue(corpusFile, CollectionCorpus.class);
 
-            final TermExtraction te = new TermExtraction(c.termExtraction);
+            final TermExtraction te = new TermExtraction(c.termExtraction, domainModel);
 
             final Result r = te.extractTerms(searcher);
             r.normalize();
 
             mapper.writerWithDefaultPrettyPrinter().writeValue((File) os.valueOf("t"), r.terms);
             mapper.writeValue((File) os.valueOf("o"), r.docTerms);
+            if (os.valueOf("domain-correspondence") != null) {
+            	mapper.writerWithDefaultPrettyPrinter().writeValue((File) os.valueOf("domain-correspondence"), r.dmRelations);
+            }
 
         } catch (Exception x) {
             x.printStackTrace();

@@ -45,13 +45,10 @@ import org.insightcentre.nlp.saffron.data.SaffronRun;
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.Term;
-import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.documentindex.DocumentSearcherFactory;
 import org.insightcentre.saffron.web.SaffronDataSource;
 import org.insightcentre.saffron.web.api.TaxonomyUtils;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
@@ -79,9 +76,7 @@ import com.mongodb.gridfs.GridFSInputFile;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.bson.BsonDocument;
-import org.insightcentre.nlp.saffron.util.SimpleCache;
+import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 
 public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
 
@@ -167,7 +162,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         private HashMap<String, List<org.insightcentre.nlp.saffron.data.Document>> corpusByAuthor;
         private HashMap<String, Author> authors;
         private HashMap<String, IntList> taxoMap;
-        private DocumentSearcher searcher;
+        private Corpus searcher;
         private final String id;
 
         public SaffronDataImpl(String id) {
@@ -444,11 +439,11 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         	}
         }
 
-        public void setSearcher(DocumentSearcher searcher) {
+        public void setSearcher(Corpus searcher) {
             this.searcher = searcher;
         }
 
-        public DocumentSearcher getSearcher() {
+        public Corpus getSearcher() {
             return searcher;
         }
 
@@ -700,9 +695,9 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
             }
         }
 
-        File indexFile = new File(directory, "index");
-        if (!indexFile.exists()) {
-            throw new FileNotFoundException("Could not find index");
+        File corpusFile = new File(directory, "corpus.json");
+        if (!corpusFile.exists()) {
+            throw new FileNotFoundException("Could not find the corpus");
         }
 
         BufferedReader r = Files.newBufferedReader(Paths.get(configFile.getAbsolutePath()));
@@ -723,7 +718,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
 
-        this.setTaxonomy(runId, mapper.readValue(taxonomyFile, VirtualRootTaxonomy.class));
+        this.setTaxonomy(runId, mapper.readValue(taxonomyFile, Taxonomy.class));
+
         this.setAuthorSim(runId, mapper.readValue(authorSimFile,
                 tf.constructCollectionType(List.class, AuthorAuthor.class)));
         this.setTermSim(runId,  mapper.readValue(termSimFile,
@@ -734,8 +730,8 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
                 tf.constructCollectionType(List.class, DocumentTerm.class)));
         this.setTerms(runId, mapper.readValue(termsFile,
                 tf.constructCollectionType(List.class, Term.class)));
-        this.setCorpus(runId, DocumentSearcherFactory.load(indexFile));
-        this.setIndex(runId, DocumentSearcherFactory.load(indexFile));
+        this.setCorpus(runId, CorpusTools.readFile(corpusFile));
+        this.setIndex(runId, CorpusTools.readFile(corpusFile));
     }
 
     /**
@@ -1885,7 +1881,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     @Override
-    public void setIndex(String runId, DocumentSearcher index) {
+    public void setIndex(String runId, Corpus index) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -1894,7 +1890,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
     }
 
     @Override
-    public DocumentSearcher getSearcher(String runId) {
+    public Corpus getSearcher(String runId) {
         MongoDBHandler.SaffronDataImpl saffron = data.get(runId);
         if (saffron == null) {
             throw new NoSuchElementException("Saffron run does not exist");
@@ -2268,7 +2264,7 @@ public class MongoDBHandler extends HttpServlet implements SaffronDataSource {
         document.put(CORPUS_DOC_AUTHORS,authorIds);
 
         GridFS gridFs = getGridFS();
-        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(corpusDoc.getContents().getBytes()));
+        GridFSInputFile gfsFile = gridFs.createFile(new ByteArrayInputStream(corpusDoc.contents().getBytes()));
         gfsFile.setFilename(corpusDoc.getId());
         gfsFile.save();
 

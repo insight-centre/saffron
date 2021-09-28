@@ -7,15 +7,12 @@ package org.insightcentre.nlp.saffron.term.lda;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import opennlp.tools.tokenize.Tokenizer;
 import opennlp.tools.tokenize.WhitespaceTokenizer;
+import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
-import org.insightcentre.nlp.saffron.data.index.SearchException;
 import org.insightcentre.nlp.saffron.term.FrequencyStats;
-import org.insightcentre.nlp.saffron.term.TermExtraction;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -74,7 +71,7 @@ public class NovelTopicModelTest {
     @Test
     public void testInitialize() throws Exception {
         System.out.println("initialize");
-        DocumentSearcher searcher = new DocumentSearcher() {
+        Corpus searcher = new Corpus() {
             @Override
             public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
@@ -85,26 +82,11 @@ public class NovelTopicModelTest {
                 });
             }
 
-            @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public void close() throws IOException {
-            }
 
             @Override
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-
-            @Override
-            public void updateDocuments(Collection<Document> docs) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-           
-            
         };
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
         
@@ -123,10 +105,10 @@ public class NovelTopicModelTest {
      * Test of novelTopicModel method, of class NovelTopicModel.
      */
     @Test
-    public void testNovelTopicModel() throws IOException, SearchException {
+    public void testNovelTopicModel() throws IOException {
         System.out.println("novelTopicModel");
         
-        DocumentSearcher searcher = new DocumentSearcher() {
+        Corpus searcher = new Corpus() {
             @Override
             public Iterable<Document> getDocuments() {
                 return Arrays.asList(new Document[]{
@@ -138,26 +120,9 @@ public class NovelTopicModelTest {
             }
 
             @Override
-            public Iterable<Document> search(String searchTerm) throws SearchException {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-
-            @Override
-            public void close() throws IOException {
-            }
-
-            @Override
             public int size() {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
-
-            @Override
-            public void updateDocuments(Collection<Document> docs) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
-            }
-            
-            
-
         };
         Tokenizer _tokenizer = WhitespaceTokenizer.INSTANCE;
         

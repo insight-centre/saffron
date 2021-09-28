@@ -425,24 +425,6 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                } else if ("/search_results".equals(target)) {
-                    String queryTerm = request.getParameter("query");
-                    if (queryTerm != null) {
-                        try {
-                            Iterable<Document> docIterable = saffronHandler.getSearcher(saffronDatasetName).search(queryTerm);
-                            ArrayList<Document> docs = new ArrayList<>();
-                            for (Document doc : docIterable) {
-                                docs.add(doc.reduceContext(queryTerm, 20));
-                            }
-                            response.setContentType("application/json");
-                            response.setStatus(HttpServletResponse.SC_OK);
-                            PrintWriter out = response.getWriter();
-                            mapper.writeValue(out, docs);
-                            baseRequest.setHandled(true);
-                        } catch (IOException x) {
-                            x.printStackTrace();
-                        }
-                    }
                 } else if (target.startsWith("/ttl/doc/")) {
                     final String docId = decode(target.substring(9));
                     final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);
