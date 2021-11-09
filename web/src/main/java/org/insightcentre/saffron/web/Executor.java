@@ -355,7 +355,7 @@ public class Executor extends AbstractHandler {
             @Override
             public void run() {
                 _status.stage = 1;
-                _status.setStageStart("Loading corpus" + url, saffronDatasetName);
+                _status.setStageStart("Loading corpus " + url, saffronDatasetName);
                 try {
                     URL url2 = new URL(url);
                     File f = Files.createTempDir();
@@ -375,6 +375,7 @@ public class Executor extends AbstractHandler {
                 try {
                     _status.close();
                 } catch (IOException x) {
+                    x.printStackTrace();
                 }
             }
         }).start();
