@@ -1,16 +1,21 @@
 package org.insightcentre.nlp.saffron.term;
 
 import static java.lang.Integer.min;
-import java.time.Duration;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import org.insightcentre.nlp.saffron.data.Document;
+import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
+import org.insightcentre.nlp.saffron.term.enrich.EnrichTerms.WordTrie;
+
 import opennlp.tools.lemmatizer.Lemmatizer;
 import opennlp.tools.postag.POSTagger;
 import opennlp.tools.tokenize.Tokenizer;
-import org.insightcentre.nlp.saffron.data.Document;
-import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 
 /**
  *
@@ -29,12 +34,16 @@ public class TermExtractionTask implements Runnable {
     private final Set<String> preceedingTokens;
     private final Set<String> middleTokens;
     private final Set<String> endTokens;
-    private final FrequencyStats summary;
     private final boolean headTokenFinal;
-    private final ConcurrentLinkedQueue<DocumentTerm> docTerms;
-    private final CasingStats casing;
     private final Set<String> blacklist;
+    private final WordTrie domainModel;
+
+    //Outputs to be calculated
+    private final FrequencyStats summary;
+    private final CasingStats casing;
     private final TemporalFrequencyStats temporalFrequency;
+    private final RelationshipStats relStats;
+    private final ConcurrentLinkedQueue<DocumentTerm> docTerms;
 
     public TermExtractionTask(Document doc, ThreadLocal<POSTagger> tagger,
             ThreadLocal<Lemmatizer> lemmatizer,
@@ -47,7 +56,8 @@ public class TermExtractionTask implements Runnable {
             ConcurrentLinkedQueue<DocumentTerm> docTerms,
             CasingStats casing,
             Set<String> blacklist,
-            TemporalFrequencyStats temporalFrequency) {
+            TemporalFrequencyStats temporalFrequency,
+            List<String> domainModel, RelationshipStats relStats) {
         this.doc = doc;
         this.tagger = tagger;
         this.lemmatizer = lemmatizer;
@@ -64,6 +74,17 @@ public class TermExtractionTask implements Runnable {
         this.casing = casing;
         this.blacklist = blacklist;
         this.temporalFrequency = temporalFrequency;
+        if (domainModel == null || domainModel.size() == 0) {
+        	this.domainModel =  null;
+        } else {
+        	Tokenizer tok = tokenizer.get();
+            WordTrie trie = new WordTrie("");
+            for (String domainModelTerm : domainModel) {
+                trie.addTokenized(tok.tokenize(domainModelTerm.toLowerCase()));
+            }
+            this.domainModel = trie;
+        }
+        this.relStats = relStats;
     }
 
     @Override
@@ -74,6 +95,7 @@ public class TermExtractionTask implements Runnable {
                     : null;
             String contents = doc.contents();
             CasingStats localCasing = new CasingStats();
+            RelationshipStats localRelStats = new RelationshipStats();
             for (String sentence : contents.split("\n")) {
                 String[] tokens;
                 try {
@@ -90,31 +112,90 @@ public class TermExtractionTask implements Runnable {
                         throw new RuntimeException("Tagger did not return same number of tokens as tokenizer");
                     }
 
+                    List<WordTrie> dmPartials = new ArrayList<WordTrie>();
                     for (int i = 0; i < tokens.length; i++) {
                         boolean nonStop = false;
-                        for (int j = i; j < min(i + ngramMax, tokens.length); j++) {
+
+
+                        //Loop here until matching a domain model word, when it does, then let it into the next loop with j = i+1
+                        List<String> activatedDMTerms = null;
+                        if (domainModel != null) {
+                        	/*
+                        	 * 1 - For each dmPartial:
+                        	 *  1.1 - if the current token makes it a domain model term, then change the flag
+                        	 *  1.2 - if the current token makes it not a prefix to any domain model term, then discard the partial
+                        	 * 2 - If the current token alone is a prefix, then add it to the partials
+                        	 * 3 - If the current token alone is a domain model term, then change the flag
+                        	 *
+                        	 * 4 - if flag is false, then do not perform term extraction
+                        	 */
+
+                        	activatedDMTerms = new ArrayList<String>();
+
+                        	List<WordTrie> updatedPartials = new ArrayList<WordTrie>();
+                        	for(WordTrie dmPartial: dmPartials) {
+                        		WordTrie partial = dmPartial.get(tokens[i]);
+                        		if(partial != null) {
+                        			if (partial.isPresent()) {
+                        				activatedDMTerms.add(partial.getWord());
+                        			}
+
+                        			if(partial.isPrefix()) {
+                        				updatedPartials.add(partial);
+                        			}
+                        		}
+                        	}
+                        	WordTrie partial = this.domainModel.get(tokens[i]);
+                        	if(partial != null) {
+                        		if (partial.isPresent()) {
+                        			activatedDMTerms.add(tokens[i]);
+                    			}
+
+                    			if(partial.isPrefix()) {
+                    				updatedPartials.add(partial);
+                    			}
+                        	}
+
+                        	dmPartials = updatedPartials;
+
+                        	if(activatedDMTerms.size() == 0) {
+                        		continue;
+                        	}
+                        }
+
+                        int startIndex = 0;
+                        if (domainModel == null)
+                        	startIndex = i;
+                        else
+                        	startIndex = i+1;
+
+                        for (int j = startIndex; j < min(startIndex + ngramMax, tokens.length); j++) {
                             if (!stopWords.contains(tokens[j].toLowerCase()) && !stopWords.contains(tokens[j])) {
                                 nonStop = true;
                             }
-                            if (headTokenFinal) {
-                                if (endTokens.contains(tags[j]) && nonStop) {
-                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
-                                }
-                                if (!preceedingTokens.contains(tags[j]) && (i == j || !middleTokens.contains(tags[j]))) {
-                                    break;
-                                }
-                            } else {
-                                if (j == i && endTokens.contains(tags[j]) && nonStop) {
-                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
-                                }
-                                if (preceedingTokens.contains(tags[j]) && j != i) {
-                                    emitTerm(j, i, tokens, tags, docTermMap, localCasing, headTokenFinal);
-                                }
-                                if (j == i && !endTokens.contains(tags[j])
-                                        || j > i && !middleTokens.contains(tags[j]) && !preceedingTokens.contains(tags[j])) {
-                                    break;
-                                }
-                            }
+
+	                            if (headTokenFinal) {
+	                                if (endTokens.contains(tags[j]) && nonStop) {
+	                                    String term = emitTerm(j, startIndex, tokens, tags, docTermMap, localCasing, headTokenFinal);
+	                                    connectDomainModelAndTerm(localRelStats, activatedDMTerms, term);
+	                                }
+	                                if (!preceedingTokens.contains(tags[j]) && (startIndex == j || !middleTokens.contains(tags[j]))) {
+	                                    break;
+	                                }
+	                            } else {
+	                                if (j == startIndex && endTokens.contains(tags[j]) && nonStop) {
+	                                	String term = emitTerm(j, startIndex, tokens, tags, docTermMap, localCasing, headTokenFinal);
+	                                    connectDomainModelAndTerm(localRelStats, activatedDMTerms, term);
+	                                }
+	                                if (preceedingTokens.contains(tags[j]) && j != startIndex) {
+	                                	String term = emitTerm(j, startIndex, tokens, tags, docTermMap, localCasing, headTokenFinal);
+	                                    connectDomainModelAndTerm(localRelStats, activatedDMTerms, term);
+	                                }
+	                                if (j == startIndex && !endTokens.contains(tags[j])
+	                                        || j > startIndex && !middleTokens.contains(tags[j]) && !preceedingTokens.contains(tags[j])) {
+	                                    break;
+	                                }
+	                            }
                         }
                     }
                 }
@@ -136,12 +217,26 @@ public class TermExtractionTask implements Runnable {
             if (docTermMap != null) {
                 docTerms.addAll(docTermMap.values());
             }
+            if (relStats!= null && !localRelStats.isEmpty()) {
+            	synchronized (relStats) {
+					relStats.add(localRelStats);
+				}
+            }
         } catch (Exception x) {
             x.printStackTrace();
         }
     }
 
-    private void emitTerm(int j, int i, String[] tokens, String[] tags,
+	private void connectDomainModelAndTerm(RelationshipStats localRelStats, List<String> activatedDMTerms,
+			String term) {
+		if (activatedDMTerms != null && term!=null) {
+		    for(String dmTerm: activatedDMTerms) {
+		    	localRelStats.addRelation(dmTerm, term);
+		    }
+		}
+	}
+
+    private String emitTerm(int j, int i, String[] tokens, String[] tags,
             final HashMap<String, DocumentTerm> docTermMap, CasingStats localCasing,
             boolean headTokenFinal) {
         if (lemmatizer != null && lemmatizer.get() != null && j - i + 1 >= ngramMin) {
@@ -160,10 +255,10 @@ public class TermExtractionTask implements Runnable {
                     tokens2[0] = lemmas[i];
                 }
             }
-            processTerm(tokens2, 0, j - i, docTermMap,
+            return processTerm(tokens2, 0, j - i, docTermMap,
                     localCasing);
         } else {
-            processTerm(tokens, i, j, docTermMap,
+            return processTerm(tokens, i, j, docTermMap,
                     localCasing);
         }
     }
@@ -187,7 +282,7 @@ public class TermExtractionTask implements Runnable {
                 && !term.startsWith("http://") && !term.startsWith("https://");
     }
 
-    private void processTerm(String[] tokens, int i, int j,
+    private String  processTerm(String[] tokens, int i, int j,
             HashMap<String, DocumentTerm> dts,
             CasingStats localCasing) {
         if (j - i >= this.ngramMin - 1) {
@@ -207,9 +302,10 @@ public class TermExtractionTask implements Runnable {
                 if (j - i == 0) {
                     localCasing.addCasing(termStrOrig);
                 }
+                return termStr;
             }
         }
-
+        return null;
     }
 
 }

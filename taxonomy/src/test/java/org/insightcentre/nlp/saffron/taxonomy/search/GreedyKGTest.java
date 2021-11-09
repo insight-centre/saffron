@@ -134,9 +134,16 @@ public class GreedyKGTest {
         addTerm(terms, "wheel", 0.0);
         addTerm(terms, "car wheel", 0.0);
 
+        Set<TypedLink.Type> relationTypes = new HashSet<TypedLink.Type>();
+        relationTypes.add(TypedLink.Type.hypernymy);
+        relationTypes.add(TypedLink.Type.hyponymy);
+        relationTypes.add(TypedLink.Type.meronymy);
+        relationTypes.add(TypedLink.Type.synonymy);
+        relationTypes.add(TypedLink.Type.other);
+
 		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
-        KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
+        KnowledgeGraph result = instance.extractKnowledgeGraph(terms, relationTypes);
         System.out.println(result.getTaxonomy());
         System.out.println(result.getPartonomy().getComponents().get(0));
         assertEquals("thing", result.getTaxonomy().root);
@@ -162,6 +169,13 @@ public class GreedyKGTest {
         addTerm(terms, "wheel", 0.0);
         addTerm(terms, "car wheel", 0.0);
         
+        Set<TypedLink.Type> relationTypes = new HashSet<TypedLink.Type>();
+        relationTypes.add(TypedLink.Type.hypernymy);
+        relationTypes.add(TypedLink.Type.hyponymy);
+        relationTypes.add(TypedLink.Type.meronymy);
+        relationTypes.add(TypedLink.Type.synonymy);
+        relationTypes.add(TypedLink.Type.other);
+
         Set<TypedLink> whiteList = new HashSet<>();
         Set<TypedLink> blackList = new HashSet<>();
         whiteList.add(new TaxoLink("thing", "vehicles"));
@@ -171,7 +185,7 @@ public class GreedyKGTest {
 		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score,
         		new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
-        KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList);
+        KnowledgeGraph result = instance.extractKnowledgeGraphWithDenialAndAllowanceList(terms, whiteList, blackList, relationTypes);
 
         assertEquals(2, result.getTaxonomy().children.size());
         assertEquals(1, result.getPartonomy().getComponents().size());

@@ -32,7 +32,7 @@ public class KGExtraction {
     public static final Property PART_OF = m_model.createProperty( NS + "partOf" );
     public static final Property WHOLE_OF = m_model.createProperty( NS + "wholeOf" );
     public static final Property IS_A = m_model.createProperty( SKOS + "broader" );
-    
+
 
     private static String encode(String s) {
         try {
@@ -110,7 +110,7 @@ public class KGExtraction {
         }
     }
 
-    private static void getHyponyms(org.apache.jena.rdf.model.Model model, String base, Taxonomy taxo, Term term, KGExtractionUtils kgExtractionUtils) {
+    public static void getHyponyms(org.apache.jena.rdf.model.Model model, String base, Taxonomy taxo, Term term, KGExtractionUtils kgExtractionUtils) {
         if(taxo.getRoot().equals(term.getString())) {
             model.createResource(base == null ? "" : base + "/rdf/term/" + encode(term.getString()))
                     .addProperty(RDFS.label, term.getString())
@@ -124,7 +124,7 @@ public class KGExtraction {
                 for (Taxonomy taxonomy : taxo.descendent(term.getString()).children) {
                     if (!model.contains(synonym, prop) ) {
                         res = model.createResource(base == null ? "" : base + "/rdf/term/" + encode(taxonomy.root))
-                            .addProperty(RDFS.label, taxonomy.root);
+                                .addProperty(RDFS.label, taxonomy.root);
                         res.addProperty(RDF.type, model.createResource(SKOS + "Concept"));
                         res.addProperty(IS_A,
                                 model.createResource(
@@ -181,6 +181,7 @@ public class KGExtraction {
                     accepts("b", "The base url").withRequiredArg().ofType(String.class);
                     accepts("o", "The output file path").withRequiredArg().ofType(String.class);
                     accepts("d", "The directory with all files from the kg extraction run").withRequiredArg().ofType(String.class);
+                    accepts("taxonomy", "Extract only the taxonomy");
                 }
             };
             final OptionSet os;
@@ -205,10 +206,17 @@ public class KGExtraction {
                 badOptions(p, "Base dir not given");
                 return;
             }
-
             KGExtractionUtils kgExtractionUtils = KGExtractionUtils.fromDirectory(new File(baseDir));
+
             org.apache.jena.rdf.model.Model kg = ModelFactory.createDefaultModel();
-            kg = knowledgeGraphToRDF(kg, baseUrl, kgExtractionUtils);
+            if(os.has("taxonomy")) {
+                Taxonomy taxonomy = KGExtractionUtils.loadTaxonomy(new File(baseDir));
+                for(Term term : kgExtractionUtils.getTerms()) {
+                    getHyponyms(kg, baseUrl, taxonomy, term, kgExtractionUtils);
+                }
+            } else {
+                kg = knowledgeGraphToRDF(kg, baseUrl, kgExtractionUtils);
+            }
             kg.setNsPrefix("skos", SKOS);
             try(OutputStream out = new FileOutputStream(kgOutFile)) {
                 kg.write( out, "RDF/XML" );

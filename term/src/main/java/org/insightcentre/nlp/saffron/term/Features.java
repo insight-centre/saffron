@@ -21,6 +21,8 @@ public class Features {
         switch (feat) {
             case weirdness:
                 return weirdness(term, stats, ref.get());
+            case termFreq:
+            	return termFreq(term, stats);
             case avgTermFreq:
                 return aveTermFreq(term, stats);
             case basic:
@@ -60,6 +62,10 @@ public class Features {
         int i = stats.termFrequency.getInt(term);
         int j = ref.termFrequency.getInt(term);
         return ((double) i + EPS) * (ref.tokens + EPS) / ((double) j + EPS) / (stats.tokens + EPS);
+    }
+
+    public static double termFreq(String term, FrequencyStats stats) {
+    	return stats.termFrequency.getInt(term);
     }
 
     public static double aveTermFreq(String term, FrequencyStats stats) {

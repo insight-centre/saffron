@@ -34,10 +34,23 @@ public class KGExtractionUtils {
         return this.knowledgeGraph;
     }
 
-    private KGExtractionUtils() {
+    public KGExtractionUtils() {
     }
-    
-    
+
+
+    public static Taxonomy loadTaxonomy(File directory) throws IOException {
+        final ObjectMapper mapper = new ObjectMapper();
+        final TypeFactory tf = mapper.getTypeFactory();
+        String workingDir = System.getProperty("user.dir");
+        workingDir = workingDir.substring(0, workingDir.length() - 8);
+        System.setProperty("user.dir", workingDir);
+        File taxonomyFile = new File(directory, "taxonomy.json");
+        if(!taxonomyFile.exists()) {
+            throw new FileNotFoundException("Could not find taxonomy.json");
+        }
+        return mapper.readValue(taxonomyFile, Taxonomy.class);
+    }
+
 
     /**
      * Load the Saffron data from disk
@@ -114,6 +127,24 @@ public class KGExtractionUtils {
         }
         return utils;
     }
+
+
+    /**
+     * Load the Saffron data from disk
+     *
+     * @param directory The directory containing the JSON files
+     * @return An initializes object
+     * @throws IOException
+     */
+    public static KGExtractionUtils fromMemory(KnowledgeGraph kg, List<DocumentTerm> docTerms, List<Term> terms, List<TermTerm> termsSimilarity) throws IOException {
+        KGExtractionUtils utils = new KGExtractionUtils();
+        utils.setKnowledgeGraph(kg);
+        utils.setTermSim(termsSimilarity);
+        utils.setDocTerms(docTerms);
+        utils.setTerms(terms);
+        return utils;
+    }
+
 
 
     private void setKnowledgeGraph(KnowledgeGraph knowledgeGraph) {

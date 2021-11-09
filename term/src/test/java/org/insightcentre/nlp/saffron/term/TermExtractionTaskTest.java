@@ -1,20 +1,19 @@
 package org.insightcentre.nlp.saffron.term;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import opennlp.tools.lemmatizer.Lemmatizer;
-import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSTagger;
-import opennlp.tools.postag.POSTaggerME;
-import opennlp.tools.tokenize.SimpleTokenizer;
-import opennlp.tools.tokenize.Tokenizer;
-import opennlp.tools.tokenize.TokenizerME;
-import opennlp.tools.tokenize.TokenizerModel;
+
 import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
@@ -23,9 +22,16 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import opennlp.tools.lemmatizer.Lemmatizer;
+import opennlp.tools.postag.POSModel;
+import opennlp.tools.postag.POSTagger;
+import opennlp.tools.postag.POSTaggerME;
+import opennlp.tools.tokenize.SimpleTokenizer;
+import opennlp.tools.tokenize.Tokenizer;
+import opennlp.tools.tokenize.TokenizerME;
+import opennlp.tools.tokenize.TokenizerModel;
 
 /**
  *
@@ -95,7 +101,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(),
                 new HashSet<String>(),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                true, result, dts, casing, Collections.EMPTY_SET, null);
+                true, result, dts, casing, Collections.EMPTY_SET, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -151,7 +157,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 new HashSet<String>(Arrays.asList(new String[]{"IN"})),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                true, result, null, null, Collections.EMPTY_SET, null);
+                true, result, null, null, Collections.EMPTY_SET, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -207,7 +213,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 new HashSet<String>(Arrays.asList(new String[]{"IN"})),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                true, result, null, null, Collections.EMPTY_SET, null);
+                true, result, null, null, Collections.EMPTY_SET, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -261,7 +267,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "JJ"})),
                 new HashSet<String>(Arrays.asList(new String[]{"IN"})),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                false, result, null, null, Collections.EMPTY_SET, null);
+                false, result, null, null, Collections.EMPTY_SET, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("faiche mhor", 1);
         expResult.termFrequency.put("faiche mhor", 1);
@@ -355,7 +361,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                 new HashSet<String>(Arrays.asList(new String[]{"IN"})),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                true, result, null, null, blacklist, null);
+                true, result, null, null, blacklist, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("test", 1);
         expResult.termFrequency.put("test", 1);
@@ -415,7 +421,7 @@ public class TermExtractionTaskTest {
                     new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
                     new HashSet<String>(Arrays.asList(new String[]{"IN"})),
                     new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
-                    true, result, null, null, blacklist, null);
+                    true, result, null, null, blacklist, null, null, null);
             FrequencyStats expResult = new FrequencyStats();
             expResult.docFrequency.put("steel", 1);
             expResult.termFrequency.put("steel", 1);
@@ -475,7 +481,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"I"})),
                 new HashSet<String>(Arrays.asList(new String[]{"I"})),
                 new HashSet<String>(Arrays.asList(new String[]{"B"})),
-                false, result, null, null, blacklist, null);
+                false, result, null, null, blacklist, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("chara", 1);
         expResult.termFrequency.put("chara", 1);
@@ -539,7 +545,7 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(Arrays.asList(new String[]{"N","A"})),
                 new HashSet<String>(Arrays.asList(new String[]{"N","A","D"})),
                 new HashSet<String>(Arrays.asList(new String[]{"N"})),
-                false, result, null, null, blacklist, null);
+                false, result, null, null, blacklist, null, null, null);
         FrequencyStats expResult = new FrequencyStats();
         expResult.docFrequency.put("rialtais", 1); 
         expResult.termFrequency.put("rialtais", 1);
@@ -597,8 +603,183 @@ public class TermExtractionTaskTest {
                 new HashSet<String>(),
                 new HashSet<String>(),
                 new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS", "CD"})),
-                true, result, dts, casing, Collections.EMPTY_SET, null);
+                true, result, dts, casing, Collections.EMPTY_SET, null, null, null);
         instance.run();
         assert(!result.termFrequency.containsKey("one"));
+    }
+
+    /**
+     * Test of run method of class TermExtractionTask with domain model.
+     */
+    @Test
+    public void testRunDomainModel(){
+
+    	//Preparing objects
+    	Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("this is a test\nterm domain domain model term term");
+        Tokenizer _tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[]{"this", "is", "a", "test"};
+        String[] lemmas = new String[]{"this", "be", "a", "test"};
+        final String[] tags = new String[]{"DT", "VBZ", "DT", "NN"};
+
+        String[] tokens2 = new String[]{"term", "domain", "domain", "model", "term", "term"};
+        String[] lemmas2 = new String[]{"term", "domain", "domain", "model", "term", "term"};
+        final String[] tags2 = new String[]{"NN", "NN", "NN", "NN", "NN", "NN"};
+
+        String[] tokensDomain = new String[]{"domain", "model"};
+
+    	when(_tokenizer.tokenize("this is a test")).thenReturn(tokens);
+    	when(_tokenizer.tokenize("term domain domain model term term")).thenReturn(tokens2);
+    	when(_tokenizer.tokenize("domain model")).thenReturn(tokensDomain);
+
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        when(lemmatizer.lemmatize(tokens2, tags2)).thenReturn(lemmas2);
+
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        when(tagger.tag(tokens2)).thenReturn(tags2);
+
+        FrequencyStats result = new FrequencyStats();
+        RelationshipStats resultRel = new RelationshipStats();
+
+        ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
+        CasingStats casing = new CasingStats();
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+
+        List<String> domainModel = new ArrayList<String>();
+        domainModel.add("domain model");
+
+    	TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(),
+                new HashSet<String>(),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                true, result, dts, casing, Collections.EMPTY_SET, null,
+    			domainModel, resultRel);
+
+    	FrequencyStats expected = new FrequencyStats();
+    	expected.documents = 1;
+    	expected.termFrequency = new Object2IntOpenHashMap<String>();
+    	expected.termFrequency.put("term", 1);
+    	expected.docFrequency = new Object2IntOpenHashMap<String>();
+    	expected.docFrequency.put("term", 1);
+    	expected.tokens = tokens.length + tokens2.length;
+
+    	RelationshipStats expectedRel = new RelationshipStats();
+    	expectedRel.addRelation("domain model", "term", 1);
+
+    	// Calling method
+    	instance.run();
+
+    	//Testing results
+    	assertEquals(expected, result);
+    	assertEquals(expectedRel, resultRel);
+    }
+
+    /**
+     * Test of run method of class TermExtractionTask with domain model.
+     */
+    @Test
+    public void testRunDomainModel2(){
+
+    	//Preparing objects
+    	Document doc = mock(Document.class);
+        when(doc.contents()).thenReturn("this is a test\nterm domain domain model domain model term term");
+        Tokenizer _tokenizer = mock(Tokenizer.class);
+        String[] tokens = new String[]{"this", "is", "a", "test"};
+        String[] lemmas = new String[]{"this", "be", "a", "test"};
+        final String[] tags = new String[]{"DT", "VBZ", "DT", "NN"};
+
+        String[] tokens2 = new String[]{"term", "domain", "domain", "model", "domain", "model", "term", "term"};
+        String[] lemmas2 = new String[]{"term", "domain", "domain", "model", "domain", "model", "term", "term"};
+        final String[] tags2 = new String[]{"NN", "NN", "NN", "NN", "NN", "NN", "NN", "NN"};
+
+        String[] tokensDomain = new String[]{"domain", "model"};
+
+    	when(_tokenizer.tokenize("this is a test")).thenReturn(tokens);
+    	when(_tokenizer.tokenize("term domain domain model domain model term term")).thenReturn(tokens2);
+    	when(_tokenizer.tokenize("domain model")).thenReturn(tokensDomain);
+
+        final Lemmatizer lemmatizer = mock(Lemmatizer.class);
+        when(lemmatizer.lemmatize(tokens, tags)).thenReturn(lemmas);
+        when(lemmatizer.lemmatize(tokens2, tags2)).thenReturn(lemmas2);
+
+        final POSTagger tagger = mock(POSTagger.class);
+        when(tagger.tag(tokens)).thenReturn(tags);
+        when(tagger.tag(tokens2)).thenReturn(tags2);
+
+        FrequencyStats result = new FrequencyStats();
+        RelationshipStats resultRel = new RelationshipStats();
+
+        ConcurrentLinkedQueue<DocumentTerm> dts = new ConcurrentLinkedQueue<>();
+        CasingStats casing = new CasingStats();
+        ThreadLocal<Tokenizer> tokenizer = new ThreadLocal<Tokenizer>() {
+            @Override
+            protected Tokenizer initialValue() {
+                return _tokenizer;
+            }
+
+        };
+
+        List<String> domainModel = new ArrayList<String>();
+        domainModel.add("domain model");
+
+    	TermExtractionTask instance = new TermExtractionTask(doc, new ThreadLocal<POSTagger>() {
+            @Override
+            public POSTagger get() {
+                return tagger;
+            }
+
+        }, new ThreadLocal<Lemmatizer>() {
+            @Override
+            protected Lemmatizer initialValue() {
+                return lemmatizer;
+            }
+
+        }, tokenizer, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)), 1, 4,
+                new HashSet<String>(),
+                new HashSet<String>(),
+                new HashSet<String>(Arrays.asList(new String[]{"NN", "NNS"})),
+                true, result, dts, casing, Collections.EMPTY_SET, null,
+    			domainModel, resultRel);
+
+    	FrequencyStats expected = new FrequencyStats();
+    	expected.documents = 1;
+    	expected.termFrequency = new Object2IntOpenHashMap<String>();
+    	expected.termFrequency.put("term", 1);
+    	expected.termFrequency.put("domain", 1);
+    	expected.docFrequency = new Object2IntOpenHashMap<String>();
+    	expected.docFrequency.put("term", 1);
+    	expected.docFrequency.put("domain", 1);
+    	expected.tokens = tokens.length + tokens2.length;
+
+    	RelationshipStats expectedRel = new RelationshipStats();
+    	expectedRel.addRelation("domain model", "term", 1);
+    	expectedRel.addRelation("domain model", "domain", 1);
+
+    	// Calling method
+    	instance.run();
+
+    	//Testing results
+    	assertEquals(expected, result);
+    	assertEquals(expectedRel, resultRel);
     }
 }

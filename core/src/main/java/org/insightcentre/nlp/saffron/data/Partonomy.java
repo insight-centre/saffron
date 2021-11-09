@@ -89,7 +89,7 @@ public class Partonomy {
     	
     	for(Taxonomy component: this.getComponents()) {
     		for(TaxoLink link: component.getRelationsByStatus(status)) {
-    			relations.add(new TypedLink(link.getSource(),link.getTarget(),Type.meronymy));
+    			relations.add(new TypedLink(link.getTarget(),link.getSource(),Type.meronymy));
     		}
     	}
     	

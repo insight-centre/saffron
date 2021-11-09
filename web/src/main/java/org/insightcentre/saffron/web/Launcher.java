@@ -116,6 +116,11 @@ public class Launcher {
             // Get current size of heap in bytes
             String hostname = InetAddress.getLocalHost().getHostAddress();
             System.err.println(String.format("Started server at http://localhost:%d/ (or http://%s:%d/)", port, hostname, port));
+            try {
+                java.awt.Desktop.getDesktop().browse(java.net.URI.create(String.format("http://localhost:%d/", port)));
+            } catch(Exception x) { 
+                // Just ignore. The user can follow the instructions
+            }
             server.join();
         } catch (Exception x) {
             x.printStackTrace();
