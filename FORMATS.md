@@ -27,9 +27,6 @@ In addition the following may be provided
 * `authors`: An array of authors of this document
 * `metadata`: An object containing any other properties
 
-### Author
-
-A single author of a document in a corpus.
 =======
 # Saffron 3 - Formats
 
