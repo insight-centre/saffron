@@ -64,7 +64,9 @@ public abstract class BERTBasedRelationClassifier implements MulticlassRelationC
 			return new BERTBasedRelationClassifier3Relations(simpleMLPFilePath, bertModelFilePath);
 		} else if (numberOfRelations == 5) {
 			return new BERTBasedRelationClassifier5Relations(simpleMLPFilePath, bertModelFilePath);
-		} else {
+		} else if (numberOfRelations == 7) {
+			return new BERTBasedRelationClassifier7Relations(simpleMLPFilePath, bertModelFilePath);
+		}else {
 			throw new InvalidValueException("The BERTBasedRelationClassifier only accepts 3 or 5 relations as parameters");
 		}
 	}
@@ -110,9 +112,9 @@ public abstract class BERTBasedRelationClassifier implements MulticlassRelationC
 		float[] embedding_source = simpleCache.get(source, e -> this.bert.embedSequence(source));
 		float[] embedding_target = simpleCache.get(target, e -> this.bert.embedSequence(target));
 
-        INDArray features = Nd4j.zeros(1, 1, 2, sizeEmbeddings);
+        INDArray features = Nd4j.zeros(1, 1, 2, 1024);
 
-        for(int i=0; i<sizeEmbeddings; i++)
+        for(int i=0; i<767; i++)
         {
             features.putScalar(0, 0, 0, i, embedding_source[i]);
             features.putScalar(0, 0, 1, i, embedding_target[i]);
@@ -122,11 +124,11 @@ public abstract class BERTBasedRelationClassifier implements MulticlassRelationC
 
         double[] modelResults = prediction[0].toDoubleVector();
         Map<Type, Double> result = new HashMap<Type,Double>();
+		for(Type relationType: typeMap.keySet()) {
+			result.put(relationType, modelResults[typeMap.get(relationType)]);
+		}
+		
 
-        for(Type relationType: typeMap.keySet()) {
-        	result.put(relationType, modelResults[typeMap.get(relationType)]);
-        }
-        
         return result;
     }
 }
