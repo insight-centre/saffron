@@ -26,10 +26,8 @@ In addition the following may be provided
 * `mime_type`: The MIME type of the document
 * `authors`: An array of authors of this document
 * `metadata`: An object containing any other properties
+* `date`: The date of the document, formatted as [iso8601](https://en.wikipedia.org/wiki/ISO_8601#Dates)
 
-### Author
-
-A single author of a document in a corpus.
 =======
 # Saffron 3 - Formats
 
@@ -64,6 +62,8 @@ This file contains the description of the corpus, including all the metadata. It
 
     * `metadata`: An object containing any other properties. Each property is in the form:
         ```"property name":"property value"```, separated by commas
+    * `date`: The date of the document, formatted as [iso8601](https://en.wikipedia.org/wiki/ISO_8601#Dates), ie. YYYY-MM-DD or YYYY-MM or YYYY
+
 
 
 ### Config ([config.json](https://gitlab.insight-centre.org/saffron/saffron/blob/saffron_development/examples/config.json))
