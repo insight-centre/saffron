@@ -26,7 +26,7 @@ graph that allows for easy browsing of the corpus and deep insights.
 10. *RDF Extraction*: Creates a knowledge graph
 
 
-<img src="images/SaffronServices.png" alt="Saffron Service Workflow" width="400"/>
+<img src="https://github.com/insight-centre/saffron/blob/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
 
 Installation
 ------------
