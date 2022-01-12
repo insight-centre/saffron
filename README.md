@@ -1,6 +1,6 @@
 Developer Guide
 ==========================================
-Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) how you can contribute to Saffron
+Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) to see how you can contribute to Saffron
 
 Saffron 3 - Text Analysis and Insight Tool
 ==========================================
@@ -30,65 +30,23 @@ graph that allows for easy browsing of the corpus and deep insights.
 10. *RDF Extraction*: Creates a knowledge graph
 
 
-<img src="https://gitlab.insight-centre.org/saffron/saffron/raw/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
+<img src="https://github.com/insight-centre/saffron/blob/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
 
 More detailed information on the configuration of Saffron can be found [here](https://github.com/insight-centre/saffron/wiki).
 
 Installation
 ------------
 
-Saffron requires the use of [Apache Maven](https://maven.apache.org/) to run.
-If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) will also be needed to store the data.
-Both need to be installed before trying to run Saffron:
-* [Install Maven](https://maven.apache.org/install.html)
-* [Install MongoDb](https://docs.mongodb.com/manual/administration/install-community/) (use the default settings)
+Saffron uses [Apache Maven](https://maven.apache.org/) to run.
+If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) can be used to store the data (optional).
 
+To install Saffron, download the installer corresponding to your OS, and install it in the folder of your choice.
 
-1.  Run the following script to obtain the resources on which Saffron depends:
-
-    ./install.sh
-
-
-1.  To build the dependencies Saffron requires, use the following command:
-
-    mvn clean install
+eg. for Ubuntu ```userX$ dpkg -i path_to_deb_file```
 
 
 Running
 -------
-
-
-### Using the Web Interface
-
-
-1.  Start a MongoDB session by typing 'mongod' on a terminal. MongoDB has to be running for Saffron to operate.
-
-2.  The file saffron-web.sh contains some information, such as the name given to the database, the host and port it will run on.
-    If you need to change the database name (default to saffron_test) edit the file saffron-web.sh and change the line:
-        export MONGO_DB_NAME=saffron_test
-
-    To change the Mongo HOST and PORT, simply edit the same file on the following:
-
-        export MONGO_URL=localhost
-        export MONGO_PORT=27017
-
-    By default all results will be stored in the Mongo database, and the JSON files will be generated in `/web/data/`. However, you can change it to store in in the Mondo database only by setting the following line to **false**:
-
-        export STORE_LOCAL_COPY=true
-
-
-
-1.  To start the Saffron Web server, simply choose a directory for Saffron to create
-the models and run the command as follows
-
-    ./saffron-web.sh
-
-
-1.  Then open the following url in a browser to access the Web Interface
-
-    http://localhost:8080/
-
-See the [Wiki](https://github.com/insight-centre/saffron/wiki/2.1.-Web-Interface) for more details on how to use the Web Interface
 
 ### Using the Command Line
 
@@ -107,31 +65,68 @@ script takes three arguments
 In addition, some optional arguments can be specified:
 
                           
-  `-c <RunConfiguration$CorpusMethod>`:  The type of corpus to be used. One of CRAWL, JSON, ZIP                         
-  `--domain`                          :  Limit the crawl to the domain of the seed URL                                      
+  `-c <RunConfiguration$CorpusMethod>`:  The type of corpus to be used. One of _CRAWL_, _JSON_, _ZIP_ (for the corpus as a zip, tar.gz or .tgz file containing files in TXT, DOC or PDF ). _Default to JSON_                         
+
   `-i <File>     `                    :  The inclusion list of terms and relations (in JSON)                                
-  `-k <RunConfiguration$KGMethod>`    :  The method for knowledge graph construction (whether to generate a taxonomy of a knowledge graph). Choose between TAXO and KG (by default KG)         
-  `--max-pages <Integer> `            :  The maximum number of pages to extract when crawling                                 
+  `-k <RunConfiguration$KGMethod>`    :  The method for knowledge graph construction: ie. whether to generate a taxonomy or a knowledge graph. Choose between TAXO and KG. _Default to KG_         
+  `--domain`                          :  Limit the crawl to the domain of the seed URL (if using the CRAWL option for the corpus)  
+
+  `--max-pages <Integer> `            :  The maximum number of pages to extract when crawling (if using the CRAWL option for the corpus)                                 
   `--name <String>`                   :  The name of the run 
 
 
 
-
-4. (optional) Whether to create a taxonomy or a knowledge graph ()
-
 For example
 
-    ./saffron.sh corpus.json output/ config.json -k TAXO
+    ./saffron.sh ~/corpus.zip ~/output/ config.json -k TAXO -c ZIP
 
 
-**More details** on how to install Saffron, how to configure the different features, and the algorithms it follows can be found in the Wiki (https://github.com/insight-centre/saffron/wiki)
+**More detail on Saffron**, ie. how to install it, how to configure the different features, and the approaches it is based on can be found in the Wiki (https://github.com/insight-centre/saffron/wiki)
+
+
+
+### Using the Web Interface
+
+
+1. (optional) If you choose to use Mongo, install [MongoDb](https://docs.mongodb.com/manual/administration/install-community/) (use the default settings)
+
+    And start a session by typing 'mongod' on a terminal. MongoDB has to be running.
+
+    The file saffron-web.sh contains some information, such as the name given to the database, the host and port it will run on. If using Mongo, you need to change the database name (default to saffron_test) edit the file saffron-web.sh and change the line:
+        export MONGO_DB_NAME=saffron_test
+
+    To change the Mongo HOST and PORT, simply edit the same file on the following:
+
+        export MONGO_URL=localhost
+        export MONGO_PORT=27017
+
+3.  **All results (output JSON files) will be generated in `./web/data/`**. However, you can change it to store in in the Mondo database only by setting the following line to **false**:
+
+        export STORE_LOCAL_COPY=true
+
+
+
+1.  To start the Saffron Web server, simply choose a directory for Saffron to create
+the models and run the command as follows
+
+    ./saffron-web.sh
+
+
+1.  Then open the following url in a browser to access the Web Interface
+
+    http://localhost:8080/
+
+See the [Wiki](https://github.com/insight-centre/saffron/wiki/2.1.-Web-Interface) for more details on how to use the Web Interface
+
+
 
 **FORMATS.md** gives the description of the input files needed to run Saffron and output files generated by Saffron
 
 Results
 -------
 
-If the Web Interface is used and STORE_LOCAL_COPY was set to true, or Saffron was used with the command line, the following files are generated and stored in /web/data/.
+If the Web Interface is used and STORE_LOCAL_COPY set to true, the output files are generated and stored in **./web/data/**.
+Saffron  generates the following files
 (see [Saffron Formats](FORMATS.md) for more details on each file)
 
 * `terms.json`: The terms with weights
@@ -139,7 +134,10 @@ If the Web Interface is used and STORE_LOCAL_COPY was set to true, or Saffron wa
 * `author-terms.json`: The connection between authors and terms
 * `author-sim.json`: The author-author similarity graph
 * `term-sim.json`: The term-term similarity graph
-* `taxonomy.json`: The final taxonomy over the corpus
+* `taxonomy.json`: The final taxonomy over the corpus as JSON (if option chosen)
+* `taxonomy.json`: The final taxonomy over the corpus as RDF (if option chosen)
+* `rdf.json`: The final knowledge graph over the corpus as JSON (if option chosen)
+* `rdf.json`: The final knowledge graph over the corpus as RDF (if option chosen)
 * `config.json`: The configuration file for the run
 
 
@@ -177,4 +175,4 @@ The Java classes describing the configuration can be found here [JavaDoc](https:
 API Documentation
 =================
 
-For the API documentation, see [Saffron API Documentation](https://gitlab.insight-centre.org/saffron/saffron/blob/master/web/README.md)
+For the API documentation, see [Saffron API Documentation](https://github.com/insight-centre/saffron/blob/master/web/README.md)
