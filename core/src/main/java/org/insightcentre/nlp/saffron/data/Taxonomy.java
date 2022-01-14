@@ -54,6 +54,7 @@ public class Taxonomy implements SaffronGraph<TaxoLink> {
     	score = 0.0;
     	linkScore = 0.0;
     	children = new ArrayList<Taxonomy>();
+        status = Status.none;
     }
 
     @JsonCreator
@@ -67,7 +68,7 @@ public class Taxonomy implements SaffronGraph<TaxoLink> {
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
-        this.status = status;
+        this.status = status == null ? Status.none : status;
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
 
