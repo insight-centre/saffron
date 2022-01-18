@@ -4,33 +4,21 @@ import java.io.File;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
-
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
-import org.insightcentre.saffron.web.api.SaffronAPI;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
-
-import javax.ws.rs.ApplicationPath;
 
 /**
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
-@ApplicationPath("/api/v1")
 public class Launcher {
-
     public static Executor executor;
     public static Home home;
-
-    public static final MongoDBHandler saffron = new MongoDBHandler();
-
-
+    public static final SaffronInMemoryDataSource saffron = new SaffronInMemoryDataSource();
     private static void badOptions(OptionParser p, String message) throws IOException {
         System.err.println("Error: " + message);
         p.printHelpOn(System.err);
@@ -70,6 +58,7 @@ public class Launcher {
 
             Server server = new Server(port);
             ResourceHandler resourceHandler = new ResourceHandler();
+
             // This is the path on the server
             // This is the local directory that is used to
             resourceHandler.setResourceBase("static");
@@ -77,21 +66,13 @@ public class Launcher {
                 System.err.println("No static folder, please run the command in the right folder.");
                 System.exit(-1);
             }
+            //scontextHandler.setHandler(resourceHandler);
             HandlerList handlers = new HandlerList();
             Browser browser = new Browser(directory, saffron);
             executor = new Executor(saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
-            home = new Home(saffron, directory);
-
-            ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-            context.setContextPath("/");
-            ServletHolder jerseyServlet = context.addServlet(
-                    org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-            jerseyServlet.setInitOrder(0);
-            jerseyServlet.setInitParameter(
-                    "jersey.config.server.provider.classnames",
-                    SaffronAPI.class.getCanonicalName());
-            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
+            Home home = new Home(saffron, directory);
+            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
             server.setHandler(handlers);
 
 
@@ -116,17 +97,10 @@ public class Launcher {
             // Get current size of heap in bytes
             String hostname = InetAddress.getLocalHost().getHostAddress();
             System.err.println(String.format("Started server at http://localhost:%d/ (or http://%s:%d/)", port, hostname, port));
-            try {
-                java.awt.Desktop.getDesktop().browse(java.net.URI.create(String.format("http://localhost:%d/", port)));
-            } catch(Exception x) { 
-                // Just ignore. The user can follow the instructions
-            }
             server.join();
         } catch (Exception x) {
             x.printStackTrace();
             System.exit(-1);
         }
     }
-
-
 }

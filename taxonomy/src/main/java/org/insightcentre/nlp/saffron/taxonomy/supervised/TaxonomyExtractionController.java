@@ -73,7 +73,7 @@ public class TaxonomyExtractionController {
                 kg.write(stringWriter);
                 return ResponseEntity.ok(stringWriter.toString());
             } else {
-                return ResponseEntity.ok(graph.toString());
+                return ResponseEntity.ok(graph);
             }
         } catch (Exception e) {
             e.printStackTrace();

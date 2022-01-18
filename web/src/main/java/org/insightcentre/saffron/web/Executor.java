@@ -37,7 +37,6 @@ import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -113,12 +112,12 @@ public class Executor extends AbstractHandler {
                 final String saffronDatasetName = target.substring("/execute/advanced/".length());
                 doAdvancedExecute(hsr, saffronDatasetName, response, baseRequest);
 
-            } else if (target.startsWith("/api/v1/run/rerun")) {
-                final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
-                if (saffronDatasetName != null && data.containsKey(saffronDatasetName)) {
-                    doRerun(saffronDatasetName, response, baseRequest);
-                }
-            } else if ("/execute/status".equals(target)) {
+//            } else if (target.startsWith("/api/v1/run/rerun")) {
+//                final String saffronDatasetName = target.substring("/api/v1/run/rerun/".length());
+//                if (saffronDatasetName != null && data.containsKey(saffronDatasetName)) {
+//                    doRerun(saffronDatasetName, response, baseRequest);
+//                }
+              } else if ("/execute/status".equals(target)) {
                 String saffronDatasetName = hsr.getParameter("name");
                 Status status = getStatus(saffronDatasetName);
                 if (status != null) {
@@ -142,81 +141,81 @@ public class Executor extends AbstractHandler {
         return statuses.get(saffronDatasetName);
     }
 
-    private void doRerun(final String saffronDatasetName, HttpServletResponse response, Request baseRequest) throws IOException, FileNotFoundException, NumberFormatException, JSONException {
-        Status _status = makeStatus();
-        _status.name = saffronDatasetName;
-        statuses.put(saffronDatasetName, _status);
-        response.setContentType("text/html");
-        response.setStatus(HttpServletResponse.SC_OK);
-        baseRequest.setHandled(true);
-        FileReader reader = new FileReader(new File("static/executing.html"));
-        Writer writer = new StringWriter();
-        char[] buf = new char[4096];
-        int p = 0;
-        while ((p = reader.read(buf)) >= 0) {
-            writer.write(buf, 0, p);
-        }
-        response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-        String mongoUrl = System.getenv("MONGO_URL");
-        if (mongoUrl == null) {
-            mongoUrl = "localhost";
-        }
-        String mongoPort = System.getenv("MONGO_PORT");
-        if (mongoPort == null) {
-            mongoPort = "27017";
-        }
-
-        MongoDBHandler mongo = new MongoDBHandler();
-        String run = mongo.getRun(saffronDatasetName);
-        JSONObject configObj = new JSONObject(run);
-        String confJson = (String) configObj.get("config");
-        JSONObject config = new JSONObject(confJson);
-        JSONObject termExtractionConfig = (JSONObject) config.get("termExtraction");
-        JSONObject authorTermConfig = (JSONObject) config.get("authorTerm");
-        JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
-        JSONObject termSimConfig = (JSONObject) config.get("termSim");
-        JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
-        //JSONObject conceptConsolidation = (JSONObject) config.get("conceptConsolidation");
-        final Configuration newConfig = new Configuration();
-        TermExtractionConfiguration terms
-                = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
-        AuthorTermConfiguration authorTerm
-                = new ObjectMapper().readValue(authorTermConfig.toString(), AuthorTermConfiguration.class);
-        AuthorSimilarityConfiguration authorSimilarityConfiguration
-                = new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
-        TermSimilarityConfiguration termSimilarityConfiguration
-                = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
-        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
-                = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
-        //ConceptConsolidationConfiguration conceptConsolidationConfiguration
-        //        = conceptConsolidation != null ? new ObjectMapper().readValue(conceptConsolidation.toString(), ConceptConsolidationConfiguration.class) : new ConceptConsolidationConfiguration();
-        newConfig.authorSim = authorSimilarityConfiguration;
-        newConfig.authorTerm = authorTerm;
-        newConfig.taxonomy = taxonomyExtractionConfiguration;
-        newConfig.termExtraction = terms;
-        newConfig.termSim = termSimilarityConfiguration;
-        //newConfig.conceptConsolidation = conceptConsolidationConfiguration;
-
-        Corpus corpus = mongo.getCorpus(saffronDatasetName);
-
-        new Thread(new Runnable() {
-
-            @Override
-            @SuppressWarnings("UseSpecificCatch")
-            public void run() {
-                _status.stage = 1;
-                try {
-                    RunConfiguration runConfig = new RunConfiguration(corpus, getInclusionList(saffronDatasetName), false, RunConfiguration.KGMethod.TAXO, false, null);
-                    getStatus(saffronDatasetName).runConfig = runConfig;
-                    SaffronPipeline.execute(runConfig, new File(parentDirectory, saffronDatasetName), newConfig, saffronDatasetName, getStatus(saffronDatasetName));
-                } catch (Throwable x) {
-                    Status _status = statuses.get(saffronDatasetName);
-                    _status.fail(x.getMessage(), x);
-                    x.printStackTrace();
-                }
-            }
-        }).start();
-    }
+//    private void doRerun(final String saffronDatasetName, HttpServletResponse response, Request baseRequest) throws IOException, FileNotFoundException, NumberFormatException, JSONException {
+//        Status _status = makeStatus();
+//        _status.name = saffronDatasetName;
+//        statuses.put(saffronDatasetName, _status);
+//        response.setContentType("text/html");
+//        response.setStatus(HttpServletResponse.SC_OK);
+//        baseRequest.setHandled(true);
+//        FileReader reader = new FileReader(new File("static/executing.html"));
+//        Writer writer = new StringWriter();
+//        char[] buf = new char[4096];
+//        int p = 0;
+//        while ((p = reader.read(buf)) >= 0) {
+//            writer.write(buf, 0, p);
+//        }
+//        response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
+//        String mongoUrl = System.getenv("MONGO_URL");
+//        if (mongoUrl == null) {
+//            mongoUrl = "localhost";
+//        }
+//        String mongoPort = System.getenv("MONGO_PORT");
+//        if (mongoPort == null) {
+//            mongoPort = "27017";
+//        }
+//
+//        MongoDBHandler mongo = new MongoDBHandler();
+//        String run = mongo.getRun(saffronDatasetName);
+//        JSONObject configObj = new JSONObject(run);
+//        String confJson = (String) configObj.get("config");
+//        JSONObject config = new JSONObject(confJson);
+//        JSONObject termExtractionConfig = (JSONObject) config.get("termExtraction");
+//        JSONObject authorTermConfig = (JSONObject) config.get("authorTerm");
+//        JSONObject authorSimConfig = (JSONObject) config.get("authorSim");
+//        JSONObject termSimConfig = (JSONObject) config.get("termSim");
+//        JSONObject taxonomyConfig = (JSONObject) config.get("taxonomy");
+//        //JSONObject conceptConsolidation = (JSONObject) config.get("conceptConsolidation");
+//        final Configuration newConfig = new Configuration();
+//        TermExtractionConfiguration terms
+//                = new ObjectMapper().readValue(termExtractionConfig.toString(), TermExtractionConfiguration.class);
+//        AuthorTermConfiguration authorTerm
+//                = new ObjectMapper().readValue(authorTermConfig.toString(), AuthorTermConfiguration.class);
+//        AuthorSimilarityConfiguration authorSimilarityConfiguration
+//                = new ObjectMapper().readValue(authorSimConfig.toString(), AuthorSimilarityConfiguration.class);
+//        TermSimilarityConfiguration termSimilarityConfiguration
+//                = new ObjectMapper().readValue(termSimConfig.toString(), TermSimilarityConfiguration.class);
+//        TaxonomyExtractionConfiguration taxonomyExtractionConfiguration
+//                = new ObjectMapper().readValue(taxonomyConfig.toString(), TaxonomyExtractionConfiguration.class);
+//        //ConceptConsolidationConfiguration conceptConsolidationConfiguration
+//        //        = conceptConsolidation != null ? new ObjectMapper().readValue(conceptConsolidation.toString(), ConceptConsolidationConfiguration.class) : new ConceptConsolidationConfiguration();
+//        newConfig.authorSim = authorSimilarityConfiguration;
+//        newConfig.authorTerm = authorTerm;
+//        newConfig.taxonomy = taxonomyExtractionConfiguration;
+//        newConfig.termExtraction = terms;
+//        newConfig.termSim = termSimilarityConfiguration;
+//        //newConfig.conceptConsolidation = conceptConsolidationConfiguration;
+//
+//        Corpus corpus = mongo.getCorpus(saffronDatasetName);
+//
+//        new Thread(new Runnable() {
+//
+//            @Override
+//            @SuppressWarnings("UseSpecificCatch")
+//            public void run() {
+//                _status.stage = 1;
+//                try {
+//                    RunConfiguration runConfig = new RunConfiguration(corpus, getInclusionList(saffronDatasetName), false, RunConfiguration.KGMethod.TAXO, false, null);
+//                    getStatus(saffronDatasetName).runConfig = runConfig;
+//                    SaffronPipeline.execute(runConfig, new File(parentDirectory, saffronDatasetName), newConfig, saffronDatasetName, getStatus(saffronDatasetName));
+//                } catch (Throwable x) {
+//                    Status _status = statuses.get(saffronDatasetName);
+//                    _status.fail(x.getMessage(), x);
+//                    x.printStackTrace();
+//                }
+//            }
+//        }).start();
+//    }
 
     private boolean doAdvancedExecute(HttpServletRequest hsr, final String saffronDatasetName, HttpServletResponse response, Request baseRequest) throws IOException {
         BufferedReader r = hsr.getReader();
@@ -400,13 +399,7 @@ public class Executor extends AbstractHandler {
 
     public InclusionList extractInclusionList(String datasetName) throws JsonParseException, JsonMappingException, IOException {
 
-        MongoDBHandler mongo = new MongoDBHandler();
-
-        if (!mongo.getAllTerms(datasetName).iterator().hasNext()) {
-            return new InclusionList();
-        } else {
-            return InclusionList.from((List) mongo.getAllTerms(datasetName), mongo.getTaxonomy(datasetName));
-        }
+        return new InclusionList();
     }
 
     public class Status implements SaffronRunListener, Closeable {
@@ -486,12 +479,9 @@ public class Executor extends AbstractHandler {
         @Override
         public void fail(String message, Throwable cause) {
             this.failed = true;
-            if (cause != null && cause instanceof com.mongodb.MongoTimeoutException) {
-                setErrorMessage("Failed: Cannot connect to a MongoDB instance. "
-                        + "Please configure Saffron to connect to a running MongoDB instance and try again.");
-            } else {
-                setErrorMessage("Failed: " + message);
-            }
+
+            setErrorMessage("Failed: " + message);
+
             data.remove(name);
             if (cause != null) {
                 cause.printStackTrace();

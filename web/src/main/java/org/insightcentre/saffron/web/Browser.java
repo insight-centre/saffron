@@ -8,6 +8,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.util.Map;
 import static java.lang.Integer.min;
 import java.net.URLDecoder;
 import java.nio.file.Files;
@@ -31,7 +32,6 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.insightcentre.saffron.web.rdf.RDFConversion;
 
 /**
@@ -41,34 +41,21 @@ import org.insightcentre.saffron.web.rdf.RDFConversion;
  */
 public class Browser extends AbstractHandler {
 
-    protected final MongoDBHandler saffronHandler;
+    protected final SaffronInMemoryDataSource saffronHandler;
 
-    public Browser(File dir, MongoDBHandler saffron) throws IOException {
+    public Browser(File dir, SaffronInMemoryDataSource saffron) throws IOException {
 
         this.saffronHandler = saffron;
-        if(saffron.type.equals("mongodb")) {
-        	//FIXME It should ask the database to initialise itself
-            if (dir.exists()) {
-                for (File subdir : dir.listFiles()) {
-                    if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
-                        try {
-                        	if (!saffron.containsKey(subdir.getName())) {
-                        		//TODO Use official Saffron Log system
-                        		System.out.println("New Saffron run detected.");
-                        		System.out.println("Importing Saffron run from '" + subdir.getAbsolutePath() + "' ..");
-                        		try {
-                        			saffron.importFromDirectory(subdir, subdir.getName());
-                        			System.out.println("Saffron run successfully imported..");
-                        		} catch (Exception e) {
-                        			//TODO Use official Saffron Log system
-                        			System.err.println("An error has occurred while loading a Saffron run from file. Aborting operation..");
-                        			e.printStackTrace();
-                        		}
-                        	}
-                        } catch (Exception x) {
-                            x.printStackTrace();
-                            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-                        }
+        if (dir.exists()) {
+            for (File subdir : dir.listFiles()) {
+                if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
+                    try {
+                        SaffronData s2;
+                        s2 = SaffronData.fromDirectory(subdir);
+//                        saffron.put(subdir.getName(), s2);
+                    } catch (Exception x) {
+                        x.printStackTrace();
+                        System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
                     }
                 }
             }
