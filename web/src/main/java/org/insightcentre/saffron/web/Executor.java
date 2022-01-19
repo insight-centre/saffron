@@ -2,16 +2,7 @@ package org.insightcentre.saffron.web;
 
 import org.insightcentre.nlp.saffron.run.InclusionList;
 
-import java.io.BufferedReader;
-import java.io.Closeable;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.Writer;
+import java.io.*;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Date;
@@ -283,8 +274,9 @@ public class Executor extends AbstractHandler {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                try {
                 _status.stage = 1;
-                _status.setStageStart("Loading corpus" + tmpFile.getPath(), saffronDatasetName);
+                _status.setStageStart("Loading corpus " + tmpFile.getPath(), saffronDatasetName);
                 try {
                     final RunConfiguration runConfig = new RunConfiguration(tmpFile, RunConfiguration.CorpusMethod.ZIP, getInclusionList(saffronDatasetName), true, RunConfiguration.KGMethod.TAXO, false, null);
                     _status.runConfig = runConfig;
@@ -301,6 +293,9 @@ public class Executor extends AbstractHandler {
                     _status.close();
                 } catch (IOException x) {
                 }
+                } catch(Exception x) {
+                    x.printStackTrace();
+            }
             }
         }).start();
     }
