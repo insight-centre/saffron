@@ -2,6 +2,15 @@ Developer Guide
 ==========================================
 Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) to see how you can contribute to Saffron
 
+**Important**:
+
+If making any change that impact either the format of input files, the format of the output files, the format of the configuration file, or the command to run Saffron, please update the following file accordingly:
+- README.md
+- `examples` folder (and sub-files)
+- FORMAT.md
+
+and inform the development team of Saffron.
+
 Saffron 3 - Text Analysis and Insight Tool
 ==========================================
 
