@@ -34,16 +34,40 @@ graph that allows for easy browsing of the corpus and deep insights.
 
 More detailed information on the configuration of Saffron can be found [here](https://github.com/insight-centre/saffron/wiki).
 
+Prerequisites
+------------
+
+#### Maven
+Saffron uses [Apache Maven](https://maven.apache.org/) to run, it should therefore be installed (the recommended version is [Maven 3.5.4](https://maven.apache.org/docs/3.5.4/release-notes.html)).
+
+
+#### MongoDB (optional)
+
+ If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) can be used to store the data.
+
+#### Memory!
+
+ Saffron use deep learning models for some of its modules, and these files can be very big.  You will need **154.5 GB** of free hard disk memory to use Saffron.
+
 Installation
 ------------
 
-Saffron uses [Apache Maven](https://maven.apache.org/) to run.
-If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) can be used to store the data (optional).
+To install Saffron:
 
-To install Saffron, download the installer corresponding to your OS, and install it in the folder of your choice.
+1. clone the gitlab repository
+```
+git clone https://gitlab.insight-centre.org/saffron/saffron-os.git ~/saffron-os
+```
 
-eg. for Ubuntu ```userX$ dpkg -i path_to_deb_file```
+2. Move to the project directory, and install the maven dependencies
+```
+cd ~/saffron-os
+mvn clean install
+```
 
+3. Run the whole pipeline of Saffron using the Command Line method below.
+
+**Warn**: Running the pipeline the first time will download all the models needed by Saffron to work, so the first time it will take longer 
 
 Running
 -------
