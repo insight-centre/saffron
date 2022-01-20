@@ -36,7 +36,7 @@ identifies the importance of the term to each author
 author
 9. *Taxonomy Extraction*: Organizes the terms into a single hierarchical
 graph that allows for easy browsing of the corpus and deep insights.
-10. *RDF Extraction*: Creates a knowledge graph
+10. *RDF Extraction*: Creates a knowledge graph (note that this process can take some time)
 
 
 <img src="https://github.com/insight-centre/saffron/blob/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
@@ -54,9 +54,9 @@ Saffron uses [Apache Maven](https://maven.apache.org/) to run, it should therefo
 
  If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) can be used to store the data.
 
-#### Memory!
+#### Memory
 
- Saffron use deep learning models for some of its modules, and these files can be very big.  You will need **154.5 GB** of free hard disk memory to use Saffron.
+ Saffron use deep learning models for some of its modules, and these files can be very big.  You will need about **3 GB** of free hard disk memory to install Saffron and its models.
 
 Installation
 ------------
@@ -177,6 +177,13 @@ Saffron  generates the following files
 To create a .dot file for the generated taxonomy, you can use the following command:
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
+
+
+### Using Docker (one module at a time or as a pipeline)
+
+It is possible to run each module of Saffron using Docker (note that some modules depend on other modules).
+
+A comprehensive documentation on how to do this is available in ./docs/Saffron_Docker_Documentation.pdf
 
 
 Upgrading from version 3.3 to 3.4
