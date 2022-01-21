@@ -4,9 +4,9 @@ Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39
 
 **Important**:
 
-If making any change that impact either the format of input files, the format of the output files, the format of the configuration file, or the command to run Saffron, please update the following file accordingly:
+If making any change that impact either the format of **input files**, the format of the **output files**, the format of the **configuration file**, or the **command** to run Saffron, please update the following files accordingly:
 - README.md
-- `examples` folder (and sub-files)
+- Files within the `examples` folder (and sub-folders)
 - FORMAT.md
 
 and inform the development team of Saffron.
