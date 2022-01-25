@@ -293,7 +293,7 @@ public class Executor extends AbstractHandler {
                     _status.close();
                 } catch (IOException x) {
                 }
-                } catch(Exception x) {
+                } catch(Throwable x) {
                     x.printStackTrace();
             }
             }
@@ -321,6 +321,7 @@ public class Executor extends AbstractHandler {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                try {
                 _status.stage = 1;
                 _status.setStageStart("Loading corpus " + url, saffronDatasetName);
                 try {
@@ -340,6 +341,9 @@ public class Executor extends AbstractHandler {
                 } catch (IOException x) {
                     x.printStackTrace();
                 }
+                } catch(Throwable t) {
+                    t.printStackTrace();
+                }
             }
         }).start();
     }
@@ -351,6 +355,7 @@ public class Executor extends AbstractHandler {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                try {
                 _status.stage = 1;
                 _status.setStageStart("Loading corpus" + tmpFile.getPath(), saffronDatasetName);
                 try {
@@ -368,6 +373,9 @@ public class Executor extends AbstractHandler {
                 try {
                     _status.close();
                 } catch (IOException x) {
+                }
+                } catch(Throwable t) {
+                    t.printStackTrace();
                 }
             }
         }).start();
