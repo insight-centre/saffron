@@ -1,13 +1,8 @@
 package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.io.Writer;
+
+import java.io.*;
 import java.util.Map;
 import static java.lang.Integer.min;
 import java.net.URLDecoder;
@@ -51,8 +46,9 @@ public class Browser extends AbstractHandler {
                 if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
                     try {
                         SaffronData s2;
-                        s2 = SaffronData.fromDirectory(subdir);
-//                        saffron.put(subdir.getName(), s2);
+                        //s2 = SaffronData.fromDirectory(subdir);
+//                        saffron.addRun(subdir.getName(), s2);
+                        this.saffronHandler.fromDirectory(subdir, subdir.getName());
                     } catch (Exception x) {
                         x.printStackTrace();
                         System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
@@ -356,6 +352,8 @@ public class Browser extends AbstractHandler {
                         }
                     }
                 } else if (target.equals("/status")) {
+                    final Executor.Status status = new Executor.Status( new PrintWriter(new FileWriter("log.txt", true)), saffronHandler);
+                    status.completed = true;
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);

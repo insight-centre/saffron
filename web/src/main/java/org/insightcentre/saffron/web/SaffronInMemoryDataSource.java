@@ -25,6 +25,7 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
+import org.insightcentre.nlp.saffron.topic.topicsim.TermSimilarity;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
 import org.insightcentre.saffron.web.exception.TermNotFoundException;
 
@@ -520,30 +521,36 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
         String workingDir = System.getProperty("user.dir");
-        workingDir = workingDir.substring(0, workingDir.length() - 4);
+        //workingDir = workingDir.substring(0, workingDir.length() - 3);
         System.setProperty("user.dir", workingDir);
         String saffonPath;
+        final SaffronDataImpl saffron = new SaffronDataImpl(name);
         if (directory.getAbsolutePath().equals(directory.getPath())) {
             saffonPath = directory.getAbsolutePath();
         } else {
             saffonPath = workingDir + "/" + directory;
         }
-        File taxonomyFile = new File(saffonPath, "kg.json");
+
+        File taxonomyFile = new File(saffonPath, "taxonomy.json");
         if (!taxonomyFile.exists()) {
-            throw new FileNotFoundException("Could not find kg.json");
+            System.out.println("taxonomy.json not found");
+        } else {
+            saffron.setTaxonomy(mapper.readValue(taxonomyFile, Taxonomy.class));
         }
 
-        final SaffronDataImpl saffron = new SaffronDataImpl(name);
 
-        saffron.setKnowledgeGraph(mapper.readValue(taxonomyFile, KnowledgeGraph.class));
+
+       //
 
         File authorSimFile = new File(saffonPath, "author-sim.json");
         if (!authorSimFile.exists()) {
-            throw new FileNotFoundException("Could not find author-sim.json");
+            System.out.println("Author Similarity File not found " + authorSimFile.getAbsolutePath());
+        } else {
+            saffron.setAuthorSim((List<AuthorAuthor>) mapper.readValue(authorSimFile,
+                    tf.constructCollectionType(List.class, AuthorAuthor.class)));
         }
 
-        saffron.setAuthorSim((List<AuthorAuthor>) mapper.readValue(authorSimFile,
-                tf.constructCollectionType(List.class, AuthorAuthor.class)));
+
 
         File termSimFile = new File(saffonPath, "term-sim.json");
         if (!termSimFile.exists()) {
@@ -555,11 +562,13 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
         File authorTermFile = new File(saffonPath, "author-terms.json");
         if (!authorTermFile.exists()) {
-            throw new FileNotFoundException("Could not find author-terms.json");
+            System.out.println("Could not find author-terms.json");
+        } else {
+            saffron.setAuthorTerms((List<AuthorTerm>) mapper.readValue(authorTermFile,
+                    tf.constructCollectionType(List.class, AuthorTerm.class)));
         }
 
-        saffron.setAuthorTerms((List<AuthorTerm>) mapper.readValue(authorTermFile,
-                tf.constructCollectionType(List.class, AuthorTerm.class)));
+
 
         File docTermsFile = new File(saffonPath, "doc-terms.json");
         if (!docTermsFile.exists()) {
@@ -699,7 +708,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     }
 
     @Override
-    public void updateRun(String runId, String originalRun, JSONObject json, String status) {
+    public void updateRun(String runId, String originalRun, String json, String status) {
         throw new NotImplementedException();
     }
 
@@ -772,7 +781,33 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
     @Override
     public List<SaffronRun> getAllRuns() {
-        throw new NotImplementedException();
+        try {
+            List<SaffronRun> runList = new ArrayList<>();
+            String workingDir = System.getProperty("user.dir");
+            workingDir = workingDir + "/data";
+            File directory = new File(workingDir);
+            if (directory.exists()) {
+                for (File subdir : directory.listFiles()) {
+                    if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
+                        try {
+                            String id = subdir.getName();
+                            Date runDate = new Date();
+                            String config = "";
+                            SaffronRun run = new SaffronRun(id, runDate, config);
+                            runList.add(run);
+                        } catch (Exception x) {
+                            x.printStackTrace();
+                            System.out.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+                            System.out.println(x);
+                        }
+                    }
+                }
+            }
+            return runList;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     @Override
@@ -917,6 +952,12 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
             throw new NoSuchElementException("Saffron run does not exist");
         }
         return saffron.getTopTerms(from, to);
+    }
+
+    public List<TermTerm> getTermsSimilarity(String runId) {
+        SaffronDataImpl saffron = data.get(runId);
+
+        return saffron.getTermSim();
     }
 
     @Override

@@ -87,10 +87,7 @@ angular.module('app').component('header', {
             "href": "/" + saffronDatasetName + "/",
             "text": "Home"
         });
-      ctrl.menuList.push({
-        "href": "/" + saffronDatasetName + "/edit",
-        "text": "Review Mode"
-      });
+
 
         ctrl.searchAction = "/" + saffronDatasetName + "/search/";
     },

@@ -248,7 +248,7 @@ public class SaffronPipeline {
 	}
 
     private Corpus makeCorpus() throws Exception {
-        status.setStageStart("Loading corpus", runName);
+        status.setStageStart("Loading corpus 1", runName);
         switch (run.corpusMethod) {
             case INFER:
                 CorpusTools.readFile(run.corpusFile);

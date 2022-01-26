@@ -1,5 +1,6 @@
 package org.insightcentre.saffron.web;
 
+import com.fasterxml.jackson.databind.ObjectWriter;
 import org.insightcentre.nlp.saffron.run.InclusionList;
 
 import java.io.BufferedReader;
@@ -27,18 +28,12 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.handler.AbstractHandler;
-import org.insightcentre.nlp.saffron.config.AuthorSimilarityConfiguration;
-import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
 import org.insightcentre.nlp.saffron.config.Configuration;
-import org.insightcentre.nlp.saffron.config.TaxonomyExtractionConfiguration;
-import org.insightcentre.nlp.saffron.config.TermExtractionConfiguration;
-import org.insightcentre.nlp.saffron.config.TermSimilarityConfiguration;
 import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.json.JSONException;
-import org.json.JSONObject;
+
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -295,6 +290,7 @@ public class Executor extends AbstractHandler {
                     }
                 } catch (Throwable x) {
                     _status.fail(x.getMessage(), x);
+                    logger.atInfo().log("Error: " + x.getMessage() + ")");
                     x.printStackTrace();
                 }
                 try {
@@ -311,10 +307,10 @@ public class Executor extends AbstractHandler {
                 PrintWriter out = new PrintWriter(logFile);
                 out.close();
             }
-            return new Status(logFile == null ? null : new PrintWriter(new FileWriter(logFile, true)), data);
+            return new Status(logFile == null ? null : new PrintWriter(new FileWriter(logFile, true)), data, parentDirectory);
         } catch (IOException x) {
             System.err.println("Could not create logging file: " + x.getMessage());
-            return new Status(null, data);
+            return new Status(null, data, parentDirectory);
         }
     }
 
@@ -402,7 +398,7 @@ public class Executor extends AbstractHandler {
         return new InclusionList();
     }
 
-    public class Status implements SaffronRunListener, Closeable {
+    public static class Status implements SaffronRunListener, Closeable {
 
         public int stage = 0;
         public boolean failed = false;
@@ -414,10 +410,25 @@ public class Executor extends AbstractHandler {
         private final PrintWriter out;
         private final SaffronDataSource data;
         public RunConfiguration runConfig;
+        private final ObjectMapper mapper;
+        private final ObjectWriter writer;
+        private final File outputFolder;
 
         public Status(PrintWriter out, SaffronDataSource data) {
             this.out = out;
             this.data = data;
+            this.outputFolder = null;
+            this.mapper = new ObjectMapper();
+            this.writer = mapper.writerWithDefaultPrettyPrinter();
+        }
+
+        public Status(PrintWriter out, SaffronDataSource data, File outputFolder) {
+            this.out = out;
+            this.data = data;
+
+            this.outputFolder = outputFolder;
+            this.mapper = new ObjectMapper();
+            this.writer = mapper.writerWithDefaultPrettyPrinter();
         }
 
         public void setStatusMessage(String statusMessage) {
@@ -444,8 +455,7 @@ public class Executor extends AbstractHandler {
         public void setStageStart(String statusMessage, String taxonomyId) {
             logger.atInfo().log("[STAGE %d] %s\n", stage, statusMessage);
             String run = data.getRun(taxonomyId);
-            JSONObject runJson = new JSONObject(run);
-            data.updateRun(taxonomyId, statusMessage, runJson, "running");
+
             if (out != null) {
                 out.printf("[STAGE %d] %s\n", stage, statusMessage);
             }
@@ -458,8 +468,6 @@ public class Executor extends AbstractHandler {
         @Override
         public void setStageComplete(String statusMessage, String taxonomyId) {
             String run = data.getRun(taxonomyId);
-            JSONObject runJson = new JSONObject(run);
-            data.updateRun(taxonomyId, statusMessage, runJson, "completed");
             stage++;
         }
 
@@ -540,41 +548,89 @@ public class Executor extends AbstractHandler {
         @Override
         public void setTerms(String saffronDatasetName, List<Term> terms) {
             data.setTerms(saffronDatasetName, terms);
+            try {
+                File outputFolder2 = new File(outputFolder.getName() + "/" + name);
+                writer.writeValue(new File(outputFolder2, "terms.json"), terms);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setDocTerms(String saffronDatasetName, List<DocumentTerm> docTerms) {
             data.setDocTerms(saffronDatasetName, docTerms);
+            try {
+                File outputFolder2 = new File(outputFolder.getName() + "/" + name);
+                writer.writeValue(new File(outputFolder2, "doc-terms.json"), docTerms);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setCorpus(String saffronDatasetName, Corpus searcher) {
             data.setCorpus(saffronDatasetName, searcher);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "corpus.json"), searcher);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setAuthorTerms(String saffronDatasetName, Collection<AuthorTerm> authorTerms) {
             data.setAuthorTerms(saffronDatasetName, authorTerms);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "author-terms.json"), authorTerms);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setTermSim(String saffronDatasetName, List<TermTerm> termSimilarity) {
             data.setTermSim(saffronDatasetName, termSimilarity);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "term-sim.json"), termSimilarity);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setAuthorSim(String saffronDatasetName, List<AuthorAuthor> authorSim) {
             data.setAuthorSim(saffronDatasetName, authorSim);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "author-sim.json"), authorSim);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setTaxonomy(String saffronDatasetName, Taxonomy graph) {
             data.setTaxonomy(saffronDatasetName, graph);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "taxonomy.json"), graph);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override
         public void setKnowledgeGraph(String saffronDatasetName, KnowledgeGraph kGraph) {
             data.setKnowledgeGraph(saffronDatasetName, kGraph);
+            try {
+                File outputFolder2 = new File(outputFolder + "/" + name);
+                writer.writeValue(new File(outputFolder2, "kg.json"), kGraph);
+            } catch(IOException x) {
+                throw new RuntimeException(x);
+            }
         }
 
         @Override

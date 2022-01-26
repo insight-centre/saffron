@@ -10,6 +10,9 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerList;
 import org.eclipse.jetty.server.handler.ResourceHandler;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
+import org.insightcentre.saffron.web.api.SaffronAPI;
 
 /**
  *
@@ -72,7 +75,15 @@ public class Launcher {
             executor = new Executor(saffron, directory, (File)os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(saffron, directory);
-            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler});
+            ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
+            context.setContextPath("/");
+            ServletHolder jerseyServlet = context.addServlet(
+                    org.glassfish.jersey.servlet.ServletContainer.class, "/*");
+            jerseyServlet.setInitOrder(0);
+            jerseyServlet.setInitParameter(
+                    "jersey.config.server.provider.classnames",
+                    SaffronAPI.class.getCanonicalName());
+            handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
 
 

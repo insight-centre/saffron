@@ -350,7 +350,7 @@ public class SaffronData {
         saffron.setTerms((List<Term>) mapper.readValue(termsFile,
                 tf.constructCollectionType(List.class, Term.class)));
 
-        File indexFile = new File(directory, "index");
+        File indexFile = new File(directory, "corpus.json");
         if(!indexFile.exists()) {
             throw new FileNotFoundException("Could not find index");
         }
@@ -376,7 +376,7 @@ public class SaffronData {
                 }
             }
         }
-        this.searcher = (DocumentSearcher)corpus;
+        //this.searcher = (DocumentSearcher)corpus;
     }
 
     public DocumentSearcher getSearcher() {
