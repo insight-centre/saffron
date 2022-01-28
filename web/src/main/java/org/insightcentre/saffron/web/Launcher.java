@@ -88,12 +88,10 @@ public class Launcher {
                 while (true) {
                     ZipEntry e = zip.getNextEntry();
                     if (e == null) {
-                        System.err.println("Entry is null");
                         break;
                     }
                     String name = e.getName();
-                    System.err.println(name);
-                    if (name.startsWith("static/")) {
+                    if (name.startsWith("static/") && !name.endsWith(File.separator)) {
                         try(FileOutputStream fos = new FileOutputStream(name)) {
                             copy(zip, fos);
                         }
