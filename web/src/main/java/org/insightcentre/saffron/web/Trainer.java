@@ -72,7 +72,7 @@ public class Trainer extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/executing.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/executing.html"));
                     Writer writer = response.getWriter();
                     char[] buf = new char[4096];
                     int i = 0;

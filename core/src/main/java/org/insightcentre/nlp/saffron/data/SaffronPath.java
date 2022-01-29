@@ -115,6 +115,9 @@ public class SaffronPath {
                     e.printStackTrace();
                 }
             }
+            if(!file.exists()) {
+                System.err.println("Could not resolve: " + saffronPath);
+            }
             return file.getAbsolutePath();
         }
         return path.replaceAll("\\$\\{saffron.home\\}", saffronPath);

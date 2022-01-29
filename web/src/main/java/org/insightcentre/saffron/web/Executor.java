@@ -134,7 +134,7 @@ public class Executor extends AbstractHandler {
 //        response.setContentType("text/html");
 //        response.setStatus(HttpServletResponse.SC_OK);
 //        baseRequest.setHandled(true);
-//        FileReader reader = new FileReader(new File("static/executing.html"));
+//        FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/executing.html"));
 //        Writer writer = new StringWriter();
 //        char[] buf = new char[4096];
 //        int p = 0;
@@ -242,7 +242,7 @@ public class Executor extends AbstractHandler {
             response.setContentType("text/html");
             response.setStatus(HttpServletResponse.SC_OK);
             baseRequest.setHandled(true);
-            String page = FileUtils.readFileToString(new File("static/advanced.html"));
+            String page = FileUtils.readFileToString(new File(System.getProperty("saffron.home") + "/web/static/advanced.html"));
             page = page.replace("{{config}}", new ObjectMapper().writeValueAsString(defaultConfig));
             page = page.replace("{{name}}", hsr.getParameter("name"));
             response.getWriter().print(page);
@@ -251,7 +251,7 @@ public class Executor extends AbstractHandler {
             response.setContentType("text/html");
             response.setStatus(HttpServletResponse.SC_OK);
             baseRequest.setHandled(true);
-            FileReader reader = new FileReader(new File("static/executing.html"));
+            FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/executing.html"));
             Writer writer = new StringWriter();
             char[] buf = new char[4096];
             int i = 0;
@@ -552,7 +552,7 @@ public class Executor extends AbstractHandler {
         public void setTerms(String saffronDatasetName, List<Term> terms) {
             data.setTerms(saffronDatasetName, terms);
             try {
-                File outputFolder2 = new File(outputFolder.getName() + "/" + name);
+                File outputFolder2 = new File(outputFolder.getAbsolutePath() + "/" + name);
                 writer.writeValue(new File(outputFolder2, "terms.json"), terms);
             } catch(IOException x) {
                 throw new RuntimeException(x);
@@ -563,7 +563,7 @@ public class Executor extends AbstractHandler {
         public void setDocTerms(String saffronDatasetName, List<DocumentTerm> docTerms) {
             data.setDocTerms(saffronDatasetName, docTerms);
             try {
-                File outputFolder2 = new File(outputFolder.getName() + "/" + name);
+                File outputFolder2 = new File(outputFolder.getAbsolutePath() + "/" + name);
                 writer.writeValue(new File(outputFolder2, "doc-terms.json"), docTerms);
             } catch(IOException x) {
                 throw new RuntimeException(x);
