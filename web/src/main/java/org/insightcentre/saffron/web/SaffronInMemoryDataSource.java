@@ -520,9 +520,7 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     public void fromDirectory(File directory, String name) throws IOException {
         final ObjectMapper mapper = new ObjectMapper();
         final TypeFactory tf = mapper.getTypeFactory();
-        String workingDir = System.getProperty("user.dir");
-        //workingDir = workingDir.substring(0, workingDir.length() - 3);
-        System.setProperty("user.dir", workingDir);
+        String workingDir = System.getProperty("saffron.home");
         String saffonPath;
         final SaffronDataImpl saffron = new SaffronDataImpl(name);
         if (directory.getAbsolutePath().equals(directory.getPath())) {
@@ -783,8 +781,8 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
     public List<SaffronRun> getAllRuns() {
         try {
             List<SaffronRun> runList = new ArrayList<>();
-            String workingDir = System.getProperty("user.dir");
-            workingDir = workingDir + "/data";
+            String workingDir = System.getProperty("saffron.home");
+            workingDir = workingDir + "/web/data";
             File directory = new File(workingDir);
             if (directory.exists()) {
                 for (File subdir : directory.listFiles()) {
