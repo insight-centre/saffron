@@ -184,14 +184,6 @@ public class Launcher {
             executor = new Executor(saffron, directory, (File) os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(saffron, directory);
-            //ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-            //context.setContextPath("/");
-            //ServletHolder jerseyServlet = context.addServlet(
-            //        org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-            //jerseyServlet.setInitOrder(0);
-            //jerseyServlet.setInitParameter(
-            //        "jersey.config.server.provider.classnames",
-            //        SaffronAPI.class.getCanonicalName());
             SaffronAPI context = new SaffronAPI();
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);

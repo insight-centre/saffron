@@ -10,22 +10,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
@@ -54,7 +40,6 @@ import javax.servlet.http.HttpServletResponse;
 import static javax.servlet.http.HttpServletResponse.*;
 
 
-@Path("/api/v1/run")
 public class SaffronAPI extends AbstractHandler {
     private static final Pattern GET_ALL_RUNS = Pattern.compile("^/?api/v1/run/$");
     private static final Pattern GET_RUN = Pattern.compile("^/?api/v1/run/([^/]+)$");
@@ -152,13 +137,7 @@ public class SaffronAPI extends AbstractHandler {
         this.saffronService = new SaffronService(this.launcher.saffron);
     }
 
-    //
-//
-//    @GET
-//    @JSONP
-//    @Path("/{param}")
-//    @Produces(MediaType.APPLICATION_JSON)
-    public void getRun(@PathParam("param") String name, HttpServletResponse response) throws IOException {
+    public void getRun(String name, HttpServletResponse response) throws IOException {
 
         Taxonomy taxonomy;
         try {
@@ -169,17 +148,13 @@ public class SaffronAPI extends AbstractHandler {
             response.setStatus(SC_OK);
             response.setContentType("application/json;charset=utf-8");
             response.getWriter().write(jsonString);
-            //return Response.ok(jsonString).build();
         } catch (Exception x) {
             x.printStackTrace();
             response.sendError(SC_INTERNAL_SERVER_ERROR, 
                     "Failed to load Saffron from the existing data, this may be because a previous run failed");
-            //return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
         }
     }
 
-//    @GET
-//    @Produces(MediaType.APPLICATION_JSON)
     public void getAllRuns(HttpServletResponse response) throws IOException {
         List<BaseResponse> runsResponse = new ArrayList<>();
         List<SaffronRun> runs;
@@ -208,20 +183,13 @@ public class SaffronAPI extends AbstractHandler {
     }
 
 
-    //
-    //@DELETE
-    //@Path("/{param}")
-    public void deleteRun(@PathParam("param") String name, HttpServletResponse response) throws IOException {
+    public void deleteRun(String name, HttpServletResponse response) throws IOException {
         saffronService.deleteRun(name);
         response.setStatus(SC_OK);
         response.getWriter().write("Run " + name + " Deleted");
     }
 
-    //@POST
-    //@Path("/rerun/{param}")
-    //@Consumes(MediaType.APPLICATION_JSON)
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void postRun(InputStream incomingData, @PathParam("param") String name,
+    public void postRun(InputStream incomingData, String name,
             HttpServletResponse response) throws IOException {
         BaseResponse resp = new BaseResponse();
         try {
@@ -239,11 +207,7 @@ public class SaffronAPI extends AbstractHandler {
         response.getWriter().write(new ObjectMapper().writeValueAsString(resp));
     }
 
-    //@GET
-    //@JSONP
-    //@Path("/{param}/terms")
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void getRunTerms(@PathParam("param") String runId, HttpServletResponse response) throws IOException {
+    public void getRunTerms(String runId, HttpServletResponse response) throws IOException {
         List<TermResponse> termsResponse = new ArrayList<>();
         String json;
         Iterable<Term> terms;
@@ -275,12 +239,8 @@ public class SaffronAPI extends AbstractHandler {
     }
 
 
-    //@GET
-    //@JSONP
-    //@Path("/{param}/terms/{term_id}/children")
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void getTermChildren(@PathParam("param") String runId, 
-            @PathParam("term_id") String termId, HttpServletResponse response) throws IOException {
+    public void getTermChildren(String runId, 
+            String termId, HttpServletResponse response) throws IOException {
         String json;
         try {
 
@@ -300,12 +260,8 @@ public class SaffronAPI extends AbstractHandler {
 
     }
 
-    //@GET
-    //@JSONP
-    //@Path("/{param}/terms/{term_id}/parent")
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void getTermParent(@PathParam("param") String runId, 
-            @PathParam("term_id") String termId, HttpServletResponse response) throws IOException {
+    public void getTermParent(String runId, 
+            String termId, HttpServletResponse response) throws IOException {
         String json;
         try {
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
@@ -323,9 +279,7 @@ public class SaffronAPI extends AbstractHandler {
 
     }
 
-    //@GET
-    //@Path("/{param}/authorterms/{term_id}")
-    public void getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId,
+    public void getAuthorTerms(String name, String termId,
             HttpServletResponse response) throws IOException {
         String json;
         List<AuthorTermDAO> authors;
@@ -344,10 +298,8 @@ public class SaffronAPI extends AbstractHandler {
         }
     }
 
-    //@GET
-    //@Path("/{param}/termauthors/{author_id}")
-    public void getTermAuthors(@PathParam("param") String name, 
-            @PathParam("author_id") String authorId,
+    public void getTermAuthors(String name, 
+            String authorId,
             HttpServletResponse response) throws IOException {
 
         try {
@@ -364,9 +316,7 @@ public class SaffronAPI extends AbstractHandler {
         }
     }
 
-    //@GET
-    //@Path("/{param}/authorauthors/{author_id}")
-    public void getAuthorAuthors(@PathParam("param") String runId, @PathParam("author_id") String authorId,
+    public void getAuthorAuthors(String runId, String authorId,
             HttpServletResponse response) throws IOException {
         try {
             String json = objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId));
@@ -381,10 +331,7 @@ public class SaffronAPI extends AbstractHandler {
         }
     }
 
-    //@GET
-    //@Path("/{param}/termsimilarity/")
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void getTermSimilarity(@PathParam("param") String name,
+    public void getTermSimilarity(String name,
             HttpServletResponse response) throws IOException {
 
         try {
@@ -401,10 +348,7 @@ public class SaffronAPI extends AbstractHandler {
         }
     }
 
-    //@GET
-    //@Path("/{param}/termsimilarity/{term}")
-    //@Produces(MediaType.APPLICATION_JSON)
-    public void getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term,
+    public void getTermSimilarityForTerm(String name, String term,
             HttpServletResponse response) throws IOException {
         try {
             List<TermTerm> terms = saffron.getTermsSimilarity(name);
@@ -440,13 +384,11 @@ public class SaffronAPI extends AbstractHandler {
         }
     }
 
-    //@GET
-    //@Path("/{run_id}/docs/term/{term_id}")
     public void getDocumentsForTerm(
-    		@PathParam("run_id") String runId,
-    		@PathParam("term_id") String termId,
-    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
-    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments,
+    		String runId,
+    		String termId,
+    		int offsetStart,
+    		int numberOfDocuments,
                 HttpServletResponse response) throws IOException {
 
     	// Bad implementation of working with offset. Ideally it should work with offsets directly in the
