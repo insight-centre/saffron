@@ -585,7 +585,7 @@ angular.module('app').component('relatedterms', {
 
                 var url = apiUrlWithSaffron + 'termsimilarity/' + sharedProperties.getterm();
                 $http.get(url).then(function(response) {
-                    response = response.data.terms;
+                    response = response.data;
                     response.sort((a, b) => (a.similarity < b.similarity) ? 1 : -1);
                     response = response.slice(ctrl.n2, ctrl.n2 + 20);
                     ctrl.terms = [];

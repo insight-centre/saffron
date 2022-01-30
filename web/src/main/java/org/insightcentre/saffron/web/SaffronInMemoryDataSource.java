@@ -1331,7 +1331,13 @@ public class SaffronInMemoryDataSource implements SaffronDataSource {
 
 	@Override
 	public List<AuthorTerm> getAuthorTermRelationsPerTerm(String runId, String termId) {
-		throw new NotImplementedException();
+            List<AuthorTerm> newList = new ArrayList<>();
+            for(AuthorTerm at : data.get(runId).authorTerms) {
+                if(termId.equals(at.getTermId())) {
+                    newList.add(at);
+                }
+            }
+            return newList;
 	}
 
         @Override
