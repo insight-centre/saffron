@@ -5,9 +5,9 @@ Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39
 **Important**:
 
 If making any change that impact either the format of **input files**, the format of the **output files**, the format of the **configuration file**, or the **command** to run Saffron, please update the following files accordingly:
-- README.md
+- `README.md`
 - Files within the `examples` folder (and sub-folders)
-- FORMAT.md
+- `FORMAT.md`
 
 and inform the development team of Saffron.
 
@@ -97,7 +97,14 @@ mvn clean install
 
 3. Run the whole pipeline of Saffron using the Command Line method below.
 
-**Warn**: Running the pipeline the first time will download all the models needed by Saffron to work, so the first time it will take longer 
+**Note1**: Running the pipeline the first time will download all the models needed by Saffron to work, so the first time it will take longer 
+
+**Note2**: After the last step, you may see the following text in the logs. This can be ignored and is not impacting the analysis.
+```
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+``` 
 
 Running
 -------
