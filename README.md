@@ -39,24 +39,45 @@ graph that allows for easy browsing of the corpus and deep insights.
 10. *RDF Extraction*: Creates a knowledge graph (note that this process can take some time)
 
 
-<img src="https://github.com/insight-centre/saffron/blob/master/docs/Saffron%20Services.png" alt="Saffron Service Workflow" width="400"/>
-
 More detailed information on the configuration of Saffron can be found [here](https://github.com/insight-centre/saffron/wiki).
 
 Prerequisites
 ------------
 
+### Java JDK 1.7 or above
+Make sure you have [Java](https://www.oracle.com/java/technologies/downloads/)
+```
+java -version
+```
+
 #### Maven
 Saffron uses [Apache Maven](https://maven.apache.org/) to run, it should therefore be installed (the recommended version is [Maven 3.5.4](https://maven.apache.org/docs/3.5.4/release-notes.html)).
 
+1. Download Maven
+```
+wget -O- https://archive.apache.org/dist/maven/maven-3/3.5.4/binaries/apache-maven-3.5.4-bin.tar.gz | sudo tar -xzv
+```
+2. Locate and add Maven's bin directory path to the PATH variable in your ~/.bash_profile
+
+```
+export PATH="$HOME/apache-maven-3.5.4/bin:$PATH"
+
+source ~/.bash_profile
+```
+
+3. Check that Maven is installed
+```
+mvn -version
+```
 
 #### MongoDB (optional)
 
  If using the Web Interface [MongoDB](https://docs.mongodb.com/manual/) can be used to store the data.
+ If so, install [MongoDb](https://docs.mongodb.com/manual/administration/install-community/) using the  using the default settings.
 
-#### Memory
+#### 3GB Memory
 
- Saffron use deep learning models for some of its modules, and these files can be very big.  You will need about **3 GB** of free hard disk memory to install Saffron and its models.
+ Saffron use deep learning models for some of its modules, and these files can be quite big.  You will need about **3 GB** of free hard disk memory to install Saffron and its models.
 
 Installation
 ------------
