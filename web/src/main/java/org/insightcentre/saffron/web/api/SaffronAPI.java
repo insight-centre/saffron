@@ -10,22 +10,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.glassfish.jersey.server.JSONP;
 import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Partonomy;
 import org.insightcentre.nlp.saffron.data.SaffronRun;
@@ -45,9 +31,100 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 
-@Path("/api/v1/run")
-public class SaffronAPI {
+import org.eclipse.jetty.server.handler.AbstractHandler;
+import java.util.regex.*;
+import org.eclipse.jetty.server.Request;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import static javax.servlet.http.HttpServletResponse.*;
 
+
+public class SaffronAPI extends AbstractHandler {
+    private static final Pattern GET_ALL_RUNS = Pattern.compile("^/?api/v1/run/$");
+    private static final Pattern GET_RUN = Pattern.compile("^/?api/v1/run/([^/]+)$");
+    private static final Pattern RERUN = Pattern.compile("^/?api/v1/run/rerun/([^/]+)$");
+    private static final Pattern TERMS = Pattern.compile("^/?api/v1/run/([^/]+)/terms$");
+    private static final Pattern TERM_CHILDREN = Pattern.compile("^/?api/v1/run/([^/]+)/terms/([^/]+)/children$");
+    private static final Pattern TERM_PARENT = Pattern.compile("^/?api/v1/run/([^/]+)/terms/([^/]+)/parent$");
+    private static final Pattern AUTHOR_TERM = Pattern.compile("^/?api/v1/run/([^/]+)/authorterms/([^/]+)$");
+    private static final Pattern TERM_AUTHOR = Pattern.compile("^/?api/v1/run/([^/]+)/termauthors/([^/]+)$");
+    private static final Pattern AUTHOR_AUTHOR = Pattern.compile("^/?api/v1/run/([^/]+)/authorauthors/([^/]+)$");
+    private static final Pattern TERM_SIM = Pattern.compile("^/?api/v1/run/([^/]+)/termsimilarity/$");
+    private static final Pattern TERM_SIM2 = Pattern.compile("^/?api/v1/run/([^/]+)/termsimilarity/([^/]+)$");
+    private static final Pattern DOC_TERM = Pattern.compile("^/?api/v1/run/([^/]+)/docs/term/([^/]+)$");
+
+    @Override
+    public void handle(String target,
+            Request baseRequest,
+            HttpServletRequest request,
+            HttpServletResponse response)
+            throws IOException, ServletException {
+        try {
+            Matcher m1 = GET_ALL_RUNS.matcher(target);
+            Matcher m2 = GET_RUN.matcher(target);
+            Matcher m3 = RERUN.matcher(target);
+            Matcher m4 = TERMS.matcher(target);
+            Matcher m5 = TERM_CHILDREN.matcher(target);
+            Matcher m6 = TERM_PARENT.matcher(target);
+            Matcher m7 = AUTHOR_TERM.matcher(target);
+            Matcher m8 = TERM_AUTHOR.matcher(target);
+            Matcher m9 = AUTHOR_AUTHOR.matcher(target);
+            Matcher ma = TERM_SIM.matcher(target);
+            Matcher mb = TERM_SIM2.matcher(target);
+            Matcher mc = DOC_TERM.matcher(target);
+
+            if(m1.matches() && request.getMethod().equals("GET")) {
+                getAllRuns(response);
+                baseRequest.setHandled(true);
+            } else if(m2.matches() && request.getMethod().equals("GET")) {
+                getRun(m2.group(1), response);
+                baseRequest.setHandled(true);
+            } else if(m2.matches() && request.getMethod().equals("DELETE")) {
+                deleteRun(m2.group(1), response);
+                baseRequest.setHandled(true);
+            } else if(m3.matches() && request.getMethod().equals("POST")) {
+                postRun(request.getInputStream(), m3.group(1), response);
+                baseRequest.setHandled(true);
+            } else if(m4.matches() && request.getMethod().equals("GET")) {
+                getRunTerms(m4.group(1), response);
+                baseRequest.setHandled(true);
+            } else if(m5.matches() && request.getMethod().equals("GET")) {
+                getTermChildren(m5.group(1), m5.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(m6.matches() && request.getMethod().equals("GET")) {
+                getTermParent(m6.group(1), m6.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(m7.matches() && request.getMethod().equals("GET")) {
+                getAuthorTerms(m7.group(1), m7.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(m8.matches() && request.getMethod().equals("GET")) { 
+                getTermAuthors(m8.group(1), m8.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(m9.matches() && request.getMethod().equals("GET")) { 
+                getAuthorAuthors(m9.group(1), m9.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(ma.matches() && request.getMethod().equals("GET")) { 
+                getTermSimilarity(ma.group(1), response);
+                baseRequest.setHandled(true);
+            } else if(mb.matches() && request.getMethod().equals("GET")) { 
+                getTermSimilarityForTerm(mb.group(1), mb.group(2), response);
+                baseRequest.setHandled(true);
+            } else if(mc.matches() && request.getMethod().equals("GET")) { 
+                int offset = request.getParameterMap().containsKey("offset") ?
+                    Integer.parseInt(request.getParameterMap().get("offset")[0]) : -1;
+                int n = request.getParameterMap().containsKey("n") ?
+                    Integer.parseInt(request.getParameterMap().get("n")[0]) : 20;
+                getDocumentsForTerm(mc.group(1), mc.group(2), offset, n, response);
+                baseRequest.setHandled(true);
+            }
+
+
+        } catch(Throwable t) {
+            t.printStackTrace();
+        }
+    }
+ 
     private final org.insightcentre.saffron.web.api.APIUtils APIUtils = new APIUtils();
     protected final SaffronService saffronService;
     protected final SaffronInMemoryDataSource saffron;
@@ -60,13 +137,7 @@ public class SaffronAPI {
         this.saffronService = new SaffronService(this.launcher.saffron);
     }
 
-    //
-//
-    @GET
-    @JSONP
-    @Path("/{param}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getRun(@PathParam("param") String name) {
+    public void getRun(String name, HttpServletResponse response) throws IOException {
 
         Taxonomy taxonomy;
         try {
@@ -74,16 +145,17 @@ public class SaffronAPI {
             taxonomy = saffron.getTaxonomy(name);
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = mapper.writeValueAsString(taxonomy);
-            return Response.ok(jsonString).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(jsonString);
         } catch (Exception x) {
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR, 
+                    "Failed to load Saffron from the existing data, this may be because a previous run failed");
         }
     }
 
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getAllRuns() {
+    public void getAllRuns(HttpServletResponse response) throws IOException {
         List<BaseResponse> runsResponse = new ArrayList<>();
         List<SaffronRun> runs;
         String json;
@@ -100,42 +172,42 @@ public class SaffronAPI {
             json = objectMapper.writeValueAsString(runsResponse);
         } catch (Exception x) {
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+            response.setStatus(SC_INTERNAL_SERVER_ERROR);
+            response.getWriter().write(
+                "Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return;
         }
-        return Response.ok(json).build();
+        response.setStatus(SC_OK);
+        response.setContentType("application/json;charset=utf-8");
+        response.getWriter().write(json);
     }
 
 
-    //
-    @DELETE
-    @Path("/{param}")
-    public Response deleteRun(@PathParam("param") String name) {
+    public void deleteRun(String name, HttpServletResponse response) throws IOException {
         saffronService.deleteRun(name);
-        return Response.ok("Run " + name + " Deleted").build();
+        response.setStatus(SC_OK);
+        response.getWriter().write("Run " + name + " Deleted");
     }
 
-    @POST
-    @Path("/rerun/{param}")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response postRun(InputStream incomingData, @PathParam("param") String name) {
+    public void postRun(InputStream incomingData, String name,
+            HttpServletResponse response) throws IOException {
         BaseResponse resp = new BaseResponse();
         try {
             resp.setId(name);
             resp.setRunDate(new Date());
 
         } catch (Exception e) {
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("This saffron object cannot be rerun").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                "This saffron object cannot be rerun");
+            return;
         }
 
-        return Response.ok(resp).build();
+        response.setStatus(SC_OK);
+        response.setContentType("application/json;charset=utf-8");
+        response.getWriter().write(new ObjectMapper().writeValueAsString(resp));
     }
 
-    @GET
-    @JSONP
-    @Path("/{param}/terms")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getRunTerms(@PathParam("param") String runId) {
+    public void getRunTerms(String runId, HttpServletResponse response) throws IOException {
         List<TermResponse> termsResponse = new ArrayList<>();
         String json;
         Iterable<Term> terms;
@@ -156,523 +228,128 @@ public class SaffronAPI {
             json = objectMapper.writeValueAsString(termsResponse);
         } catch (Exception x) {
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to load Saffron from the existing data, this may be because a previous run failed");
+            return;
         }
 
-
-        return Response.ok(json).build();
+        response.setStatus(SC_OK);
+        response.setContentType("application/json;charset=utf-8");
+        response.getWriter().write(json);
     }
 
-//    @GET
-//    @JSONP
-//    @Path("/{param}/search/{term}")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    public Response getSearch(@PathParam("param") String runId, @PathParam("term") String term) {
-//        List<SearchResponse> searchResponses = new ArrayList<>();
-//        String json = null;
-//        FindIterable<Document> terms;
-//
-//        try {
-//            terms = saffron.searchTaxonomy(runId, term);
-//
-//            for (Document doc : terms) {
-//                SearchResponse entity = new SearchResponse();
-//                entity.setId(doc.getString("document_id"));
-//                entity.setLocation(doc.getString("document_id"));
-//                entity.setTermString(doc.getString("term_string"));
-//
-//                searchResponses.add(entity);
-//
-//            }
-//            json = objectMapper.writeValueAsString(searchResponses);
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok(json).build();
-//    }
 
-    @GET
-    @JSONP
-    @Path("/{param}/terms/{term_id}/children")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTermChildren(@PathParam("param") String runId, @PathParam("term_id") String termId) {
+    public void getTermChildren(String runId, 
+            String termId, HttpServletResponse response) throws IOException {
         String json;
         try {
 
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy descendent = originalTaxo.descendent(termId);
             json = objectMapper.writeValueAsString(descendent);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
 
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to load Saffron from the existing data, this may be because a previous run failed");
 
         }
 
     }
 
-    @GET
-    @JSONP
-    @Path("/{param}/terms/{term_id}/parent")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTermParent(@PathParam("param") String runId, @PathParam("term_id") String termId) {
+    public void getTermParent(String runId, 
+            String termId, HttpServletResponse response) throws IOException {
         String json;
         try {
             Taxonomy originalTaxo = saffronService.getTaxonomy(runId);
             Taxonomy antecendent = originalTaxo.antecendent(termId, "", originalTaxo, null);
             json = objectMapper.writeValueAsString(antecendent);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
         } catch (Exception e) {
             e.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to load Saffron from the existing data, this may be because a previous run failed");
 
         }
 
     }
 
-
-    //
-//    @DELETE
-//    @JSONP
-//    @Path("/{param}/terms/{term_id}")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response deleteTerm(@PathParam("param") String name,
-//            @PathParam("term_id") String termId) {
-//
-//        saffronService.deleteTerm(name, termId);
-//
-//        return Response.ok("Term " + name + " " + termId + " Deleted").build();
-//    }
-//
-//    @POST
-//    @JSONP
-//    @Path("/{param}/terms/{term_id}/{term_id2}/{status}")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response rejectTerm(@PathParam("param") String name,
-//            @PathParam("term_id") String termId,
-//            @PathParam("term_id") String termId2,
-//            @PathParam("status") String status) {
-//
-//
-//        Taxonomy finalTaxon = new Taxonomy("", 0.0, 0.0, new ArrayList<>(), Status.none);
-//        Taxonomy originalTaxo = saffronService.getTaxonomy(name);
-//
-//        try {
-//
-//            if (status.equals("rejected")) {
-//                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.rejected);
-//            } else if (status.equals("accepted")) {
-//                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.accepted);
-//            } else if (status.equals("none")) {
-//                finalTaxon = originalTaxo.deepCopySetTermStatus(termId, Status.none);
-//            }
-//            saffronService.updateTerm(name, termId, status);
-//            saffron.updateTermSimilarity(name, termId, termId2, status);
-//            saffronService.updateTaxonomy(name, finalTaxon);
-//            //saffron.close();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            System.err.println("Failed to reject the term " + termId + " from the taxonomy " + name);
-//            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
-//
-//        }
-//        return Response.ok("Term " + name + " " + termId + " Deleted").build();
-//    }
-//
-//    @POST
-//    @Path("/{param}/terms")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response postDeleteManyTerms(@PathParam("param") String name, InputStream incomingData) {
-//
-//
-//        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-//        FindIterable<Document> terms;
-//        JSONObject jsonObj = new JSONObject(crunchifyBuilder.toString());
-//        Iterator<String> keys = jsonObj.keys();
-//        while (keys.hasNext()) {
-//            String key = keys.next();
-//            JSONArray obj = (JSONArray) jsonObj.get(key);
-//            for (int i = 0; i < obj.length(); i++) {
-//                JSONObject json = obj.getJSONObject(i);
-//                saffronService.deleteTerm(name, json.get("id").toString());
-//            }
-//        }
-//        return Response.ok("Terms " + jsonObj + " Deleted").build();
-//    }
-//
-//    @POST
-//    @Path("/{param}/terms/changeroot")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response postChangeTermRoot(@PathParam("param") String runId, InputStream incomingData) {
-//
-//    	List<Pair<String,String>> childNewParentList = new ArrayList<Pair<String,String>>();
-//
-//    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-//        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-//
-//        Iterator<String> keys = jsonRqObj.keys();
-//        while (keys.hasNext()) {
-//            String key = keys.next();
-//            JSONArray obj = (JSONArray) jsonRqObj.get(key);
-//            for (int i = 0; i < obj.length(); i++) {
-//                JSONObject json = obj.getJSONObject(i);
-//                String termString = json.get("id").toString();
-//                String newParentString = json.get("new_parent").toString();
-//                //FIXME Current parent does not really matter
-//                String oldParentString = json.get("current_parent").toString();
-//
-//                childNewParentList.add(new ImmutablePair<String,String>(termString, newParentString));
-//            }
-//        }
-//
-//        try {
-//            saffronService.updateParent(runId, childNewParentList);
-//        } catch (Exception e) {
-//        	e.printStackTrace();
-//        	return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
-//        }
-//
-//        //build answer
-//        return Response.ok("All parents successfully updated").build();
-//    }
-//
-//
-//    @POST
-//    @JSONP
-//    @Path("/{param}/terms/update")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response updateTerm(@PathParam("param") String runId, InputStream incomingData) {
-//
-//    	/*
-//    	 * 1 - Read and validate JSON input
-//    	 * 2 - If everything is ok continue, otherwise send an error code
-//    	 * 3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how the changes are made.
-//    	 * 4 - If everything is ok return an OK code, otherwise send an error code
-//    	*/
-//
-//    	//1 - Read and validate JSON input
-//    	/*List<Term> terms = null;
-//		try {
-//			terms = Arrays.asList(new ObjectMapper().readValue(incomingData, Term[].class));
-//		} catch (Exception e) {
-//			//2 - If everything is ok continue, otherwise send an error code
-//			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
-//		}*/
-//
-//    	List<Term> terms = new ArrayList<Term>();
-//
-//    	StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-//    	JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-//    	Iterator<String> keys = jsonRqObj.keys();
-//    	while (keys.hasNext()) {
-//    		String key = keys.next();
-//
-//	    	JSONArray obj = (JSONArray) jsonRqObj.get(key);
-//	    	for (int i = 0; i < obj.length(); i++) {
-//	    		JSONObject json = obj.getJSONObject(i);
-//                String termString = json.get("term").toString();
-//                String status = json.get("status").toString();
-//                try {
-//                	terms.add(new Term.Builder(termString).status(Status.valueOf(status)).build());
-//                } catch (Exception e) {
-//        			//2 - If everything is ok continue, otherwise send an error code
-//        			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
-//        		}
-//	    	}
-//    	}
-//
-//		//3 - Ask a Saffron service to perform the status change (the REST controller should not know or care how/if changes are made).
-//    	try {
-//    		saffronService.updateTermStatus(runId, terms);
-//    	} catch (Exception e) {
-//    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
-//    	}
-//
-//		//4 - If everything is ok return an OK code, otherwise send an error code
-//		return Response.ok("Terms for run ID: " + runId + " Updated").build();
-//    }
-//
-//	@POST
-//    @JSONP
-//    @Path("/{param}/terms/updaterelationship")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response updateTermRelationship(@PathParam("param") String runId, InputStream incomingData) {
-//		/*
-//		 * 1 - Read and validate JSON input
-//		 * 2 - If everything is ok, continue, otherwise send a code error
-//		 * 3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how the changes are made.)
-//		 * 4 - If everything is ok return an OK code, otherwise send an error code
-//		 */
-//
-//		//1 - Read and validate JSON input
-//
-//		List<Pair<String,String>> parentChildStatusList = new ArrayList<Pair<String,String>>();
-//
-//		StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-//        JSONObject jsonRqObj = new JSONObject(crunchifyBuilder.toString());
-//
-//        Iterator<String> keys = jsonRqObj.keys();
-//        while (keys.hasNext()) {
-//            String key = keys.next();
-//
-//            try {
-//	            JSONArray obj = (JSONArray) jsonRqObj.get(key);
-//	            for (int i = 0; i < obj.length(); i++) {
-//	            	JSONObject json = obj.getJSONObject(i);
-//	                String termChild = json.get("term_child").toString();
-//	                //FIXME: getting the current parent is irrelevant, unless we are considering concurrent requests, which we are not
-//	                String status = json.get("status").toString();
-//
-//	                parentChildStatusList.add(new ImmutablePair<String,String>(termChild, status));
-//	            }
-//            } catch (Exception e) {
-//            	//2 - If everything is ok continue, otherwise send an error code
-//    			return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("input JSON format incorrect").build();
-//            }
-//        }
-//
-//        //3 - Ask a Saffron service to perform the relationship change (the REST controller should not know or care how/if changes are made).
-//    	try {
-//    		saffronService.updateParentRelationshipStatus(runId, parentChildStatusList);
-//    	} catch (Exception e) {
-//    		e.printStackTrace();
-//    		return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
-//    	}
-//
-//    	//4 - If everything is ok return an OK code, otherwise send an error code
-//        return Response.ok("Terms for run ID: " + runId + " Updated").build();
-//    }
-//
-//    @PUT
-//    @Path("/{param}/terms/{term_id}")
-//    @Consumes(MediaType.APPLICATION_JSON)
-//    @Produces(MediaType.TEXT_PLAIN)
-//    public Response putNewTerm(InputStream incomingData) {
-//        StringBuilder crunchifyBuilder = APIUtils.getJsonData(incomingData);
-//        return Response.ok("Terms " + crunchifyBuilder.toString() + " Deleted").build();
-//    }
-//
-    @GET
-    @Path("/{param}/authorterms/{term_id}")
-    public Response getAuthorTerms(@PathParam("param") String name, @PathParam("term_id") String termId) {
+    public void getAuthorTerms(String name, String termId,
+            HttpServletResponse response) throws IOException {
         String json;
         List<AuthorTermDAO> authors;
         try {
         	authors = saffronService.getAuthorsPerTermWithTfirf(name, termId);
             json = objectMapper.writeValueAsString(authors);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
 
         } catch (Exception x) {
             System.err.println("Failed to get authors for term '" + termId + "'");
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get authors for term '" + termId + "'").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to get authors for term '" + termId + "'");
         }
     }
 
-    @GET
-    @Path("/{param}/termauthors/{author_id}")
-    public Response getTermAuthors(@PathParam("param") String name, @PathParam("author_id") String authorId) {
+    public void getTermAuthors(String name, 
+            String authorId,
+            HttpServletResponse response) throws IOException {
 
         try {
             List<AuthorTerm> terms = saffronService.getAuthorTerms(name, authorId);
             String json = objectMapper.writeValueAsString(terms);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
         } catch (Exception x) {
             System.err.println("Failed to get terms for author '" + authorId + "'");
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get terms for author '" + authorId + "'").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to get terms for author '" + authorId + "'");
         }
     }
 
-    @GET
-    @Path("/{param}/authorauthors/{author_id}")
-    public Response getAuthorAuthors(@PathParam("param") String runId, @PathParam("author_id") String authorId) {
+    public void getAuthorAuthors(String runId, String authorId,
+            HttpServletResponse response) throws IOException {
         try {
-            return Response.ok(objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId))).build();
+            String json = objectMapper.writeValueAsString(saffronService.getAuthorSimilarity(runId, authorId));
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
         } catch (Exception x) {
             System.err.println("Failed to get similar authors to '" + authorId + "'");
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get similar authors to '" + authorId + "'").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                "Failed to get similar authors to '" + authorId + "'");
         }
     }
 
-    //    @GET
-//    @Path("/{param}/termcorrespondence/")
-//    public Response getTermCorrespondence(@PathParam("param") String name) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
-//        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
-//        try {
-//            runs = saffron.getDocumentTermCorrespondence(name);
-//            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-//    @GET
-//    @Path("/{param}/termcorrespondence/{term_id}")
-//    public Response getTermCorrespondenceForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
-//        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
-//        try {
-//            runs = saffron.getDocumentTermCorrespondenceForTerm(name, termId);
-//            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-//    @GET
-//    @Path("/{param}/docs/{document_id}")
-//    public Response getTermCorrespondenceForDocument(@PathParam("param") String name, @PathParam("document_id") String documentId) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermCorrespondenceResponse> termsResponse = new ArrayList<>();
-//        TermsCorrespondenceResponse returnEntity = new TermsCorrespondenceResponse();
-//
-//        try {
-//            runs = saffron.getDocumentTermCorrespondenceForDocument(name, documentId);
-//            APIUtils.populateTermCorrespondenceResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-//
-//
-//
-//    @GET
-//    @Path("/{param}/termextraction/")
-//    public Response getTermExtraction(@PathParam("param") String name) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermExtractionResponse> termsResponse = new ArrayList<>();
-//        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
-//        try {
-//            runs = saffron.getTermExtraction(name);
-//            APIUtils.populateTermExtractionResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-//    @GET
-//    @Path("/{param}/termextraction/{term_id}")
-//    public Response getTermExtractionForTerm(@PathParam("param") String name, @PathParam("term_id") String termId) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermExtractionResponse> termsResponse = new ArrayList<>();
-//        TermsExtractionResponse returnEntity = new TermsExtractionResponse();
-//        try {
-//            runs = saffron.getTermExtractionForTerm(name, termId);
-//            APIUtils.populateTermExtractionResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-    @GET
-    @Path("/{param}/termsimilarity/")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTermSimilarity(@PathParam("param") String name) {
+    public void getTermSimilarity(String name,
+            HttpServletResponse response) throws IOException {
 
         try {
             List<TermTerm> terms = saffron.getTermsSimilarity(name);
             String json = objectMapper.writeValueAsString(terms);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
 
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                "Failed to load Saffron from the existing data, this may be because a previous run failed");
         }
-
-        return Response.ok("OK").build();
-
     }
 
-//
-//    @GET
-//    @Path("/{param}/termsimilarity/{term1}/{term2}")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    public Response getTermSimilarityBetweenTerms(@PathParam("param") String name, @PathParam("term1") String term1, @PathParam("term2") String term2) {
-//        String json;
-//        FindIterable<Document> runs;
-//        List<TermSimilarityResponse> termsResponse = new ArrayList<>();
-//        TermsSimilarityResponse returnEntity = new TermsSimilarityResponse();
-//        try {
-//            runs = saffron.getTermsSimilarityBetweenTerms(name, term1, term2);
-//
-//            APIUtils.populateTermSimilarityResp(runs, termsResponse);
-//            returnEntity.setTerms(termsResponse);
-//            json = objectMapper.writeValueAsString(returnEntity);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok("OK").build();
-//
-//    }
-//
-    @GET
-    @Path("/{param}/termsimilarity/{term}")
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response getTermSimilarityForTerm(@PathParam("param") String name, @PathParam("term") String term) {
+    public void getTermSimilarityForTerm(String name, String term,
+            HttpServletResponse response) throws IOException {
         try {
             List<TermTerm> terms = saffron.getTermsSimilarity(name);
             List<TermSimilarityResponse> termsResponse = new ArrayList<>();
@@ -696,130 +373,23 @@ public class SaffronAPI {
                 }
             }
             String json = objectMapper.writeValueAsString(termsResponse);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
 
         } catch (Exception x) {
             x.printStackTrace();
-            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                "Failed to load Saffron from the existing data, this may be because a previous run failed");
         }
-
-        return Response.ok("OK").build();
-
     }
-//
-//    @POST
-//    @Path("/new/zip/{saffronDatasetName}")
-//    @Consumes("*/*")
-//    public Response startWithZip(@PathParam("saffronDatasetName") String saffronDatasetName, InputStream inputStream) throws IOException {
-//        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
-//
-//            File tmpFile = File.createTempFile("corpus", ".zip");
-//            tmpFile.deleteOnExit();
-//            byte[] buf = new byte[4096];
-//            try (InputStream is = inputStream; FileOutputStream fos = new FileOutputStream(tmpFile)) {
-//                int i = 0;
-//                while ((i = is.read(buf)) >= 0) {
-//
-//                    fos.write(buf, 0, i);
-//                }
-//            }
-//            getExecutor().startWithZip(tmpFile, false, saffronDatasetName);
-//            return Response.ok().build();
-//        } else {
-//            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
-//        }
-//    }
-//
-//    @POST
-//    @Path("/new/json/{saffronDatasetName}")
-//    public Response startWithJson(@PathParam("saffronDatasetName") String saffronDatasetName, InputStream inputStream) throws IOException {
-//        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
-//
-//            File tmpFile = File.createTempFile("corpus", ".json");
-//            tmpFile.deleteOnExit();
-//            byte[] buf = new byte[4096];
-//            try (InputStream is = inputStream; FileOutputStream fos = new FileOutputStream(tmpFile)) {
-//                int i = 0;
-//                while ((i = is.read(buf)) >= 0) {
-//                    fos.write(buf, 0, i);
-//                }
-//            }
-//            getExecutor().startWithJson(tmpFile, false, saffronDatasetName);
-//            return Response.ok().build();
-//        } else {
-//            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
-//        }
-//    }
-//
-//
-//    @GET
-//    @Path("/{param}/docs")
-//    public Response getOriginalDocuments(@PathParam("param") String name) {
-//        String json;
-//        HashMap<String, String> runs;
-//        String file = "";
-//        try {
-//            runs = saffron.getCorpusFiles(name);
-//            List <HashMap<String, String>> returnList = new ArrayList<>();
-//            runs.forEach((k,v)->{
-//                HashMap<String, String> item = new HashMap<>();
-//                item.put(k, v);
-//                returnList.add(item);
-//            });
-//            json = objectMapper.writeValueAsString(returnList);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            System.err.println("Failed to get documents from the existing data, this may be because a previous run failed");
-//        }
-//
-//        return Response.ok(file).build();
-//
-//    }
-//
-//    @GET
-//    @Path("/{run_id}/docs/author/{author_id}")
-//    public Response getDocumentsForAuthor(
-//    		@PathParam("run_id") String runId,
-//    		@PathParam("author_id") String authorId,
-//    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
-//    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
-//
-//    	// Bad implementation of working with offset. Ideally it should work with offsets directly in the
-//    	// connection with the database
-//    	String json;
-//        List<org.insightcentre.nlp.saffron.data.Document> documents;
-//        try {
-//        	documents = saffronService.getDocumentsForAuthor(runId, authorId);
-//        	if (offsetStart > -1) {
-//	        	if (offsetStart <= documents.size()-1) {
-//	        		if (offsetStart + numberOfDocuments <= documents.size() - 1) {
-//	        			documents = documents.subList(offsetStart, offsetStart+numberOfDocuments);
-//	        		} else {
-//	        			documents = documents.subList(offsetStart, documents.size() - 1);
-//	        		}
-//	        	} else {
-//	        		documents = new ArrayList<org.insightcentre.nlp.saffron.data.Document>();
-//	        	}
-//        	}
-//            json = objectMapper.writeValueAsString(documents);
-//            return Response.ok(json).build();
-//
-//        } catch (Exception x) {
-//            System.err.println("Failed to get documents for author '" + authorId + "'");
-//            x.printStackTrace();
-//            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for author '" + authorId + "'").build();
-//        }
-//    }
-//
-    @GET
-    @Path("/{run_id}/docs/term/{term_id}")
-    public Response getDocumentsForTerm(
-    		@PathParam("run_id") String runId,
-    		@PathParam("term_id") String termId,
-    		@DefaultValue("-1") @QueryParam("offset") int offsetStart,
-    		@DefaultValue("20") @QueryParam("n") int numberOfDocuments) {
+
+    public void getDocumentsForTerm(
+    		String runId,
+    		String termId,
+    		int offsetStart,
+    		int numberOfDocuments,
+                HttpServletResponse response) throws IOException {
 
     	// Bad implementation of working with offset. Ideally it should work with offsets directly in the
     	// connection with the database
@@ -839,82 +409,15 @@ public class SaffronAPI {
 	        	}
         	}
             json = objectMapper.writeValueAsString(documents);
-            return Response.ok(json).build();
+            response.setStatus(SC_OK);
+            response.setContentType("application/json;charset=utf-8");
+            response.getWriter().write(json);
 
         } catch (Exception x) {
             System.err.println("Failed to get documents for term '" + termId + "'");
             x.printStackTrace();
-            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to get documents for term '" + termId + "'").build();
+            response.sendError(SC_INTERNAL_SERVER_ERROR,
+                    "Failed to get documents for term '" + termId + "'");
         }
     }
 }
-//
-//    @GET
-//    @Path("/new/crawl/{saffronDatasetName}")
-//    public Response startWithCrawl(@PathParam("saffronDatasetName") String saffronDatasetName,
-//            @QueryParam("url") String url, @QueryParam("max_pages") int maxPages,
-//            @DefaultValue("true") @QueryParam("domain") boolean domain) throws IOException {
-//        if (saffronDatasetName.matches("[A-Za-z][A-Za-z0-9_-]*") && getExecutor().newDataSet(saffronDatasetName)) {
-//            getExecutor().startWithCrawl(url, maxPages, domain, false, saffronDatasetName);
-//            return Response.ok().build();
-//        } else {
-//            return Response.status(Response.Status.BAD_REQUEST).entity("Bad dataset name or run already exits").build();
-//        }
-//    }
-//
-//    @GET
-//    @JSONP
-//    @Path("/status/{saffronDatasetName}")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    public Response executeStatus(@PathParam("saffronDatasetName") String saffronDatasetName) throws Exception {
-//        try {
-//            Executor.Status status = getExecutor().getStatus(saffronDatasetName);
-//            if (status != null) {
-//                return Response.ok(new ObjectMapper().writeValueAsString(status)).build();
-//            } else {
-//                return Response.status(Response.Status.NOT_FOUND).build();
-//            }
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            throw x;
-//        }
-//    }
-//
-//    @GET
-//    @JSONP
-//    @Path("/partonomy/{param}")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    public Response getPartonomy(@PathParam("param") String saffronDatasetName) {
-//        Partonomy partonomy;
-//        try {
-//            partonomy = saffronService.getPartonomy(saffronDatasetName);
-//            ObjectMapper mapper = new ObjectMapper();
-//            String jsonString = mapper.writeValueAsString(partonomy);
-//            return Response.ok(jsonString).build();
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
-//        }
-//    }
-//
-//    @GET
-//    @JSONP
-//    @Path("/knowledgegraph/{param}")
-//    @Produces(MediaType.APPLICATION_JSON)
-//    public Response getKnowledgeGraph(@PathParam("param") String saffronDatasetName) {
-//        KnowledgeGraph knowledgeGraph;
-//        try {
-//            knowledgeGraph = saffronService.getKnowledgeGraph(saffronDatasetName);
-//            ObjectMapper mapper = new ObjectMapper();
-//            String jsonString = mapper.writeValueAsString(knowledgeGraph);
-//            return Response.ok(jsonString).build();
-//        } catch (Exception x) {
-//            x.printStackTrace();
-//            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("Failed to load Saffron from the existing data, this may be because a previous run failed").build();
-//        }
-//    }
-//
-//    private Executor getExecutor() {
-//        return Launcher.executor;
-//    }
-

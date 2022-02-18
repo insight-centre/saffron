@@ -62,7 +62,10 @@ public class Launcher {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
                     throws IOException {
-                Files.copy(file, target.resolve(source.relativize(file)), options);
+                Path t = target.resolve(source.relativize(file));
+                if(!Files.exists(t)) {
+                    Files.copy(file, t, options);
+                }
                 return FileVisitResult.CONTINUE;
             }
         });
@@ -181,14 +184,7 @@ public class Launcher {
             executor = new Executor(saffron, directory, (File) os.valueOf("l"));
             NewRun welcome = new NewRun(executor);
             Home home = new Home(saffron, directory);
-            ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-            context.setContextPath("/");
-            ServletHolder jerseyServlet = context.addServlet(
-                    org.glassfish.jersey.servlet.ServletContainer.class, "/*");
-            jerseyServlet.setInitOrder(0);
-            jerseyServlet.setInitParameter(
-                    "jersey.config.server.provider.classnames",
-                    SaffronAPI.class.getCanonicalName());
+            SaffronAPI context = new SaffronAPI();
             handlers.setHandlers(new Handler[]{home, welcome, executor, browser, resourceHandler, context});
             server.setHandler(handlers);
 
