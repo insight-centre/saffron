@@ -70,7 +70,7 @@ public class NewRun extends AbstractHandler {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
-                FileReader reader = new FileReader(new File("static/new.html"));
+                FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/new.html"));
                 StringWriter writer = new StringWriter();
                 char[] buf = new char[4096];
                 int i = 0;

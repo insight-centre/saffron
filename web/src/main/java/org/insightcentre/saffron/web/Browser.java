@@ -280,7 +280,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/term.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/term.html")));
                     if (term != null) {
                         data = data.replaceAll("\\{\\{term\\}\\}", mapper.writeValueAsString(term));
                     } else {
@@ -292,21 +292,21 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-terms-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-terms-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 } else if (target.startsWith("/edit/parents")) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-parents-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-parents-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 } else if (target.startsWith("/edit")) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 }else if (target.startsWith("/author/")) {
@@ -316,7 +316,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/author.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/author.html")));
                         data = data.replaceAll("\\{\\{author\\}\\}", mapper.writeValueAsString(author));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
@@ -328,7 +328,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/doc.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/doc.html")));
                         data = data.replace("{{doc}}", mapper.writeValueAsString(doc));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
@@ -363,7 +363,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/index.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/index.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -377,7 +377,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/treemap.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/treemap.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -390,7 +390,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/graph.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/graph.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -402,7 +402,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/search.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/search.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
