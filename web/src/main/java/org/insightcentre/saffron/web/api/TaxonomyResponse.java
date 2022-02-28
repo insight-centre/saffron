@@ -1,12 +1,11 @@
 package org.insightcentre.saffron.web.api;
 
-import com.mongodb.BasicDBObject;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.util.List;
 
 @XmlRootElement()
-public class TaxonomyResponse extends BasicDBObject {
+public class TaxonomyResponse  {
 
 
     private String root;

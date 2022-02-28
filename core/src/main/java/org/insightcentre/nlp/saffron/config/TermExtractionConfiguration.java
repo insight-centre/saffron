@@ -25,8 +25,10 @@ public class TermExtractionConfiguration {
     public int ngramMin = 1;
     /** The longest term to consider */
     public int ngramMax = 4;
-    /** The minimum frequency to consider */
+    /** The minimum term frequency to consider */
     public int minTermFreq = 2;
+    /** The minimum document frequency percentage to consider */
+    public double minDocFreq = 0.0;
     /** The maximum number of documents to consider */
     public int maxDocs = Integer.MAX_VALUE;
     /** The Weighting Method to use */
@@ -87,7 +89,7 @@ public class TermExtractionConfiguration {
 
     /** The features for term extraction */
     public enum Feature {
-        weirdness, avgTermFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic,
+        weirdness, avgTermFreq, termFreq, residualIdf, totalTfIdf, cValue, basic, comboBasic,
         postRankDC, relevance, /*domainCoherence,*/ /*domainPertinence,*/
         novelTopicModel, /*linkProbability, keyConceptRelatedness*/
         futureBasic, futureComboBasic

@@ -26,7 +26,9 @@ import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class ConnectAuthorTerm {
+
     private static class AT {
+
         public final String author;
         public final String term;
 
@@ -60,7 +62,7 @@ public class ConnectAuthorTerm {
             }
             return true;
         }
-        
+
     }
     private final int top_n;
     private final int minDocs;
@@ -69,43 +71,44 @@ public class ConnectAuthorTerm {
         this.top_n = config.topN;
         this.minDocs = config.minDocs;
     }
-    
+
     public Collection<AuthorTerm> connectResearchers(List<Term> terms, List<DocumentTerm> documentTerms,
-        Iterable<Document> documents) {
+            Iterable<Document> documents) {
         return connectResearchers(terms, documentTerms, documents, new DefaultSaffronListener());
     }
-    
+
     public Collection<AuthorTerm> connectResearchers(List<Term> terms, List<DocumentTerm> documentTerms,
-        Iterable<Document> documents, SaffronListener log) {
+            Iterable<Document> documents, SaffronListener log) {
 
         DocById docByIdReturnValue = buildDocById(documents);
-        Map<String, Document>     docById      = docByIdReturnValue.docById;
+        Map<String, Document> docById = docByIdReturnValue.docById;
         Object2IntMap<Author> authorFreq = docByIdReturnValue.authorFreq;
         Map<Author, List<String>> author2Term = buildAuthor2Term(documentTerms, docById, log);
         //Map<Author, List<String>> author2Doc   = buildAuthor2Doc(documentTerms, docById);
-        Map<String, Term>        termById    = buildTermById(terms);
+        Map<String, Term> termById = buildTermById(terms);
 
-        Object2IntMap<AT>     occurrences = new Object2IntOpenHashMap<>();
-        Object2IntMap<AT>     matches     = new Object2IntOpenHashMap<>();
-        Object2IntMap<AT>     paper_count = new Object2IntOpenHashMap<>();
-        Object2DoubleMap<AT>  tfirf       = new Object2DoubleOpenHashMap<>();
+        Object2IntMap<AT> occurrences = new Object2IntOpenHashMap<>();
+        Object2IntMap<AT> matches = new Object2IntOpenHashMap<>();
+        Object2IntMap<AT> paper_count = new Object2IntOpenHashMap<>();
+        Object2DoubleMap<AT> tfirf = new Object2DoubleOpenHashMap<>();
         countOccurrence(author2Term, termById, occurrences, matches, log);
         countTfirf(documentTerms, docById, paper_count, tfirf);
 
         List<AuthorTerm> ats = new ArrayList<>();
-        for(Map.Entry<Author, List<String>> e : author2Term.entrySet()) {
-            if(authorFreq.getInt(e.getKey()) < minDocs)
+        for (Map.Entry<Author, List<String>> e : author2Term.entrySet()) {
+            if (authorFreq.getInt(e.getKey()) < minDocs) {
                 continue;
+            }
             TreeSet<AuthorTerm> topN = new TreeSet<>(new Comparator<AuthorTerm>() {
 
                 @Override
                 public int compare(AuthorTerm arg0, AuthorTerm arg1) {
                     int i1 = Double.compare(arg0.getScore(), arg1.getScore());
-                    if(i1 == 0) {
+                    if (i1 == 0) {
                         int i2 = arg0.getAuthorId().compareTo(arg1.getAuthorId());
-                        if(i2 == 0) {
+                        if (i2 == 0) {
                             int i3 = arg0.getTermId().compareTo(arg1.getTermId());
-                            if(i3 == 0) {
+                            if (i3 == 0) {
                                 return arg0.hashCode() - arg1.hashCode();
                             }
                             return i3;
@@ -115,8 +118,8 @@ public class ConnectAuthorTerm {
                     return i1;
                 }
             });
-        
-            for(String termString : e.getValue()) {
+
+            for (String termString : e.getValue()) {
                 AT atKey = new AT(e.getKey().id, termString);
                 AuthorTerm at = new AuthorTerm();
                 at.setAuthorId(e.getKey().id);
@@ -126,10 +129,10 @@ public class ConnectAuthorTerm {
                 at.setOccurrences(occurrences.getInt(atKey));
                 at.setPaperCount(paper_count.getInt(atKey));
                 at.setScore(at.getTfIrf() * at.getPaperCount());
-                at.setResearcherScore((double)at.getPaperCount() * Math.log(1 + at.getMatches()));
-                if(topN.size() < top_n) {
+                at.setResearcherScore((double) at.getPaperCount() * Math.log(1 + at.getMatches()));
+                if (topN.size() < top_n) {
                     topN.add(at);
-                } else if(topN.size() >= top_n && at.getScore() > topN.first().getScore()) {
+                } else if (topN.size() >= top_n && at.getScore() > topN.first().getScore()) {
                     topN.pollFirst();
                     topN.add(at);
                 }
@@ -138,20 +141,21 @@ public class ConnectAuthorTerm {
         }
 
         return ats;
-        
+
     }
 
     private Map<Author, List<String>> buildAuthor2Term(List<DocumentTerm> documentTerms, Map<String, Document> docById,
             SaffronListener log) {
         Map<Author, List<String>> author2Term = new HashMap<>();
-        for(DocumentTerm dt : documentTerms) {
+        for (DocumentTerm dt : documentTerms) {
             Document doc = docById.get(dt.getDocumentId());
-            if(doc == null) {
+            if (doc == null) {
                 continue;
             }
-            for(Author a : doc.authors) {
-                if(!author2Term.containsKey(a)) 
+            for (Author a : doc.authors) {
+                if (!author2Term.containsKey(a)) {
                     author2Term.put(a, new ArrayList<String>());
+                }
                 author2Term.get(a).add(dt.getTermString());
             }
         }
@@ -160,12 +164,14 @@ public class ConnectAuthorTerm {
 
     private Map<String, Term> buildTermById(List<Term> terms) {
         Map<String, Term> termById = new HashMap<>();
-        for(Term term : terms)
+        for (Term term : terms) {
             termById.put(term.getString(), term);
+        }
         return termById;
     }
 
     private class DocById {
+
         Map<String, Document> docById;
         Object2IntMap<Author> authorFreq;
 
@@ -173,29 +179,28 @@ public class ConnectAuthorTerm {
             this.docById = docById;
             this.authorFreq = authorFreq;
         }
-        
-        
+
     }
-    
+
     private DocById buildDocById(Iterable<Document> documents) {
         Map<String, Document> docById = new HashMap<>();
         Object2IntMap<Author> authorFreq = new Object2IntOpenHashMap<>();
-        for(Document document : documents) {
+        for (Document document : documents) {
             docById.put(document.id, document);
-            for(Author a : document.getAuthors()) {
+            for (Author a : document.getAuthors()) {
                 authorFreq.put(a, authorFreq.getInt(a) + 1);
             }
         }
         return new DocById(docById, authorFreq);
     }
 
-    private void countOccurrence(Map<Author, List<String>> author2Term, Map<String, Term> terms, Object2IntMap<AT> occurrences, 
+    private void countOccurrence(Map<Author, List<String>> author2Term, Map<String, Term> terms, Object2IntMap<AT> occurrences,
             Object2IntMap<AT> matches, SaffronListener log) {
-        for(Map.Entry<Author, List<String>> e : author2Term.entrySet()) {
+        for (Map.Entry<Author, List<String>> e : author2Term.entrySet()) {
             Author a = e.getKey();
-            for(String termString : e.getValue()) {
+            for (String termString : e.getValue()) {
                 Term t = terms.get(termString);
-                if(t == null) {
+                if (t == null) {
                     continue;
                 }
                 AT at = new AT(a.id, termString);
@@ -206,16 +211,21 @@ public class ConnectAuthorTerm {
     }
 
     private void countTfirf(List<DocumentTerm> docTerms, Map<String, Document> docById, Object2IntMap<AT> paper_count, Object2DoubleMap<AT> tfirf) {
-        for(DocumentTerm dt : docTerms) {
+        for (DocumentTerm dt : docTerms) {
             Document doc = docById.get(dt.getDocumentId());
-            for(Author a : doc.authors) {
-                AT at = new AT(a.id, dt.getTermString());
-                paper_count.put(at, paper_count.getInt(at) + 1);
-                if(dt.getTfIdf() != null)
-                    tfirf.put(at, tfirf.getDouble(at) + dt.getTfIdf());
+            if(doc == null) {
+                throw new RuntimeException("Document-term list refers to document " + dt.getDocumentId() + ", which is not present in the corpus");
+            }
+            if (doc.authors != null) {
+                for (Author a : doc.authors) {
+                    AT at = new AT(a.id, dt.getTermString());
+                    paper_count.put(at, paper_count.getInt(at) + 1);
+                    if (dt.getTfIdf() != null) {
+                        tfirf.put(at, tfirf.getDouble(at) + dt.getTfIdf());
+                    }
+                }
             }
         }
     }
-
 
 }

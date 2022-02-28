@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+
 import org.insightcentre.nlp.saffron.data.Status;
 import org.insightcentre.nlp.saffron.data.Taxonomy;
 import org.insightcentre.nlp.saffron.data.VirtualRootTaxonomy;
@@ -18,6 +20,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * @author John McCrae
  */
 public class TaxonomySolution extends Solution{
+
+
 
     public final Map<String, Taxonomy> heads;
     public final Set<String> terms;
@@ -63,9 +67,9 @@ public class TaxonomySolution extends Solution{
      * @return
      */
     public TaxonomySolution add(final String top, final String bottom,
-                        final double topScore, final double bottomScore, 
-                        final double linkScore,
-                        final boolean accepted) {
+                                final double topScore, final double bottomScore,
+                                final double linkScore,
+                                final boolean accepted) {
 
         if (heads.containsKey(bottom)) {
 
@@ -135,10 +139,10 @@ public class TaxonomySolution extends Solution{
      */
     public Taxonomy toTaxonomy() {
         if (isComplete()) {
-        	if (heads.size() > 1)
-        		return new VirtualRootTaxonomy(heads.values());
-        	else
-        		return heads.values().iterator().next();
+            if (heads.size() > 1)
+                return new VirtualRootTaxonomy(heads.values());
+            else
+                return heads.values().iterator().next();
         } else {
             throw new IllegalStateException("Cannot convert to a taxonomy until this taxonomy is complete");
         }

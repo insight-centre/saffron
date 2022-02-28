@@ -18,7 +18,6 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidOperationException;
 import org.insightcentre.nlp.saffron.exceptions.InvalidValueException;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,15 +25,17 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonAlias;
 
 /**
  * A taxonomy of terms
  *
  * @author John McCrae &lt;john@mccr.ae&gt;
  * @author Bianca Pereira
+ * @author Saurav Karmakar
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Taxonomy {
+public class Taxonomy implements SaffronGraph<TaxoLink> {
 
     /** The term string of this node in the taxonomy */
     public String root;
@@ -53,6 +54,7 @@ public class Taxonomy {
     	score = 0.0;
     	linkScore = 0.0;
     	children = new ArrayList<Taxonomy>();
+        status = Status.none;
     }
 
     @JsonCreator
@@ -66,7 +68,7 @@ public class Taxonomy {
         this.score = score;
         this.linkScore = linkScore;
         this.children = children == null ? new ArrayList<Taxonomy>() : children;
-        this.status = status;
+        this.status = status == null ? Status.none : status;
         //this.children = Collections.unmodifiableList(children == null ? new ArrayList<Taxonomy>() : children);
     }
 
@@ -410,6 +412,8 @@ public class Taxonomy {
     		}
     	}
     }
+
+
 
     /**
      * The size of the taxonomy (number of terms). Note this calculates the size
@@ -949,6 +953,7 @@ public class Taxonomy {
 
     	public Builder() {
     		taxonomy = new Taxonomy();
+    		taxonomy.status = Status.none;
     	}
 
     	public Builder(Taxonomy taxonomy) {
@@ -974,4 +979,6 @@ public class Taxonomy {
     		return taxonomy;
     	}
 	}
+
+
 }

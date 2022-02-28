@@ -172,10 +172,14 @@ public class RDFConversion {
 
 
     public static Model knowledgeGraphToRDF(SaffronDataSource data, String datasetName, Model model, String base) {
-        for(Taxonomy taxonomy : data.getKnowledgeGraph(datasetName).getTaxonomy().children) {
+        if(data.getKnowledgeGraph(datasetName) == null)
+            return model;
+        Taxonomy taxo = data.getKnowledgeGraph(datasetName).getTaxonomy();
+        if(taxo == null)
+            return model;
+        for(Taxonomy taxonomy : taxo.children) {
             getPartonomies(data, datasetName, model, base, taxonomy);
         }
-        Taxonomy taxo = data.getKnowledgeGraph(datasetName).getTaxonomy();
         for(Term term : data.getAllTerms(datasetName)) {
             getSynonyms(data, datasetName, model, base, term);
             getHyponyms(data, datasetName, model, base, taxo, term);
@@ -282,67 +286,5 @@ public class RDFConversion {
         }
     }
 
-    public static void main(String[] args) {
-        try {
-            final SaffronInMemoryDataSource saffron = new SaffronInMemoryDataSource();
-            // Parse command line arguments
-            final OptionParser p = new OptionParser() {
-                {
-                    accepts("b", "The base url").withRequiredArg().ofType(String.class);
-                    accepts("o", "The output file path").withRequiredArg().ofType(String.class);
-                    accepts("t", "An identifier for the Saffron knowledge graph").withRequiredArg().ofType(String.class);
-                    accepts("d", "The directory with all files from the kg extraction run").withRequiredArg().ofType(String.class);
-                }
-            };
-            final OptionSet os;
 
-            try {
-                os = p.parse(args);
-            } catch (Exception x) {
-                badOptions(p, x.getMessage());
-                return;
-            }
-            String kgOutFile = (String) os.valueOf("o");
-            if (kgOutFile == null) {
-                badOptions(p, "Output file not given");
-            }
-            String datasetName = (String) os.valueOf("t");
-            if (datasetName == null ) {
-                badOptions(p, "The identifier was not provided");
-                return;
-            }
-            String baseUrl = (String) os.valueOf("b");
-            if (baseUrl == null) {
-                badOptions(p, "Base url not given");
-                return;
-            }
-            String baseDir = (String) os.valueOf("d");
-            if (baseDir == null) {
-                badOptions(p, "Base dir not given");
-                return;
-            }
-
-            saffron.fromDirectory(new File(baseDir), datasetName);
-            Model kg = ModelFactory.createDefaultModel();
-            kg = knowledgeGraphToRDF(saffron, datasetName, kg, baseUrl);
-            String saffonPath = new File(kgOutFile).getAbsolutePath();
-            try(OutputStream out = new FileOutputStream(saffonPath)) {
-                kg.write( out, "RDF/XML" );
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        } catch (Exception x) {
-            x.printStackTrace();
-            return;
-        }
-    }
-
-
-    private static void badOptions(OptionParser p, String message) throws IOException {
-        System.err.println("Error: " + message);
-        p.printHelpOn(System.err);
-        System.exit(-1);
-    }
 }

@@ -3,10 +3,10 @@ package org.insightcentre.nlp.saffron.data;
 public class TypedLink extends Link implements Comparable<TypedLink>{
 
 	public enum Type {
-		hypernymy, hyponymy, meronymy, synonymy, other
+		hypernymy, hyponymy, meronymy, synonymy, other, atLocation, usedFor, hasPrerequisite
 	}
 	
-	private Type type;
+	private final Type type;
 	 
 	public TypedLink(String source, String target, Type type) {
 		super(source, target);
@@ -25,10 +25,6 @@ public class TypedLink extends Link implements Comparable<TypedLink>{
 
 	public Type getType() {
 		return type;
-	}
-
-	public void setType(Type type) {
-		this.type = type;
 	}
 
 	@Override

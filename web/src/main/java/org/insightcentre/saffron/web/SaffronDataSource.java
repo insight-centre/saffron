@@ -13,7 +13,6 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorAuthor;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
-import org.insightcentre.nlp.saffron.data.index.DocumentSearcher;
 import org.insightcentre.saffron.web.exception.ConceptNotFoundException;
 import org.insightcentre.saffron.web.exception.TermNotFoundException;
 import org.json.JSONObject;
@@ -135,7 +134,7 @@ public interface SaffronDataSource extends Closeable {
 
     String getRun(String runId);
 
-    void updateRun(String runId, String originalRun, JSONObject json, String status);
+    void updateRun(String runId, String originalRun, String json, String status);
 
     Taxonomy getTaxonomy(String runId);
 
@@ -183,11 +182,11 @@ public interface SaffronDataSource extends Closeable {
 
     public org.insightcentre.nlp.saffron.data.Document getDoc(String runId, String docId);
 
-    public DocumentSearcher getSearcher(String runId);
+    public Corpus getSearcher(String runId);
 
     public void setDocTerms(String runId, List<DocumentTerm> docTerms);
 
-    public void setIndex(String runId, DocumentSearcher index);
+    public void setIndex(String runId, Corpus index);
 
     void setCorpus(String runId, Corpus corpus);
 

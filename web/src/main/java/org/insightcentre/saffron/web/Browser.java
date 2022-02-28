@@ -1,13 +1,9 @@
 package org.insightcentre.saffron.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.io.Writer;
+
+import java.io.*;
+import java.util.Map;
 import static java.lang.Integer.min;
 import java.net.URLDecoder;
 import java.nio.file.Files;
@@ -31,7 +27,6 @@ import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.data.connections.TermTerm;
 import org.insightcentre.nlp.saffron.taxonomy.supervised.AddSizesToTaxonomy;
-import org.insightcentre.saffron.web.mongodb.MongoDBHandler;
 import org.insightcentre.saffron.web.rdf.RDFConversion;
 
 /**
@@ -41,34 +36,22 @@ import org.insightcentre.saffron.web.rdf.RDFConversion;
  */
 public class Browser extends AbstractHandler {
 
-    protected final MongoDBHandler saffronHandler;
+    protected final SaffronInMemoryDataSource saffronHandler;
 
-    public Browser(File dir, MongoDBHandler saffron) throws IOException {
+    public Browser(File dir, SaffronInMemoryDataSource saffron) throws IOException {
 
         this.saffronHandler = saffron;
-        if(saffron.type.equals("mongodb")) {
-        	//FIXME It should ask the database to initialise itself
-            if (dir.exists()) {
-                for (File subdir : dir.listFiles()) {
-                    if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
-                        try {
-                        	if (!saffron.containsKey(subdir.getName())) {
-                        		//TODO Use official Saffron Log system
-                        		System.out.println("New Saffron run detected.");
-                        		System.out.println("Importing Saffron run from '" + subdir.getAbsolutePath() + "' ..");
-                        		try {
-                        			saffron.importFromDirectory(subdir, subdir.getName());
-                        			System.out.println("Saffron run successfully imported..");
-                        		} catch (Exception e) {
-                        			//TODO Use official Saffron Log system
-                        			System.err.println("An error has occurred while loading a Saffron run from file. Aborting operation..");
-                        			e.printStackTrace();
-                        		}
-                        	}
-                        } catch (Exception x) {
-                            x.printStackTrace();
-                            System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
-                        }
+        if (dir.exists()) {
+            for (File subdir : dir.listFiles()) {
+                if (subdir.exists() && subdir.isDirectory() && new File(subdir, "taxonomy.json").exists()) {
+                    try {
+                        SaffronData s2;
+                        //s2 = SaffronData.fromDirectory(subdir);
+//                        saffron.addRun(subdir.getName(), s2);
+                        this.saffronHandler.fromDirectory(subdir, subdir.getName());
+                    } catch (Exception x) {
+                        x.printStackTrace();
+                        System.err.println("Failed to load Saffron from the existing data, this may be because a previous run failed");
                     }
                 }
             }
@@ -297,7 +280,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/term.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/term.html")));
                     if (term != null) {
                         data = data.replaceAll("\\{\\{term\\}\\}", mapper.writeValueAsString(term));
                     } else {
@@ -309,21 +292,21 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-terms-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-terms-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 } else if (target.startsWith("/edit/parents")) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-parents-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-parents-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 } else if (target.startsWith("/edit")) {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/edit-page.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/edit-page.html")));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
                 }else if (target.startsWith("/author/")) {
@@ -333,7 +316,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/author.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/author.html")));
                         data = data.replaceAll("\\{\\{author\\}\\}", mapper.writeValueAsString(author));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
@@ -345,7 +328,7 @@ public class Browser extends AbstractHandler {
                         response.setContentType("text/html;charset=utf-8");
                         response.setStatus(HttpServletResponse.SC_OK);
                         baseRequest.setHandled(true);
-                        String data = new String(Files.readAllBytes(Paths.get("static/doc.html")));
+                        String data = new String(Files.readAllBytes(Paths.get(System.getProperty("saffron.home") + "/web/static/doc.html")));
                         data = data.replace("{{doc}}", mapper.writeValueAsString(doc));
                         data = data.replace("{{name}}", saffronDatasetName);
                         response.getWriter().write(data);
@@ -369,6 +352,8 @@ public class Browser extends AbstractHandler {
                         }
                     }
                 } else if (target.equals("/status")) {
+                    final Executor.Status status = new Executor.Status( new PrintWriter(new FileWriter("log.txt", true)), saffronHandler);
+                    status.completed = true;
                     response.setContentType("application/json;charset=utf-8");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
@@ -378,7 +363,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/index.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/index.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -392,7 +377,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/treemap.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/treemap.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -405,7 +390,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/graph.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/graph.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -417,7 +402,7 @@ public class Browser extends AbstractHandler {
                     response.setContentType("text/html");
                     response.setStatus(HttpServletResponse.SC_OK);
                     baseRequest.setHandled(true);
-                    FileReader reader = new FileReader(new File("static/search.html"));
+                    FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/search.html"));
                     Writer writer = new StringWriter();
                     char[] buf = new char[4096];
                     int i = 0;
@@ -425,24 +410,6 @@ public class Browser extends AbstractHandler {
                         writer.write(buf, 0, i);
                     }
                     response.getWriter().write(writer.toString().replace("{{name}}", saffronDatasetName));
-                } else if ("/search_results".equals(target)) {
-                    String queryTerm = request.getParameter("query");
-                    if (queryTerm != null) {
-                        try {
-                            Iterable<Document> docIterable = saffronHandler.getSearcher(saffronDatasetName).search(queryTerm);
-                            ArrayList<Document> docs = new ArrayList<>();
-                            for (Document doc : docIterable) {
-                                docs.add(doc.reduceContext(queryTerm, 20));
-                            }
-                            response.setContentType("application/json");
-                            response.setStatus(HttpServletResponse.SC_OK);
-                            PrintWriter out = response.getWriter();
-                            mapper.writeValue(out, docs);
-                            baseRequest.setHandled(true);
-                        } catch (IOException x) {
-                            x.printStackTrace();
-                        }
-                    }
                 } else if (target.startsWith("/ttl/doc/")) {
                     final String docId = decode(target.substring(9));
                     final Document doc = saffronHandler.getDoc(saffronDatasetName, docId);

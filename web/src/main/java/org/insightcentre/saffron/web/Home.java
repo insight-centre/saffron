@@ -34,7 +34,7 @@ public class Home extends AbstractHandler {
                 response.setContentType("text/html");
                 response.setStatus(HttpServletResponse.SC_OK);
                 baseRequest.setHandled(true);
-                FileReader reader = new FileReader(new File("static/home.html"));
+                FileReader reader = new FileReader(new File(System.getProperty("saffron.home") + "/web/static/home.html"));
                 StringWriter writer = new StringWriter();
                 try {
                     char[] buf = new char[4096];
