@@ -1,16 +1,3 @@
-Developer Guide
-==========================================
-Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) to see how you can contribute to Saffron
-
-**Important**:
-
-If making any change that impact either the format of **input files**, the format of the **output files**, the format of the **configuration file**, or the **command** to run Saffron, please update the following files accordingly:
-- `README.md`
-- Files within the `examples` folder (and sub-folders)
-- `FORMAT.md`
-
-and inform the development team of Saffron.
-
 Saffron 3 - Text Analysis and Insight Tool
 ==========================================
 
@@ -52,6 +39,9 @@ java -version
 
 #### Maven
 Saffron uses [Apache Maven](https://maven.apache.org/) to run, it should therefore be installed (the recommended version is [Maven 3.5.4](https://maven.apache.org/docs/3.5.4/release-notes.html)).
+
+Maven can be obtained through package managers such as APT or may be installed
+ as follows:
 
 1. Download Maven
 ```
@@ -98,13 +88,6 @@ mvn clean install
 3. Run the whole pipeline of Saffron using the Command Line method below.
 
 **Note1**: Running the pipeline the first time will download all the models needed by Saffron to work, so the first time it will take longer 
-
-**Note2**: After the last step, you may see the following text in the logs. This can be ignored and is not impacting the analysis.
-```
-SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
-SLF4J: Defaulting to no-operation (NOP) logger implementation
-SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
-``` 
 
 Running
 -------
@@ -215,32 +198,25 @@ To create a .dot file for the generated taxonomy, you can use the following comm
 
     python taxonomy-to-dot.py taxonomy.json > taxonomy.dot
 
+Developer Guide
+---------------
 
+Check [here](https://docs.google.com/document/d/1ebyiSYCL9mG31MUnMGXGiCfaUgLiw39ButFjpho_LXA/edit#heading=h.l0sbpcm9d6qq) to see how you can contribute to Saffron
 
-Upgrading from version 3.3 to 3.4
-------
-If you have results fron using Saffron version 3.3, you will need to do the following to make it compatible with the version 3.4
+**Important**:
 
-Before starting Saffron, edit the following file:
+If making any change that impact either the format of **input files**, the format of the **output files**, the format of the **configuration file**, or the **command** to run Saffron, please update the following files accordingly:
+- `README.md`
+- Files within the `examples` folder (and sub-folders)
+- `FORMAT.md`
 
-	upgrade3.3To3.4.sh
-
-and change the following configurations to reflect the database you want to upgrade:
-
-	export MONGO_URL=localhost
-    export MONGO_PORT=27017
-    export MONGO_DB_NAME=saffron_test
-
-Run the script by executing:
-
-	./upgrade3.3To3.4.sh
-
+and inform the development team of Saffron.
 
 
 Java configuration
 =================
 
-The Java classes describing the configuration can be found here [JavaDoc](https://saffron.pages.insight-centre.org/saffron/org/insightcentre/nlp/saffron/config/package-summary.html)
+The Java classes describing the configuration can be found here [JavaDoc](https://saffron.pages.insight-centre.org/saffron-os/org/insightcentre/nlp/saffron/config/package-summary.html)
 
 
 API Documentation
