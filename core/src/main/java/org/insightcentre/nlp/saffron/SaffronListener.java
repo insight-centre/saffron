@@ -1,5 +1,7 @@
 package org.insightcentre.nlp.saffron;
 
+import org.insightcentre.nlp.saffron.config.Configuration;
+
 /**
  * A listener for events in Saffron processes
  * @author John McCrae
@@ -43,5 +45,23 @@ public interface SaffronListener {
      */
     public void fail(String message, Throwable cause);
 
+    /**
+     * Indicates the start of a stage
+     * @param statusMessage The status method
+     * @param taxonomyId The taxonomy stage
+     */
     void setStageStart(String statusMessage, String taxonomyId);
+
+    /**
+     * Indicates that a pipeline has started
+     * @param taxonomyId The taxonomy ID
+     * @param configuration The configuration of this run
+     */
+    void start(String taxonomyId, Configuration configuration);
+
+    /**
+     * Indicates the pipeline has completed
+     * @param taxonomyId The taxonomy ID
+     */
+    default void end(String taxonomyId) {}
 }

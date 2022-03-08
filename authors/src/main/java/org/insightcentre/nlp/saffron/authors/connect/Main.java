@@ -9,11 +9,11 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import org.insightcentre.nlp.saffron.config.AuthorTermConfiguration;
 import org.insightcentre.nlp.saffron.config.Configuration;
+import org.insightcentre.nlp.saffron.data.CollectionCorpus;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
-import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 
 /**
  *
@@ -70,7 +70,7 @@ public class Main {
             ObjectMapper mapper = new ObjectMapper();
 
             AuthorTermConfiguration config          = configurationFile == null ? new AuthorTermConfiguration() : mapper.readValue(configurationFile, Configuration.class).authorTerm;
-            Corpus corpus                 = CorpusTools.readFile(corpusFile);
+            Corpus corpus                 = mapper.readValue(corpusFile, CollectionCorpus.class);
             List<DocumentTerm> docTerms = mapper.readValue(docTermFile, mapper.getTypeFactory().constructCollectionType(List.class, DocumentTerm.class));
             List<Term> terms            = mapper.readValue(termFile, mapper.getTypeFactory().constructCollectionType(List.class, Term.class));
 

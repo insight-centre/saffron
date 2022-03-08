@@ -7,6 +7,9 @@ import com.fasterxml.jackson.annotation.JsonAlias;
  * @author John McCrae &lt;john@mccr.ae&gt;
  */
 public class Configuration {
+
+	public DomainModelExtractionConfiguration dmExtraction = new DomainModelExtractionConfiguration();
+
     /** The configuration for the term extraction process */
     public TermExtractionConfiguration termExtraction = new TermExtractionConfiguration();
 
@@ -28,6 +31,9 @@ public class Configuration {
 
     /** The configuration for knowledge graph extraction process **/
     public KnowledgeGraphExtractionConfiguration kg = new KnowledgeGraphExtractionConfiguration();
+
+    /** The Base URL when exporting to RDF */
+    public String baseURL = "http://saffron.insight-centre.org";
 
     @Override
     public String toString() {

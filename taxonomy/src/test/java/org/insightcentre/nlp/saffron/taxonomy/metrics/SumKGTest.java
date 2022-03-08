@@ -5,7 +5,9 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.insightcentre.nlp.saffron.DefaultSaffronListener;
 import org.insightcentre.nlp.saffron.config.KnowledgeGraphExtractionConfiguration;
@@ -305,19 +307,26 @@ public class SumKGTest {
     @Test
     public void testExtractSynonymyNonNormalised() throws Exception {
         HashMap<String, Term> terms = new HashMap<>();
-        addTerm(terms, "thing", 0.0);
-        addTerm(terms, "vehicles", 0.0);
-        addTerm(terms, "train", 0.0);
+       // addTerm(terms, "thing", 0.0);
+       // addTerm(terms, "vehicles", 0.0);
+       // addTerm(terms, "train", 0.0);
         addTerm(terms, "automobile", 0.0);
         addTerm(terms, "bus", 0.0);
         addTerm(terms, "coach", 0.0);
-        addTerm(terms, "car", 0.0);
-        addTerm(terms, "wheel", 0.0);
-        addTerm(terms, "car wheel", 0.0);
+       // addTerm(terms, "car", 0.0);
+       // addTerm(terms, "wheel", 0.0);
+       // addTerm(terms, "car wheel", 0.0);
+
+        Set<TypedLink.Type> relationTypes = new HashSet<TypedLink.Type>();
+        relationTypes.add(TypedLink.Type.hypernymy);
+        relationTypes.add(TypedLink.Type.hyponymy);
+        relationTypes.add(TypedLink.Type.meronymy);
+        relationTypes.add(TypedLink.Type.synonymy);
+        relationTypes.add(TypedLink.Type.other);
 
 		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), false);
         GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
-        KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
+        KnowledgeGraph result = instance.extractKnowledgeGraph(terms, relationTypes);
 //        for ( Object2DoubleMap.Entry<TypedLink> obj : score.scores.object2DoubleEntrySet()) {
 //            if (obj.getDoubleValue() != 0.0 && obj.getDoubleValue() != 1.0 ) {
 //                System.out.println(obj.toString());
@@ -363,19 +372,26 @@ public class SumKGTest {
 	@Test
 	public void testExtractSynonymyNormalised() throws Exception {
 		HashMap<String, Term> terms = new HashMap<>();
-		addTerm(terms, "thing", 0.0);
-		addTerm(terms, "vehicles", 0.0);
-		addTerm(terms, "train", 0.0);
+		//addTerm(terms, "thing", 0.0);
+		//addTerm(terms, "vehicles", 0.0);
+		//addTerm(terms, "train", 0.0);
 		addTerm(terms, "automobile", 0.0);
 		addTerm(terms, "bus", 0.0);
 		addTerm(terms, "coach", 0.0);
-		addTerm(terms, "car", 0.0);
-		addTerm(terms, "wheel", 0.0);
-		addTerm(terms, "car wheel", 0.0);
+		//addTerm(terms, "car", 0.0);
+		//addTerm(terms, "wheel", 0.0);
+		//addTerm(terms, "car wheel", 0.0);
+
+        Set<TypedLink.Type> relationTypes = new HashSet<TypedLink.Type>();
+        relationTypes.add(TypedLink.Type.hypernymy);
+        relationTypes.add(TypedLink.Type.hyponymy);
+        relationTypes.add(TypedLink.Type.meronymy);
+        relationTypes.add(TypedLink.Type.synonymy);
+        relationTypes.add(TypedLink.Type.other);
 
 		SumKGScore score = new SumKGScore(new TestMultiRelationClassifier(), true);
 		GreedyKG instance = new GreedyKG(score, new KnowledgeGraphExtractionConfiguration(), new DefaultSaffronListener());
-		KnowledgeGraph result = instance.extractKnowledgeGraph(terms);
+		KnowledgeGraph result = instance.extractKnowledgeGraph(terms,relationTypes);
         for ( Map.Entry<TypedLink, Double> obj : score.scores.entrySet()) {
             if (obj.getKey().getType().equals(TypedLink.Type.synonymy) &&
                     (obj.getKey().getTarget().equals("bus")) &&

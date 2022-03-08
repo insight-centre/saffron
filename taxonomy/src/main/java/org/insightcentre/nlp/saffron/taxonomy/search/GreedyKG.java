@@ -2,7 +2,7 @@ package org.insightcentre.nlp.saffron.taxonomy.search;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -14,9 +14,6 @@ import org.insightcentre.nlp.saffron.data.KnowledgeGraph;
 import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.TypedLink;
 import org.insightcentre.nlp.saffron.taxonomy.metrics.Score;
-
-import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
-import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
 
 public class GreedyKG implements KGSearch{
 
@@ -32,7 +29,7 @@ public class GreedyKG implements KGSearch{
 
 	@Override
 	public KnowledgeGraph extractKnowledgeGraphWithDenialAndAllowanceList(Map<String, Term> termMap, Set<TypedLink> allowanceList,
-			Set<TypedLink> denialList) {
+			Set<TypedLink> denialList, Set<TypedLink.Type> relationTypes) {
 		
 		log.log(LocalDateTime.now().toString() + " - Starting Greedy KG");
 		//1 - Verify edge cases
@@ -45,7 +42,7 @@ public class GreedyKG implements KGSearch{
 
         log.log(LocalDateTime.now().toString() + " - GreedyKG - Generating candidate pairs");
         //2 - Build candidate list of possible links
-        GreedyKGList candidates = new GreedyKGList(createCandidateLinks(termMap, allowanceList, denialList));
+        GreedyKGList candidates = new GreedyKGList(createCandidateLinks(termMap, allowanceList, denialList, relationTypes));
 
         log.log(LocalDateTime.now().toString() + " - GreedyKG  - Generating Initial Solution");
         //3 - Create solution based on links on allowance list
@@ -60,26 +57,36 @@ public class GreedyKG implements KGSearch{
                 final Pair<KnowledgeGraphSolution, Score<TypedLink>> result0 = result;
             candidates.scoreAndSort(tl -> result0.getValue().deltaScore(tl));
             
+            double score = 0.0;
             //7 - Choose which candidate will enter in the current Knowledge Graph
             while (!candidates.isEmpty()) {
             	
             	//8 - Create a single solution with the highest ranked candidate
-                double score = candidates.getScore(0);
-            	TypedLink candidate = candidates.remove(0);
-                KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
-                        termMap.get(candidate.getSource()).getScore(),
-                        termMap.get(candidate.getTarget()).getScore(),
-                        score, false);
-                //9 - If such solution is feasible, then update the current Knowledge Graph and go back to step 5 
-                if (soln2 != null) {
-                	Score<TypedLink> newScore = result.getValue().next(candidate, soln2);
-                    result = new MutablePair<KnowledgeGraphSolution, Score<TypedLink>>(soln2,newScore);
-                    
-                    //Prune the list of candidates by removing those that will never be considered by a new 
-                    // partial solution
-                    soln2.pruneCandidateList(candidates, candidate);
-                    continue SOLN_LOOP;
+                score = candidates.getScore(0);
+                TypedLink candidate = candidates.remove(0);
+
+                if (score > 0.0) {
+	                KnowledgeGraphSolution soln2 = result.getKey().add(candidate,
+	                        termMap.get(candidate.getSource()).getScore(),
+	                        termMap.get(candidate.getTarget()).getScore(),
+	                        score, false);
+	                //9 - If such solution is feasible, then update the current Knowledge Graph and go back to step 5
+	                if (soln2 != null) {
+	                	Score<TypedLink> newScore = result.getValue().next(candidate, soln2);
+	                    result = new MutablePair<KnowledgeGraphSolution, Score<TypedLink>>(soln2,newScore);
+
+	                    //Prune the list of candidates by removing those that will never be considered by a new
+	                    // partial solution
+	                    soln2.pruneCandidateList(candidates, candidate);
+	                    continue SOLN_LOOP;
+	                }
                 }
+            }
+
+            if (score <= 0.0) {
+            	// If the current score is 0.0 all other scores after it are smaller or equal to 0.0 (since they are sorted)
+            	// Therefore there is no point in continuing running the check for candidates.
+            	break;
             }
         }
         
@@ -98,7 +105,7 @@ public class GreedyKG implements KGSearch{
 	private Pair<KnowledgeGraphSolution, Score<TypedLink>> generateInitialSolution(
 			Map<String, Term> termMap, Set<TypedLink> allowanceList) {
 		
-		KnowledgeGraphSolution soln = KnowledgeGraphSolution.empty(termMap.keySet(), this.config.synonymyThreshold, this.config.meronomyThreshold);
+		KnowledgeGraphSolution soln = KnowledgeGraphSolution.empty(termMap.keySet(), this.config.synonymyThreshold, this.config.meronomyThreshold, this.config.genericThreshold);
         
         Score<TypedLink> score = this.emptyScore;
         for (TypedLink sp : allowanceList) {
@@ -114,14 +121,14 @@ public class GreedyKG implements KGSearch{
 	}
 
 	private ArrayList<TypedLink> createCandidateLinks(Map<String, Term> termMap, 
-			Set<TypedLink> allowanceList, Set<TypedLink> denialList) {
+			Set<TypedLink> allowanceList, Set<TypedLink> denialList, Set<TypedLink.Type> relationTypes) {
 		
 		ArrayList<TypedLink> candidates = new ArrayList<TypedLink>();
 		for (String t1 : termMap.keySet()) {
             for (String t2 : termMap.keySet()) {
         		// Assumes there are no self-loops (e.g. group 'is a' group, or group 'part of' group)
         		if (!t1.equals(t2)) {
-        			for(TypedLink.Type relationType: TypedLink.Type.values()) {
+        			for(TypedLink.Type relationType: relationTypes) {
         				candidates.add(new TypedLink(t1, t2, relationType));
         			}
                 }

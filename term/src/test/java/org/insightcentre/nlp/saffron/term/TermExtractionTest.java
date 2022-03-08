@@ -312,7 +312,7 @@ public class TermExtractionTest {
 
         }, tokenizer,
                 config.maxDocs,
-                0,
+                0, 0,
                 null,
                 new HashSet<String>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
                 config.preceedingTokens,
@@ -328,7 +328,8 @@ public class TermExtractionTest {
                 config.baseFeature,
                 config.blacklist,
                 true,
-                config.intervalDays);
+                config.intervalDays,
+                null);
         Result res = instance.extractTerms(searcher);
         assert(res.terms.size() > 1);
     }
@@ -415,12 +416,12 @@ public class TermExtractionTest {
                 return tagger;
             }
 
-        }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
+        }, tokenizer, config.maxDocs, 0, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
                 config.preceedingTokens, config.headTokens, config.middleTokens,
             config.ngramMin, config.ngramMax, config.headTokenFinal,
             config.method, config.features,
             null, 1, config.baseFeature, config.blacklist,
-            config.oneTermPerDoc, config.intervalDays);
+            config.oneTermPerDoc, config.intervalDays, null);
         Set<String> whiteList = Collections.singleton("good time");
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -507,12 +508,12 @@ public class TermExtractionTest {
                 return tagger;
             }
 
-        }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
+        }, tokenizer, config.maxDocs, 0, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
                 config.preceedingTokens, config.headTokens, config.middleTokens,
             config.ngramMin, config.ngramMax, config.headTokenFinal,
             config.method, config.features,
             null, 2, config.baseFeature, config.blacklist,
-            config.oneTermPerDoc, config.intervalDays);
+            config.oneTermPerDoc, config.intervalDays, null);
         Set<String> whiteList = new HashSet<>(Arrays.asList(new String[] { "good time","great time"}));
         Set<String> blackList = Collections.singleton("test");
         Result res = instance.extractTerms(searcher,whiteList,blackList,new DefaultSaffronListener());
@@ -596,12 +597,12 @@ public class TermExtractionTest {
                 return tagger;
             }
 
-        }, tokenizer, config.maxDocs, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
+        }, tokenizer, config.maxDocs, 0, 0, null, new HashSet<>(Arrays.asList(TermExtractionConfiguration.ENGLISH_STOPWORDS)),
                 config.preceedingTokens, config.headTokens, config.middleTokens,
             config.ngramMin, config.ngramMax, config.headTokenFinal,
             config.method, config.features,
             null, 2, config.baseFeature, config.blacklist,
-            config.oneTermPerDoc, config.intervalDays);
+            config.oneTermPerDoc, config.intervalDays, null);
         Result res = instance.extractTerms(searcher,Collections.EMPTY_SET,Collections.EMPTY_SET,new DefaultSaffronListener());
 
         assert(res.terms.stream().anyMatch((Term t) -> t.getString().equals("plan")));
