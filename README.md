@@ -91,6 +91,14 @@ mvn clean install
 
 **Note1**: Running the pipeline the first time will download all the models needed by Saffron to work, so the first time it will take longer 
 
+**Note2**: After the last step, you may see the following text in the logs. This can be ignored and is not impacting the analysis.
+
+```
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+```
+
 Running
 -------
 
