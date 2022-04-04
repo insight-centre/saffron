@@ -1,4 +1,4 @@
-Saffron 3 - Text Analysis and Insight Tool
+Saffron 4.0 - Text Analysis and Insight Tool
 ==========================================
 
 Saffron is a tool for providing multi-stage analysis of text corpora by means
