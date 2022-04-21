@@ -76,7 +76,7 @@ Installation
 
 To install Saffron:
 
-1. clone the gitlab repository
+1. clone the github repository
 ```
 git clone --branch=v4.0 https://github.com/insight-centre/saffron.git ~/saffron-os
 ```
