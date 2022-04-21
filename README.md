@@ -130,9 +130,11 @@ In addition, some optional arguments can be specified:
 
 
 
-For example
+For example, try this test command:
 
-    ./saffron.sh ~/corpus.zip ~/output/ config.json -k TAXO -c ZIP
+    ./saffron.sh ./examples/presidential_speech_dataset/corpus_with_authors.json ./web/data/output_KG ./examples/config.json -k TAXO
+
+and verify that you obtain the output JSON files in the ./web/data/output_KG folder
 
 
 **More detail on Saffron**, ie. how to install it, how to configure the different features, and the approaches it is based on can be found in the Wiki (https://github.com/insight-centre/saffron/wiki)
