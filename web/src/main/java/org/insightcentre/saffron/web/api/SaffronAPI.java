@@ -362,14 +362,6 @@ public class SaffronAPI extends AbstractHandler {
                     res.setSimilarity(term1.getSimilarity());
                     res.setRun(name);
                     termsResponse.add(res);
-                } else if (term1.getTerm2().equals(term)){
-                    TermSimilarityResponse res = new TermSimilarityResponse();
-                    res.setId(name);
-                    res.setTermString1(term1.getTerm1());
-                    res.setTermString2(term1.getTerm2());
-                    res.setSimilarity(term1.getSimilarity());
-                    res.setRun(name);
-                    termsResponse.add(res);
                 }
             }
             String json = objectMapper.writeValueAsString(termsResponse);
