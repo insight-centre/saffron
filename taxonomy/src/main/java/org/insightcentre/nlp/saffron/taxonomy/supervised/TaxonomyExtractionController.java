@@ -16,7 +16,7 @@ import org.insightcentre.nlp.saffron.taxonomy.extract.KGExtractionUtils;
 import org.insightcentre.nlp.saffron.taxonomy.search.KGSearch;
 import org.insightcentre.nlp.saffron.taxonomy.extract.ConvertKGToRDF;
 import org.insightcentre.nlp.saffron.taxonomy.search.TaxonomySearch;
-import org.springframework.boot.context.config.ResourceNotFoundException;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -41,12 +41,12 @@ public class TaxonomyExtractionController {
      *
      * @param input the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/taxonomy-extraction")
     public ResponseEntity postRequest(
             @RequestBody SaffronModel input)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             ObjectMapper mapper = new ObjectMapper();
             List<DocumentTerm> docTerms = input.getInput().documentTermMapping;
@@ -87,12 +87,12 @@ public class TaxonomyExtractionController {
      *
      * @param input the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/kg-extraction")
     public ResponseEntity postKnowledgeGraphExtraction(
             @RequestBody SaffronModel input)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             ObjectMapper mapper = new ObjectMapper();
             KnowledgeGraphExtractionConfiguration kgConfig = input.getConfiguration().kg;

@@ -6,7 +6,7 @@ import org.insightcentre.nlp.saffron.SaffronModel;
 import org.insightcentre.nlp.saffron.data.Corpus;
 import org.insightcentre.nlp.saffron.data.Document;
 import org.insightcentre.nlp.saffron.data.SaffronPath;
-import org.springframework.boot.context.config.ResourceNotFoundException;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,12 +29,12 @@ public class DocumentIndexController {
      *
      * @param input the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/documentindex")
     public ResponseEntity postRequest(
             @RequestBody SaffronModel input)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             Collection<Document> data = input.getInput().documents;
             Corpus corpus = CorpusTools.fromCollection(data);

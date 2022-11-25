@@ -11,7 +11,7 @@ import org.insightcentre.nlp.saffron.data.Term;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
 import org.json.JSONArray;
-import org.springframework.boot.context.config.ResourceNotFoundException;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.json.JSONObject;
@@ -26,12 +26,12 @@ public class TermExtractionController {
      *
      * @param input the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/term-extraction")
     public ResponseEntity postRequest(
             @RequestBody SaffronModel input)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             TermExtractionConfiguration config = input.getConfiguration().termExtraction;
             Collection<Document> data = input.getInput().documents;

@@ -11,7 +11,7 @@ import org.insightcentre.nlp.saffron.data.*;
 import org.insightcentre.nlp.saffron.data.connections.AuthorTerm;
 import org.insightcentre.nlp.saffron.data.connections.DocumentTerm;
 import org.insightcentre.nlp.saffron.documentindex.CorpusTools;
-import org.springframework.boot.context.config.ResourceNotFoundException;
+import org.springframework.boot.context.config.ConfigDataResourceNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -29,12 +29,12 @@ public class AuthorsController {
      *
      * @param input the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/author-consolidation")
     public ResponseEntity postAuthorConsolidationRequest(
             @RequestBody SaffronModel input)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             Corpus searcher = CorpusTools.fromCollection(input.getInput().documents);
             Set<Author> authors = Consolidate.extractAuthors(searcher);
@@ -53,12 +53,12 @@ public class AuthorsController {
      *
      * @param authorsConnectionModel the AuthorsConnectionModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/author-connection")
     public ResponseEntity postAuthorConnectionRequest(
             @RequestBody SaffronModel authorsConnectionModel)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             AuthorTermConfiguration config = authorsConnectionModel.getConfiguration().authorTerm;
             Corpus corpus = CorpusTools.fromCollection(authorsConnectionModel.getInput().documents);
@@ -79,12 +79,12 @@ public class AuthorsController {
      *
      * @param authorsSimilarityModel the SaffronModel
      * @return the response entity
-     * @throws ResourceNotFoundException the resource not found exception
+     * @throws ConfigDataResourceNotFoundException the resource not found exception
      */
     @PostMapping("/author-similarity")
     public ResponseEntity postAuthorSimilarityRequest(
             @RequestBody SaffronModel authorsSimilarityModel)
-            throws ResourceNotFoundException {
+            throws ConfigDataResourceNotFoundException {
         try {
             AuthorSimilarityConfiguration config = authorsSimilarityModel.getConfiguration().authorSim;
             List<AuthorTerm> authorTerms = authorsSimilarityModel.getInput().authorTerms;

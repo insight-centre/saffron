@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -28,6 +30,14 @@ import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 
 public class ConvertKGToRDF {
+    private static String encode(String s) {
+        try {
+            return URLEncoder.encode(s, "UTF-8");
+        } catch(UnsupportedEncodingException x) {
+            throw new RuntimeException(x);
+        }
+    }
+
 
     public static final String SAFFRON_NS = "http://saffron.insight-centre.org/ontology#";
 
@@ -68,14 +78,14 @@ public class ConvertKGToRDF {
 			final Resource object;			
 			
 			if (!termResources.containsKey(relation.getSource())) {
-				subject = model.createResource(baseUrl + "/rdf/term/" + relation.getSource(), termType);
+				subject = model.createResource(baseUrl + "/rdf/term/" + encode(relation.getSource()), termType);
 				model.add(subject, RDFS.label, relation.getSource());
 			} else {
 				subject = termResources.get(relation.getSource());
 			}
 			
 			if (!termResources.containsKey(relation.getTarget())) {
-				object = model.createResource(baseUrl + "/rdf/term/" + relation.getTarget(), termType);
+				object = model.createResource(baseUrl + "/rdf/term/" + encode(relation.getTarget()), termType);
 				model.add(object, RDFS.label, relation.getTarget());
 			} else {
 				object = termResources.get(relation.getTarget());
